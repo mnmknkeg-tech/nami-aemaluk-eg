@@ -1,0 +1,10 @@
+{
+  "title": "Payments",
+  "subtitle": "Setup payment gateway and merchant credentials",
+  "saved": "Saved",
+  "paymentSettingsUpdated": "Payment settings updated successfully",
+  "error": "Error",
+  "saveChangesFailed": "An error occurred while saving changes",
+  "paymentGatewayDetails": "Payment Gateway Details",
+  "paymentGatewayDetailsDesc": "Add your payment gateway keys."
+}

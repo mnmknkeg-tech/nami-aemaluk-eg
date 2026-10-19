@@ -1,0 +1,29 @@
+{
+  "adminPanel": "لوحة الإدارة",
+  "merchantPanel": "لوحة التاجر",
+  "controlPanel": "لوحة التحكم",
+  "admin": {
+    "dashboard": "لوحة التحكم",
+    "approvals": "طلبات الموافقة",
+    "shopMgmt": "إدارة المتاجر",
+    "userMgmt": "إدارة المستخدمين",
+    "allOperations": "كافة العمليات",
+    "deliveryMgmt": "إدارة التوصيل",
+    "feedback": "مركز الاقتراحات",
+    "systemSettings": "إعدادات النظام"
+  },
+  "merchant": {
+    "dashboard": "لوحة التحكم",
+    "shopMgmt": "إدارة المتجر",
+    "appearance": "المظهر",
+    "orders": "الطلبات",
+    "messages": "الرسائل",
+    "settings": "الإعدادات"
+  },
+  "customer": {
+    "home": "الرئيسية",
+    "myOrders": "طلباتي",
+    "messages": "الرسائل",
+    "settings": "الإعدادات"
+  }
+}

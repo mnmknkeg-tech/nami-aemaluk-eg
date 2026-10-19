@@ -1,0 +1,498 @@
+@import 'tailwindcss';
+
+/* مسح كلاسات الباكدج المشترك عشان كلاسات مكوناته تتولد */
+@source "../../../../packages/shared/src";
+
+/* ألوان البراند — Bluora */
+@theme {
+  --color-brand-cyan: #00e5ff;
+  --color-brand-purple: #bd00ff;
+  --color-brand-black: #0f172a;
+  --color-brand-dark: #1e293b;
+}
+
+@layer base {
+  body {
+    @apply antialiased;
+    font-family:
+      'Cairo',
+      system-ui,
+      -apple-system,
+      sans-serif;
+  }
+}
+
+/* ── Animations ── */
+@keyframes bl-gradient-shift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -20px) scale(1.05);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+}
+@keyframes bl-float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+@keyframes bl-float-slow {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(3deg);
+  }
+}
+@keyframes bl-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+@keyframes bl-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes bl-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes bl-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes bl-pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 229, 255, 0.35);
+  }
+}
+@keyframes bl-spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes bl-bounce-arrow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+@keyframes bl-gradient-text {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+@keyframes bl-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.6;
+  }
+}
+@keyframes bl-ken-burns {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.12);
+  }
+}
+
+.bl-anim-gradient {
+  animation: bl-gradient-shift 8s ease-in-out infinite;
+}
+.bl-anim-float {
+  animation: bl-float 4s ease-in-out infinite;
+}
+.bl-anim-float-slow {
+  animation: bl-float-slow 6s ease-in-out infinite;
+}
+.bl-anim-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  background-size: 200% 100%;
+  animation: bl-shimmer 3s linear infinite;
+}
+.bl-anim-pulse-glow {
+  animation: bl-pulse-glow 3s ease-in-out infinite;
+}
+.bl-anim-spin-slow {
+  animation: bl-spin-slow 20s linear infinite;
+}
+.bl-anim-bounce {
+  animation: bl-bounce-arrow 2s ease-in-out infinite;
+}
+.bl-skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: #e2e8f0;
+}
+.bl-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.65) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: bl-skeleton-sweep 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bl-skeleton::after {
+    animation: none;
+  }
+}
+.bl-skeleton-dark {
+  background-color: #1e293b;
+}
+.bl-skeleton-dark::after {
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+@keyframes bl-skeleton-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.bl-reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bl-reveal.bl-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+.bl-card-hover {
+  transition:
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+.bl-card-hover:hover {
+  transform: translateY(-4px);
+}
+.bl-hero-slide {
+  animation: bl-fade-up 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bl-gradient-text {
+  background: linear-gradient(90deg, #00e5ff, #7c3aed, #00e5ff);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: bl-gradient-text 4s ease-in-out infinite;
+}
+.bl-hero-dot {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bl-hero-dot.active {
+  animation: bl-dot-pulse 1.6s ease-in-out infinite;
+}
+.bl-img-zoom {
+  overflow: hidden;
+}
+.bl-img-zoom img {
+  transition:
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.5s ease;
+  will-change: transform;
+}
+.bl-img-zoom:hover img {
+  transform: scale(1.08);
+}
+.bl-ken-burns {
+  animation: bl-ken-burns 14s ease-in-out infinite alternate;
+}
+.bl-tilt-card {
+  transition:
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s ease;
+}
+.bl-tilt-card:hover {
+  transform: perspective(1000px) rotateX(2deg) rotateY(-2deg) translateY(-6px);
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.bl-logo-mark {
+  filter: grayscale(1) brightness(1.6) opacity(0.45);
+  transition:
+    filter 0.35s ease,
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+.bl-logo-mark:hover {
+  filter: grayscale(0) brightness(1) opacity(1);
+  transform: translateY(-2px);
+}
+
+.animate-fade-up {
+  animation: bl-fade-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes bl-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bl-anim-gradient,
+  .bl-anim-float,
+  .bl-anim-float-slow,
+  .bl-anim-shimmer,
+  .bl-anim-pulse-glow,
+  .bl-anim-spin-slow,
+  .bl-anim-bounce,
+  .bl-reveal,
+  .bl-hero-slide,
+  .bl-gradient-text,
+  .bl-hero-dot,
+  .bl-ken-burns,
+  .bl-tilt-card,
+  .bl-img-zoom img {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ===== هيرو صفحة البزنس — خلفية زي صفحة "جديد" (نمي أعمالك) ===== */
+@keyframes bl-cloud-drift {
+  50% {
+    transform: translateX(18px);
+  }
+}
+.biz-hero {
+  --sky: #ffffff;
+  --sky-light: #ffffff;
+  --blue: oklch(0.39 0.18 257);
+  --blue-deep: oklch(0.31 0.18 259);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  --primary: oklch(0.208 0.042 265.755);
+  --background: oklch(0.955 0.03 224);
+  /* أبيض نضيف + توهج بألوان البراند (سماوي/بنفسجي) */
+  background:
+    radial-gradient(56rem 32rem at 86% -10%, rgba(0, 229, 255, 0.16), transparent 62%),
+    radial-gradient(48rem 30rem at 5% 112%, rgba(189, 0, 255, 0.1), transparent 62%), #ffffff;
+}
+.biz-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 16% 22%, rgba(0, 229, 255, 0.07) 0 10%, transparent 32%);
+}
+.biz-hero > div {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+.biz-cloud {
+  position: absolute;
+  z-index: 0;
+  display: block;
+  width: 10rem;
+  height: 3.8rem;
+  border-radius: 999px;
+  pointer-events: none;
+  background: color-mix(in oklab, white 88%, var(--background));
+  box-shadow: 0 20px 42px rgba(0, 229, 255, 0.14);
+  opacity: 0.8;
+  animation: bl-cloud-drift 12s ease-in-out infinite;
+}
+.biz-cloud i {
+  position: absolute;
+  bottom: 18%;
+  display: block;
+  border-radius: 999px;
+  background: inherit;
+}
+.biz-cloud i:nth-child(1) {
+  width: 4.8rem;
+  height: 4.8rem;
+  right: 12%;
+}
+.biz-cloud i:nth-child(2) {
+  width: 6.4rem;
+  height: 6.4rem;
+  right: 36%;
+}
+.biz-cloud i:nth-child(3) {
+  width: 4rem;
+  height: 4rem;
+  left: 5%;
+}
+.biz-cloud-top {
+  left: -3rem;
+  top: 4rem;
+}
+.biz-cloud-right {
+  right: -4rem;
+  bottom: 2rem;
+  transform: scale(1.5);
+  animation-delay: -6s;
+}
+
+/* ============================================================
+   إضافات صفحة «نمّي أعمالك» — منقولة من src/index.css في مشروع Vite
+   (مشروع نمّي كان Tailwind v4 نفس المشروع الأساسي، فالكلاسات متوافقة)
+   ============================================================ */
+
+/* Glassmorphism and specialized micro-effects */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 20px 50px -12px rgba(15, 23, 42, 0.08),
+    0 4px 16px -2px rgba(99, 102, 241, 0.05);
+}
+
+.glass-pill {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.glass-floating-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 16px 36px -8px rgba(30, 41, 59, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+}
+
+/* Atmospheric ambient glow */
+.ambient-glow {
+  background: radial-gradient(
+    circle at 50% 30%,
+    rgba(139, 92, 246, 0.15) 0%,
+    rgba(56, 189, 248, 0.12) 35%,
+    rgba(249, 115, 22, 0.05) 60%,
+    transparent 80%
+  );
+}
+
+/* Hide scrollbar for the mobile quick-dock in نمّي */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* أنيميشن الدخول بدل tailwindcss-animate (مش مركّب في المشروع الأساسي)
+   مستخدمة في المصدَر بنفس الأسماء: animate-in / fade-in / zoom-in-95 */
+@keyframes nm-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes nm-zoom-in-95 {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-in {
+  animation: nm-fade-in 0.2s ease-out both;
+}
+.fade-in {
+  animation: nm-fade-in 0.2s ease-out both;
+}
+.zoom-in-95 {
+  animation: nm-zoom-in-95 0.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .fade-in,
+  .zoom-in-95 {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+

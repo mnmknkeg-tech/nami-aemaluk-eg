@@ -1,0 +1,11 @@
+{
+  "defaultShopName": "Inventory",
+  "defaultShopType": "General",
+  "saved": "Saved successfully",
+  "saveFailed": "Save failed",
+  "noDataForCustomerMode": "No saved data to display in customer mode",
+  "loadDataFailed": "Failed to load data",
+  "deleted": "Deleted successfully",
+  "deleteFailed": "Delete failed",
+  "shopIdRequired": "shopId is required"
+}

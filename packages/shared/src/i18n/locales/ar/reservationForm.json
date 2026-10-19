@@ -1,0 +1,14 @@
+{
+  "title": "حجز طاولة",
+  "subtitle": "احجز طاولتك الآن واستمتع بتجربة مميزة",
+  "fullName": "الاسم الكامل",
+  "enterFullName": "أدخل اسمك الكامل",
+  "email": "البريد الإلكتروني",
+  "phone": "رقم الهاتف",
+  "guests": "عدد الأشخاص",
+  "date": "التاريخ",
+  "time": "الوقت",
+  "specialRequests": "طلبات خاصة",
+  "specialRequestsPlaceholder": "أي طلبات خاصة أو ملاحظات...",
+  "confirmReservation": "تأكيد الحجز"
+}

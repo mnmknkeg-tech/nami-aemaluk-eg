@@ -1,0 +1,126 @@
+/* الهوية البصرية لصفحة تسجيل الدخول — نفس روح صفحة "جديد" (GrowthPage) وصفحة التسجيل */
+.login-identity {
+  --sky: oklch(0.88 0.1 224);
+  --sky-light: oklch(0.96 0.035 220);
+  --blue: oklch(0.39 0.18 257);
+  --blue-deep: oklch(0.31 0.18 259);
+  --yellow: oklch(0.86 0.18 91);
+  font-family: 'Cairo', sans-serif;
+  min-height: 100vh;
+  color: var(--blue-deep);
+  background: linear-gradient(
+    180deg,
+    var(--sky) 0%,
+    var(--sky-light) 37%,
+    var(--sky) 73%,
+    var(--sky-light) 100%
+  );
+  position: relative;
+  overflow-x: clip;
+}
+.login-identity::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 70% 8%,
+    color-mix(in oklab, white 70%, transparent) 0 8%,
+    transparent 30%
+  );
+}
+.login-identity .cloud {
+  position: absolute;
+  display: block;
+  width: 10rem;
+  height: 3.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 20px 42px rgba(30, 58, 138, 0.1);
+  opacity: 0.88;
+  animation: login-drift 12s ease-in-out infinite;
+  pointer-events: none;
+}
+.login-identity .cloud i {
+  position: absolute;
+  bottom: 18%;
+  display: block;
+  border-radius: 999px;
+  background: inherit;
+}
+.login-identity .cloud i:nth-child(1) {
+  width: 4.8rem;
+  height: 4.8rem;
+  right: 12%;
+}
+.login-identity .cloud i:nth-child(2) {
+  width: 6.4rem;
+  height: 6.4rem;
+  right: 36%;
+}
+.login-identity .cloud i:nth-child(3) {
+  width: 4rem;
+  height: 4rem;
+  left: 5%;
+}
+.login-identity .cloud-top {
+  top: 4rem;
+  left: 6%;
+}
+.login-identity .cloud-side {
+  top: 22rem;
+  right: -3rem;
+  transform: scale(1.3);
+}
+@keyframes login-drift {
+  50% {
+    transform: translateX(18px);
+  }
+}
+
+.login-identity .update-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  color: white;
+  background: linear-gradient(135deg, oklch(0.68 0.16 228), var(--blue));
+  box-shadow: 0 8px 18px color-mix(in oklab, var(--blue) 28%, transparent);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.login-identity .new-sticker {
+  display: inline-block;
+  padding: 0.4rem 1.8rem;
+  border-radius: 1rem;
+  color: var(--blue-deep);
+  background: var(--yellow);
+  box-shadow: 0 10px 20px color-mix(in oklab, var(--yellow) 48%, transparent);
+  font-size: 1.25rem;
+  font-weight: 900;
+  transform: rotate(-4deg);
+}
+.login-identity .new-sticker span {
+  color: oklch(0.58 0.23 27);
+}
+
+.login-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 2rem;
+  box-shadow: 0 25px 60px rgba(30, 58, 138, 0.16);
+}
+.login-btn-primary {
+  background: linear-gradient(135deg, oklch(0.68 0.16 228), var(--blue)) !important;
+  box-shadow: 0 12px 26px color-mix(in oklab, var(--blue) 35%, transparent);
+}
+.login-btn-primary:hover {
+  filter: brightness(1.06);
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-identity .cloud {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS check_merchant_24h_volume(TEXT, DECIMAL);

@@ -1,0 +1,14 @@
+{
+  "title": "Reserve a Table",
+  "subtitle": "Reserve your table now and enjoy a special experience",
+  "fullName": "Full Name",
+  "enterFullName": "Enter your full name",
+  "email": "Email",
+  "phone": "Phone Number",
+  "guests": "Number of Guests",
+  "date": "Date",
+  "time": "Time",
+  "specialRequests": "Special Requests",
+  "specialRequestsPlaceholder": "Any special requests or notes...",
+  "confirmReservation": "Confirm Reservation"
+}

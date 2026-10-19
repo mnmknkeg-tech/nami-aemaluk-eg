@@ -1,0 +1,6 @@
+{
+  "loadingProducts": "جاري تحميل المنتجات...",
+  "searchProducts": "ابحث عن منتجات...",
+  "foundProducts": "تم العثور على {{count}} منتج",
+  "noMatchingProducts": "لم يتم العثور على منتجات مطابقة"
+}

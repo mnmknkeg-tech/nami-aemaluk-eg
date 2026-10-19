@@ -1,0 +1,11 @@
+{
+  "title": "الإشعارات",
+  "markAllRead": "تعليم الكل",
+  "noNotifications": "لا توجد إشعارات",
+  "markAsRead": "تعليم كمقروء",
+  "viewAll": "عرض جميع الإشعارات",
+  "now": "الآن",
+  "minutesAgo": "منذ {{count}} دقيقة",
+  "hoursAgo": "منذ {{count}} ساعة",
+  "daysAgo": "منذ {{count}} يوم"
+}

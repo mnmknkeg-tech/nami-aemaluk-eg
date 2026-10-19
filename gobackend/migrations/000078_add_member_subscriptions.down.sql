@@ -1,0 +1,10 @@
+-- Rollback: member subscriptions system
+DROP INDEX IF EXISTS "member_subscriptions_payment_status_idx";
+DROP INDEX IF EXISTS "member_subscriptions_end_date_idx";
+DROP INDEX IF EXISTS "member_subscriptions_status_idx";
+DROP INDEX IF EXISTS "member_subscriptions_customer_id_idx";
+DROP INDEX IF EXISTS "member_subscriptions_shop_id_idx";
+DROP INDEX IF EXISTS "subscription_plans_is_active_idx";
+DROP INDEX IF EXISTS "subscription_plans_shop_id_idx";
+DROP TABLE IF EXISTS "member_subscriptions";
+DROP TABLE IF EXISTS "subscription_plans";

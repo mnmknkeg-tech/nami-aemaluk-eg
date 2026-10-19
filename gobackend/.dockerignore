@@ -1,0 +1,25 @@
+# Git (prevents kaniko "worktree contains unstaged changes")
+.git
+.gitignore
+.gitattributes
+
+# Environment files
+.env
+.env.production
+
+# Logs
+*.log
+logs/
+
+# Local binaries / build artifacts
+*.exe
+bin/
+dist/
+build/
+server.exe
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

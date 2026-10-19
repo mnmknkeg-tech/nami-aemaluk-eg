@@ -1,0 +1,11 @@
+{
+  "defaultShopName": "المخزون",
+  "defaultShopType": "عام",
+  "saved": "تم الحفظ",
+  "saveFailed": "فشل الحفظ",
+  "noDataForCustomerMode": "لا يوجد بيانات محفوظة لعرضها في وضع الشراء",
+  "loadDataFailed": "فشل تحميل البيانات",
+  "deleted": "تم المسح",
+  "deleteFailed": "فشل المسح",
+  "shopIdRequired": "shopId مطلوب"
+}

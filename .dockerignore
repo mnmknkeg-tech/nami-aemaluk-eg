@@ -1,0 +1,43 @@
+# Docker
+Dockerfile
+Dockerfile.dev
+docker-compose.yml
+docker-compose.dev.yml
+
+# Git (prevents kaniko "worktree contains unstaged changes")
+.git
+.gitignore
+.gitattributes
+
+# Docker volumes
+uploads/
+ssl/
+
+# Environment files (keep secure)
+.env
+.env.local
+.env.production
+
+# Logs
+logs/
+*.log
+
+# Node modules (will be inside container)
+node_modules/
+
+# Build artifacts (will be built inside container)
+dist/
+dist-backend/
+build/
+
+# Cache
+.cache/
+.parcel-cache/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

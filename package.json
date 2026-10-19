@@ -1,0 +1,111 @@
+{
+  "name": "ray-test-marketplace",
+  "version": "1.0.1",
+  "description": "Hyper-modern multi-vendor marketplace for Egypt.",
+  "scripts": {
+    "dev:marketplace": "npm --workspace=@ray/marketplace-next run dev",
+    "dev:dashboard-web": "npm --workspace=@ray/dashboard-web run dev",
+    "dev:business": "npm --workspace=@ray/business-next run dev",
+    "dev:all": "concurrently \"npm run go:backend:dev\" \"npm run dev:marketplace\" \"npm run dev:dashboard-web\" \"npm run dev:business\"",
+    "build:marketplace": "npm --workspace=@ray/marketplace-next run build",
+    "build:dashboard-web": "npm --workspace=@ray/dashboard-web run build",
+    "build:business": "npm --workspace=@ray/business-next run build",
+    "go:backend:dev": "cd gobackend && go run ./cmd/api",
+    "go:backend:test": "cd gobackend && go test ./cmd/... ./internal/...",
+    "typecheck": "tsc -p tsconfig.json --noEmit && npm run typecheck --workspaces --if-present",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "prepare": "husky || exit 0",
+    "i18n:audit:dashboard": "node scripts/i18n-audit-dashboard.mjs",
+    "api:inventory": "node scripts/generate-api-inventory.mjs",
+    "i18n:audit:dashboard:strict": "node scripts/i18n-audit-dashboard.mjs --fail-on-missing",
+    "loadtest:k6": "node scripts/load/load-test-node.js",
+    "checks": "npm run typecheck && npm run test"
+  },
+  "keywords": [
+    "react",
+    "marketplace",
+    "egypt",
+    "ai",
+    "gemini",
+    "pos"
+  ],
+  "author": "Ray Team",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.0",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@tanstack/react-query": "^5.90.0",
+    "autoprefixer": "^10.4.23",
+    "browser-image-compression": "^2.0.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.0.0",
+    "i18next": "^23.15.0",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "idb": "^8.0.3",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.454.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-i18next": "^15.1.0",
+    "react-router-dom": "^7.17.0",
+    "react-virtualized-auto-sizer": "^2.0.3",
+    "react-window": "^2.2.7",
+    "recharts": "^3.10.1",
+    "socket.io-client": "^4.8.3",
+    "tailwind-merge": "^3.5.0",
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@playwright/test": "^1.55.0",
+    "@tanstack/react-query-devtools": "^5.90.0",
+    "@types/jest": "^30.0.0",
+    "@types/leaflet": "^1.9.19",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@types/react-virtualized-auto-sizer": "^1.0.4",
+    "@types/react-window": "^1.8.8",
+    "concurrently": "^10.0.4",
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "husky": "^9.1.7",
+    "jest": "^30.2.0",
+    "lint-staged": "^16.2.0",
+    "postcss": "8.5.28",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.1.18",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md,css,mjs,cjs}": [
+      "prettier --write"
+    ]
+  },
+  "overrides": {
+    "file-type": "21.3.2",
+    "fast-xml-parser": "5.5.8",
+    "postcss": "8.5.28",
+    "next": {
+      "postcss": "8.5.28"
+    }
+  }
+}

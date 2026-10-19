@@ -1,0 +1,42 @@
+# ============================================================
+# Render Blueprint — Ray Go API
+# يحدد مسار بناء الحاوية (gobackend/) والمتغيرات المطلوبة.
+# بعد الرفع على GitHub: Render → Blueprints → Apply render.yaml
+# ============================================================
+services:
+  - type: web
+    name: ray-api
+    runtime: docker
+    # Dockerfile في مجلد gobackend وليس جذر المستودع — هذا سبب فشل البناء:
+    dockerfilePath: ./gobackend/Dockerfile
+    dockerContext: ./gobackend
+    plan: starter
+    # المنفذ الداخلي للتطبيق (يطابق EXPOSE في Dockerfile):
+    port: 4000
+    healthCheckPath: /monitoring/ready
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      # DB_MIGRATE_ON_BOOT مطلوب لأول تشغيل ضد قاعدة فارغة:
+      - key: DB_MIGRATE_ON_BOOT
+        value: "true"
+      - key: LOG_FORMAT
+        value: json
+      # أسرار تُولَّد تلقائياً من Render (لا تُرفع لـ git أبداً):
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_BOOTSTRAP_TOKEN
+        generateValue: true
+      # قيم يدوية — تُملأ من داشبورد Render (Environment tab):
+      # DATABASE_URL: يجب أن يحتوي على كلمة السر الجديدة بعد تغييرك لها
+      #   شكله: postgresql://postgres.[REF]:[الكلمة_الجديدة]@aws-0-....pooler.supabase.com:5432/postgres
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: FRONTEND_APP_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false

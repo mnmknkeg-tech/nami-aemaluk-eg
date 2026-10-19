@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>نمّي أعمالك — الكاشير</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // error overlay — أداة تشخيص مؤقتة: تعرض أي خطأ JS على الشاشة بدل الشاشة البيضاء
+      (function () {
+        function show(title, text) {
+          var d = document.createElement('pre');
+          d.style.cssText =
+            'position:fixed;inset:0;z-index:99999;background:#fff;color:#c0392b;font:12px Consolas,monospace;padding:16px;overflow:auto;white-space:pre-wrap;direction:ltr;text-align:left';
+          d.textContent = title + '\n\n' + text;
+          document.body.appendChild(d);
+        }
+        window.addEventListener(
+          'error',
+          function (e) {
+            // تجاهل أخطاء تحميل الموارد (صور/سكريبتات) — دي مش أعطال حقيقية
+            var t = e.target;
+            if (t && t instanceof HTMLElement && (t.tagName === 'IMG' || t.tagName === 'SCRIPT' || t.tagName === 'LINK')) {
+              return;
+            }
+            // capture-phase عشان يمسك أخطاء السكريبتات كلها
+            show(
+              'JS ERROR',
+              (e.message || String(e.error)) +
+                '\n' +
+                (e.filename || '') +
+                ':' +
+                (e.lineno || '') +
+                ':' +
+                (e.colno || '') +
+                '\n\n' +
+                ((e.error && e.error.stack) || '')
+            );
+          },
+          true
+        );
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = e.reason;
+          show('PROMISE REJECTION', (r && (r.stack || r.message)) || String(r));
+        });
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

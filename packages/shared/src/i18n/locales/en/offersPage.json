@@ -1,0 +1,10 @@
+{
+  "title": "Offers",
+  "subtitle": "Latest active offers — progressive loading to reduce load",
+  "noOffers": "No active offers at the moment.",
+  "loadMoreAria": "Load more offers",
+  "loading": "Loading...",
+  "loadMore": "Load More",
+  "currency": "EGP",
+  "shop": "Store"
+}

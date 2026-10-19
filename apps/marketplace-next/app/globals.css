@@ -1,0 +1,268 @@
+@import 'tailwindcss';
+@config "../tailwind.config.ts";
+
+:root {
+  --font-alexandria: 'Alexandria', sans-serif;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --navbar-bg: rgba(255, 255, 255, 0.8);
+  --card-bg: #ffffff;
+  --shadow-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #141414;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-color: #1e293b;
+  --navbar-bg: rgba(10, 10, 10, 0.8);
+  --card-bg: #141414;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: clip;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  font-family: var(--font-alexandria);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeSpeed;
+}
+
+::selection {
+  background: #00e5ff;
+  color: #000;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #00e5ff, #bd00ff);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #00b8d4, #9c00e5);
+}
+
+.glass {
+  background: var(--navbar-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass-card {
+  background: rgba(20, 20, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+.dark .skeleton {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 1000px 100%;
+}
+
+.text-gradient {
+  background: linear-gradient(to right, #00e5ff, #bd00ff, #00e5ff);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientX 3s ease infinite;
+}
+
+.brand-border {
+  border: 1px solid transparent;
+  background-image:
+    linear-gradient(var(--bg-primary), var(--bg-primary)), linear-gradient(135deg, #00e5ff, #bd00ff);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #00e5ff, #bd00ff);
+  z-index: 100;
+  transition: width 0.1s ease;
+}
+
+[dir='rtl'] {
+  text-align: right;
+}
+
+[dir='ltr'] {
+  text-align: left;
+}
+
+/* Performance: GPU acceleration for transforms and opacity */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Performance: skip rendering offscreen sections */
+section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}
+
+/* Performance: reduce backdrop-filter on mobile only */
+@media (max-width: 768px) {
+  .glass {
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+  }
+  .glass-card {
+    backdrop-filter: blur(10px) saturate(120%);
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
+  }
+}
+
+/* Performance: GPU acceleration — keep animations smooth on low-end devices */
+.animate-pulse,
+.animate-fade-in,
+.animate-fade-up,
+.animate-scale-in {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.hover\:-translate-y-1,
+.hover\:scale-110,
+.hover\:scale-105,
+.hover\:scale-\[1\.02\] {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Performance: isolate paint for animated blur elements */
+.animate-pulse[class*='blur'] {
+  will-change: opacity;
+  transform: translateZ(0);
+}
+
+/* Performance: contain layout/paint for cards */
+.card-contain {
+  contain: layout style paint;
+}
+
+/* Performance: reduce paint areas for gradients */
+.text-gradient {
+  will-change: background-position;
+  transform: translateZ(0);
+}
+
+/* Hero Banner Slider Animation */
+@keyframes heroSlide {
+  0%,
+  30% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  33%,
+  63% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  66%,
+  96% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Welcome toast slide-down (appears above the banner after login/signup) */
+@keyframes slideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+/* Hide scrollbar while keeping scroll (category strip, chips rows) */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Cart count badge — pops (scale bounce) every time the count changes */
+@keyframes cartPop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.35);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-cart-pop {
+  animation: cartPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}

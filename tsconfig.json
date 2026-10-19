@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["node", "jest"],
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@ray-eg/shared": ["packages/shared/src/index.ts"],
+      "@ray-eg/shared/*": ["packages/shared/src/*"],
+      "@/*": ["packages/shared/src/*"],
+      "@shared/*": ["packages/shared/src/*"],
+      "@assets/*": ["packages/shared/src/assets/*"],
+      "@marketplace-lib/*": ["apps/marketplace-next/src/lib/*"]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": ["packages/**/*", "test/**/*", "*.ts", "*.tsx"],
+  "exclude": [
+    "apps",
+    "scripts",
+    "_archive",
+    "node_modules",
+    "dist",
+    ".next",
+    "gobackend",
+    "saas-backend",
+    "prisma"
+  ]
+}

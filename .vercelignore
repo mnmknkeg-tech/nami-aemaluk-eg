@@ -1,0 +1,77 @@
+# Build outputs (nested)
+**/node_modules/
+**/.next/
+**/dist/
+**/dist-backend/
+**/dist-electron/
+**/build/
+**/release/
+**Release/
+**/out/
+**/dev-dist/
+**/*.tsbuildinfo
+
+# Backends (not used for dashboard-web)
+backend/
+gobackend/
+saas-backend/
+
+# Other apps (not used for dashboard-web)
+apps/business/
+apps/dashboard/
+# apps/marketplace-next/ — هذا هو التطبيق المنشور، لا يتم تجاهله
+
+# Unused packages (dashboard-web only needs @ray-eg/shared)
+packages/config/
+packages/types/
+packages/ui/
+packages/utils/
+
+# Tests
+test/
+testsprite_tests/
+coverage/
+reports/
+
+# Docs & misc
+docs/
+certs/
+electron/
+scripts/
+docker-compose*.yml
+Dockerfile*
+nginx.conf
+prometheus.yml
+pgbouncer*.ini
+pgbouncer-userlist.txt
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Git & Vercel
+.git/
+.vercel/
+.gitignore
+
+# Local data
+uploads/
+logs/
+public/videos/
+prisma/dev.db
+*.db
+*.sqlite
+*.tmp
+
+# Large files / binaries (electron builds)
+release/
+release/*
+*.exe
+*.dll
+*.pak
+*.bin
+*.dat
+*.asar
+*.dmp
+*.icudtl

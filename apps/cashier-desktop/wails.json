@@ -1,0 +1,17 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "RayCashier",
+  "outputfilename": "RayCashier",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Ray Dev"
+  },
+  "info": {
+    "productName": "نمّي أعمالك — الكاشير",
+    "productVersion": "1.0.0",
+    "comments": "كاشير أوفلاين متزامن مع السيرفر"
+  }
+}

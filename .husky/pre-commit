@@ -1,0 +1,22 @@
+# Prevent committing temporary files (only added/modified files — deletions are fine)
+TEMP_FILES_PATTERN="(tsc_errors|tsc-out|tsc-final|tsc-check|vite_build|backend-out|\.log$|test-proxy|add-activities|fix-activities|update-activities|restore-next\.ps1|q-dev-chat|build_result)"
+
+if git diff --cached --name-only --diff-filter=ACMR | grep -E "$TEMP_FILES_PATTERN"; then
+  echo "Commit rejected: attempting to commit temporary files"
+  exit 1
+fi
+
+# Prevent committing .env files (secrets belong outside git)
+if git diff --cached --name-only --diff-filter=ACMR | grep -qE "\.env(\.|$)"; then
+  if git diff --cached --name-only | grep -qE "\.env\.example$"; then
+    :
+  else
+    echo "Commit rejected: .env files should not be committed"
+    exit 1
+  fi
+fi
+
+# Format & lint staged files
+npx lint-staged || exit 1
+
+echo "Pre-commit checks passed"

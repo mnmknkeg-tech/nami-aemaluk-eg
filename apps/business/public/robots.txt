@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Allow: /shops
+Allow: /products
+Allow: /offers
+Allow: /restaurants
+Allow: /about
+Allow: /contact
+Allow: /dalil
+
+Disallow: /login
+Disallow: /signup
+Disallow: /business/
+Disallow: /admin/
+Disallow: /pos/
+Disallow: /builder/
+
+Sitemap: https://mnmknk.com/sitemap.xml

@@ -1,0 +1,16 @@
+{
+  "labels": {
+    "stock": "المتاح"
+  },
+  "cm": "سم",
+  "egp": "ج.م",
+  "egpShort": "ج",
+  "unavailable": "غير متوفر",
+  "packLabel": "الباقة",
+  "color": "اللون",
+  "size": "المقاس",
+  "limitedQuantity": "كمية محدودة",
+  "added": "تمت الإضافة",
+  "addToCart": "إضافة للسلة",
+  "reserve": "حجز"
+}

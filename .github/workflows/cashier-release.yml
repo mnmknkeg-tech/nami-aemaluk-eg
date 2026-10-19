@@ -1,0 +1,52 @@
+# بناء ونشر الكاشير (RayCashier) على GitHub Releases
+# التشغيل: اعمل tag جديد واعمله push:
+#   git tag cashier-v1.0.0 && git push origin cashier-v1.0.0
+# النتيجة: installer جاهز للتحميل على:
+#   https://github.com/Sayedtaha55/ray-eg/releases/latest
+name: cashier-desktop-release
+
+on:
+  push:
+    tags:
+      - 'cashier-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/cashier-desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
+      - name: Build installer
+        env:
+          GOPROXY: https://goproxy.cn,direct
+        run: wails build -nsis
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            apps/cashier-desktop/build/bin/RayCashier-amd64-installer.exe
+            apps/cashier-desktop/build/bin/RayCashier.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

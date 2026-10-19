@@ -1,0 +1,148 @@
+{
+  "login": "Login",
+  "signup": "Sign Up",
+  "logout": "Logout",
+  "home": "Home",
+  "profile": "My Account",
+  "cart": "Cart",
+  "search": "Search for the best deals now...",
+  "quickNav": "Quick Navigation",
+  "openMenu": "Open Menu",
+  "closeMenu": "Close Menu",
+  "backToTop": "Back to top",
+  "close": "Close",
+  "save": "Save",
+  "back": "Back",
+  "aboutUs": "About Us",
+  "support": "Support",
+  "contactUs": "Contact Us",
+  "helpCenter": "Help Center",
+  "terms": "Terms of Service",
+  "privacy": "Privacy Policy",
+  "allRightsReserved": "All rights reserved.",
+  "loading": "Loading...",
+  "email": "Email",
+  "phone": "Phone",
+  "address": "Address",
+  "addressValue": "Cairo, Egypt",
+  "newNotification": "New notification",
+  "headerSearch": "Search for stores, products, or services...",
+  "headerSearchAria": "Search",
+  "headerCartAria": "Cart",
+  "headerLogin": "Login",
+  "forms": {
+    "login": {
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "submit": "Login"
+    },
+    "signup": {
+      "nameLabel": "Full Name",
+      "namePlaceholder": "Enter your full name",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "submit": "Create Account"
+    },
+    "shop": {
+      "nameLabel": "Store Name",
+      "namePlaceholder": "Enter store name",
+      "emailLabel": "Email",
+      "phoneLabel": "Phone Number",
+      "addressLabel": "Address",
+      "addressPlaceholder": "Enter full address",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Write a description for the store...",
+      "submit": "Save Store Details"
+    }
+  },
+  "languageToggle": {
+    "switchToEnglish": "Switch to English",
+    "switchToArabic": "Switch to Arabic",
+    "englishShort": "EN",
+    "arabicShort": "AR",
+    "arabicLabel": "العربية",
+    "englishLabel": "English"
+  },
+  "cartIcon": {
+    "ariaLabel": "Shopping cart ({{count}})",
+    "title": "Shopping cart"
+  },
+  "backendStatusBanner": {
+    "reconnecting": "Reconnecting automatically...",
+    "offline": "You're temporarily offline.",
+    "serviceUnavailable": "Service is temporarily unavailable.",
+    "reconnectingHint": "Just a few seconds and we'll continue from where you left off.",
+    "offlineHint": "Reload the page once you're back online, or try again in a moment.",
+    "tryAgainLater": "Please try again later.",
+    "lastAttempt": "Last attempt: {{path}}",
+    "panelTitle": "Service is unavailable right now",
+    "panelDesc": "We're trying to reach the server… please try again in a moment.",
+    "retry": "Retry",
+    "home": "Home",
+    "refreshPage": "Refresh page"
+  },
+  "pwaInstallPrompt": {
+    "title": "Install the app on your phone",
+    "desc": "Install the app for faster access, full-screen mode, and a more native-like experience with better loading for repeat visits.",
+    "installing": "Installing...",
+    "installNow": "Install now",
+    "later": "Later",
+    "iosDescPrefix": "On iPhone or iPad: open the",
+    "iosShare": "Share",
+    "iosDescMiddle": "menu then choose",
+    "iosAddToHome": "Add to Home Screen",
+    "iosDescSuffix": "to get a faster and easier app-like experience."
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "desc": "Try refreshing the page. If the problem keeps happening, send us a screenshot of the error.",
+    "refreshPage": "Refresh page"
+  },
+  "toaster": {
+    "saved": "Saved"
+  },
+  "purchaseModeButton": {
+    "label": "Purchase mode"
+  },
+  "syncStatus": {
+    "offline": "Offline mode",
+    "syncing": "Syncing...",
+    "pendingCount": "Pending: {{count}}",
+    "lastSync": "Last sync",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "syncNow": "Sync now"
+  },
+  "governorates": {
+    "all": "All",
+    "cairo": "Cairo",
+    "giza": "Giza",
+    "alexandria": "Alexandria"
+  },
+  "abandonedCart": {
+    "title": "Abandoned Cart",
+    "manageTitle": "Abandoned Cart",
+    "manageSubtitle": "Track customers who added items but didn't complete checkout",
+    "addedToCart": "Added to Cart",
+    "checkoutStarted": "Started Checkout",
+    "abandoned": "Abandoned",
+    "abandonmentRate": "Abandonment Rate",
+    "recoveryRate": "Recovery Rate",
+    "listTitle": "Cart Events",
+    "refresh": "Refresh",
+    "loadError": "Failed to load abandoned cart data",
+    "recoverError": "Failed to mark as recovered",
+    "noData": "No abandoned cart events found",
+    "date": "Date",
+    "event": "Event",
+    "customer": "Customer",
+    "product": "Product",
+    "quantity": "Quantity",
+    "price": "Price",
+    "actions": "Actions",
+    "recover": "Mark Recovered",
+    "recovered": "Recovered",
+    "recoveredLabel": "Recovered"
+  }
+}
