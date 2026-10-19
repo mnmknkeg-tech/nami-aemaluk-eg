@@ -1,0 +1,9 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "gobackend/Dockerfile"
+
+[deploy]
+healthcheckPath = "/monitoring/ready"
+healthcheckTimeout = 300
+restartPolicyType = "on-failure"
+restartPolicyMaxRetries = 3
