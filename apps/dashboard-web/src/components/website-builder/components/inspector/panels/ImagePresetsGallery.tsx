@@ -60,17 +60,16 @@ const AUTOMOTIVE_PRESET_IMAGES = [
   },
 ];
 
-interface ImagePresetsGalleryProps
-  extends Pick<
-    InspectorPanelProps,
-    | 'node'
-    | 'isHero'
-    | 'heroImageNode'
-    | 'activeGalleryTarget'
-    | 'setShowPresetGallery'
-    | 'handlePropChange'
-    | 'handleStyleChange'
-  > {}
+type ImagePresetsGalleryProps = Pick<
+  InspectorPanelProps,
+  | 'node'
+  | 'isHero'
+  | 'heroImageNode'
+  | 'activeGalleryTarget'
+  | 'setShowPresetGallery'
+  | 'handlePropChange'
+  | 'handleStyleChange'
+>;
 
 export const ImagePresetsGallery: React.FC<ImagePresetsGalleryProps> = ({
   node,

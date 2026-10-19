@@ -84,12 +84,13 @@ const consentOptions: {
 ];
 
 export default function ConsentBanner() {
-  if (!consentBannerEnabled) return null;
-
+  // لا بد من استدعاء الـ hooks بشكل غير مشروط قبل أي early return،
+  // وإلا خالفنا قاعدة react-hooks/rules-of-hooks.
   const [visible, setVisible] = useState(false);
   const [consents, setConsents] = useState<ConsentState>(defaultConsents);
 
   useEffect(() => {
+    if (!consentBannerEnabled) return;
     const stored = readConsents();
     if (!stored) {
       setVisible(true);
@@ -97,6 +98,8 @@ export default function ConsentBanner() {
       setConsents(stored);
     }
   }, []);
+
+  if (!consentBannerEnabled) return null;
 
   const toggle = (key: ConsentType) => {
     if (key === 'essential') return;
