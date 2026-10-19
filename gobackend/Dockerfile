@@ -5,10 +5,10 @@ RUN apk update && apk add --no-cache git ca-certificates
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY gobackend/go.mod gobackend/go.sum ./
 RUN go mod download
 
-COPY . .
+COPY gobackend/ .
 
 # Static binary with no CGO dependencies.
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/api ./cmd/api
