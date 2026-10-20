@@ -3,12 +3,6 @@
   "installCommand": "cd ../.. && npm install",
   "framework": "nextjs",
   "regions": ["iad1"],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://api2.mnmknk.com/api/:path*"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
