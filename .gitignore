@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # .gitignore - Ray Marketplace (organized & comprehensive)
 # ============================================================
 
@@ -30,6 +30,10 @@ release/
 *.key
 certs/localhost.crt
 apps/marketplace-next/certificates/
+
+# Files pulled down by `vercel env pull` — they contain real secrets.
+.env*.pull
+.env.prod.pull
 
 # --- Logs ---
 *.log

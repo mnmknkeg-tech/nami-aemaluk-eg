@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"database/sql"
+	stderrors "errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/errors"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/logger"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 )
@@ -166,7 +169,37 @@ func (r *Repository) Create(ctx context.Context, u *User) (*User, error) {
 		          deactivated_at, scheduled_purge_at, created_at, updated_at
 	`
 	row := r.pool.QueryRow(ctx, query, u.Email, u.Name, u.Phone, u.Password, u.Role, u.ShopID, u.IsActive)
-	return scanUser(row)
+	created, err := scanUser(row)
+	if err != nil {
+		return nil, translateUniqueViolation(err)
+	}
+	return created, nil
+}
+
+// translateUniqueViolation maps a Postgres unique-constraint violation onto a
+// 409 conflict instead of letting it bubble up as a 500.
+//
+// The users table has two unique indexes — the email one and users_phone_key.
+// Signup pre-checks the email, but two concurrent signups can still race, and
+// the phone is never pre-checked at all. Without this translation a merchant
+// who reuses a phone number got "internal server error" with no way to tell
+// what went wrong.
+func translateUniqueViolation(err error) error {
+	var pgErr *pgconn.PgError
+	// 23505 is Postgres' SQLSTATE for unique_violation.
+	if !stderrors.As(err, &pgErr) || pgErr.Code != "23505" {
+		return err
+	}
+	// The constraint name is the reliable signal here — Postgres reports it as
+	// "duplicate key value violates unique constraint \"<name>\"".
+	switch {
+	case strings.Contains(pgErr.ConstraintName, "email"):
+		return errors.Conflict("email_already_exists", "البريد الإلكتروني مستخدم بالفعل")
+	case strings.Contains(pgErr.ConstraintName, "phone"):
+		return errors.Conflict("phone_already_exists", "رقم الموبايل مستخدم بالفعل")
+	default:
+		return errors.Conflict("duplicate_value", "القيمة المدخلة مستخدمة بالفعل")
+	}
 }
 
 // UpdatePassword changes the user's password and updated_at timestamp.

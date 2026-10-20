@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/url"
@@ -78,6 +79,23 @@ func (c *S3Client) PresignUpload(ctx context.Context, key, contentType string, e
 		return "", fmt.Errorf("presign upload: %w", err)
 	}
 	return req.URL, nil
+}
+
+// PutObject uploads an object body directly to S3/R2 and returns the public
+// URL for the stored key. It backs the multipart /media/upload endpoint, which
+// receives the file bytes in the request instead of having the browser PUT
+// them to a presigned URL.
+func (c *S3Client) PutObject(ctx context.Context, key, contentType string, body []byte) (string, error) {
+	input := &s3.PutObjectInput{
+		Bucket:      aws.String(c.cfg.Bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(body),
+		ContentType: aws.String(contentType),
+	}
+	if _, err := c.client.PutObject(ctx, input); err != nil {
+		return "", fmt.Errorf("put object: %w", err)
+	}
+	return c.PublicURL(key), nil
 }
 
 // PublicURL returns the public URL for an object key.

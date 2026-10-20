@@ -11,17 +11,25 @@ import (
 
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/compression"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/errors"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/logger"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/storage"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 // localStorageDir is where locally stored uploads are written when object
 // storage (S3/R2) is not configured.
 const localStorageDir = "./uploads"
 
-// DirectUpload stores a multipart file on local disk and records a media row.
+// DirectUpload stores a multipart file and records a media row.
+//
 // It powers the legacy POST /media/upload endpoint used by the dashboard,
 // which sends multipart/form-data instead of using the presign flow.
+//
+// When object storage (S3/R2) is configured the bytes are stored there and
+// the public URL points at the bucket, so uploads survive restarts and are
+// served from the CDN. Without object storage the file falls back to the
+// local disk, which is only viable for single-instance deployments.
 func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShopID, shopID, purpose string, fh *multipart.FileHeader) (*Media, error) {
 	if err := s.authorizeShop(shopID, actorRole, actorShopID); err != nil {
 		return nil, err
@@ -61,22 +69,9 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 	}
 	payload, outCT, outExt := s.processUploadPayload(ct, outExt, raw)
 
-	key, err := makeLocalKeyWithExt(shopID, purpose, outExt)
+	key, publicURL, err := s.storeUpload(shopID, purpose, outExt, outCT, payload)
 	if err != nil {
-		return nil, errors.Validation("invalid_filename", "اسم الملف غير صالح")
-	}
-
-	dstPath := filepath.Join(localStorageDir, filepath.FromSlash(key))
-	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
-		return nil, errors.Internal("upload_mkdir_failed", err)
-	}
-	dst, err := os.Create(dstPath)
-	if err != nil {
-		return nil, errors.Internal("upload_create_failed", err)
-	}
-	defer dst.Close()
-	if _, err := dst.Write(payload); err != nil {
-		return nil, errors.Internal("upload_write_failed", err)
+		return nil, err
 	}
 
 	size := int64(len(payload))
@@ -85,11 +80,46 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 		UploadedBy:  strPtr(userID),
 		Purpose:     purpose,
 		OriginalKey: key,
-		OriginalURL: s.localPublicURL(key),
+		OriginalURL: publicURL,
 		MimeType:    outCT,
 		FileSize:    &size,
 	}
 	return s.repo.Create(ctx, m)
+}
+
+// storeUpload writes the payload to object storage when it is configured and
+// falls back to the local disk otherwise. It returns the storage key and the
+// public URL the file is served from.
+func (s *Service) storeUpload(shopID, purpose, ext, contentType string, payload []byte) (string, string, error) {
+	if s.s3 != nil {
+		key := s.s3.MakeKey(shopID, purpose, "upload"+ext)
+		publicURL, err := s.s3.PutObject(context.Background(), key, contentType, payload)
+		if err == nil {
+			return key, publicURL, nil
+		}
+		// A storage failure must not lose the upload: fall through to the
+		// local disk so the merchant still gets a working image.
+		logger.Global().Error("failed to store upload in object storage", zap.Error(err))
+	}
+
+	key, err := makeLocalKeyWithExt(shopID, purpose, ext)
+	if err != nil {
+		return "", "", errors.Validation("invalid_filename", "اسم الملف غير صالح")
+	}
+
+	dstPath := filepath.Join(localStorageDir, filepath.FromSlash(key))
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
+		return "", "", errors.Internal("upload_mkdir_failed", err)
+	}
+	dst, err := os.Create(dstPath)
+	if err != nil {
+		return "", "", errors.Internal("upload_create_failed", err)
+	}
+	defer dst.Close()
+	if _, err := dst.Write(payload); err != nil {
+		return "", "", errors.Internal("upload_write_failed", err)
+	}
+	return key, s.localPublicURL(key), nil
 }
 
 // processUploadPayload decides what actually gets stored for an upload.

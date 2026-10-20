@@ -2,6 +2,7 @@ package media
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/config"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/auth"
@@ -28,8 +29,55 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 
 	g.Post("/presign", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.PresignUpload)
 	g.Post("/complete", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.CompleteUpload)
+	// The dashboard still posts multipart form-data to /media/upload. The
+	// endpoint was missing from the router, so every image upload from the
+	// dashboard failed with a 404 and no product could ever get a picture.
+	g.Post("/upload", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Upload)
 	g.Get("/", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.List)
 	g.Get("/:id", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.GetByID)
+}
+
+// Upload handles a multipart file upload sent directly to the API.
+//
+// Query parameters:
+//
+//	shopId  — the shop the file belongs to (required)
+//	purpose — what the file is for, e.g. "product_image" (optional)
+//
+// It answers with the stored media row. The dashboard reads the "url" field
+// from the unwrapped payload, so the response carries the public URL under
+// both "url" and "originalUrl".
+func (h *Handler) Upload(c *fiber.Ctx) error {
+	user, ok := middleware.AuthUserFromContext(c)
+	if !ok {
+		return errors.Unauthorized("unauthenticated", "يجب تسجيل الدخول")
+	}
+
+	shopID := strings.TrimSpace(c.Query("shopId"))
+	if shopID == "" {
+		return errors.Validation("shop_id_required", "معرف المتجر مطلوب")
+	}
+	purpose := strings.TrimSpace(c.Query("purpose"))
+	if purpose == "" {
+		purpose = strings.TrimSpace(c.FormValue("purpose"))
+	}
+
+	fh, err := c.FormFile("file")
+	if err != nil {
+		return errors.Validation("file_required", "الملف مطلوب")
+	}
+
+	media, err := h.service.DirectUpload(c.UserContext(), user.ID, user.Role, user.ShopID, shopID, purpose, fh)
+	if err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"success": true,
+		"data":    media,
+		// The dashboard's upload helper reads "url" off the unwrapped payload.
+		"url": media.OriginalURL,
+	})
 }
 
 func (h *Handler) PresignUpload(c *fiber.Ctx) error {
