@@ -109,6 +109,7 @@ const parseNumberInput = (value: any) => {
 };
 
 import { compressForUpload } from '@/lib/upload-image';
+import { uploadMediaFile } from '@/lib/api/upload';
 export default function RestaurantAddProductPage() {
   const { shop } = useShop();
   const router = useRouter();
@@ -491,14 +492,8 @@ export default function RestaurantAddProductPage() {
       // Upload product image if exists
       let finalImageUrl = imageUrl;
       if (imageFile) {
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        formData.append('purpose', 'product_image');
-        const uploadResponse = await apiRequest(`/media/upload?shopId=${shopId}`, {
-          method: 'POST',
-          body: formData,
-        });
-        finalImageUrl = uploadResponse?.url || imageUrl;
+        const finalUploadedUrl = await uploadMediaFile(imageFile, shopId);
+        finalImageUrl = finalUploadedUrl || imageUrl;
       }
 
       const productData: any = {

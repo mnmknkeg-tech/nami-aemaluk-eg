@@ -18,6 +18,8 @@ const stamp = Date.now();
 const EMAIL = `e2e.merchant.${stamp}@rayeg.test`;
 const PASSWORD = 'Test@12345';
 const SHOP_NAME = `متجر الاختبار ${stamp}`;
+// The users table has a unique index on phone, so every run needs a fresh one.
+const PHONE = `+201${String(stamp).slice(-8)}`;
 
 const report = [];
 let failures = 0;
@@ -28,10 +30,13 @@ const log = (ok, label, detail) => {
   console.log(`${ok ? '✓' : '✗'} ${label}${detail ? ` — ${detail}` : ''}`);
 };
 
-async function req(path, { method = 'GET', token, body, headers = {} } = {}) {
+async function req(path, { method = 'GET', token, body, headers = {}, multipart } = {}) {
   const init = { method, headers: { accept: 'application/json', ...headers } };
   if (token) init.headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) {
+  if (multipart) {
+    // Let fetch set the multipart boundary itself.
+    init.body = body;
+  } else if (body !== undefined) {
     init.headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(body);
   }
@@ -46,6 +51,16 @@ async function req(path, { method = 'GET', token, body, headers = {} } = {}) {
   return { ok: res.ok, status: res.status, json, text };
 }
 
+/** Decodes the payload of a JWT without verifying it — for assertions only. */
+function decodeJwt(token) {
+  try {
+    const part = String(token).split('.')[1];
+    return JSON.parse(Buffer.from(part, 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
 // A tiny valid 1x1 PNG used to exercise the real upload path.
 const PNG_1PX = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -55,24 +70,53 @@ const PNG_1PX = Buffer.from(
 async function main() {
   console.log(`→ Backend: ${API}`);
 
-  // 1) Signup as a merchant.
-  const signup = await req('/api/v1/auth/signup', {
-    method: 'POST',
-    headers: { 'X-App-Scope': 'business' },
-    body: {
-      email: EMAIL,
-      password: PASSWORD,
-      name: SHOP_NAME,
-      phone: '+201001234567',
-      role: 'MERCHANT',
-    },
-  });
+  // 1) Signup as a merchant. The endpoint is rate limited, so a burst of
+  //    earlier runs can still be cooling down — wait it out instead of
+  //    failing the whole run.
+  let signup = null;
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    signup = await req('/api/v1/auth/signup', {
+      method: 'POST',
+      headers: { 'X-App-Scope': 'business' },
+      body: {
+        email: EMAIL,
+        password: PASSWORD,
+        name: SHOP_NAME,
+        phone: PHONE,
+        role: 'MERCHANT',
+      },
+    });
+    if (signup.status !== 429) break;
+    const wait = attempt * 15;
+    console.log(`… signup rate limited, waiting ${wait}s (attempt ${attempt})`);
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((r) => setTimeout(r, wait * 1000));
+  }
   const token = signup.json?.data?.token?.accessToken;
   log(signup.ok && !!token, 'POST /auth/signup (MERCHANT)', `status=${signup.status}`);
   if (!token) {
     console.error('✗ no access token:', JSON.stringify(signup.json || signup.text).slice(0, 500));
     process.exit(1);
   }
+
+  // 2) The same phone must be rejected with a 409, not a 500.
+  const dupe = await req('/api/v1/auth/signup', {
+    method: 'POST',
+    headers: { 'X-App-Scope': 'business' },
+    body: {
+      email: `e2e.dupe.${stamp}@rayeg.test`,
+      password: PASSWORD,
+      name: SHOP_NAME,
+      phone: PHONE,
+      role: 'MERCHANT',
+    },
+  });
+  log(
+    dupe.status === 409,
+    'POST /auth/signup (duplicate phone → 409)',
+    `status=${dupe.status} code=${dupe.json?.error || '-'}`
+  );
 
   // 2) Login with the same credentials — proves the account is persisted.
   const login = await req('/api/v1/auth/login', {
@@ -120,10 +164,26 @@ async function main() {
 
   const shopId = shop.id;
 
+  // 4) The access token was minted during signup, before the shop existed, so
+  // it carries no shopId claim. Log in again to pick up the linked shop —
+  // this is exactly what the Business app does by handing off to the
+  // dashboard login page.
+  const relogin = await req('/api/v1/auth/login', {
+    method: 'POST',
+    body: { email: EMAIL, password: PASSWORD },
+  });
+  const shopToken = relogin.json?.data?.token?.accessToken || token;
+  const shopClaim = decodeJwt(shopToken)?.shopId || decodeJwt(shopToken)?.shop_id;
+  log(
+    relogin.ok && !!shopClaim,
+    'POST /auth/login (token carries shopId)',
+    `status=${relogin.status} shopId=${shopClaim || '-'}`
+  );
+
   // 4) Media upload through the presign flow (the dashboard/direct-to-R2 path).
   const presign = await req('/api/v1/media/presign', {
     method: 'POST',
-    token,
+    token: shopToken,
     body: {
       shopId,
       filename: `e2e-${stamp}.png`,
@@ -155,7 +215,7 @@ async function main() {
     // 6) Finalize so the backend records the media row.
     const complete = await req('/api/v1/media/complete', {
       method: 'POST',
-      token,
+      token: shopToken,
       body: {
         shopId,
         key,
@@ -180,10 +240,36 @@ async function main() {
     );
   }
 
-  // 8) Create a product that points at the uploaded image.
+  // 8) The dashboard uploads through POST /media/upload (multipart), not the
+  //    presign flow - that route was missing and every dashboard image
+  //    upload 404'd. Exercise it here.
+  const form = new FormData();
+  form.append('file', new Blob([PNG_1PX], { type: 'image/png' }), `e2e-upload-${stamp}.png`);
+  form.append('purpose', 'product_image');
+  const direct = await req(
+    `/api/v1/media/upload?shopId=${encodeURIComponent(shopId)}&purpose=product_image`,
+    { method: 'POST', token: shopToken, body: form, multipart: true }
+  );
+  const directUrl = direct.json?.url || direct.json?.data?.originalUrl || direct.json?.data?.url;
+  log(
+    direct.ok && !!directUrl,
+    'POST /media/upload (multipart)',
+    `status=${direct.status} url=${directUrl ? 'yes' : 'no'}`
+  );
+  if (directUrl) {
+    const served = await fetch(directUrl, { method: 'GET' });
+    const bytes = Buffer.from(await served.arrayBuffer());
+    log(
+      served.ok && bytes.length > 0,
+      'GET public URL of /media/upload',
+      `status=${served.status} bytes=${bytes.length}`
+    );
+  }
+
+  // 9) Create a product that points at the uploaded image.
   const product = await req('/api/v1/products', {
     method: 'POST',
-    token,
+    token: shopToken,
     body: {
       name: `منتج اختبار ${stamp}`,
       price: 199.99,

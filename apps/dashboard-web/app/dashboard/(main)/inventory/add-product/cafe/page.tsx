@@ -64,6 +64,7 @@ const parseNumberInput = (value: any) => {
 };
 
 import { compressForUpload } from '@/lib/upload-image';
+import { uploadMediaFile } from '@/lib/api/upload';
 export default function CafeAddProductPage() {
   const { shop } = useShop();
   const router = useRouter();
@@ -278,27 +279,15 @@ export default function CafeAddProductPage() {
       // Upload main image
       let finalImageUrl = imageUrl;
       if (imageFile) {
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        formData.append('purpose', 'product_image');
-        const uploadResponse = await apiRequest(`/media/upload?shopId=${shopId}`, {
-          method: 'POST',
-          body: formData,
-        });
-        finalImageUrl = uploadResponse?.url || imageUrl;
+        const finalUploadedUrl = await uploadMediaFile(imageFile, shopId);
+        finalImageUrl = finalUploadedUrl || imageUrl;
       }
 
       // Upload extra images
       const extraUrls: string[] = [];
       for (const f of extraImageFiles) {
-        const formData = new FormData();
-        formData.append('file', f);
-        formData.append('purpose', 'product_image');
-        const uploadResponse = await apiRequest(`/media/upload?shopId=${shopId}`, {
-          method: 'POST',
-          body: formData,
-        });
-        if (uploadResponse?.url) extraUrls.push(uploadResponse.url);
+        const uploadedUrl = await uploadMediaFile(f, shopId);
+        if (uploadedUrl) extraUrls.push(uploadedUrl);
       }
 
       const allImages = [finalImageUrl, ...extraUrls].filter(Boolean).slice(0, 6);

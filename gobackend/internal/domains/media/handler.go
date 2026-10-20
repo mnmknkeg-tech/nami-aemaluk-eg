@@ -39,10 +39,19 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 
 // Upload handles a multipart file upload sent directly to the API.
 //
-// Query parameters:
+// The shop the file belongs to can be given two ways:
 //
-//	shopId  — the shop the file belongs to (required)
-//	purpose — what the file is for, e.g. "product_image" (optional)
+//	shopId query parameter — shopId=...
+//	shopId multipart field  — form field "shopId"
+//
+// The form field matters because the dashboard is served from Vercel and
+// proxies /api/* through a Next.js rewrite. Vercel's rewrite answers 500 for
+// a multipart POST whose query string carries a dashed UUID, while the very
+// same request without the query parameter reaches the API fine. Reading
+// the shop id from the multipart body sidesteps the proxy bug entirely, and
+// the query parameter stays supported for direct API calls.
+//
+// "purpose" is accepted the same way ("product_image", "gallery", …).
 //
 // It answers with the stored media row. The dashboard reads the "url" field
 // from the unwrapped payload, so the response carries the public URL under
@@ -54,6 +63,9 @@ func (h *Handler) Upload(c *fiber.Ctx) error {
 	}
 
 	shopID := strings.TrimSpace(c.Query("shopId"))
+	if shopID == "" {
+		shopID = strings.TrimSpace(c.FormValue("shopId"))
+	}
 	if shopID == "" {
 		return errors.Validation("shop_id_required", "معرف المتجر مطلوب")
 	}
