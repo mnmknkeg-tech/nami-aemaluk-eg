@@ -24,6 +24,11 @@ type Pool struct {
 	// dsn is the normalized connection string actually handed to pgx. It is
 	// kept so migrations reuse exactly the same (sanitized) URL as the pool.
 	dsn string
+	// poolBudget is the effective (maxConns, minConns) applied to the pool.
+	poolBudget struct {
+		max int
+		min int
+	}
 }
 
 // coreTables are the tables the API cannot work without. They are used by
@@ -31,6 +36,11 @@ type Pool struct {
 // project with DB_MIGRATE_ON_BOOT=false has an empty public schema and every
 // single request then fails with an opaque "internal app error".
 var coreTables = []string{"schema_migrations", "users", "shops", "products"}
+
+// ProjectDBPoolerMaxClients is the Supabase Session Pooler's reported limit in
+// the production environment. All pool budget decisions are made against this
+// number so the application never requests more sessions than the pooler allows.
+const ProjectDBPoolerMaxClients = 15
 
 // New creates a new pgx connection pool and optionally runs migrations.
 func New(ctx context.Context, cfg config.DBConfig, log *zap.Logger) (*Pool, error) {
@@ -67,19 +77,29 @@ func New(ctx context.Context, cfg config.DBConfig, log *zap.Logger) (*Pool, erro
 		}
 	}
 
-	// pgxpool panics when MinConns > MaxConns, so clamp defensively: Supabase's
-	// pooler tiers often cap the pool far below the default 25/5 pair.
-	maxConns := cfg.MaxOpenConns
+	// Resolve the effective pool budget. MaxOpenConns is the hard per-process
+	// cap; MaxIdleConns is also a session budget (idle connections consume a
+	// pooler session). The sum must stay under the project's pooler limit.
+	maxConns, minConns := cfg.PoolBudget(ProjectDBPoolerMaxClients)
+
+	// Apply the resolved budget with defensive clamping. pgxpool panics when
+	// MinConns > MaxConns, so the order matters: validate first, then assign.
 	if maxConns < 1 {
 		maxConns = 1
 	}
-	minConns := cfg.MaxIdleConns
 	if minConns < 0 {
 		minConns = 0
 	}
 	if minConns > maxConns {
 		minConns = maxConns
 	}
+	if maxConns > ProjectDBPoolerMaxClients {
+		maxConns = ProjectDBPoolerMaxClients
+	}
+	if minConns > maxConns {
+		minConns = maxConns
+	}
+
 	pgxCfg.MaxConns = int32(maxConns)
 	pgxCfg.MinConns = int32(minConns)
 	pgxCfg.MaxConnLifetime = cfg.ConnMaxLifetime
@@ -99,7 +119,7 @@ func New(ctx context.Context, cfg config.DBConfig, log *zap.Logger) (*Pool, erro
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
-	p := &Pool{Pool: pool, cfg: cfg, dsn: cleanURL}
+	p := &Pool{Pool: pool, cfg: cfg, dsn: cleanURL, poolBudget: struct{ max, min int }{max: maxConns, min: minConns}}
 
 	if cfg.MigrateOnBoot {
 		if err := p.MigrateUp(); err != nil {
@@ -116,6 +136,8 @@ func New(ctx context.Context, cfg config.DBConfig, log *zap.Logger) (*Pool, erro
 		zap.String("query_exec_mode", pgxCfg.ConnConfig.DefaultQueryExecMode.String()),
 		zap.Int32("max_conns", pgxCfg.MaxConns),
 		zap.Int32("min_conns", pgxCfg.MinConns),
+		zap.Int("session_budget_max", p.poolBudget.max),
+		zap.Int("session_budget_min", p.poolBudget.min),
 	)
 
 	if err := p.VerifySchema(ctx); err != nil {
@@ -127,6 +149,43 @@ func New(ctx context.Context, cfg config.DBConfig, log *zap.Logger) (*Pool, erro
 	}
 
 	return p, nil
+}
+
+// ApplyPoolBudget sets the effective pgxpool budget. It is called by the
+// application startup after the pool is created and is used to enforce the
+// pooler-aware session budget at the pgxpool level.
+func (p *Pool) ApplyPoolBudget(maxConns, minConns int) {
+	if maxConns < 1 {
+		maxConns = 1
+	}
+	if minConns < 0 {
+		minConns = 0
+	}
+	if minConns > maxConns {
+		minConns = maxConns
+	}
+	if maxConns > ProjectDBPoolerMaxClients {
+		maxConns = ProjectDBPoolerMaxClients
+	}
+	if minConns > maxConns {
+		minConns = maxConns
+	}
+	p.poolBudget.max = maxConns
+	p.poolBudget.min = minConns
+	if p.Pool != nil {
+		pgxCfg := p.Pool.Config()
+		if int32(maxConns) != pgxCfg.MaxConns || int32(minConns) != pgxCfg.MinConns {
+			// The pool is already open; a pool config change is not safe to
+			// apply at runtime. Log the requested vs applied budget and keep
+			// the original values to avoid panic.
+			zap.L().Warn("pool budget already applied; changing MaxConns/MinConns at runtime is not supported by pgxpool",
+				zap.Int("requested_max", maxConns),
+				zap.Int("requested_min", minConns),
+				zap.Int32("applied_max", pgxCfg.MaxConns),
+				zap.Int32("applied_min", pgxCfg.MinConns),
+			)
+		}
+	}
 }
 
 // VerifySchema fails when the public schema is missing the tables the API needs.

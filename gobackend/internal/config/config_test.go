@@ -61,6 +61,29 @@ func TestLoadRejectsInvalidCORSOrigin(t *testing.T) {
 	}
 }
 
+func TestLoadAcceptsQuotedCORSOrigin(t *testing.T) {
+	_ = os.Setenv("DATABASE_URL", "postgres://localhost/test")
+	_ = os.Setenv("FRONTEND_APP_URL", "http://localhost:5174")
+	_ = os.Setenv("JWT_SECRET", "dev-secret-32-chars-long-minimum")
+	// Simulates Railway embedding quotes in env var values.
+	_ = os.Setenv("CORS_ORIGIN", `"https://app.example.com","https://dashboard.example.com"`)
+	defer os.Clearenv()
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error for quoted CORS_ORIGIN: %v", err)
+	}
+	if len(cfg.Security.CORSOrigins) != 2 {
+		t.Fatalf("expected 2 CORS origins, got %d: %v", len(cfg.Security.CORSOrigins), cfg.Security.CORSOrigins)
+	}
+	if cfg.Security.CORSOrigins[0] != "https://app.example.com" {
+		t.Fatalf("expected first origin to be unquoted, got %q", cfg.Security.CORSOrigins[0])
+	}
+	if cfg.Security.CORSOrigins[1] != "https://dashboard.example.com" {
+		t.Fatalf("expected second origin to be unquoted, got %q", cfg.Security.CORSOrigins[1])
+	}
+}
+
 func setMinimalValidEnv(t *testing.T) {
 	t.Helper()
 	_ = os.Setenv("DATABASE_URL", "postgres://localhost/test")

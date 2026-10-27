@@ -54,12 +54,19 @@ const GoogleIcon: React.FC<{ size?: number; className?: string }> = ({ size = 20
   </svg>
 );
 
-// In development, call same-origin /api/* via the Next.js rewrite proxy to
-// avoid CSP/CORS blocks on http://localhost:4000. Production uses https.
-const API_BASE =
-  process.env.NODE_ENV === 'development'
-    ? ''
-    : process.env.NEXT_PUBLIC_API_URL || 'https://api2.mnmknk.com';
+const cleanApiBase = (raw?: string) => {
+  if (!raw) return '';
+  const cleaned = raw
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g, '')
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/\/+$/, '');
+  if (cleaned.includes('railway.app') || cleaned.includes('vercel.app')) {
+    return '';
+  }
+  return cleaned;
+};
+const API_BASE = cleanApiBase(process.env.NEXT_PUBLIC_API_URL);
 
 function LoginContent() {
   const router = useRouter();

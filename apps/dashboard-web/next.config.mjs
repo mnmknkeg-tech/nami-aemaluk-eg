@@ -56,7 +56,7 @@ const nextConfig = {
           "img-src 'self' data: blob: https:",
           "font-src 'self' data:",
           "connect-src 'self' https: ws: wss:",
-          "frame-src 'self' https://www.openstreetmap.org https://www.google.com",
+          "frame-src 'self' https://www.openstreetmap.org https://www.google.com https://vercel.live",
           "worker-src 'self' blob:",
           "object-src 'none'",
           "base-uri 'self'",

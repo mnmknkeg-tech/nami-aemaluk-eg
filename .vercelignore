@@ -17,7 +17,7 @@ gobackend/
 saas-backend/
 
 # Other apps (not used for dashboard-web)
-apps/business/
+# apps/business/
 apps/dashboard/
 # apps/marketplace-next/ — هذا هو التطبيق المنشور، لا يتم تجاهله
 

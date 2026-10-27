@@ -134,18 +134,18 @@ func New(cfg *config.Config) (*App, error) {
 	// Infrastructure clients.
 	var pool *db.Pool
 	if cfg.DB.URL != "" {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		pool, err = db.New(ctx, cfg.DB, log)
+		pool, err = waitForDatabase(ctx, cfg, log)
 		if err != nil {
-			// db.New may still return a usable pool (e.g. connect worked but the
-			// schema is incomplete), so keep it for development.
-			log.Error("database initialization failed", zap.Error(err))
-			// In production a missing/unmigrated DB is fatal; in development we
-			// continue so the server can be started without a database.
+			// In production a missing/unmigrated DB is fatal.
 			if cfg.IsProduction() {
 				return nil, err
 			}
+			// In development, continue so the server can be started without a
+			// database, but still report the failure.
+			log.Error("database initialization failed (development mode, continuing)", zap.Error(err))
+			pool = nil
 		}
 	}
 
@@ -913,6 +913,62 @@ func (a *App) WaitForShutdown() {
 	_ = a.Shutdown(ctx)
 }
 
+// waitForDatabase retries database initialization with bounded backoff until
+// the pool is available or the context is cancelled. The retry budget is a
+// total of 60 seconds across up to 6 attempts with exponential backoff
+// (1s, 2s, 4s, 8s, 16s, 32s), which keeps transient Supabase/Session-Pooler
+// blips from causing a hard boot failure while still bounding the startup
+// latency for permanent misconfigurations.
+func waitForDatabase(ctx context.Context, cfg *config.Config, log *zap.Logger) (*db.Pool, error) {
+	const (
+		maxAttempts = 6
+		initialDelay = 1 * time.Second
+		maxDelay    = 32 * time.Second
+		totalBudget = 60 * time.Second
+	)
+	baseCtx, cancel := context.WithTimeout(ctx, totalBudget)
+	defer cancel()
+
+	startTime := time.Now()
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		select {
+		case <-baseCtx.Done():
+			return nil, fmt.Errorf("database initialization timed out after %v: last error: %w", totalBudget, lastErr)
+		default:
+		}
+
+		p, err := db.New(baseCtx, cfg.DB, log)
+		if err == nil {
+			return p, nil
+		}
+		lastErr = err
+
+		log.Warn("database initialization attempt failed; retrying",
+			zap.Int("attempt", attempt),
+			zap.Int("max_attempts", maxAttempts),
+			zap.Duration("attempt_duration", time.Since(startTime)),
+			zap.Error(err),
+		)
+
+		if attempt < maxAttempts {
+			delay := initialDelay * time.Duration(1<<uint(attempt-1))
+			if delay > maxDelay {
+				delay = maxDelay
+			}
+			ticker := time.NewTicker(delay)
+			select {
+			case <-baseCtx.Done():
+				ticker.Stop()
+			case <-ticker.C:
+				ticker.Stop()
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("database initialization failed after %d attempts within %v: last error: %w", maxAttempts, totalBudget, lastErr)
+}
+
 func parseBodyLimit(limit string) int {
 	// Fiber expects bytes; for simplicity we accept a numeric string with optional
 	// K/M suffix. "10M" -> ~10MB.
@@ -932,7 +988,3 @@ func parseBodyLimit(limit string) int {
 	}
 	return value * int(multiplier)
 }
-
-
-
-

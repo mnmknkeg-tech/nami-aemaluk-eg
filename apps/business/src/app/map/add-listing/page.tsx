@@ -15,9 +15,21 @@ import {
   Home,
 } from 'lucide-react';
 
-type Step = 1 | 2 | 3;
+const cleanApiBase = (raw?: string) => {
+  if (!raw) return '';
+  const cleaned = raw
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g, '')
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/\/+$/, '');
+  if (cleaned.includes('railway.app') || cleaned.includes('vercel.app')) {
+    return '';
+  }
+  return cleaned;
+};
+const API_URL = cleanApiBase(process.env.NEXT_PUBLIC_API_URL);
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api2.mnmknk.com';
+type Step = 1 | 2 | 3;
 
 export default function AddMapListingPage() {
   const [step, setStep] = useState<Step>(1);

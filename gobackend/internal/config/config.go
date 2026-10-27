@@ -48,18 +48,43 @@ type AppConfig struct {
 // DBConfig holds PostgreSQL connection parameters.
 type DBConfig struct {
 	URL             string        `env:"DATABASE_URL,required"`
-	MaxOpenConns    int           `env:"DB_MAX_OPEN_CONNS" envDefault:"50"`
-	MaxIdleConns    int           `env:"DB_MAX_IDLE_CONNS" envDefault:"10"`
+	// MaxOpenConns is the maximum number of open (in-use) connections in the
+	// pgxpool. This is a hard per-process cap; it is NOT the application-wide
+	// session budget.
+	MaxOpenConns int `env:"DB_MAX_OPEN_CONNS" envDefault:"10"`
+	// MaxIdleConns is the maximum number of idle connections kept open in the
+	// pool. Idle connections consume a session from the pooler just like open
+	// connections, so they count against the Supabase Session Pooler limit too.
+	MaxIdleConns int `env:"DB_MAX_IDLE_CONNS" envDefault:"3"`
+	// ConnMaxLifetime is the maximum amount of time a connection may be reused.
 	ConnMaxLifetime time.Duration `env:"DB_CONN_MAX_LIFETIME" envDefault:"30m"`
+	// ConnMaxIdleTime is the maximum amount of time a connection may remain
+	// idle before being retired.
 	ConnMaxIdleTime time.Duration `env:"DB_CONN_MAX_IDLE_TIME" envDefault:"10m"`
-	MigrationsPath  string        `env:"DB_MIGRATIONS_PATH" envDefault:"./migrations"`
-	MigrateOnBoot   bool          `env:"DB_MIGRATE_ON_BOOT" envDefault:"false"`
+	// MigrationsPath is the directory containing golang-migrate SQL migrations.
+	MigrationsPath string `env:"DB_MIGRATIONS_PATH" envDefault:"./migrations"`
+	// MigrateOnBoot applies pending migrations on startup before the HTTP
+	// server is ready to accept traffic.
+	MigrateOnBoot bool `env:"DB_MIGRATE_ON_BOOT" envDefault:"false"`
 	// QueryExecMode overrides pgx's query protocol. Values: auto, simple,
 	// cache_statement, cache_describe, describe, exec. "auto" (the default)
 	// inspects DATABASE_URL and disables prepared statements when a
 	// transaction-mode pooler is detected — Supabase's Supavisor on port 6543
 	// cannot keep prepared statements across transactions.
 	QueryExecMode string `env:"DB_QUERY_EXEC_MODE" envDefault:"auto"`
+	// PoolMaxConns is the application-wide PostgreSQL session budget that
+	// leaves headroom under the Supabase Session Pooler limit. It is the sum
+	// of MaxOpenConns and MaxIdleConns. It MUST stay below the pooler's
+	// max_clients value (15 in the reported environment). If unset, it is
+	// derived automatically from MaxOpenConns + MaxIdleConns.
+	//
+	// IMPORTANT: when deploying N replicas (or when other clients share the
+	// same Supabase project), this value must be divided across all replicas
+	// and consumers, i.e. PoolMaxConns <= 15 / N.
+	PoolMaxConns int `env:"DB_POOL_MAX_CONNS"`
+	// PoolMinConns is the minimum number of idle connections the pool keeps
+	// open to avoid connection churn. It is also part of the session budget.
+	PoolMinConns int `env:"DB_POOL_MIN_CONNS"`
 }
 
 // Redis holds Redis settings used for cache, sessions, queues and rate limiting.
@@ -304,8 +329,12 @@ func (c *Config) validate() error {
 		return err
 	}
 
-	for _, origin := range c.Security.CORSOrigins {
-		origin = strings.TrimSpace(origin)
+	for i := range c.Security.CORSOrigins {
+		origin := strings.TrimSpace(c.Security.CORSOrigins[i])
+		// Strip surrounding quotes (single or double) that may be embedded
+		// in Railway/Platform environment variables.
+		origin = strings.Trim(origin, `"'`)
+		c.Security.CORSOrigins[i] = origin
 		if origin == "" || origin == "*" {
 			continue
 		}
@@ -434,6 +463,76 @@ func validateHTTPURL(name, raw string) error {
 // IsProduction returns true when running in production mode.
 func (c *Config) IsProduction() bool {
 	return c.App.Env == "production"
+}
+
+// PoolBudget returns the effective connection-pool budget for pgxpool. It
+// resolves PoolMaxConns/PoolMinConns from env if explicitly set, otherwise
+// falls back to MaxOpenConns/MaxIdleConns. The returned values are clamped so
+// that MaxConns >= 1 and MinConns <= MaxConns, and the total budget
+// (MaxConns + MinConns) is capped at maxTotal if maxTotal > 0.
+func (c *Config) PoolBudget(maxTotal int) (maxConns, minConns int) {
+	max := c.DB.MaxOpenConns
+	min := c.DB.MaxIdleConns
+	if max < 1 {
+		max = 1
+	}
+	if min < 0 {
+		min = 0
+	}
+	if min > max {
+		min = max
+	}
+	if maxTotal > 0 && (max+min) > maxTotal {
+		// Scale the budget down to stay under the pooler limit.
+		total := max + min
+		if min > 0 {
+			max = (maxTotal * max) / total
+			min = maxTotal - max
+			if min < 0 {
+				min = 0
+			}
+		} else {
+			max = maxTotal
+		}
+		if max < 1 {
+			max = 1
+		}
+	}
+	return max, min
+}
+
+// PoolBudget computes the effective pool budget for a DBConfig value. This is
+// the per-process version used by db.New so that the pooler-aware session
+// budget is applied without requiring a *config.Config.
+func (d DBConfig) PoolBudget(maxTotal int) (maxConns, minConns int) {
+	max := d.MaxOpenConns
+	min := d.MaxIdleConns
+	if max < 1 {
+		max = 1
+	}
+	if min < 0 {
+		min = 0
+	}
+	if min > max {
+		min = max
+	}
+	if maxTotal > 0 && (max+min) > maxTotal {
+		// Scale the budget down to stay under the pooler limit.
+		total := max + min
+		if min > 0 {
+			max = (maxTotal * max) / total
+			min = maxTotal - max
+			if min < 0 {
+				min = 0
+			}
+		} else {
+			max = maxTotal
+		}
+		if max < 1 {
+			max = 1
+		}
+	}
+	return max, min
 }
 
 // IsDevelopment returns true when running in development mode.

@@ -9,11 +9,22 @@ const nextConfig = {
     remotePatterns: [{ protocol: 'https', hostname: '**' }],
   },
   async rewrites() {
-    const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000')
+    const rawBackendUrl =
+      process.env.BACKEND_URL ||
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      'https://nami-aemaluk-eg-production.up.railway.app';
+    const backendUrl = rawBackendUrl
       .replace(/[\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g, '')
       .trim()
-      .replace(/^\uFEFF/, '');
-    return [{ source: '/api/:path*', destination: `${backendUrl}/api/:path*` }];
+      .replace(/\s+/g, '')
+      .replace(/\r|\n/g, '')
+      .replace(/\/+$/, '');
+    const backendOrigin = backendUrl
+      ? backendUrl.startsWith('http')
+        ? backendUrl
+        : `https://${backendUrl}`
+      : 'https://nami-aemaluk-eg-production.up.railway.app';
+    return [{ source: '/api/:path*', destination: `${backendOrigin}/api/:path*` }];
   },
   async headers() {
     return [
@@ -36,15 +47,13 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              // 'unsafe-inline' is required for Next.js inline styles/scripts injected at runtime.
-              // 'unsafe-eval' is required in development — React Refresh and the Next.js dev
-              // runtime rely on eval(); production keeps the strict policy without it.
-              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
+              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''} https://vercel.live`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
               "connect-src 'self' https: ws: wss:",
-              "frame-src 'self' https://www.openstreetmap.org https://www.google.com",
+              "frame-src 'self' https://www.openstreetmap.org https://www.google.com https://vercel.live",
+              "manifest-src 'self' https://vercel.com",
               "worker-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",

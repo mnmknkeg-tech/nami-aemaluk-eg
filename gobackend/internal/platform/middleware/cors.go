@@ -8,6 +8,15 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
+// normalizeOrigin strips surrounding whitespace and quotes from an origin
+// string. Railway and similar platforms sometimes embed quotes in
+// environment variable values (e.g. CORS_ORIGIN="https://example.com"),
+// which would otherwise cause origin matching to fail because browsers
+// send the Origin header without quotes.
+func normalizeOrigin(s string) string {
+	return strings.Trim(strings.TrimSpace(s), `"'`)
+}
+
 // CORS returns a Fiber CORS middleware configured from the application config.
 // In development all origins are allowed; in production only the configured
 // origins (no wildcards) are accepted.
@@ -20,11 +29,18 @@ func CORS(cfg *config.Config) fiber.Handler {
 	// Sanitize: reject wildcard in production.
 	if cfg.IsProduction() {
 		for i, o := range origins {
-			if strings.TrimSpace(o) == "*" {
+			if normalizeOrigin(o) == "*" {
 				origins = append(origins[:i], origins[i+1:]...)
 				break
 			}
 		}
+	}
+
+	// Pre-normalize all allowed origins so comparisons are reliable even if
+	// config normalization was bypassed (defence in depth).
+	normalized := make([]string, len(origins))
+	for i, o := range origins {
+		normalized[i] = normalizeOrigin(o)
 	}
 
 	return cors.New(cors.Config{
@@ -38,8 +54,9 @@ func CORS(cfg *config.Config) fiber.Handler {
 			if origin == "" {
 				return false
 			}
-			for _, allowed := range origins {
-				if strings.EqualFold(strings.TrimSpace(allowed), origin) {
+			normOrigin := normalizeOrigin(origin)
+			for _, allowed := range normalized {
+				if strings.EqualFold(allowed, normOrigin) {
 					return true
 				}
 			}
