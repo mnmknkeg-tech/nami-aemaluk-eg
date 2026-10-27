@@ -69,4 +69,5 @@ const nextConfig = {
   },
 };
 
+// build trigger: 2026-10-27 10:18
 export default nextConfig;
