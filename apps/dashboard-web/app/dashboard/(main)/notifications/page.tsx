@@ -38,6 +38,16 @@ type Notif = {
 
 const LOCALE = 'ar-EG-u-nu-latn';
 
+/** Types that are admin-only — invisible in the merchant dashboard. */
+const ADMIN_ONLY_TYPES = new Set(['NEW_SHOP', 'ADMIN_ALERT', 'MERCHANT_REVIEW', 'PLATFORM_REPORT']);
+
+function isAdminOnly(n: any): boolean {
+  const type = String(n?.type || '').toUpperCase();
+  if (ADMIN_ONLY_TYPES.has(type)) return true;
+  const audience = String(n?.metadata?.audience ?? n?.meta?.audience ?? '').toLowerCase();
+  return audience === 'admin';
+}
+
 function normalizeNotif(n: any): Notif {
   const type = (n?.type || '').toUpperCase();
   let source: 'pos' | 'website' | null = null;
@@ -143,7 +153,11 @@ export default function NotificationsPage() {
     setTimeout(() => setInitialLoading(false), 1200);
   }, []);
 
-  const notifications = useMemo(() => rawList.map(normalizeNotif), [rawList]);
+  // Filter out admin-only notifications before any other processing
+  const notifications = useMemo(
+    () => rawList.filter((n) => !isAdminOnly(n)).map(normalizeNotif),
+    [rawList]
+  );
 
   const filtered = useMemo(() => {
     let list = notifications;

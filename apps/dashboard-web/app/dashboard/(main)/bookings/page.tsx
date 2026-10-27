@@ -32,6 +32,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
+import { useModuleGuard } from '@/hooks/useModuleGuard';
 import { addBookingViaBackend, updateBookingStatusViaBackend } from '@/lib/api/bookings';
 import { BookingSettings } from '@/components/bookings/BookingSettings';
 
@@ -188,6 +189,9 @@ function BookingsMainContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tabParam = searchParams.get('tab');
+
+  // Guard: redirect to /dashboard if bookings module is not enabled for this merchant
+  const { allowed } = useModuleGuard('bookings');
 
   // Mode: if ?tab=settings show settings, otherwise calendar schedule
   const isSettingsTab = tabParam === 'settings';
@@ -385,6 +389,19 @@ function BookingsMainContent() {
       downloadBlob(blob, `bookings-${formatDateKey(new Date())}.csv`);
     });
   };
+
+  // Guard checking: while checking show spinner, if forbidden return null (redirect in flight)
+  if (allowed === null) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-slate-200 border-t-pink-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (allowed === false) {
+    return null;
+  }
 
   // If ?tab=settings, render settings directly
   if (isSettingsTab) {

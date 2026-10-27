@@ -638,6 +638,20 @@ export default function DashboardOverview() {
   const visited = useRecentlyViewed();
   const recentItems = showAllRecent ? visited : visited.slice(0, 6);
 
+  /**
+   * Whether the merchant has enabled the bookings module.
+   * We treat an unconfigured shop (no enabledModules at all) as having
+   * everything available so we don't hide content on first login.
+   */
+  const bookingModuleEnabled = useMemo(() => {
+    const mods: string[] =
+      (shop as any)?.enabledModules ??
+      (shop as any)?.builderConfig?.enabledModules ??
+      Object.keys((shop as any)?.layoutConfig?.enabledFeatures ?? {});
+    if (!Array.isArray(mods) || mods.length === 0) return true; // unconfigured
+    return mods.map((m) => m.toLowerCase()).some((m) => m === 'bookings' || m === 'reservations');
+  }, [shop]);
+
   const load = useCallback(
     async (p: PeriodKey) => {
       setRefreshing(true);
@@ -746,13 +760,26 @@ export default function DashboardOverview() {
 
         {
           // merge user + shop channel notifications, newest first
+          // (admin-only types like NEW_SHOP are excluded from the merchant view)
+          const ADMIN_TYPES = new Set([
+            'NEW_SHOP',
+            'ADMIN_ALERT',
+            'MERCHANT_REVIEW',
+            'PLATFORM_REPORT',
+          ]);
+          const isAdminOnly = (n: any) => {
+            if (ADMIN_TYPES.has(String(n?.type || '').toUpperCase())) return true;
+            return (
+              String(n?.metadata?.audience ?? n?.meta?.audience ?? '').toLowerCase() === 'admin'
+            );
+          };
           const pick = (v: any) => (Array.isArray(v) ? v : v?.data || []);
           const merged: AppNotification[] = [];
           const seen = new Set<string>();
           for (const res of [notifUserRes, notifShopRes]) {
             if (res.status !== 'fulfilled') continue;
             for (const n of pick(res.value)) {
-              if (!n?.id || seen.has(n.id)) continue;
+              if (!n?.id || seen.has(n.id) || isAdminOnly(n)) continue;
               seen.add(n.id);
               merged.push(n);
             }
@@ -862,21 +889,25 @@ export default function DashboardOverview() {
         href: '/dashboard/sales',
         sub: pendingCount > 0 ? `${pendingCount} قيد الانتظار` : undefined,
       },
-      {
-        key: 'Bookings',
-        label: 'الحجوزات والمواعيد',
-        value: fmtNum(bookings.length),
-        delta: null,
-        spark: [] as number[],
-        icon: <CalendarDays size={14} />,
-        href: '/dashboard/bookings',
-        sub:
-          todayBookings.length > 0
-            ? `${todayBookings.length} اليوم`
-            : pendingBookingsCount > 0
-              ? `${pendingBookingsCount} بانتظار التأكيد`
-              : undefined,
-      },
+      ...(bookingModuleEnabled
+        ? [
+            {
+              key: 'Bookings',
+              label: 'الحجوزات والمواعيد',
+              value: fmtNum(bookings.length),
+              delta: null,
+              spark: [] as number[],
+              icon: <CalendarDays size={14} />,
+              href: '/dashboard/bookings',
+              sub:
+                todayBookings.length > 0
+                  ? `${todayBookings.length} اليوم`
+                  : pendingBookingsCount > 0
+                    ? `${pendingBookingsCount} بانتظار التأكيد`
+                    : undefined,
+            },
+          ]
+        : []),
       {
         key: 'Customers',
         label: 'العملاء',
@@ -1151,7 +1182,7 @@ export default function DashboardOverview() {
           <ChevronLeft size={14} className="text-blue-400" />
         </button>
       )}
-      {pendingBookingsCount > 0 && (
+      {bookingModuleEnabled && pendingBookingsCount > 0 && (
         <button
           type="button"
           onClick={() => router.push('/dashboard/bookings')}
@@ -1290,7 +1321,7 @@ export default function DashboardOverview() {
                   onClick={() => setRecentTab('all')}
                   className={`px-2.5 py-1 rounded-md transition-all ${recentTab === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                 >
-                  الكل ({orders.length + bookings.length})
+                  الكل ({orders.length + (bookingModuleEnabled ? bookings.length : 0)})
                 </button>
                 <button
                   type="button"
@@ -1299,13 +1330,15 @@ export default function DashboardOverview() {
                 >
                   الطلبات ({orders.length})
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setRecentTab('bookings')}
-                  className={`px-2.5 py-1 rounded-md transition-all ${recentTab === 'bookings' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  الحجوزات ({bookings.length})
-                </button>
+                {bookingModuleEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => setRecentTab('bookings')}
+                    className={`px-2.5 py-1 rounded-md transition-all ${recentTab === 'bookings' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    الحجوزات ({bookings.length})
+                  </button>
+                )}
               </div>
               <button
                 type="button"
@@ -1329,9 +1362,9 @@ export default function DashboardOverview() {
             <Empty
               icon={<ShoppingCart size={20} />}
               title="لا توجد عمليات بعد"
-              desc="ستظهر هنا طلبات الشراء وحجوزات المواعيد الجديدة فور وصولها."
-              actionLabel="حجز موعد جديد"
-              onAction={() => router.push('/dashboard/bookings')}
+              desc="ستظهر هنا طلبات الشراء الجديدة فور وصولها."
+              actionLabel="عرض الطلبات"
+              onAction={() => router.push('/dashboard/sales')}
               secondaryLabel="طلب من الكاشير"
               onSecondary={() => router.push('/dashboard/pos')}
             />
@@ -1443,12 +1476,16 @@ export default function DashboardOverview() {
                 icon: <ShoppingCart size={15} />,
                 href: '/dashboard/pos',
               },
-              {
-                label: 'حجز جديد',
-                desc: 'احجز موعدًا لعميل',
-                icon: <Calendar size={15} />,
-                href: '/dashboard/bookings',
-              },
+              ...(bookingModuleEnabled
+                ? [
+                    {
+                      label: 'حجز جديد',
+                      desc: 'احجز موعدًا لعميل',
+                      icon: <Calendar size={15} />,
+                      href: '/dashboard/bookings',
+                    },
+                  ]
+                : []),
               {
                 label: 'حملة إعلانية',
                 desc: 'أطلق عرضًا لعملائك',

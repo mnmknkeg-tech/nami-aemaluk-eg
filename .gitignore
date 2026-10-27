@@ -163,3 +163,5 @@ testsprite_tests/tmp/config.json
 # ad-hoc local diagnostics (probe scripts + captured output) and Playwright runs
 /tmp/
 /test-results/
+.vercel
+.env*

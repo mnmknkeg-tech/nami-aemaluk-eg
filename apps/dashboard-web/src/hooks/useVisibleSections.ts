@@ -173,9 +173,8 @@ export default function useVisibleSections() {
 
     return base
       .map((section) => {
-        // Core sections that are always available
+        // Core sections that are always available (dashboard & settings only)
         if (section.id === 'dashboard' || section.id === 'settings') return section;
-        if (section.id === 'analytics') return section;
 
         if (!section.moduleId) return section;
 

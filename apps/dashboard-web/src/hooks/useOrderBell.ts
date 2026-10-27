@@ -42,6 +42,22 @@ export function setSoundEnabled(enabled: boolean) {
   localStorage.setItem(SOUND_ENABLED_KEY, enabled ? 'on' : 'off');
 }
 
+/** Notification types that are strictly for admins — never shown in the merchant panel. */
+const ADMIN_ONLY_TYPES = new Set(['NEW_SHOP', 'ADMIN_ALERT', 'MERCHANT_REVIEW', 'PLATFORM_REPORT']);
+
+/**
+ * Returns true if this notification should be hidden from the merchant dashboard.
+ * A notification is admin-only if its type is in ADMIN_ONLY_TYPES OR its
+ * metadata.audience is explicitly set to "admin".
+ */
+function isAdminOnlyNotification(n: any): boolean {
+  const type = String(n?.type || '').toUpperCase();
+  if (ADMIN_ONLY_TYPES.has(type)) return true;
+  const audience = String(n?.metadata?.audience ?? n?.meta?.audience ?? '').toLowerCase();
+  if (audience === 'admin') return true;
+  return false;
+}
+
 function normalize(n: any): BellNotification {
   return {
     id: String(n?.id ?? ''),
@@ -110,6 +126,8 @@ export function useOrderBell(onOrder?: (evt: OrderBellEvent) => void) {
       for (const res of [userRes, shopRes]) {
         if (res.status !== 'fulfilled') continue;
         for (const raw of pick(res.value)) {
+          // Skip notifications that are meant only for admins
+          if (isAdminOnlyNotification(raw)) continue;
           const n = normalize(raw);
           if (!n.id || seen.has(n.id)) continue;
           seen.add(n.id);
