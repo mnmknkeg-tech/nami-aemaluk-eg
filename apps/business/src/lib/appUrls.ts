@@ -27,7 +27,7 @@ const IS_DEV = process.env.NODE_ENV === 'development';
 /** Live dashboard-web deployment reachable from the browser. */
 export const DASHBOARD_URL = sanitizeUrl(
   process.env.NEXT_PUBLIC_DASHBOARD_URL,
-  IS_DEV ? 'http://localhost:3000' : 'https://dashboard-web-three-kappa.vercel.app'
+  IS_DEV ? 'http://localhost:3000' : 'https://nami-aemaluk-eg-dashboard-web.vercel.app'
 );
 
 /** Dashboard route that owns the merchant workspace. */
@@ -39,15 +39,23 @@ export const DASHBOARD_APP_PATH = '/dashboard';
  * are stamped on the correct domain from the first moment — no token ever
  * travels through a query string.
  */
-export function dashboardLoginUrl(params: {
+export function dashboardLoginUrl(params?: {
   returnTo?: string | null;
   followShopId?: string | null;
 }): string {
   const q = new URLSearchParams();
-  const returnTo = (params.returnTo || '').trim();
-  const followShopId = (params.followShopId || '').trim();
+  const returnTo = (params?.returnTo || '').trim();
+  const followShopId = (params?.followShopId || '').trim();
   if (returnTo) q.set('returnTo', returnTo);
   if (followShopId) q.set('followShopId', followShopId);
   const qs = q.toString();
   return `${DASHBOARD_URL}/login${qs ? `?${qs}` : ''}`;
+}
+
+export function dashboardSignupUrl(params?: { returnTo?: string | null }): string {
+  const q = new URLSearchParams();
+  const returnTo = (params?.returnTo || '').trim();
+  if (returnTo) q.set('returnTo', returnTo);
+  const qs = q.toString();
+  return `${DASHBOARD_URL}/signup${qs ? `?${qs}` : ''}`;
 }

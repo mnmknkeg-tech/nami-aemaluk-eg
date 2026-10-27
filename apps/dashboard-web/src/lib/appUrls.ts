@@ -21,8 +21,8 @@ const IS_DEV = process.env.NODE_ENV === 'development';
 /** Business (merchant acquisition) app origin. */
 export const BUSINESS_URL = sanitizeUrl(
   process.env.NEXT_PUBLIC_BUSINESS_URL,
-  IS_DEV ? 'http://localhost:1000' : 'https://business-blond-psi.vercel.app'
+  IS_DEV ? 'http://localhost:1000' : 'https://nami-aemaluk-eg-nami-eg.vercel.app'
 );
 
-/** Merchant signup page on the business app. */
-export const BUSINESS_SIGNUP_URL = `${BUSINESS_URL}/signup`;
+/** Merchant signup page — lives right here on the dashboard origin now! */
+export const BUSINESS_SIGNUP_URL = '/signup';

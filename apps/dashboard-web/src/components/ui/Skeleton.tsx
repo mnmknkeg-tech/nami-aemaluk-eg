@@ -104,3 +104,36 @@ export function SkField({ labelWidth = 'w-20' }: { labelWidth?: string }) {
     </div>
   );
 }
+
+/** `/login`, `/signup` — centred auth card. */
+export function AuthSkeleton({ withSplit = false }: { withSplit?: boolean }) {
+  return (
+    <div className="min-h-[80vh] w-full bg-transparent px-4 py-16" dir="rtl">
+      <div
+        className="mx-auto w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
+        aria-hidden="true"
+      >
+        <Bar className="mx-auto mb-6 h-16 w-16 rounded-xl" />
+        <Bar className="mx-auto mb-3 h-7 w-40 rounded-lg" />
+        <Bar className="mx-auto mb-8 h-4 w-56 rounded-sm" />
+        <div className="space-y-5">
+          <div>
+            <Bar className="mb-2 h-3.5 w-20 rounded-sm" />
+            <Bar className="h-12 w-full rounded-xl" />
+          </div>
+          <div>
+            <Bar className="mb-2 h-3.5 w-24 rounded-sm" />
+            <Bar className="h-12 w-full rounded-xl" />
+          </div>
+          {withSplit && (
+            <div className="grid grid-cols-2 gap-4">
+              <Bar className="h-12 w-full rounded-xl" />
+              <Bar className="h-12 w-full rounded-xl" />
+            </div>
+          )}
+          <Bar className="h-12 w-full rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
