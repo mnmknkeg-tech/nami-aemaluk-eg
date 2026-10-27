@@ -37,7 +37,8 @@ function normalise(id: string): string {
  * Returns false for brand-new / unconfigured shops so we don't
  * accidentally block every page before first setup completes.
  */
-function hasExplicitConfig(shop: ShopData): boolean {
+export function hasExplicitConfig(shop?: ShopData | null): boolean {
+  if (!shop) return false;
   const mods =
     (shop.builderConfig?.enabledModules ?? shop.layoutConfig?.enabledFeatures)
       ? Object.keys(shop.layoutConfig?.enabledFeatures ?? {})
@@ -45,8 +46,9 @@ function hasExplicitConfig(shop: ShopData): boolean {
   return Array.isArray(mods) && mods.length > 0;
 }
 
-function isModuleEnabled(shop: ShopData, moduleId: string): boolean {
-  if (!hasExplicitConfig(shop)) return true; // unconfigured → allow everything
+export function isModuleEnabled(shop: ShopData | null | undefined, moduleId: string): boolean {
+  if (!shop) return true; // unconfigured/loading → allow everything
+  if (!hasExplicitConfig(shop)) return true;
 
   const norm = normalise(moduleId);
   const explicitMods: string[] = (

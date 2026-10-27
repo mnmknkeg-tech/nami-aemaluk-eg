@@ -75,6 +75,30 @@ const MODULE_ALIASES: Record<string, string> = {
   reservations: 'bookings',
 };
 
+const SETTINGS_ITEM_MODULES: Record<string, string> = {
+  settings_bookings: 'bookings',
+  settings_orders: 'sales',
+  settings_pos: 'pos',
+  settings_inventory: 'inventory',
+  settings_branches: 'branches',
+  settings_accounting: 'accounting',
+  settings_customers: 'customers',
+  settings_crm: 'crm',
+  settings_hr: 'hr',
+};
+
+const SETTINGS_TAB_MODULES: Record<string, string> = {
+  bookings: 'booking_settings',
+  sales: 'orders_settings',
+  pos: 'pos_settings',
+  inventory: 'inventory_settings',
+  branches: 'branches_settings',
+  accounting: 'accounting_settings',
+  customers: 'customers_settings',
+  crm: 'crm_settings',
+  hr: 'hr_settings',
+};
+
 /**
  * Shared section-visibility logic used by both the classic Sidebar and the
  * TopNav header: strictly respects the modules and features chosen by the merchant.
@@ -173,8 +197,20 @@ export default function useVisibleSections() {
 
     return base
       .map((section) => {
-        // Core sections that are always available (dashboard & settings only)
-        if (section.id === 'dashboard' || section.id === 'settings') return section;
+        // Core dashboard section is always available
+        if (section.id === 'dashboard') return section;
+
+        // Settings section: always available, but only show sub-items for enabled modules!
+        if (section.id === 'settings') {
+          if (!hasExplicitConfig) return section;
+          const items = section.items.filter((item) => {
+            const reqMod = SETTINGS_ITEM_MODULES[item.id];
+            if (!reqMod) return true; // core items like overview, store
+            const norm = (MODULE_ALIASES[reqMod.toLowerCase()] || reqMod).toLowerCase();
+            return enabledModulesSet.has(norm) || Boolean(enabledFeatures[norm]);
+          });
+          return { ...section, items };
+        }
 
         if (!section.moduleId) return section;
 
@@ -195,9 +231,30 @@ export default function useVisibleSections() {
         // If features are configured for this module, filter items accordingly;
         // if no specific sub-features are restricted, show all items for this enabled module.
         const items = section.items.filter((item) => {
+          // If subscriptions is unenabled, hide subscription item
+          if (item.id === 'subscriptions' || item.id === 'sales_subscriptions') {
+            if (
+              hasExplicitConfig &&
+              !enabledModulesSet.has('subscriptions') &&
+              !enabledFeatures['subscriptions']
+            ) {
+              return false;
+            }
+          }
+
           const isSettings =
             item.id.toLowerCase().endsWith('settings') || item.href.includes('/dashboard/settings');
-          if (isSettings) return true;
+          if (isSettings) {
+            for (const [mod, tab] of Object.entries(SETTINGS_TAB_MODULES)) {
+              if (item.href.includes(`tab=${tab}`) || item.id.toLowerCase().includes(mod)) {
+                const norm = (MODULE_ALIASES[mod.toLowerCase()] || mod).toLowerCase();
+                if (hasExplicitConfig && !enabledModulesSet.has(norm) && !enabledFeatures[norm]) {
+                  return false;
+                }
+              }
+            }
+            return true;
+          }
           if (!activeFeatures || activeFeatures.size === 0) return true;
           const featureId = (FEATURE_ALIASES[item.id] || item.id).toLowerCase();
           return activeFeatures.has(featureId);

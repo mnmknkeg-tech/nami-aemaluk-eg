@@ -57,6 +57,20 @@ import CrmSettingsTab from './tabs/CrmSettingsTab';
 import HrSettingsTab from './tabs/HrSettingsTab';
 import AnalyticsSettingsTab from './tabs/AnalyticsSettingsTab';
 import { apiRequest } from '@/lib/auth';
+import { isModuleEnabled } from '@/hooks/useModuleGuard';
+
+export const TAB_MODULE_MAP: Record<string, string> = {
+  booking_settings: 'bookings',
+  orders_settings: 'sales',
+  pos_settings: 'pos',
+  inventory_settings: 'inventory',
+  branches_settings: 'branches',
+  accounting_settings: 'accounting',
+  crm_settings: 'crm',
+  customers_settings: 'customers',
+  hr_settings: 'hr',
+  analytics_settings: 'analytics',
+};
 
 // ─── Tab Categories (matching Salla-style inner sidebar) ─────────────────────
 const SETTINGS_CATEGORIES = [
@@ -192,12 +206,20 @@ export default function SettingsModal() {
       const failedIds: string[] = [];
       for (const id of ids) {
         const fn = saveHandlersRef.current[id];
-        if (!fn) { okAll = false; failedIds.push(id); continue; }
+        if (!fn) {
+          okAll = false;
+          failedIds.push(id);
+          continue;
+        }
         try {
           const ok = await fn();
-          if (!ok) { okAll = false; failedIds.push(id); }
+          if (!ok) {
+            okAll = false;
+            failedIds.push(id);
+          }
         } catch {
-          okAll = false; failedIds.push(id);
+          okAll = false;
+          failedIds.push(id);
         }
       }
       if (okAll) {
@@ -208,7 +230,11 @@ export default function SettingsModal() {
       toast(
         okAll
           ? { title: 'تم الحفظ', description: 'تم حفظ الإعدادات بنجاح' }
-          : { title: 'فشل الحفظ', description: `تعذر حفظ: ${failedIds.join(' | ')}`, variant: 'destructive' }
+          : {
+              title: 'فشل الحفظ',
+              description: `تعذر حفظ: ${failedIds.join(' | ')}`,
+              variant: 'destructive',
+            }
       );
     };
 
@@ -265,24 +291,49 @@ export default function SettingsModal() {
   }, [pathname, openModal]);
 
   const handleSaveAll = useCallback(() => {
-    try { window.dispatchEvent(new Event('merchant-settings-save-request')); } catch {}
+    try {
+      window.dispatchEvent(new Event('merchant-settings-save-request'));
+    } catch {}
   }, []);
 
   const handleSaved = useCallback(() => {
-    apiRequest('/shops/me').then((data) => setShop(data)).catch(() => {});
+    apiRequest('/shops/me')
+      .then((data) => setShop(data))
+      .catch(() => {});
   }, []);
 
-  // ── Filtered sidebar categories based on search ───────────────────────────
+  // ── Auto-fallback if active tab requires an unenabled module ─────────────
+  useEffect(() => {
+    if (!shop) return;
+    const reqMod = TAB_MODULE_MAP[state.tab];
+    if (reqMod && !isModuleEnabled(shop, reqMod)) {
+      setTab('overview');
+    }
+  }, [shop, state.tab, setTab]);
+
+  // ── Filtered sidebar categories based on module enablement + search ────────
   const filteredCategories = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return SETTINGS_CATEGORIES;
-    return SETTINGS_CATEGORIES.map((cat) => ({
-      ...cat,
-      tabs: cat.tabs.filter(
-        (t) => t.label.toLowerCase().includes(query) || cat.title.toLowerCase().includes(query)
-      ),
-    })).filter((cat) => cat.tabs.length > 0);
-  }, [searchQuery]);
+    return SETTINGS_CATEGORIES.map((cat) => {
+      // Exclude tabs belonging to modules this merchant hasn't enabled
+      const availableTabs = cat.tabs.filter((t) => {
+        const reqMod = TAB_MODULE_MAP[t.id];
+        if (reqMod && !isModuleEnabled(shop, reqMod)) {
+          return false;
+        }
+        return true;
+      });
+
+      if (!query) return { ...cat, tabs: availableTabs };
+
+      return {
+        ...cat,
+        tabs: availableTabs.filter(
+          (t) => t.label.toLowerCase().includes(query) || cat.title.toLowerCase().includes(query)
+        ),
+      };
+    }).filter((cat) => cat.tabs.length > 0);
+  }, [searchQuery, shop]);
 
   const currentTabMeta = TAB_LOOKUP[state.tab] || { label: 'الإعدادات', icon: SettingsIcon };
   const CurrentIcon = currentTabMeta.icon;
@@ -308,28 +359,54 @@ export default function SettingsModal() {
       setTab(tab);
     };
 
+    const activeReqMod = TAB_MODULE_MAP[state.tab];
+    if (activeReqMod && !isModuleEnabled(shop, activeReqMod)) {
+      return <OverviewTab shop={shop} onSelectTab={handleOverviewTabSelect} />;
+    }
+
     switch (state.tab) {
-      case 'overview':          return <OverviewTab shop={shop} onSelectTab={handleOverviewTabSelect} />;
-      case 'account':           return <AccountTab {...commonProps} />;
-      case 'security':          return <SecurityTab {...commonProps} />;
-      case 'store':             return <StoreTab {...commonProps} />;
-      case 'booking_settings':  return <BookingSettingsTab {...commonProps} />;
-      case 'orders_settings':   return <OrdersSettingsTab {...commonProps} />;
-      case 'pos_settings':      return <PosSettingsTab {...commonProps} />;
-      case 'inventory_settings':return <InventorySettingsTab {...commonProps} />;
-      case 'branches_settings': return <BranchesSettingsTab {...commonProps} />;
-      case 'accounting_settings':return <AccountingSettingsTab {...commonProps} />;
-      case 'customers_settings':return <CustomersSettingsTab {...commonProps} />;
-      case 'crm_settings':      return <CrmSettingsTab {...commonProps} />;
-      case 'hr_settings':       return <HrSettingsTab {...commonProps} />;
-      case 'analytics_settings':return <AnalyticsSettingsTab {...commonProps} />;
-      case 'modules':           return <ModulesTab {...commonProps} />;
-      case 'apps':              return <AppsTab {...commonProps} />;
-      case 'receipt_theme':     return <ReceiptThemeTab shop={shop} />;
-      case 'payments':          return <PaymentsTab {...commonProps} />;
-      case 'social_media':      return <SocialMediaTab {...commonProps} />;
-      case 'notifications':     return <NotificationsTab shop={shop} />;
-      default:                  return <OverviewTab shop={shop} onSelectTab={handleOverviewTabSelect} />;
+      case 'overview':
+        return <OverviewTab shop={shop} onSelectTab={handleOverviewTabSelect} />;
+      case 'account':
+        return <AccountTab {...commonProps} />;
+      case 'security':
+        return <SecurityTab {...commonProps} />;
+      case 'store':
+        return <StoreTab {...commonProps} />;
+      case 'booking_settings':
+        return <BookingSettingsTab {...commonProps} />;
+      case 'orders_settings':
+        return <OrdersSettingsTab {...commonProps} />;
+      case 'pos_settings':
+        return <PosSettingsTab {...commonProps} />;
+      case 'inventory_settings':
+        return <InventorySettingsTab {...commonProps} />;
+      case 'branches_settings':
+        return <BranchesSettingsTab {...commonProps} />;
+      case 'accounting_settings':
+        return <AccountingSettingsTab {...commonProps} />;
+      case 'customers_settings':
+        return <CustomersSettingsTab {...commonProps} />;
+      case 'crm_settings':
+        return <CrmSettingsTab {...commonProps} />;
+      case 'hr_settings':
+        return <HrSettingsTab {...commonProps} />;
+      case 'analytics_settings':
+        return <AnalyticsSettingsTab {...commonProps} />;
+      case 'modules':
+        return <ModulesTab {...commonProps} />;
+      case 'apps':
+        return <AppsTab {...commonProps} />;
+      case 'receipt_theme':
+        return <ReceiptThemeTab shop={shop} />;
+      case 'payments':
+        return <PaymentsTab {...commonProps} />;
+      case 'social_media':
+        return <SocialMediaTab {...commonProps} />;
+      case 'notifications':
+        return <NotificationsTab shop={shop} />;
+      default:
+        return <OverviewTab shop={shop} onSelectTab={handleOverviewTabSelect} />;
     }
   };
 

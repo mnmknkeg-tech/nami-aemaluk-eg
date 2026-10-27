@@ -35,6 +35,7 @@ import {
 import { apiRequest } from '@/lib/auth';
 import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import { useShop } from '@/hooks/useShop';
+import { useModuleGuard } from '@/hooks/useModuleGuard';
 
 /* ============================================================
  * الاشتراكات — اشتراكات الأعضاء
@@ -80,13 +81,46 @@ type SubscriptionStats = {
 
 type Plan = { id: string; name: string; name_ar?: string; billing_cycle: string; price: number };
 
-const STATUS_CONFIG: Record<string, { label: string; cls: string; icon: React.ElementType; dot: string }> = {
-  active: { label: 'نشط', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2, dot: 'bg-emerald-500' },
-  trial: { label: 'تجريبي', cls: 'bg-sky-50 text-sky-700 border-sky-200', icon: Sparkles, dot: 'bg-sky-500' },
-  expired: { label: 'منتهي', cls: 'bg-slate-50 text-slate-600 border-slate-200', icon: XCircle, dot: 'bg-slate-400' },
-  frozen: { label: 'مجمد', cls: 'bg-blue-50 text-blue-700 border-blue-200', icon: Snowflake, dot: 'bg-blue-500' },
-  cancelled: { label: 'ملغي', cls: 'bg-red-50 text-red-600 border-red-200', icon: Ban, dot: 'bg-red-500' },
-  pending: { label: 'معلق', cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock, dot: 'bg-amber-500' },
+const STATUS_CONFIG: Record<
+  string,
+  { label: string; cls: string; icon: React.ElementType; dot: string }
+> = {
+  active: {
+    label: 'نشط',
+    cls: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    icon: CheckCircle2,
+    dot: 'bg-emerald-500',
+  },
+  trial: {
+    label: 'تجريبي',
+    cls: 'bg-sky-50 text-sky-700 border-sky-200',
+    icon: Sparkles,
+    dot: 'bg-sky-500',
+  },
+  expired: {
+    label: 'منتهي',
+    cls: 'bg-slate-50 text-slate-600 border-slate-200',
+    icon: XCircle,
+    dot: 'bg-slate-400',
+  },
+  frozen: {
+    label: 'مجمد',
+    cls: 'bg-blue-50 text-blue-700 border-blue-200',
+    icon: Snowflake,
+    dot: 'bg-blue-500',
+  },
+  cancelled: {
+    label: 'ملغي',
+    cls: 'bg-red-50 text-red-600 border-red-200',
+    icon: Ban,
+    dot: 'bg-red-500',
+  },
+  pending: {
+    label: 'معلق',
+    cls: 'bg-amber-50 text-amber-700 border-amber-200',
+    icon: Clock,
+    dot: 'bg-amber-500',
+  },
 };
 
 const PAYMENT_CONFIG: Record<string, { label: string; cls: string }> = {
@@ -106,7 +140,11 @@ const CYCLE_AR: Record<string, string> = {
 };
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('ar-EG', { style: 'decimal', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat('ar-EG', {
+    style: 'decimal',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(n);
 
 function daysDiff(date: string): number {
   const d = new Date(date);
@@ -115,6 +153,7 @@ function daysDiff(date: string): number {
 }
 
 export default function SubscriptionsPage() {
+  const { allowed } = useModuleGuard('subscriptions');
   const { shop } = useShop();
   const shopId = shop?.id || '';
 
@@ -163,7 +202,9 @@ export default function SubscriptionsPage() {
     }
   }, [shopId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -174,16 +215,17 @@ export default function SubscriptionsPage() {
 
   const filtered = useMemo(() => {
     let r = [...subscriptions];
-    if (statusTab !== 'all') r = r.filter(s => s.status === statusTab);
-    if (paymentFilter) r = r.filter(s => s.payment_status === paymentFilter);
-    if (planFilter) r = r.filter(s => s.plan_id === planFilter);
+    if (statusTab !== 'all') r = r.filter((s) => s.status === statusTab);
+    if (paymentFilter) r = r.filter((s) => s.payment_status === paymentFilter);
+    if (planFilter) r = r.filter((s) => s.plan_id === planFilter);
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
-      r = r.filter(s =>
-        s.customer_name.toLowerCase().includes(q) ||
-        s.customer_phone.includes(q) ||
-        s.plan_name.toLowerCase().includes(q) ||
-        s.customer_email.toLowerCase().includes(q)
+      r = r.filter(
+        (s) =>
+          s.customer_name.toLowerCase().includes(q) ||
+          s.customer_phone.includes(q) ||
+          s.plan_name.toLowerCase().includes(q) ||
+          s.customer_email.toLowerCase().includes(q)
       );
     }
     return r;
@@ -195,17 +237,22 @@ export default function SubscriptionsPage() {
   }, [filtered, currentPage, itemsPerPage]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
 
-  useEffect(() => { setCurrentPage(1); }, [statusTab, paymentFilter, planFilter, debouncedSearch]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusTab, paymentFilter, planFilter, debouncedSearch]);
 
-  const counts = useMemo(() => ({
-    all: subscriptions.length,
-    active: subscriptions.filter(s => s.status === 'active').length,
-    trial: subscriptions.filter(s => s.status === 'trial').length,
-    expired: subscriptions.filter(s => s.status === 'expired').length,
-    frozen: subscriptions.filter(s => s.status === 'frozen').length,
-    cancelled: subscriptions.filter(s => s.status === 'cancelled').length,
-    pending: subscriptions.filter(s => s.status === 'pending').length,
-  }), [subscriptions]);
+  const counts = useMemo(
+    () => ({
+      all: subscriptions.length,
+      active: subscriptions.filter((s) => s.status === 'active').length,
+      trial: subscriptions.filter((s) => s.status === 'trial').length,
+      expired: subscriptions.filter((s) => s.status === 'expired').length,
+      frozen: subscriptions.filter((s) => s.status === 'frozen').length,
+      cancelled: subscriptions.filter((s) => s.status === 'cancelled').length,
+      pending: subscriptions.filter((s) => s.status === 'pending').length,
+    }),
+    [subscriptions]
+  );
 
   const handleAction = async (sub: MemberSubscription, action: string) => {
     setActionLoading(sub.id);
@@ -213,19 +260,23 @@ export default function SubscriptionsPage() {
     try {
       if (action === 'freeze') {
         await apiRequest(`/shops/${shopId}/subscriptions/${sub.id}`, {
-          method: 'PATCH', body: JSON.stringify({ status: 'frozen' }),
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'frozen' }),
         });
       } else if (action === 'activate') {
         await apiRequest(`/shops/${shopId}/subscriptions/${sub.id}`, {
-          method: 'PATCH', body: JSON.stringify({ status: 'active' }),
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'active' }),
         });
       } else if (action === 'cancel') {
         await apiRequest(`/shops/${shopId}/subscriptions/${sub.id}`, {
-          method: 'PATCH', body: JSON.stringify({ status: 'cancelled' }),
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'cancelled' }),
         });
       } else if (action === 'mark_paid') {
         await apiRequest(`/shops/${shopId}/subscriptions/${sub.id}`, {
-          method: 'PATCH', body: JSON.stringify({ payment_status: 'paid' }),
+          method: 'PATCH',
+          body: JSON.stringify({ payment_status: 'paid' }),
         });
       }
       await load();
@@ -238,15 +289,32 @@ export default function SubscriptionsPage() {
 
   const exportCSV = useCallback(() => {
     const rows = [
-      ['العضو', 'الهاتف', 'الباقة', 'الدورة', 'السعر', 'البداية', 'النهاية', 'الحالة', 'الدفع', 'التجديد التلقائي'].join(','),
-      ...filtered.map(s => [
-        s.customer_name, s.customer_phone, s.plan_name,
-        CYCLE_AR[s.billing_cycle] || s.billing_cycle,
-        s.price, s.start_date, s.end_date,
-        STATUS_CONFIG[s.status]?.label || s.status,
-        PAYMENT_CONFIG[s.payment_status]?.label || s.payment_status,
-        s.auto_renew ? 'نعم' : 'لا',
-      ].join(',')),
+      [
+        'العضو',
+        'الهاتف',
+        'الباقة',
+        'الدورة',
+        'السعر',
+        'البداية',
+        'النهاية',
+        'الحالة',
+        'الدفع',
+        'التجديد التلقائي',
+      ].join(','),
+      ...filtered.map((s) =>
+        [
+          s.customer_name,
+          s.customer_phone,
+          s.plan_name,
+          CYCLE_AR[s.billing_cycle] || s.billing_cycle,
+          s.price,
+          s.start_date,
+          s.end_date,
+          STATUS_CONFIG[s.status]?.label || s.status,
+          PAYMENT_CONFIG[s.payment_status]?.label || s.payment_status,
+          s.auto_renew ? 'نعم' : 'لا',
+        ].join(',')
+      ),
     ].join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([rows], { type: 'text/csv;charset=utf-8;' }));
@@ -264,6 +332,18 @@ export default function SubscriptionsPage() {
     { id: 'cancelled', label: 'ملغي', count: counts.cancelled },
   ];
 
+  if (allowed === null) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-slate-200 border-t-pink-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (allowed === false) {
+    return null;
+  }
+
   return (
     <div
       className="min-h-full bg-[#F4F5F7] text-slate-900"
@@ -276,7 +356,7 @@ export default function SubscriptionsPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-slate-900">اشتراكات الأعضاء</h1>
               <button
-                onClick={() => setGuideOpen(v => !v)}
+                onClick={() => setGuideOpen((v) => !v)}
                 className="p-1.5 rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all"
               >
                 <Info size={16} />
@@ -288,7 +368,10 @@ export default function SubscriptionsPage() {
                 <span className="font-semibold"> — {subscriptions.length} اشتراك</span>
               )}
               {stats && stats.overdue_payments > 0 && (
-                <span className="text-red-600 font-semibold"> — {stats.overdue_payments} متأخر الدفع</span>
+                <span className="text-red-600 font-semibold">
+                  {' '}
+                  — {stats.overdue_payments} متأخر الدفع
+                </span>
               )}
             </p>
           </div>
@@ -334,10 +417,20 @@ export default function SubscriptionsPage() {
               <div>
                 <p className="font-bold mb-1">🤖 نظام الاشتراكات الذكي</p>
                 <ul className="space-y-0.5 list-disc list-inside">
-                  <li>أنشئ <strong>الباقات</strong> أولاً من قسم "الباقات" — شهري، سنوي، ربع سنوي</li>
-                  <li>اضغط <strong>اشتراك جديد</strong> لربط عميل بباقة وتحديد تاريخ البداية</li>
-                  <li>في قسم <strong>التجديدات</strong>: اشتراكات قريبة الانتهاء وإمكانية التجديد الجماعي</li>
-                  <li>يمكنك <strong>تجميد</strong> اشتراك مؤقتاً أو <strong>إلغاؤه</strong> مع حفظ السبب</li>
+                  <li>
+                    أنشئ <strong>الباقات</strong> أولاً من قسم "الباقات" — شهري، سنوي، ربع سنوي
+                  </li>
+                  <li>
+                    اضغط <strong>اشتراك جديد</strong> لربط عميل بباقة وتحديد تاريخ البداية
+                  </li>
+                  <li>
+                    في قسم <strong>التجديدات</strong>: اشتراكات قريبة الانتهاء وإمكانية التجديد
+                    الجماعي
+                  </li>
+                  <li>
+                    يمكنك <strong>تجميد</strong> اشتراك مؤقتاً أو <strong>إلغاؤه</strong> مع حفظ
+                    السبب
+                  </li>
                 </ul>
               </div>
             </div>
@@ -354,13 +447,12 @@ export default function SubscriptionsPage() {
         </div>
       )}
 
-
       {/* فلاتر وبحث */}
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 mt-4">
         <div className="bg-white border border-slate-200 rounded-xl">
           {/* تابات الحالة */}
           <div className="px-2 sm:px-3 py-2 flex gap-0.5 overflow-x-auto border-b border-slate-100">
-            {TABS.map(t => {
+            {TABS.map((t) => {
               const isActive = statusTab === t.id;
               return (
                 <button
@@ -371,7 +463,9 @@ export default function SubscriptionsPage() {
                   }`}
                 >
                   {t.label}
-                  <span className={`text-[10px] tabular-nums px-1.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-slate-100'}`}>
+                  <span
+                    className={`text-[10px] tabular-nums px-1.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-slate-100'}`}
+                  >
                     {t.count}
                   </span>
                 </button>
@@ -381,17 +475,20 @@ export default function SubscriptionsPage() {
           {/* بحث وفلاتر */}
           <div className="px-2 sm:px-3 pb-2 pt-2 flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+              <Search
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300"
+                size={14}
+              />
               <input
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="بحث بالاسم أو الهاتف أو الباقة..."
                 className="w-full h-10 bg-slate-50 border border-slate-200 rounded-full py-2 pr-9 pl-4 text-xs font-bold outline-none focus:ring-2 focus:ring-slate-200"
               />
             </div>
             <select
               value={paymentFilter}
-              onChange={e => setPaymentFilter(e.target.value)}
+              onChange={(e) => setPaymentFilter(e.target.value)}
               className="h-10 px-3 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-200"
             >
               <option value="">كل حالات الدفع</option>
@@ -403,12 +500,14 @@ export default function SubscriptionsPage() {
             {plans.length > 0 && (
               <select
                 value={planFilter}
-                onChange={e => setPlanFilter(e.target.value)}
+                onChange={(e) => setPlanFilter(e.target.value)}
                 className="h-10 px-3 rounded-full border border-slate-200 bg-white text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-slate-200"
               >
                 <option value="">كل الباقات</option>
-                {plans.map(p => (
-                  <option key={p.id} value={p.id}>{p.name_ar || p.name}</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name_ar || p.name}
+                  </option>
                 ))}
               </select>
             )}
@@ -428,7 +527,9 @@ export default function SubscriptionsPage() {
               <Repeat size={28} className="text-violet-500" />
             </div>
             <p className="text-slate-700 font-bold text-lg">لا توجد اشتراكات</p>
-            <p className="text-slate-400 text-sm mt-1 mb-4">أنشئ باقاتك أولاً ثم اضف اشتراكات الأعضاء</p>
+            <p className="text-slate-400 text-sm mt-1 mb-4">
+              أنشئ باقاتك أولاً ثم اضف اشتراكات الأعضاء
+            </p>
             <Link
               href="/dashboard/subscriptions/plans"
               className="px-5 py-2.5 bg-violet-600 text-white rounded-full text-sm font-bold hover:bg-violet-700"
@@ -441,17 +542,31 @@ export default function SubscriptionsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3">العضو</th>
-                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3 hidden sm:table-cell">الباقة</th>
-                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3 hidden md:table-cell">الفترة</th>
-                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3 hidden lg:table-cell">الانتهاء</th>
-                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3">الحالة</th>
-                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3 hidden sm:table-cell">الدفع</th>
-                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3">إجراء</th>
+                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3">
+                    العضو
+                  </th>
+                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3 hidden sm:table-cell">
+                    الباقة
+                  </th>
+                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3 hidden md:table-cell">
+                    الفترة
+                  </th>
+                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3 hidden lg:table-cell">
+                    الانتهاء
+                  </th>
+                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3">
+                    الحالة
+                  </th>
+                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3 hidden sm:table-cell">
+                    الدفع
+                  </th>
+                  <th className="text-right text-[11px] font-black text-slate-500 px-4 py-3">
+                    إجراء
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {paginated.map(sub => {
+                {paginated.map((sub) => {
                   const statusCfg = STATUS_CONFIG[sub.status] || STATUS_CONFIG.pending;
                   const paymentCfg = PAYMENT_CONFIG[sub.payment_status] || PAYMENT_CONFIG.pending;
                   const daysLeft = daysDiff(sub.end_date);
@@ -469,7 +584,9 @@ export default function SubscriptionsPage() {
                           <div className="flex items-center gap-2.5">
                             <div className={`w-2 h-2 rounded-full shrink-0 ${statusCfg.dot}`} />
                             <div>
-                              <p className="text-[13px] font-bold text-slate-900 leading-tight">{sub.customer_name || 'غير محدد'}</p>
+                              <p className="text-[13px] font-bold text-slate-900 leading-tight">
+                                {sub.customer_name || 'غير محدد'}
+                              </p>
                               <p className="text-[11px] text-slate-400">{sub.customer_phone}</p>
                             </div>
                           </div>
@@ -478,32 +595,48 @@ export default function SubscriptionsPage() {
                         <td className="px-4 py-3 hidden sm:table-cell">
                           <div>
                             <p className="text-[12px] font-bold text-slate-800">{sub.plan_name}</p>
-                            <p className="text-[11px] text-slate-400">{CYCLE_AR[sub.billing_cycle] || sub.billing_cycle}</p>
+                            <p className="text-[11px] text-slate-400">
+                              {CYCLE_AR[sub.billing_cycle] || sub.billing_cycle}
+                            </p>
                           </div>
                         </td>
                         {/* السعر */}
                         <td className="px-4 py-3 hidden md:table-cell">
-                          <span className="text-[13px] font-black text-slate-900">{fmt(sub.price)} {sub.currency}</span>
+                          <span className="text-[13px] font-black text-slate-900">
+                            {fmt(sub.price)} {sub.currency}
+                          </span>
                         </td>
                         {/* الانتهاء */}
                         <td className="px-4 py-3 hidden lg:table-cell">
                           <div>
-                            <p className="text-[12px] font-bold text-slate-700">{new Date(sub.end_date).toLocaleDateString('ar-EG')}</p>
-                            <p className={`text-[11px] font-bold ${daysLeft <= 7 ? 'text-red-500' : daysLeft <= 30 ? 'text-amber-500' : 'text-slate-400'}`}>
-                              {daysLeft > 0 ? `${daysLeft} يوم متبقي` : daysLeft === 0 ? 'ينتهي اليوم' : `انتهى منذ ${Math.abs(daysLeft)} يوم`}
+                            <p className="text-[12px] font-bold text-slate-700">
+                              {new Date(sub.end_date).toLocaleDateString('ar-EG')}
+                            </p>
+                            <p
+                              className={`text-[11px] font-bold ${daysLeft <= 7 ? 'text-red-500' : daysLeft <= 30 ? 'text-amber-500' : 'text-slate-400'}`}
+                            >
+                              {daysLeft > 0
+                                ? `${daysLeft} يوم متبقي`
+                                : daysLeft === 0
+                                  ? 'ينتهي اليوم'
+                                  : `انتهى منذ ${Math.abs(daysLeft)} يوم`}
                             </p>
                           </div>
                         </td>
                         {/* الحالة */}
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-black ${statusCfg.cls}`}>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-black ${statusCfg.cls}`}
+                          >
                             <StatusIcon size={10} />
                             {statusCfg.label}
                           </span>
                         </td>
                         {/* الدفع */}
                         <td className="px-4 py-3 hidden sm:table-cell">
-                          <span className={`inline-flex px-2 py-1 rounded-full border text-[10px] font-black ${paymentCfg.cls}`}>
+                          <span
+                            className={`inline-flex px-2 py-1 rounded-full border text-[10px] font-black ${paymentCfg.cls}`}
+                          >
                             {paymentCfg.label}
                           </span>
                         </td>
@@ -515,7 +648,7 @@ export default function SubscriptionsPage() {
                             ) : (
                               <ChevronDown size={16} className="text-slate-400" />
                             )}
-                            <div className="relative" onClick={e => e.stopPropagation()}>
+                            <div className="relative" onClick={(e) => e.stopPropagation()}>
                               <button
                                 onClick={() => setMenuOpenId(menuOpenId === sub.id ? null : sub.id)}
                                 className="p-1.5 rounded-full hover:bg-slate-100 transition-colors"
@@ -580,19 +713,27 @@ export default function SubscriptionsPage() {
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-[12px]">
                               <div>
                                 <p className="text-slate-400 font-bold mb-0.5">البريد الإلكتروني</p>
-                                <p className="text-slate-800 font-bold">{sub.customer_email || '—'}</p>
+                                <p className="text-slate-800 font-bold">
+                                  {sub.customer_email || '—'}
+                                </p>
                               </div>
                               <div>
                                 <p className="text-slate-400 font-bold mb-0.5">تاريخ البداية</p>
-                                <p className="text-slate-800 font-bold">{new Date(sub.start_date).toLocaleDateString('ar-EG')}</p>
+                                <p className="text-slate-800 font-bold">
+                                  {new Date(sub.start_date).toLocaleDateString('ar-EG')}
+                                </p>
                               </div>
                               <div>
                                 <p className="text-slate-400 font-bold mb-0.5">طريقة الدفع</p>
-                                <p className="text-slate-800 font-bold">{sub.payment_method || '—'}</p>
+                                <p className="text-slate-800 font-bold">
+                                  {sub.payment_method || '—'}
+                                </p>
                               </div>
                               <div>
                                 <p className="text-slate-400 font-bold mb-0.5">تجديد تلقائي</p>
-                                <p className={`font-bold ${sub.auto_renew ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                <p
+                                  className={`font-bold ${sub.auto_renew ? 'text-emerald-600' : 'text-slate-400'}`}
+                                >
                                   {sub.auto_renew ? 'مفعّل' : 'غير مفعّل'}
                                 </p>
                               </div>
@@ -641,14 +782,14 @@ export default function SubscriptionsPage() {
                 <div className="flex gap-1">
                   <button
                     disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
+                    onClick={() => setCurrentPage((p) => p - 1)}
                     className="h-8 w-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-600 disabled:opacity-40 hover:bg-slate-50 text-[12px] font-bold"
                   >
                     &rsaquo;
                   </button>
                   <button
                     disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => p + 1)}
+                    onClick={() => setCurrentPage((p) => p + 1)}
                     className="h-8 w-8 flex items-center justify-center rounded-full border border-slate-200 text-slate-600 disabled:opacity-40 hover:bg-slate-50 text-[12px] font-bold"
                   >
                     &lsaquo;

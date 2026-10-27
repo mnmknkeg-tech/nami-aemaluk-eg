@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { HIDE_UNPUBLISHED } from '@/config/sidebar';
+import { isModuleEnabled } from '@/hooks/useModuleGuard';
+import { TAB_MODULE_MAP } from '../SettingsModal';
 
 interface OverviewTabProps {
   shop: any;
@@ -328,6 +330,10 @@ export default function OverviewTab({ shop, onSelectTab }: OverviewTabProps) {
 
   const filteredCards = useMemo(() => {
     return ALL_SETTING_CARDS.filter((c) => {
+      const reqMod = TAB_MODULE_MAP[c.id];
+      if (reqMod && !isModuleEnabled(shop, reqMod)) {
+        return false;
+      }
       const matchCat = selectedCategory === 'all' || c.category === selectedCategory;
       const matchSearch =
         !searchTerm.trim() ||
@@ -336,7 +342,7 @@ export default function OverviewTab({ shop, onSelectTab }: OverviewTabProps) {
         c.categoryName.toLowerCase().includes(searchTerm.toLowerCase());
       return matchCat && matchSearch;
     });
-  }, [selectedCategory, searchTerm]);
+  }, [selectedCategory, searchTerm, shop]);
 
   return (
     <div className="space-y-6 text-right" dir="rtl">

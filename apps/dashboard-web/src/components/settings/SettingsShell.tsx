@@ -26,6 +26,8 @@ import CustomersSettingsTab from './tabs/CustomersSettingsTab';
 import CrmSettingsTab from './tabs/CrmSettingsTab';
 import HrSettingsTab from './tabs/HrSettingsTab';
 import AnalyticsSettingsTab from './tabs/AnalyticsSettingsTab';
+import { isModuleEnabled } from '@/hooks/useModuleGuard';
+import { TAB_MODULE_MAP } from './SettingsModal';
 
 type SettingsTab =
   | 'overview'
@@ -114,8 +116,12 @@ export default function SettingsShell({ shop, onSaved }: SettingsShellProps) {
     // finance/payments tab is local-only as well.
     'payments',
   ]);
+  const reqMod = TAB_MODULE_MAP[requestedTab];
+  const isReqModAllowed = !reqMod || isModuleEnabled(shop, reqMod);
   const safeRequestedTab =
-    HIDE_UNPUBLISHED && LOCAL_ONLY_TABS.has(requestedTab) ? 'overview' : requestedTab;
+    (HIDE_UNPUBLISHED && LOCAL_ONLY_TABS.has(requestedTab)) || !isReqModAllowed
+      ? 'overview'
+      : requestedTab;
   const activeTab: SettingsTab = ALLOWED_TABS.has(safeRequestedTab) ? safeRequestedTab : 'overview';
   const settingsContext =
     SETTINGS_CONTEXT[
