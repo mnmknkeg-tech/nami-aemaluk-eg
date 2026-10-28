@@ -593,6 +593,11 @@ func (h *Handler) getRefreshToken(c *fiber.Ctx) string {
 	if t := c.Cookies(h.sessionCookieName(c)); t != "" {
 		return t
 	}
+	for _, s := range []string{"-DASHBOARD", "-BUSINESS", "-MARKETPLACE", "-MARKET", "-ADMIN"} {
+		if t := c.Cookies("ray_session" + s); t != "" {
+			return t
+		}
+	}
 	if h.cfg.Name != "" {
 		if t := c.Cookies(h.cfg.Name); t != "" {
 			return t

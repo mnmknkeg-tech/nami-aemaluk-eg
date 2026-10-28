@@ -237,7 +237,7 @@ function SignupContent() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-App-Scope': 'business',
+          'X-App-Scope': 'dashboard',
         },
         body: JSON.stringify({
           name: formData.shopName,
@@ -303,7 +303,7 @@ function SignupContent() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-App-Scope': 'business',
+          'X-App-Scope': 'dashboard',
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
         body: JSON.stringify(shopPayload),

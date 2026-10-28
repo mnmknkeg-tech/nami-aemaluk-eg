@@ -127,7 +127,7 @@ func extractUser(c *fiber.Ctx, secret string) (AuthUser, string, error) {
 	user := AuthUser{
 		ID:    stringClaim(claims, "sub"),
 		Email: stringClaim(claims, "email"),
-		Role:  stringClaim(claims, "role"),
+		Role:  strings.ToUpper(stringClaim(claims, "role")),
 	}
 	// Handle both camelCase and snake_case shop identifiers used by the Node backend.
 	if shop := stringClaim(claims, "shopId"); shop != "" {
@@ -153,6 +153,8 @@ const (
 // authenticated by RequireAuth or OptionalAuth.
 const AuthSourceAnonymous = "anonymous"
 
+var fallbackScopes = []string{"-DASHBOARD", "-BUSINESS", "-MARKETPLACE", "-MARKET", "-ADMIN"}
+
 func extractToken(c *fiber.Ctx) (string, string) {
 	auth := c.Get("Authorization")
 	if strings.HasPrefix(auth, "Bearer ") {
@@ -173,6 +175,12 @@ func extractToken(c *fiber.Ctx) (string, string) {
 	if cookie := c.Cookies("ray_access"); cookie != "" {
 		return cookie, tokenSourceCookie
 	}
+	for _, s := range fallbackScopes {
+		if cookie := c.Cookies("ray_access" + s); cookie != "" {
+			return cookie, tokenSourceCookie
+		}
+	}
+
 	if scope != "" {
 		if cookie := c.Cookies("ray_session" + scope); cookie != "" {
 			return cookie, tokenSourceSessionCookie
@@ -180,6 +188,11 @@ func extractToken(c *fiber.Ctx) (string, string) {
 	}
 	if cookie := c.Cookies("ray_session"); cookie != "" {
 		return cookie, tokenSourceSessionCookie
+	}
+	for _, s := range fallbackScopes {
+		if cookie := c.Cookies("ray_session" + s); cookie != "" {
+			return cookie, tokenSourceSessionCookie
+		}
 	}
 
 	return "", ""

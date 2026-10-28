@@ -182,25 +182,44 @@ export async function refreshSession(): Promise<string | null> {
 }
 
 // ---------------------------------------------------------------------------
-// 401 classification
+// 401/403 classification & recovery
 // ---------------------------------------------------------------------------
 /**
- * True when a failed response means "credentials expired/invalid, refresh
- * and retry" — prefers the structured error code, falls back to the legacy
- * message regex so behavior never regresses if the envelope changes.
+ * True when a failed response means "credentials expired/invalid/mismatched, refresh
+ * and retry" — covers 401 (token expired/invalid) as well as 403 (insufficient role,
+ * permission or shop mismatch that can be fixed by refreshing claims or clearing a
+ * stale bridge token).
  */
 export function isAuthExpired(status: number, body: any, path: string): boolean {
-  if (status !== 401) return false;
+  if (status !== 401 && status !== 403) return false;
   if (isAuthPath(path)) return false;
 
   const code =
     (typeof body?.error === 'string' && body.error) ||
     (typeof body?.code === 'string' && body.code) ||
     '';
-  if (code && EXPIRED_CODES.has(code)) return true;
+  const message = String(body?.message || body?.error || '').toLowerCase();
 
-  const message = String(body?.message || body?.error || '');
-  return EXPIRED_MSG_RE.test(message);
+  if (status === 401) {
+    if (code && EXPIRED_CODES.has(code)) return true;
+    return EXPIRED_MSG_RE.test(message) || !code;
+  }
+
+  // status === 403
+  // If the user had a local bridge token, or the server rejected due to role/shop mismatch
+  if (
+    code === 'insufficient_role' ||
+    code === 'insufficient_permissions' ||
+    code.toLowerCase() === 'unauthorized' ||
+    message.includes('unauthorized') ||
+    message.includes('صلاحية') ||
+    message.includes('غير مصرح') ||
+    Boolean(readToken())
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -250,7 +269,7 @@ function throwApiError(status: number, body: any): never {
 }
 
 /**
- * Core request: fetch → (on auth-expired 401) single-flight refresh →
+ * Core request: fetch → (on auth-expired 401 or 403) single-flight refresh →
  * retry exactly once → guarded session-expired + throw. Never loops.
  */
 async function execute(
@@ -261,18 +280,22 @@ async function execute(
   let result = await performRequest(path, options);
 
   if (isAuthExpired(result.res.status, result.body, path) && !_retried) {
+    const hadBridgeToken = Boolean(readToken());
+    // Clear any stale local bridge token immediately so retries rely on HttpOnly cookies
+    clearToken();
+
     const fresh = await refreshSession();
-    if (fresh) {
+    if (fresh || hadBridgeToken) {
       result = await performRequest(path, options);
-      // Refresh "succeeded" but the retried request still says the
-      // credentials are dead — treat as terminal, do not refresh again.
     } else {
-      dispatchSessionExpired();
-      const err = new Error('انتهت الجلسة، من فضلك سجل الدخول من جديد') as Error & {
-        status?: number;
-      };
-      err.status = 401;
-      throw err;
+      if (result.res.status === 401) {
+        dispatchSessionExpired();
+        const err = new Error('انتهت الجلسة، من فضلك سجل الدخول من جديد') as Error & {
+          status?: number;
+        };
+        err.status = 401;
+        throw err;
+      }
     }
   }
 
@@ -351,10 +374,8 @@ export async function apiRequestWithMeta<T = any>(
   } else {
     body = await cachedGet(path, options);
   }
-
   if (body && typeof body === 'object' && 'data' in body) {
     return { data: body.data as T, meta: body.meta || null, raw: body };
   }
   return { data: body as T, meta: null, raw: body };
 }
-

@@ -2,6 +2,7 @@ package shops
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/config"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/errors"
@@ -288,7 +289,7 @@ func requireRolesMiddleware(allowed ...string) fiber.Handler {
 			return errors.Unauthorized("unauthenticated", "يجب تسجيل الدخول")
 		}
 		for _, r := range allowed {
-			if user.Role == r {
+			if strings.EqualFold(user.Role, r) {
 				return c.Next()
 			}
 		}

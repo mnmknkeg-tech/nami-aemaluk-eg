@@ -30,7 +30,7 @@ const AuthContext = createContext<AuthContextType>({
 import { clearToken, clearUserJSON, readUserJSON, writeUserJSON } from '@/lib/session-keys';
 // All request/refresh/401 logic lives in the unified core — this provider
 // only owns React state. The re-export below feeds the 674 call sites.
-import { apiRequest, clearApiCache, noteAuthSuccess } from '@/lib/api/core';
+import { apiRequest, clearApiCache, noteAuthSuccess, refreshSession } from '@/lib/api/core';
 import { startAuthScheduler, stopAuthScheduler } from '@/lib/auth-scheduler';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -59,8 +59,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         writeUserJSON(JSON.stringify(fetchedUser));
       }
     } catch {
-      // No session / backend unreachable — keep whatever the cache showed;
-      // a real expiry fires ray-session-expired through the core.
+      // If initial fetch failed, try refreshSession once to resurrect the session from cookies
+      try {
+        const fresh = await refreshSession();
+        if (fresh) {
+          const fetchedUser = await apiRequest('/auth/me', { cache: 'no-store' });
+          if (fetchedUser) {
+            setUser(fetchedUser);
+            writeUserJSON(JSON.stringify(fetchedUser));
+          }
+        }
+      } catch {
+        // No session / backend unreachable — keep whatever the cache showed;
+        // a real expiry fires ray-session-expired through the core.
+      }
     }
   }, []);
 
@@ -142,6 +154,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
-
 export { apiRequest };
-
