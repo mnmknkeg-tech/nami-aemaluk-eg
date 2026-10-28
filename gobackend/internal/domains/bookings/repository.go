@@ -34,7 +34,7 @@ const bookingColumns = `
 
 const bookingJoinColumns = `
 	s.name AS service_name, s.price AS service_price,
-	slt.date::text AS slot_date, slt.start_time AS slot_start_time, slt.end_time AS slot_end_time,
+	slt.start_at::date::text AS slot_date, to_char(slt.start_at, 'HH24:MI') AS slot_start_time, to_char(slt.end_at, 'HH24:MI') AS slot_end_time,
 	sh.name AS shop_name
 `
 
