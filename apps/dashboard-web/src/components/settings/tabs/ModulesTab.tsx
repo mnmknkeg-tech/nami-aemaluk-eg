@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Check,
-  RefreshCw,
   FileText,
   ShoppingCart,
   Camera,
@@ -14,7 +13,6 @@ import {
   Palette,
   Settings as SettingsIcon,
   LayoutGrid,
-  Store,
   Coins,
   UserCog,
   Clock,
@@ -24,8 +22,6 @@ import {
   Monitor,
   Receipt,
   CreditCard,
-  Download,
-  Trash2,
   Loader2,
   Sparkles,
   ChevronDown,
@@ -181,8 +177,6 @@ const moduleIcons: Record<string, any> = {
   aiPages: Sparkles,
   aiDataAnalysis: Brain,
 };
-
-const CORE_IDS = ['overview', 'products', 'promotions', 'builder', 'settings'];
 
 const MODULE_GROUPS = [
   { id: 'sales', label: 'المبيعات والطلبات', icon: CreditCard, color: '#2563EB' },
@@ -428,16 +422,21 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
   const savedFeatures = (shop as any)?.layoutConfig?.enabledFeatures as
     Record<string, string[]> | undefined;
 
+  const isFirstRender = useRef(true);
+
   useEffect(() => {
     const initial: Record<string, Set<string>> = {};
+    const hasAnySaved = savedFeatures && Object.keys(savedFeatures).length > 0;
     for (const modId of Object.keys(REGISTRY_FEATURES)) {
       const saved = savedFeatures?.[modId];
       if (Array.isArray(saved)) {
         initial[modId] = new Set(saved);
-      } else {
+      } else if (!hasAnySaved) {
         initial[modId] = new Set(
           REGISTRY_FEATURES[modId].filter((f) => f.defaultEnabled).map((f) => f.id)
         );
+      } else {
+        initial[modId] = new Set();
       }
     }
     setModuleFeatures(initial);
@@ -453,16 +452,44 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
           (shop as any)?.layoutConfig && typeof (shop as any).layoutConfig === 'object'
             ? (shop as any).layoutConfig
             : {};
+
+        const activeModules = Object.keys(featuresObj).filter(
+          (mod) => Array.isArray(featuresObj[mod]) && featuresObj[mod].length > 0
+        );
+
+        const updatedLayout = {
+          ...previousLayout,
+          enabledFeatures: featuresObj,
+          enabledModules: activeModules,
+        };
+
         await apiRequest('/shops/me', {
           method: 'PATCH',
           body: JSON.stringify({
-            layoutConfig: { ...previousLayout, enabledFeatures: featuresObj },
+            layoutConfig: updatedLayout,
           }),
         });
+
         if (shop && typeof shop === 'object') {
-          (shop as any).layoutConfig = { ...previousLayout, enabledFeatures: featuresObj };
+          (shop as any).layoutConfig = updatedLayout;
         }
+
+        try {
+          const cached = JSON.parse(localStorage.getItem('ray_merchant_shop_cache') || '{}');
+          localStorage.setItem(
+            'ray_merchant_shop_cache',
+            JSON.stringify({ ...cached, layoutConfig: updatedLayout })
+          );
+        } catch {}
+
+        window.dispatchEvent(
+          new CustomEvent('merchant-modules-changed', {
+            detail: { enabledFeatures: featuresObj, enabledModules: activeModules },
+          })
+        );
+
         toast({ title: 'تم الحفظ', description: 'تم تحديث إعدادات اللوحة بنجاح' });
+        onSaved?.();
       } catch (e: any) {
         opts?.onError?.();
         toast({
@@ -474,7 +501,7 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
         setSaving(false);
       }
     },
-    [shop, toast]
+    [shop, toast, onSaved]
   );
 
   const toggleFeature = (moduleId: string, featureId: string) => {
@@ -513,13 +540,22 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
 
   // Emit changes
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     try {
       const enabledFeatures: Record<string, string[]> = {};
       for (const [moduleId, features] of Object.entries(moduleFeatures)) {
         enabledFeatures[moduleId] = Array.from(features);
       }
+      const activeModules = Object.keys(enabledFeatures).filter(
+        (mod) => Array.isArray(enabledFeatures[mod]) && enabledFeatures[mod].length > 0
+      );
       window.dispatchEvent(
-        new CustomEvent('merchant-modules-changed', { detail: { enabledFeatures } })
+        new CustomEvent('merchant-modules-changed', {
+          detail: { enabledFeatures, enabledModules: activeModules },
+        })
       );
       window.dispatchEvent(
         new CustomEvent('merchant-settings-section-changes', {

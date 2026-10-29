@@ -1,7 +1,14 @@
 import React from 'react';
 import { BaseRendererProps } from './types';
 import { ShieldCheck } from 'lucide-react';
-import { sectionBadgeStyle, sectionHeaderWrapClass, sectionShellClass, sectionSubtitleClass, sectionTitleClass, responsiveGridClass } from '@ray-eg/shared/builder';
+import {
+  sectionBadgeStyle,
+  sectionHeaderWrapClass,
+  sectionShellClass,
+  sectionSubtitleClass,
+  sectionTitleClass,
+  responsiveGridClass,
+} from '@ray-eg/shared/builder';
 
 export const FeaturesRenderer: React.FC<BaseRendererProps> = ({
   node,
@@ -38,14 +45,10 @@ export const FeaturesRenderer: React.FC<BaseRendererProps> = ({
               </span>
             )}
             {node.props.title && (
-              <h2 className={`${sectionTitleClass} text-slate-900`}>
-                {node.props.title}
-              </h2>
+              <h2 className={`${sectionTitleClass} text-slate-900`}>{node.props.title}</h2>
             )}
             {node.props.subtitle && (
-              <p className={`${sectionSubtitleClass} text-slate-600`}>
-                {node.props.subtitle}
-              </p>
+              <p className={`${sectionSubtitleClass} text-slate-600`}>{node.props.subtitle}</p>
             )}
           </div>
         )}
@@ -59,8 +62,8 @@ export const FeaturesRenderer: React.FC<BaseRendererProps> = ({
               >
                 <div
                   style={{
-                    backgroundColor: `${website.theme.colors.primary}15`,
-                    color: website.theme.colors.primary,
+                    backgroundColor: `${website.theme?.colors?.primary || '#1d4ed8'}15`,
+                    color: website.theme?.colors?.primary || '#1d4ed8',
                   }}
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"
                 >
@@ -68,9 +71,7 @@ export const FeaturesRenderer: React.FC<BaseRendererProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">{feat.title}</h3>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    {feat.description}
-                  </p>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">{feat.description}</p>
                 </div>
               </div>
             ))}

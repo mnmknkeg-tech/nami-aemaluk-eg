@@ -65,7 +65,12 @@ export const CardGridRenderer: React.FC<BasicElementsRendererProps> = ({
               }
               onDetails={(e) => {
                 if (isInteractivePreview) {
-                  handleInteraction(e, node.props.targetUrl || '/contact', node.props.targetPageId || 'page_contact', cardOptions.ctaText);
+                  handleInteraction(
+                    e,
+                    node.props.targetUrl || '/contact',
+                    node.props.targetPageId || 'page_contact',
+                    cardOptions.ctaText
+                  );
                 }
               }}
             />
@@ -73,7 +78,8 @@ export const CardGridRenderer: React.FC<BasicElementsRendererProps> = ({
           </div>
         );
       }
-      if (node.props.icon ||
+      if (
+        node.props.icon ||
         node.props.specs ||
         node.props.quote ||
         node.props.question ||
@@ -93,9 +99,9 @@ export const CardGridRenderer: React.FC<BasicElementsRendererProps> = ({
               <div className="space-y-3">
                 <div
                   style={{
-                    backgroundColor: `${website.theme.colors.primary}18`,
-                    color: website.theme.colors.primary,
-                    borderRadius: website.theme.radius?.md || '10px',
+                    backgroundColor: `${website.theme?.colors?.primary || '#1d4ed8'}18`,
+                    color: website.theme?.colors?.primary || '#1d4ed8',
+                    borderRadius: website.theme?.radius?.md || '10px',
                   }}
                   className="w-12 h-12 flex items-center justify-center"
                 >
@@ -110,9 +116,19 @@ export const CardGridRenderer: React.FC<BasicElementsRendererProps> = ({
                   {node.props.icon === 'Mail' && <Mail className="w-6 h-6" />}
                   {node.props.icon === 'MapPin' && <MapPin className="w-6 h-6" />}
                   {node.props.icon === 'Store' && <Store className="w-6 h-6" />}
-                  {!['ShieldCheck', 'Truck', 'CreditCard', 'Sparkles', 'Package', 'Zap', 'Star', 'Phone', 'Mail', 'MapPin', 'Store'].includes(node.props.icon) && (
-                    <Sparkles className="w-6 h-6" />
-                  )}
+                  {![
+                    'ShieldCheck',
+                    'Truck',
+                    'CreditCard',
+                    'Sparkles',
+                    'Package',
+                    'Zap',
+                    'Star',
+                    'Phone',
+                    'Mail',
+                    'MapPin',
+                    'Store',
+                  ].includes(node.props.icon) && <Sparkles className="w-6 h-6" />}
                 </div>
                 {node.props.title && (
                   <h3 className="text-lg font-bold text-slate-900">{node.props.title}</h3>
@@ -122,7 +138,7 @@ export const CardGridRenderer: React.FC<BasicElementsRendererProps> = ({
                 )}
                 {node.props.tag && (
                   <span
-                    style={{ color: website.theme.colors.primary }}
+                    style={{ color: website.theme?.colors?.primary || '#1d4ed8' }}
                     className="inline-block text-[11px] font-semibold"
                   >
                     {node.props.tag} &larr;
@@ -149,8 +165,8 @@ export const CardGridRenderer: React.FC<BasicElementsRendererProps> = ({
                 {node.props.badge && (
                   <span
                     style={{
-                      backgroundColor: website.theme.colors.primary,
-                      borderRadius: website.theme.radius?.full || '9999px',
+                      backgroundColor: website.theme?.colors?.primary || '#1d4ed8',
+                      borderRadius: website.theme?.radius?.full || '9999px',
                     }}
                     className="inline-block text-[11px] font-bold text-white px-2.5 py-0.5"
                   >
@@ -160,7 +176,7 @@ export const CardGridRenderer: React.FC<BasicElementsRendererProps> = ({
                 {node.props.title && <h3 className="text-lg font-bold">{node.props.title}</h3>}
                 {node.props.price && (
                   <div
-                    style={{ color: website.theme.colors.primary }}
+                    style={{ color: website.theme?.colors?.primary || '#1d4ed8' }}
                     className="text-2xl font-extrabold font-mono"
                   >
                     {node.props.price}
@@ -217,9 +233,7 @@ export const CardGridRenderer: React.FC<BasicElementsRendererProps> = ({
                   )}
                 </div>
                 {(!isInteractivePreview || isFaqOpen) && (
-                  <p className="text-xs text-slate-600 leading-relaxed pt-1">
-                    {node.props.answer}
-                  </p>
+                  <p className="text-xs text-slate-600 leading-relaxed pt-1">{node.props.answer}</p>
                 )}
               </div>
             )}
@@ -258,27 +272,27 @@ export const CardGridRenderer: React.FC<BasicElementsRendererProps> = ({
           className={`cursor-pointer transition-all ${outlineClass}`}
         >
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-16">
-                {node.props.badge && (
-                  <span
-                    style={{
-                      backgroundColor: `${primaryColor}15`,
-                      color: primaryColor,
-                    }}
-                    className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider inline-block"
-                  >
-                    {node.props.badge}
-                  </span>
-                )}
-                {node.props.title && (
-                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight break-words">
-                    {node.props.title}
-                  </h2>
-                )}
-                {node.props.subtitle && (
-                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed break-words">
-                    {node.props.subtitle}
-                  </p>
-                )}
+            {node.props.badge && (
+              <span
+                style={{
+                  backgroundColor: `${primaryColor}15`,
+                  color: primaryColor,
+                }}
+                className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider inline-block"
+              >
+                {node.props.badge}
+              </span>
+            )}
+            {node.props.title && (
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight break-words">
+                {node.props.title}
+              </h2>
+            )}
+            {node.props.subtitle && (
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed break-words">
+                {node.props.subtitle}
+              </p>
+            )}
 
             {itemsList.length > 0 && (
               <div className={`${productGridClass(gridOptions)} gap-3`}>
@@ -296,7 +310,12 @@ export const CardGridRenderer: React.FC<BasicElementsRendererProps> = ({
                     }
                     onDetails={(e) => {
                       if (isInteractivePreview) {
-                        handleInteraction(e, item.targetUrl || '/contact', 'page_contact', gridOptions.ctaText);
+                        handleInteraction(
+                          e,
+                          item.targetUrl || '/contact',
+                          'page_contact',
+                          gridOptions.ctaText
+                        );
                       }
                     }}
                   />

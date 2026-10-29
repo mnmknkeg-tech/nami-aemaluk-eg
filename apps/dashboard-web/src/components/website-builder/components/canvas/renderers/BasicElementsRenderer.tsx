@@ -123,9 +123,10 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
           );
         } else {
           // Parse leading emoji from brand text if present
-          const emojiRegex = /^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji}\uFE0F)\s*/u;
+          const emojiRegex =
+            /^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji}\uFE0F)\s*/u;
           const match = typeof rawText === 'string' ? rawText.match(emojiRegex) : null;
-          let icon = match ? match[1] : '';
+          const icon = match ? match[1] : '';
           if (match) {
             text = rawText.slice(match[0].length).trim();
           }
@@ -158,8 +159,8 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
           {node.props.badgeText && (
             <span
               style={{
-                backgroundColor: `${website.theme.colors.primary}20`,
-                color: website.theme.colors.primary,
+                backgroundColor: `${website.theme?.colors?.primary || '#1d4ed8'}20`,
+                color: website.theme?.colors?.primary || '#1d4ed8',
               }}
               className="mr-2 text-xs font-bold px-2 py-0.5 rounded-full inline-block align-middle shrink-0"
             >
@@ -230,7 +231,7 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
       const computed = getComputedStyles();
 
       if (isActiveLink) {
-        computed.color = website.theme.colors.primary;
+        computed.color = website.theme?.colors?.primary || '#1d4ed8';
         computed.fontWeight = '700';
       }
 
@@ -426,9 +427,7 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
         website.components['gen_header'];
 
       const isCartHidden = Boolean(
-        headerComp?.props?.hideCart ||
-        (website.theme as any)?.hideCart ||
-        node.props?.hideCart
+        headerComp?.props?.hideCart || (website.theme as any)?.hideCart || node.props?.hideCart
       );
 
       const showCart =
@@ -446,10 +445,7 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
         website.settings?.auth?.headerButton?.show === false
       );
 
-      const showAuth =
-        showInlineCartAndAuth &&
-        isAuthEnabled &&
-        !isAuthHidden;
+      const showAuth = showInlineCartAndAuth && isAuthEnabled && !isAuthHidden;
 
       const isHidden = Boolean(node.props?.hidden || node.isHidden);
 

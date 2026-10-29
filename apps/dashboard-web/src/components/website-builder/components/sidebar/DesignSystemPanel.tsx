@@ -14,17 +14,19 @@ import {
   Search,
 } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
-import { themePresets } from '../../data/defaultTheme';
+import { themePresets, normalizeThemeTokens } from '../../data/defaultTheme';
 
 export const DesignSystemPanel: React.FC = () => {
   const {
-    theme,
+    theme: rawTheme,
     updateThemeToken,
     applyThemePreset,
     allTemplatesList,
     activeTemplateId,
     switchWebsite,
   } = useBuilder();
+
+  const theme = normalizeThemeTokens(rawTheme);
 
   // Common luxury color palettes for quick 1-click styling
   const quickPrimaryPalettes = [
@@ -96,7 +98,8 @@ export const DesignSystemPanel: React.FC = () => {
           </span>
         </div>
         <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-          اختر نشاطك التجاري ليتم تطبيق الثيم واستبدال كامل الموقع (الصفحات، القائمة، الأقسام، نماذج الحجز) فوراً.
+          اختر نشاطك التجاري ليتم تطبيق الثيم واستبدال كامل الموقع (الصفحات، القائمة، الأقسام، نماذج
+          الحجز) فوراً.
         </p>
 
         {/* Search input for templates */}
@@ -131,7 +134,9 @@ export const DesignSystemPanel: React.FC = () => {
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-lg shrink-0 p-1 rounded-lg bg-slate-50 border border-slate-100">{tpl.icon}</span>
+                    <span className="text-lg shrink-0 p-1 rounded-lg bg-slate-50 border border-slate-100">
+                      {tpl.icon}
+                    </span>
                     <div className="flex flex-col min-w-0">
                       <span className="text-xs font-black truncate">{tpl.name}</span>
                       <span
@@ -186,7 +191,9 @@ export const DesignSystemPanel: React.FC = () => {
                 }`}
               >
                 <div className="flex items-start justify-between gap-1">
-                  <span className={`text-xs font-bold leading-snug ${isCurrentActive ? 'text-blue-900' : 'text-slate-800'}`}>
+                  <span
+                    className={`text-xs font-bold leading-snug ${isCurrentActive ? 'text-blue-900' : 'text-slate-800'}`}
+                  >
                     {preset.nameAr}
                   </span>
                   {isCurrentActive && (
@@ -240,14 +247,15 @@ export const DesignSystemPanel: React.FC = () => {
                   onChange={(e) => updateThemeToken('colors', 'primary', e.target.value)}
                   className="absolute -top-4 -left-4 w-16 h-16 cursor-pointer border-0 p-0"
                 />
-                <div
-                  className="w-full h-full"
-                  style={{ backgroundColor: theme.colors.primary }}
-                />
+                <div className="w-full h-full" style={{ backgroundColor: theme.colors.primary }} />
               </label>
               <div>
-                <span className="text-xs font-bold text-slate-800 block">اللون الرئيسي (Primary)</span>
-                <span className="text-[10px] text-slate-500">للأزرار الأساسية والعناوين المميزة والأسعار</span>
+                <span className="text-xs font-bold text-slate-800 block">
+                  اللون الرئيسي (Primary)
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  للأزرار الأساسية والعناوين المميزة والأسعار
+                </span>
               </div>
             </div>
             <input
@@ -297,8 +305,12 @@ export const DesignSystemPanel: React.FC = () => {
                 />
               </label>
               <div>
-                <span className="text-xs font-bold text-slate-800 block">اللون الثانوي (Secondary)</span>
-                <span className="text-[10px] text-slate-500">للأزرار الداكنة والترويسة والبطاقات</span>
+                <span className="text-xs font-bold text-slate-800 block">
+                  اللون الثانوي (Secondary)
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  للأزرار الداكنة والترويسة والبطاقات
+                </span>
               </div>
             </div>
             <input
@@ -342,14 +354,13 @@ export const DesignSystemPanel: React.FC = () => {
                   onChange={(e) => updateThemeToken('colors', 'accent', e.target.value)}
                   className="absolute -top-4 -left-4 w-16 h-16 cursor-pointer border-0 p-0"
                 />
-                <div
-                  className="w-full h-full"
-                  style={{ backgroundColor: theme.colors.accent }}
-                />
+                <div className="w-full h-full" style={{ backgroundColor: theme.colors.accent }} />
               </label>
               <div>
                 <span className="text-xs font-bold text-slate-800 block">لون التمييز (Accent)</span>
-                <span className="text-[10px] text-slate-500">للأيقونات والشارات والنجوم واللمسات</span>
+                <span className="text-[10px] text-slate-500">
+                  للأيقونات والشارات والنجوم واللمسات
+                </span>
               </div>
             </div>
             <input
@@ -390,7 +401,9 @@ export const DesignSystemPanel: React.FC = () => {
         </span>
 
         <div>
-          <label className="text-[11px] font-bold text-slate-600 block mb-1">خط العناوين الرئيسية</label>
+          <label className="text-[11px] font-bold text-slate-600 block mb-1">
+            خط العناوين الرئيسية
+          </label>
           <select
             value={theme?.typography?.fontHeading || 'Tajawal, sans-serif'}
             onChange={(e) => updateThemeToken('typography', 'fontHeading', e.target.value)}
@@ -404,7 +417,9 @@ export const DesignSystemPanel: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-[11px] font-bold text-slate-600 block mb-1">خط النصوص والفقرات</label>
+          <label className="text-[11px] font-bold text-slate-600 block mb-1">
+            خط النصوص والفقرات
+          </label>
           <select
             value={theme?.typography?.fontBody || 'Cairo, sans-serif'}
             onChange={(e) => updateThemeToken('typography', 'fontBody', e.target.value)}
@@ -470,7 +485,7 @@ export const DesignSystemPanel: React.FC = () => {
                 backgroundColor: theme?.colors?.primary || '#1d4ed8',
                 borderRadius: theme?.radius?.lg || '16px',
                 fontFamily: theme?.typography?.fontHeading || 'Tajawal, sans-serif',
-                boxShadow: `0 4px 10px ${(theme?.colors?.primary || '#1d4ed8')}30`,
+                boxShadow: `0 4px 10px ${theme?.colors?.primary || '#1d4ed8'}30`,
               }}
               className="text-white text-xs font-bold px-3 py-1.5"
             >
@@ -487,7 +502,7 @@ export const DesignSystemPanel: React.FC = () => {
             </button>
             <span
               style={{
-                backgroundColor: `${(theme?.colors?.primary || '#1d4ed8')}18`,
+                backgroundColor: `${theme?.colors?.primary || '#1d4ed8'}18`,
                 color: theme?.colors?.primary || '#1d4ed8',
                 borderRadius: theme?.radius?.sm || '6px',
               }}
@@ -507,15 +522,23 @@ export const DesignSystemPanel: React.FC = () => {
             className="p-2.5 bg-white border text-xs text-slate-700 leading-relaxed shadow-2xs"
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-slate-900" style={{ fontFamily: theme?.typography?.fontHeading || 'Tajawal, sans-serif' }}>
+              <span
+                className="font-bold text-slate-900"
+                style={{ fontFamily: theme?.typography?.fontHeading || 'Tajawal, sans-serif' }}
+              >
                 معاينة الخط والسمة
               </span>
-              <span style={{ color: theme?.colors?.primary || '#1d4ed8' }} className="font-extrabold font-mono text-xs">
+              <span
+                style={{ color: theme?.colors?.primary || '#1d4ed8' }}
+                className="font-extrabold font-mono text-xs"
+              >
                 999 ج.م
               </span>
             </div>
             <p className="text-[11px] text-slate-500">
-              تطبيق خط ({(theme?.typography?.fontBody || 'Cairo, sans-serif').split(',')[0]}) والاستدارة ({theme?.radius?.lg || '16px'}) مع اللون ({theme?.colors?.primary || '#1d4ed8'}).
+              تطبيق خط ({(theme?.typography?.fontBody || 'Cairo, sans-serif').split(',')[0]})
+              والاستدارة ({theme?.radius?.lg || '16px'}) مع اللون (
+              {theme?.colors?.primary || '#1d4ed8'}).
             </p>
           </div>
         </div>

@@ -201,8 +201,8 @@ export function isAuthExpired(status: number, body: any, path: string): boolean 
   const message = String(body?.message || body?.error || '').toLowerCase();
 
   if (status === 401) {
-    if (code && EXPIRED_CODES.has(code)) return true;
-    return EXPIRED_MSG_RE.test(message) || !code;
+    if (code) return EXPIRED_CODES.has(code);
+    return EXPIRED_MSG_RE.test(message);
   }
 
   // status === 403

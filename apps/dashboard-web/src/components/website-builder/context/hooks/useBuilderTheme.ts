@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { DesignTokens, Website } from '../../types/builder';
-import { defaultDesignTokens, themePresets } from '../../data/defaultTheme';
+import { defaultDesignTokens, themePresets, normalizeThemeTokens } from '../../data/defaultTheme';
 
 export const useBuilderTheme = (
   website: Website,
@@ -8,10 +8,11 @@ export const useBuilderTheme = (
 ) => {
   const updateThemeToken = useCallback(
     (category: keyof DesignTokens, key: string, value: any) => {
+      const currentTheme = normalizeThemeTokens(website.theme);
       const updatedTheme: DesignTokens = {
-        ...website.theme,
+        ...currentTheme,
         [category]: {
-          ...(website.theme[category] as any),
+          ...((currentTheme[category] || {}) as any),
           [key]: value,
         },
       };
@@ -21,9 +22,10 @@ export const useBuilderTheme = (
       let hasModifiedComponents = false;
 
       if (category === 'colors') {
-        const primaryColor = key === 'primary' ? value : updatedTheme.colors.primary;
-        const secondaryColor = key === 'secondary' ? value : updatedTheme.colors.secondary;
-        const accentColor = key === 'accent' ? value : updatedTheme.colors.accent;
+        const primaryColor = key === 'primary' ? value : updatedTheme.colors?.primary || '#1d4ed8';
+        const secondaryColor =
+          key === 'secondary' ? value : updatedTheme.colors?.secondary || '#0f172a';
+        const accentColor = key === 'accent' ? value : updatedTheme.colors?.accent || '#06b6d4';
 
         Object.keys(updatedComponents).forEach((id) => {
           const comp = { ...updatedComponents[id] };

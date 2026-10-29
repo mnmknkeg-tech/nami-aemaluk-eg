@@ -39,18 +39,31 @@ function normalise(id: string): string {
  */
 export function hasExplicitConfig(shop?: ShopData | null): boolean {
   if (!shop) return false;
-  const mods =
-    (shop.builderConfig?.enabledModules ?? shop.layoutConfig?.enabledFeatures)
-      ? Object.keys(shop.layoutConfig?.enabledFeatures ?? {})
-      : (shop.enabledModules ?? []);
-  return Array.isArray(mods) && mods.length > 0;
+  if (Array.isArray(shop.enabledModules) && shop.enabledModules.length > 0) return true;
+  if (
+    Array.isArray(shop.builderConfig?.enabledModules) &&
+    shop.builderConfig.enabledModules.length > 0
+  )
+    return true;
+  if (
+    Array.isArray((shop.layoutConfig as any)?.enabledModules) &&
+    (shop.layoutConfig as any).enabledModules.length > 0
+  )
+    return true;
+  const features = shop.layoutConfig?.enabledFeatures;
+  if (features && typeof features === 'object' && Object.keys(features).length > 0) return true;
+  return false;
 }
 
 export function isModuleEnabled(shop: ShopData | null | undefined, moduleId: string): boolean {
-  if (!shop) return true; // unconfigured/loading → allow everything
-  if (!hasExplicitConfig(shop)) return true;
+  if (!shop) return false;
+  if (!hasExplicitConfig(shop)) return false;
 
   const norm = normalise(moduleId);
+  if (['dashboard', 'overview', 'settings', 'account', 'store'].includes(norm)) {
+    return true;
+  }
+
   const explicitMods: string[] = (
     shop.builderConfig?.enabledModules ??
     (shop.layoutConfig as any)?.enabledModules ??
@@ -61,8 +74,17 @@ export function isModuleEnabled(shop: ShopData | null | undefined, moduleId: str
   if (explicitMods.includes(norm)) return true;
 
   // Also check layoutConfig.enabledFeatures keys
-  const featureKeys = Object.keys(shop.layoutConfig?.enabledFeatures ?? {}).map(normalise);
-  return featureKeys.includes(norm);
+  const features = shop.layoutConfig?.enabledFeatures;
+  if (features && typeof features === 'object') {
+    for (const [key, val] of Object.entries(features)) {
+      if (normalise(key) === norm) {
+        if (Array.isArray(val)) return val.length > 0;
+        return Boolean(val);
+      }
+    }
+  }
+
+  return false;
 }
 
 /**

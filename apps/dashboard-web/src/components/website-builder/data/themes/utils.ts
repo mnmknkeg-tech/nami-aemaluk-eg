@@ -43,3 +43,40 @@ export const getMergedThemeTokens = (presetKey?: string): DesignTokens => {
 export const getThemePreset = (presetKey: string) => {
   return themePresets[presetKey] || themePresets.modernBlue;
 };
+
+/**
+ * Normalizes any theme object (partial, legacy with primaryColor, or undefined)
+ * into a guaranteed, fully populated DesignTokens object.
+ */
+export const normalizeThemeTokens = (theme?: any): DesignTokens => {
+  if (!theme || typeof theme !== 'object') return { ...defaultDesignTokens };
+
+  const legacyPrimary = theme.primaryColor;
+  const legacySecondary = theme.secondaryColor;
+  const legacyAccent = theme.accentColor;
+
+  return {
+    ...defaultDesignTokens,
+    ...theme,
+    colors: {
+      ...defaultDesignTokens.colors,
+      ...(legacyPrimary ? { primary: legacyPrimary } : {}),
+      ...(legacySecondary ? { secondary: legacySecondary } : {}),
+      ...(legacyAccent ? { accent: legacyAccent } : {}),
+      ...(theme.colors || {}),
+    },
+    typography: {
+      ...defaultDesignTokens.typography,
+      ...(theme.typography || {}),
+    },
+    radius: {
+      ...defaultDesignTokens.radius,
+      ...(theme.radius || {}),
+    },
+    shadows: {
+      ...defaultDesignTokens.shadows,
+      ...(theme.shadows || {}),
+    },
+    spacingUnit: theme.spacingUnit || defaultDesignTokens.spacingUnit,
+  };
+};

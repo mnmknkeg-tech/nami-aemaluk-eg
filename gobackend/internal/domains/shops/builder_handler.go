@@ -92,9 +92,9 @@ func (h *BuilderHandler) GetBuilderConfig(c *fiber.Ctx) error {
 		return errors.Unauthorized("unauthorized", "غير مصرح")
 	}
 
-	// Check if user has access to this shop
-	if actor.Role != "ADMIN" && actor.ShopID != req.ShopID {
-		return errors.Forbidden("access_denied", "لا تملك صلاحية الوصول لهذا المتجر")
+	// Check if user has access to this shop (resolves by DB owner when JWT shopID is absent)
+	if _, err := h.service.CheckActorShopAccess(c.UserContext(), actor, req.ShopID); err != nil {
+		return err
 	}
 
 	config, err := h.service.GetBuilderConfig(c.UserContext(), req.ShopID)
@@ -125,9 +125,9 @@ func (h *BuilderHandler) UpdateBuilderConfig(c *fiber.Ctx) error {
 		return errors.Unauthorized("unauthorized", "غير مصرح")
 	}
 
-	// Check if user has access to this shop
-	if actor.Role != "ADMIN" && actor.ShopID != req.ShopID {
-		return errors.Forbidden("access_denied", "لا تملك صلاحية الوصول لهذا المتجر")
+	// Check if user has access to this shop (resolves by DB owner when JWT shopID is absent)
+	if _, err := h.service.CheckActorShopAccess(c.UserContext(), actor, req.ShopID); err != nil {
+		return err
 	}
 
 	// Delegate to versioned save with default visual mode and no concurrency check.
@@ -157,9 +157,9 @@ func (h *BuilderHandler) PublishBuilderConfig(c *fiber.Ctx) error {
 		return errors.Unauthorized("unauthorized", "غير مصرح")
 	}
 
-	// Check if user has access to this shop
-	if actor.Role != "ADMIN" && actor.ShopID != req.ShopID {
-		return errors.Forbidden("access_denied", "لا تملك صلاحية الوصول لهذا المتجر")
+	// Check if user has access to this shop (resolves by DB owner when JWT shopID is absent)
+	if _, err := h.service.CheckActorShopAccess(c.UserContext(), actor, req.ShopID); err != nil {
+		return err
 	}
 
 	if err := h.service.PublishBuilderConfig(c.UserContext(), req.ShopID); err != nil {
@@ -198,8 +198,9 @@ func (h *BuilderHandler) SaveDraftConfig(c *fiber.Ctx) error {
 	if !ok {
 		return errors.Unauthorized("unauthorized", "غير مصرح")
 	}
-	if actor.Role != "ADMIN" && actor.ShopID != req.ShopID {
-		return errors.Forbidden("access_denied", "لا تملك صلاحية الوصول لهذا المتجر")
+	// Check if user has access to this shop (resolves by DB owner when JWT shopID is absent)
+	if _, err := h.service.CheckActorShopAccess(c.UserContext(), actor, req.ShopID); err != nil {
+		return err
 	}
 
 	mode := EditingMode(strings.ToLower(strings.TrimSpace(req.Mode)))

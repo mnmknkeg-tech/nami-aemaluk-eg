@@ -230,11 +230,11 @@ func (s *BuilderService) SaveDraftVersion(
 	checksum := configChecksum(configJSON)
 	var currentVersion int64
 	err = s.repo.pool.QueryRow(ctx,
-		`SELECT COALESCE((
-			SELECT version_number FROM builder_versions
-			WHERE shop_id = $1 AND version_kind = 'draft'
-			ORDER BY version_number DESC LIMIT 1
-		), 0)`, shopID).Scan(&currentVersion)
+		// Use MAX across all version_kinds: draft + published share the same
+		// UNIQUE (shop_id, version_number) constraint, so we must compute a
+		// globally monotonic sequence to avoid unique-key collisions.
+		`SELECT COALESCE(MAX(version_number), 0) FROM builder_versions
+		 WHERE shop_id = $1`, shopID).Scan(&currentVersion)
 	if err != nil {
 		return nil, 0, "", err
 	}
@@ -286,11 +286,10 @@ func (s *BuilderService) PublishDraft(
 	}
 	var currentVersion int64
 	err = s.repo.pool.QueryRow(ctx,
-		`SELECT COALESCE((
-			SELECT version_number FROM builder_versions
-			WHERE shop_id = $1 AND version_kind = 'draft'
-			ORDER BY version_number DESC LIMIT 1
-		), 0)`, shopID).Scan(&currentVersion)
+		// Same global MAX so the published version number never collides with
+		// a previously written draft row.
+		`SELECT COALESCE(MAX(version_number), 0) FROM builder_versions
+		 WHERE shop_id = $1`, shopID).Scan(&currentVersion)
 	if err != nil {
 		return nil, err
 	}

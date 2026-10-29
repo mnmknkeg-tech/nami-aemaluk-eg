@@ -19,12 +19,7 @@ import React, {
   useMemo,
   useRef,
 } from 'react';
-import {
-  Tenant,
-  Website,
-  ViewportBreakpoint,
-  WebsiteSettings,
-} from '../types/builder';
+import { Tenant, Website, ViewportBreakpoint, WebsiteSettings } from '../types/builder';
 import { AssetDto } from '../types/dto';
 import { EditingModeId } from './types';
 import { mockTenants, mockAssets } from '../data/mockTenants';
@@ -42,7 +37,8 @@ import { useBuilderPublishing } from './hooks/useBuilderPublishing';
 import { useBuilderAI } from './hooks/useBuilderAI';
 
 // Utilities
-import { getInitialBuilderState } from './builderUtils';
+import { getInitialBuilderState, normalizeWebsite } from './builderUtils';
+import { defaultDesignTokens } from '../data/defaultTheme';
 
 // Types
 import { BuilderContextType } from './types';
@@ -91,7 +87,9 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   // optimistic-concurrency (sent as clientVersion; server rejects stale saves).
   const [editingMode, setEditingMode] = useState<EditingModeId>('visual');
   const editingModeRef = useRef<EditingModeId>(editingMode);
-  useEffect(() => { editingModeRef.current = editingMode; }, [editingMode]);
+  useEffect(() => {
+    editingModeRef.current = editingMode;
+  }, [editingMode]);
   const draftVersionRef = useRef<number>(0);
 
   // ── Core website state ───────────────────────────────────────────────────
@@ -103,15 +101,21 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
 
   // Stable refs for closures inside async hooks (avoid stale captures)
   const websiteRef = useRef(website);
-  useEffect(() => { websiteRef.current = website; }, [website]);
+  useEffect(() => {
+    websiteRef.current = website;
+  }, [website]);
 
   const [builderShopId, setBuilderShopId] = useState('');
   const [builderShopSlug, setBuilderShopSlug] = useState('');
   const [builderShopName, setBuilderShopName] = useState('');
   const builderShopIdRef = useRef(builderShopId);
   const builderShopSlugRef = useRef(builderShopSlug);
-  useEffect(() => { builderShopIdRef.current = builderShopId; }, [builderShopId]);
-  useEffect(() => { builderShopSlugRef.current = builderShopSlug; }, [builderShopSlug]);
+  useEffect(() => {
+    builderShopIdRef.current = builderShopId;
+  }, [builderShopId]);
+  useEffect(() => {
+    builderShopSlugRef.current = builderShopSlug;
+  }, [builderShopSlug]);
 
   // Assets
   const [assets, setAssets] = useState<AssetDto[]>(mockAssets);
@@ -287,44 +291,64 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             shop?.layoutConfig?.selectedWebsitePreset;
 
           if (chosenTemplate) {
-            try { localStorage.removeItem('ray_builder_selected_template'); } catch {}
+            try {
+              localStorage.removeItem('ray_builder_selected_template');
+            } catch {}
 
             if (chosenTemplate === 'blank') {
-              setWebsite({
-                id: `site_blank_${shopId || 'custom'}`,
-                tenantId: shopId || 'custom',
-                name: shop?.name || 'موقعي الجديد',
-                domain: `${shop?.slug || 'shop'}.saassite.com`,
-                subdomain: shop?.slug || 'shop',
-                activity: (shop?.category || 'RETAIL') as any,
-                language: 'ar',
-                defaultDirection: 'rtl',
-                theme: {
-                  primaryColor: '#00E5FF',
-                  secondaryColor: '#1E293B',
-                  accentColor: '#3B82F6',
-                  fontFamily: 'Cairo, sans-serif',
-                  direction: 'rtl',
-                } as any,
-                currentDraftVersion: 1,
-                pages: [{
-                  id: 'page_home',
-                  name: 'الرئيسية',
-                  slug: '',
-                  rootNodeId: 'comp_blank_hero',
-                  metadata: { title: shop?.name || 'الرئيسية', description: 'الصفحة الرئيسية', slug: '', isHomePage: true },
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                }],
-                components: {
-                  comp_blank_hero: {
-                    id: 'comp_blank_hero', name: 'بداية الموقع', type: 'hero', category: 'section',
-                    parentId: null, childrenIds: [],
-                    props: { title: shop?.name || 'مرحباً بكم في متجرنا', subtitle: 'ابدأ بإضافة الأقسام والمنتجات من القائمة الجانبية', badge: 'قالب فارغ', align: 'center' },
-                    styles: { desktop: { padding: 'py-20 px-6', backgroundColor: '#FFFFFF', textColor: '#0F172A' } },
+              setWebsite(
+                normalizeWebsite({
+                  id: `site_blank_${shopId || 'custom'}`,
+                  tenantId: shopId || 'custom',
+                  name: shop?.name || 'موقعي الجديد',
+                  domain: `${shop?.slug || 'shop'}.saassite.com`,
+                  subdomain: shop?.slug || 'shop',
+                  activity: (shop?.category || 'RETAIL') as any,
+                  language: 'ar',
+                  defaultDirection: 'rtl',
+                  theme: defaultDesignTokens,
+                  currentDraftVersion: 1,
+                  pages: [
+                    {
+                      id: 'page_home',
+                      name: 'الرئيسية',
+                      slug: '',
+                      rootNodeId: 'comp_blank_hero',
+                      metadata: {
+                        title: shop?.name || 'الرئيسية',
+                        description: 'الصفحة الرئيسية',
+                        slug: '',
+                        isHomePage: true,
+                      },
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
+                    },
+                  ],
+                  components: {
+                    comp_blank_hero: {
+                      id: 'comp_blank_hero',
+                      name: 'بداية الموقع',
+                      type: 'hero',
+                      category: 'section',
+                      parentId: null,
+                      childrenIds: [],
+                      props: {
+                        title: shop?.name || 'مرحباً بكم في متجرنا',
+                        subtitle: 'ابدأ بإضافة الأقسام والمنتجات من القائمة الجانبية',
+                        badge: 'قالب فارغ',
+                        align: 'center',
+                      },
+                      styles: {
+                        desktop: {
+                          padding: 'py-20 px-6',
+                          backgroundColor: '#FFFFFF',
+                          textColor: '#0F172A',
+                        },
+                      },
+                    },
                   },
-                },
-              });
+                })
+              );
               setActivePageId('page_home');
               return;
             }
@@ -332,8 +356,18 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             const { getMergedThemeTokens } = await import('../data/defaultTheme');
             const target = allActivityWebsites[chosenTemplate] || sampleWebsites[chosenTemplate];
             if (target) {
-              const selectedTheme = chosenPreset ? getMergedThemeTokens(chosenPreset) : target.theme;
-              setWebsite({ ...target, id: `site_${shopId || 'custom'}`, name: shop?.name || target.name, subdomain: shop?.slug || target.subdomain, theme: selectedTheme as any });
+              const selectedTheme = chosenPreset
+                ? getMergedThemeTokens(chosenPreset)
+                : target.theme;
+              setWebsite(
+                normalizeWebsite({
+                  ...target,
+                  id: `site_${shopId || 'custom'}`,
+                  name: shop?.name || target.name,
+                  subdomain: shop?.slug || target.subdomain,
+                  theme: selectedTheme as any,
+                })
+              );
               setActiveTemplateId(chosenTemplate);
               setActivePageId(target.pages[0]?.id || 'page_home');
               return;
@@ -342,14 +376,14 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         }
 
         if (shop.builderConfig?.website?.pages?.length && shop.builderConfig?.website?.components) {
-          setWebsite(shop.builderConfig.website as Website);
+          setWebsite(normalizeWebsite(shop.builderConfig.website as Website));
           setActivePageId(shop.builderConfig.website.pages[0]?.id || 'page_home');
           return;
         }
 
         const config = await apiRequest(`/builder/${shopId}/config`).catch(() => null);
         if (!cancelled && config?.website?.pages?.length && config?.website?.components) {
-          setWebsite(config.website as Website);
+          setWebsite(normalizeWebsite(config.website as Website));
           setActivePageId(config.website.pages[0]?.id || 'page_home');
         }
       } catch {
@@ -359,68 +393,90 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             if (!key || !key.startsWith('ray_builder_site_')) continue;
             try {
               const parsed = JSON.parse(localStorage.getItem(key) || '');
-              if (parsed?.pages?.length && parsed?.components) { setWebsite(parsed); break; }
+              if (parsed?.pages?.length && parsed?.components) {
+                setWebsite(normalizeWebsite(parsed));
+                break;
+              }
             } catch {}
           }
         }
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // ── Website utility helpers ───────────────────────────────────────────────
 
-  const updateWebsiteSettings = useCallback((settingsPatch: Partial<WebsiteSettings>) => {
-    setWebsite((prev) => {
-      const current = prev.settings || {};
-      return {
-        ...prev,
-        settings: {
-          ...current,
-          ...settingsPatch,
-          auth: settingsPatch.auth ? { ...current.auth, ...settingsPatch.auth } : current.auth,
-          announcement: settingsPatch.announcement ? { ...current.announcement, ...settingsPatch.announcement } : current.announcement,
-          floatingActions: settingsPatch.floatingActions ? { ...current.floatingActions, ...settingsPatch.floatingActions } : current.floatingActions,
-          seo: settingsPatch.seo ? { ...current.seo, ...settingsPatch.seo } : current.seo,
-          branding: settingsPatch.branding ? { ...current.branding, ...settingsPatch.branding } : current.branding,
-        } as WebsiteSettings,
-      };
-    });
-    setAutosaveStatus('unsaved');
-  }, [setAutosaveStatus]);
+  const updateWebsiteSettings = useCallback(
+    (settingsPatch: Partial<WebsiteSettings>) => {
+      setWebsite((prev) => {
+        const current = prev.settings || {};
+        return {
+          ...prev,
+          settings: {
+            ...current,
+            ...settingsPatch,
+            auth: settingsPatch.auth ? { ...current.auth, ...settingsPatch.auth } : current.auth,
+            announcement: settingsPatch.announcement
+              ? { ...current.announcement, ...settingsPatch.announcement }
+              : current.announcement,
+            floatingActions: settingsPatch.floatingActions
+              ? { ...current.floatingActions, ...settingsPatch.floatingActions }
+              : current.floatingActions,
+            seo: settingsPatch.seo ? { ...current.seo, ...settingsPatch.seo } : current.seo,
+            branding: settingsPatch.branding
+              ? { ...current.branding, ...settingsPatch.branding }
+              : current.branding,
+          } as WebsiteSettings,
+        };
+      });
+      setAutosaveStatus('unsaved');
+    },
+    [setAutosaveStatus]
+  );
 
   // Switchers (full template / tenant replacement)
-  const switchWebsite = useCallback((websiteId: string) => {
-    const target = allActivityWebsites[websiteId] || sampleWebsites[websiteId];
-    if (!target) return;
-    setWebsite(target);
-    setActiveTemplateId(websiteId);
-    const firstPage = target.pages[0];
-    setActivePageId(firstPage ? firstPage.id : 'page_home');
-    componentOps.setSelectedNodeId(firstPage ? firstPage.rootNodeId : 'comp_hero');
-    componentOps.setHoveredNode(null);
-    const found = mockTenants.find((t) => t.id === target.tenantId || t.businessActivity === target.activity);
-    if (found) setCurrentTenant(found);
-    resetHistory(`تم تبديل القالب بالكامل إلى نشاط (${target.name})`);
-  }, [componentOps, resetHistory]);
-
-  const switchTenant = useCallback((tenantId: string) => {
-    const found = mockTenants.find((t) => t.id === tenantId);
-    if (!found) return;
-    setCurrentTenant(found);
-    const entry = Object.entries(allActivityWebsites).find(
-      ([, site]) => site.tenantId === tenantId || site.activity === found.businessActivity
-    );
-    if (entry) {
-      const [id, site] = entry;
-      setWebsite(site);
-      setActiveTemplateId(id);
-      const firstPage = site.pages[0];
+  const switchWebsite = useCallback(
+    (websiteId: string) => {
+      const target = allActivityWebsites[websiteId] || sampleWebsites[websiteId];
+      if (!target) return;
+      setWebsite(normalizeWebsite(target));
+      setActiveTemplateId(websiteId);
+      const firstPage = target.pages[0];
       setActivePageId(firstPage ? firstPage.id : 'page_home');
       componentOps.setSelectedNodeId(firstPage ? firstPage.rootNodeId : 'comp_hero');
-      resetHistory(`تم تبديل القالب والمستأجر إلى (${site.name})`);
-    }
-  }, [componentOps, resetHistory]);
+      componentOps.setHoveredNode(null);
+      const found = mockTenants.find(
+        (t) => t.id === target.tenantId || t.businessActivity === target.activity
+      );
+      if (found) setCurrentTenant(found);
+      resetHistory(`تم تبديل القالب بالكامل إلى نشاط (${target.name})`);
+    },
+    [componentOps, resetHistory]
+  );
+
+  const switchTenant = useCallback(
+    (tenantId: string) => {
+      const found = mockTenants.find((t) => t.id === tenantId);
+      if (!found) return;
+      setCurrentTenant(found);
+      const entry = Object.entries(allActivityWebsites).find(
+        ([, site]) => site.tenantId === tenantId || site.activity === found.businessActivity
+      );
+      if (entry) {
+        const [id, site] = entry;
+        setWebsite(normalizeWebsite(site));
+        setActiveTemplateId(id);
+        const firstPage = site.pages[0];
+        setActivePageId(firstPage ? firstPage.id : 'page_home');
+        componentOps.setSelectedNodeId(firstPage ? firstPage.rootNodeId : 'comp_hero');
+        resetHistory(`تم تبديل القالب والمستأجر إلى (${site.name})`);
+      }
+    },
+    [componentOps, resetHistory]
+  );
 
   const uploadMockAsset = useCallback(
     (file: File) => {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/errors"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/middleware"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
@@ -23,6 +24,34 @@ func NewBuilderService(repo *Repository, log *zap.Logger) *BuilderService {
 		repo:   repo,
 		logger: log,
 	}
+}
+
+// CheckActorShopAccess returns the resolved shopID that the actor has access to,
+// or an error if the actor has no right to the requested shop.
+//
+// Resolution order for non-admins:
+//  1. If actor.ShopID matches requested shopID → allowed.
+//  2. If actor.ShopID is empty (JWT was issued before the shop was linked),
+//     resolve the actor's shop by owner ID. If it matches → allowed.
+//  3. Otherwise → Forbidden.
+func (s *BuilderService) CheckActorShopAccess(ctx context.Context, actor middleware.AuthUser, requestedShopID string) (string, error) {
+	if actor.Role == "ADMIN" {
+		return requestedShopID, nil
+	}
+	if actor.ShopID != "" && actor.ShopID == requestedShopID {
+		return requestedShopID, nil
+	}
+	// JWT may not carry the shopID yet — check DB ownership.
+	if s.repo != nil && actor.ID != "" {
+		shop, err := s.repo.FindByOwnerID(ctx, actor.ID)
+		if err != nil {
+			return "", err
+		}
+		if shop != nil && shop.ID == requestedShopID {
+			return requestedShopID, nil
+		}
+	}
+	return "", errors.Forbidden("access_denied", "لا تملك صلاحية الوصول لهذا المتجر")
 }
 
 // GetBuilderConfig retrieves the builder configuration for a shop.
@@ -239,15 +268,18 @@ func (s *BuilderService) GetPublicWebsiteBySlug(ctx context.Context, slug string
 
 	err := s.repo.pool.QueryRow(ctx, `
 		SELECT id, name, logo_url, phone, address,
-		       COALESCE(builder_published_config, builder_config) AS public_config,
+		       builder_published_config,
 		       builder_published_at
 		FROM shops
-		WHERE slug = $1 AND status = 'APPROVED'
+		WHERE slug = $1
+		  AND status = 'APPROVED'
+		  AND builder_published_config IS NOT NULL
+		  AND builder_published_at IS NOT NULL
 	`, slug).Scan(&shopID, &shopName, &logoURL, &phone, &address, &configJSON, &publishedAt)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, errors.NotFound("shop_not_found", "المتجر غير موجود")
+			return nil, errors.NotFound("shop_not_found", "المتجر غير موجود أو لم يتم نشره بعد")
 		}
 		s.logger.Error("Failed to get public website", zap.Error(err), zap.String("slug", slug))
 		return nil, err

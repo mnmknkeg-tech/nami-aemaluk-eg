@@ -11,6 +11,8 @@ module.exports = {
     '^@ray-eg/shared/(.*)$': '<rootDir>/packages/shared/src/$1',
     // Marketplace lib helpers under test (security regression tests).
     '^@marketplace-lib/(.*)$': '<rootDir>/apps/marketplace-next/src/lib/$1',
+    // Dashboard web alias mapping
+    '^@/(.*)$': '<rootDir>/apps/dashboard-web/src/$1',
   },
   collectCoverageFrom: [
     'packages/shared/src/lib/**/*.ts',

@@ -13,12 +13,15 @@ import {
 } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
 import { StyleProperties, ViewportBreakpoint } from '../../types/builder';
+import { normalizeThemeTokens } from '../../data/defaultTheme';
 
 export const LayoutSection: React.FC = () => {
   const { selectedNode, updateNodeStyle, viewport } = useBuilder();
   if (!selectedNode) return null;
 
-  const currentStyles = (selectedNode.styles[viewport] || selectedNode.styles.desktop || {}) as StyleProperties;
+  const currentStyles = (selectedNode.styles[viewport] ||
+    selectedNode.styles.desktop ||
+    {}) as StyleProperties;
 
   const handleStyleChange = (key: keyof StyleProperties, val: any) => {
     updateNodeStyle(selectedNode.id, { [key]: val }, viewport);
@@ -39,7 +42,9 @@ export const LayoutSection: React.FC = () => {
       {/* Display & Direction */}
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div>
-          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">نوع العرض (Display)</label>
+          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+            نوع العرض (Display)
+          </label>
           <select
             value={currentStyles.display || 'block'}
             onChange={(e) => handleStyleChange('display', e.target.value)}
@@ -54,7 +59,9 @@ export const LayoutSection: React.FC = () => {
 
         {currentStyles.display === 'flex' && (
           <div>
-            <label className="text-[10px] text-slate-500 block mb-1 font-semibold">الاتجاه (Direction)</label>
+            <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+              الاتجاه (Direction)
+            </label>
             <select
               value={currentStyles.flexDirection || 'row'}
               onChange={(e) => handleStyleChange('flexDirection', e.target.value)}
@@ -72,7 +79,9 @@ export const LayoutSection: React.FC = () => {
       {currentStyles.display === 'flex' && (
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div>
-            <label className="text-[10px] text-slate-500 block mb-1 font-semibold">المحاذاة (Align)</label>
+            <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+              المحاذاة (Align)
+            </label>
             <select
               value={currentStyles.alignItems || 'stretch'}
               onChange={(e) => handleStyleChange('alignItems', e.target.value)}
@@ -85,7 +94,9 @@ export const LayoutSection: React.FC = () => {
             </select>
           </div>
           <div>
-            <label className="text-[10px] text-slate-500 block mb-1 font-semibold">التوزيع (Justify)</label>
+            <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+              التوزيع (Justify)
+            </label>
             <select
               value={currentStyles.justifyContent || 'flex-start'}
               onChange={(e) => handleStyleChange('justifyContent', e.target.value)}
@@ -152,7 +163,9 @@ export const LayoutSection: React.FC = () => {
       {/* Dimensions: Width, Height, Gap */}
       <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-xs">
         <div>
-          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">العرض (Width)</label>
+          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+            العرض (Width)
+          </label>
           <input
             type="text"
             value={currentStyles.width || ''}
@@ -162,7 +175,9 @@ export const LayoutSection: React.FC = () => {
           />
         </div>
         <div>
-          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">الارتفاع (Height)</label>
+          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+            الارتفاع (Height)
+          </label>
           <input
             type="text"
             value={currentStyles.height || ''}
@@ -172,7 +187,9 @@ export const LayoutSection: React.FC = () => {
           />
         </div>
         <div>
-          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">الفراغ (Gap)</label>
+          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+            الفراغ (Gap)
+          </label>
           <input
             type="text"
             value={currentStyles.gap || ''}
@@ -190,7 +207,9 @@ export const TypographySection: React.FC = () => {
   const { selectedNode, updateNodeStyle, viewport } = useBuilder();
   if (!selectedNode) return null;
 
-  const currentStyles = (selectedNode.styles[viewport] || selectedNode.styles.desktop || {}) as StyleProperties;
+  const currentStyles = (selectedNode.styles[viewport] ||
+    selectedNode.styles.desktop ||
+    {}) as StyleProperties;
 
   const handleStyleChange = (key: keyof StyleProperties, val: any) => {
     updateNodeStyle(selectedNode.id, { [key]: val }, viewport);
@@ -206,7 +225,9 @@ export const TypographySection: React.FC = () => {
       {/* Font Size & Weight */}
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div>
-          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">الحجم (Size)</label>
+          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+            الحجم (Size)
+          </label>
           <input
             type="text"
             value={currentStyles.fontSize || ''}
@@ -216,7 +237,9 @@ export const TypographySection: React.FC = () => {
           />
         </div>
         <div>
-          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">الوزن (Weight)</label>
+          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+            الوزن (Weight)
+          </label>
           <select
             value={currentStyles.fontWeight || '400'}
             onChange={(e) => handleStyleChange('fontWeight', e.target.value)}
@@ -235,7 +258,9 @@ export const TypographySection: React.FC = () => {
       {/* Text Color & Alignment */}
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div>
-          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">لون النص (Color)</label>
+          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+            لون النص (Color)
+          </label>
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded p-1">
             <input
               type="color"
@@ -243,11 +268,15 @@ export const TypographySection: React.FC = () => {
               onChange={(e) => handleStyleChange('textColor', e.target.value)}
               className="w-5 h-5 rounded cursor-pointer border-0 p-0"
             />
-            <span className="text-[10px] font-mono text-slate-600">{currentStyles.textColor || '#0f172a'}</span>
+            <span className="text-[10px] font-mono text-slate-600">
+              {currentStyles.textColor || '#0f172a'}
+            </span>
           </div>
         </div>
         <div>
-          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">المحاذاة (Align)</label>
+          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+            المحاذاة (Align)
+          </label>
           <select
             value={currentStyles.textAlign || 'right'}
             onChange={(e) => handleStyleChange('textAlign', e.target.value)}
@@ -264,10 +293,13 @@ export const TypographySection: React.FC = () => {
 };
 
 export const ColorBackgroundSection: React.FC = () => {
-  const { selectedNode, updateNodeStyle, viewport, theme } = useBuilder();
+  const { selectedNode, updateNodeStyle, viewport, theme: rawTheme } = useBuilder();
+  const theme = normalizeThemeTokens(rawTheme);
   if (!selectedNode) return null;
 
-  const currentStyles = (selectedNode.styles[viewport] || selectedNode.styles.desktop || {}) as StyleProperties;
+  const currentStyles = (selectedNode.styles[viewport] ||
+    selectedNode.styles.desktop ||
+    {}) as StyleProperties;
 
   const handleStyleChange = (key: keyof StyleProperties, val: any) => {
     updateNodeStyle(selectedNode.id, { [key]: val }, viewport);
@@ -285,11 +317,17 @@ export const ColorBackgroundSection: React.FC = () => {
         <div className="flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-200">
           <div>
             <span className="text-xs font-bold text-slate-800 block">لون الخلفية</span>
-            <span className="text-[10px] text-slate-400 font-mono">{currentStyles.backgroundColor || 'شفاف'}</span>
+            <span className="text-[10px] text-slate-400 font-mono">
+              {currentStyles.backgroundColor || 'شفاف'}
+            </span>
           </div>
           <input
             type="color"
-            value={currentStyles.backgroundColor?.startsWith('#') ? currentStyles.backgroundColor : '#ffffff'}
+            value={
+              currentStyles.backgroundColor?.startsWith('#')
+                ? currentStyles.backgroundColor
+                : '#ffffff'
+            }
             onChange={(e) => handleStyleChange('backgroundColor', e.target.value)}
             className="w-7 h-7 rounded-lg cursor-pointer border-0 p-0"
           />
@@ -333,7 +371,9 @@ export const ColorBackgroundSection: React.FC = () => {
       {/* Border Radius & Width */}
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div>
-          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">استدارة الحواف (Radius)</label>
+          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+            استدارة الحواف (Radius)
+          </label>
           <input
             type="text"
             value={currentStyles.borderRadius || ''}
@@ -343,7 +383,9 @@ export const ColorBackgroundSection: React.FC = () => {
           />
         </div>
         <div>
-          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">سمك الإطار (Border)</label>
+          <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+            سمك الإطار (Border)
+          </label>
           <input
             type="text"
             value={currentStyles.borderWidth || ''}
@@ -374,18 +416,24 @@ export const ColorBackgroundSection: React.FC = () => {
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded p-1">
             <input
               type="color"
-              value={currentStyles.borderColor?.startsWith('#') ? currentStyles.borderColor : '#e2e8f0'}
+              value={
+                currentStyles.borderColor?.startsWith('#') ? currentStyles.borderColor : '#e2e8f0'
+              }
               onChange={(e) => handleStyleChange('borderColor', e.target.value)}
               className="w-5 h-5 rounded cursor-pointer border-0 p-0"
             />
-            <span className="text-[10px] font-mono text-slate-600 truncate">{currentStyles.borderColor || '#e2e8f0'}</span>
+            <span className="text-[10px] font-mono text-slate-600 truncate">
+              {currentStyles.borderColor || '#e2e8f0'}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Box Shadow Presets */}
       <div>
-        <label className="text-[10px] text-slate-500 block mb-1 font-semibold">الظلال والارتفاع (Box Shadow)</label>
+        <label className="text-[10px] text-slate-500 block mb-1 font-semibold">
+          الظلال والارتفاع (Box Shadow)
+        </label>
         <select
           value={currentStyles.boxShadow || 'none'}
           onChange={(e) => handleStyleChange('boxShadow', e.target.value)}
@@ -393,9 +441,15 @@ export const ColorBackgroundSection: React.FC = () => {
         >
           <option value="none">بدون ظل (None)</option>
           <option value="0 1px 2px 0 rgb(0 0 0 / 0.05)">خفيف جداً (Subtle)</option>
-          <option value="0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)">متوسط (Medium)</option>
-          <option value="0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)">بارز (Elevated Card)</option>
-          <option value="0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)">عائم (Floating)</option>
+          <option value="0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)">
+            متوسط (Medium)
+          </option>
+          <option value="0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)">
+            بارز (Elevated Card)
+          </option>
+          <option value="0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)">
+            عائم (Floating)
+          </option>
         </select>
       </div>
     </div>
@@ -423,7 +477,9 @@ export const PropsInspector: React.FC = () => {
       {/* Heading / Paragraph Text */}
       {selectedNode.props.text !== undefined && (
         <div>
-          <label className="text-[10px] font-bold text-slate-600 block mb-1">نص المحتوى (Text Content)</label>
+          <label className="text-[10px] font-bold text-slate-600 block mb-1">
+            نص المحتوى (Text Content)
+          </label>
           <textarea
             rows={3}
             value={selectedNode.props.text}
@@ -436,7 +492,9 @@ export const PropsInspector: React.FC = () => {
       {/* Title */}
       {selectedNode.props.title !== undefined && (
         <div>
-          <label className="text-[10px] font-bold text-slate-600 block mb-1">العنوان الرئيسي (Title)</label>
+          <label className="text-[10px] font-bold text-slate-600 block mb-1">
+            العنوان الرئيسي (Title)
+          </label>
           <input
             type="text"
             value={selectedNode.props.title}
@@ -449,7 +507,9 @@ export const PropsInspector: React.FC = () => {
       {/* Subtitle / Description */}
       {selectedNode.props.subtitle !== undefined && (
         <div>
-          <label className="text-[10px] font-bold text-slate-600 block mb-1">العنوان الفرعي (Subtitle)</label>
+          <label className="text-[10px] font-bold text-slate-600 block mb-1">
+            العنوان الفرعي (Subtitle)
+          </label>
           <textarea
             rows={2}
             value={selectedNode.props.subtitle}
@@ -460,9 +520,13 @@ export const PropsInspector: React.FC = () => {
       )}
 
       {/* Link / URL / Action Target (For Buttons, Links, and Cards) */}
-      {(selectedNode.type === 'button' || selectedNode.props.href !== undefined || selectedNode.props.url !== undefined) && (
+      {(selectedNode.type === 'button' ||
+        selectedNode.props.href !== undefined ||
+        selectedNode.props.url !== undefined) && (
         <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-          <label className="text-[10px] font-bold text-slate-700 block">رابط التوجيه (Link URL / Action)</label>
+          <label className="text-[10px] font-bold text-slate-700 block">
+            رابط التوجيه (Link URL / Action)
+          </label>
           <input
             type="text"
             value={selectedNode.props.href || selectedNode.props.url || ''}
@@ -479,7 +543,9 @@ export const PropsInspector: React.FC = () => {
       {/* Image Src */}
       {selectedNode.props.src !== undefined && (
         <div>
-          <label className="text-[10px] font-bold text-slate-600 block mb-1">رابط الصورة (Image URL)</label>
+          <label className="text-[10px] font-bold text-slate-600 block mb-1">
+            رابط الصورة (Image URL)
+          </label>
           <input
             type="text"
             value={selectedNode.props.src}

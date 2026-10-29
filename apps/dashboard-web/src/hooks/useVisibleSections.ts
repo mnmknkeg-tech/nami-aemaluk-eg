@@ -104,19 +104,46 @@ const SETTINGS_TAB_MODULES: Record<string, string> = {
  * TopNav header: strictly respects the modules and features chosen by the merchant.
  */
 export default function useVisibleSections() {
-  const [shop, setShop] = useState<Shop | null>(null);
+  const [shop, setShop] = useState<Shop | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('ray_merchant_shop_cache');
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return null;
+  });
+  const [isLoaded, setIsLoaded] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return Boolean(localStorage.getItem('ray_merchant_shop_cache'));
+    }
+    return false;
+  });
 
   useEffect(() => {
     const handleModulesChanged = (event: Event) => {
-      const detail = (event as CustomEvent<{ enabledFeatures?: Record<string, string[]> }>).detail;
-      if (detail?.enabledFeatures) {
-        setShop((current) => ({
-          ...(current || {}),
-          layoutConfig: {
-            ...(current?.layoutConfig || {}),
-            enabledFeatures: detail.enabledFeatures,
-          },
-        }));
+      const detail = (
+        event as CustomEvent<{
+          enabledFeatures?: Record<string, string[]>;
+          enabledModules?: string[];
+        }>
+      ).detail;
+      if (detail?.enabledFeatures || detail?.enabledModules) {
+        setShop((current) => {
+          const next = {
+            ...(current || {}),
+            enabledModules: detail.enabledModules ?? current?.enabledModules,
+            layoutConfig: {
+              ...(current?.layoutConfig || {}),
+              enabledFeatures: detail.enabledFeatures ?? current?.layoutConfig?.enabledFeatures,
+              enabledModules: detail.enabledModules ?? current?.layoutConfig?.enabledModules,
+            },
+          };
+          try {
+            localStorage.setItem('ray_merchant_shop_cache', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
       }
     };
     window.addEventListener('merchant-modules-changed', handleModulesChanged);
@@ -126,8 +153,12 @@ export default function useVisibleSections() {
         const shopData = await apiRequest('/shops/me');
         if (cancelled) return;
         setShop(shopData);
+        setIsLoaded(true);
+        try {
+          localStorage.setItem('ray_merchant_shop_cache', JSON.stringify(shopData));
+        } catch {}
       } catch {
-        if (!cancelled) setShop(null);
+        if (!cancelled) setIsLoaded(true);
       }
     })();
     return () => {
@@ -170,8 +201,8 @@ export default function useVisibleSections() {
           featureMap[norm] = new Set(v.map((f) => String(f).toLowerCase()));
         }
       }
-    } else if (!hasConfig) {
-      // New or unconfigured shop: use standard defaults
+    } else if (!hasConfig && isLoaded) {
+      // Only for genuinely unconfigured shops that have completed loading
       for (const [k, v] of Object.entries(DEFAULT_FEATURES)) {
         featureMap[k.toLowerCase()] = new Set(v.map((f) => String(f).toLowerCase()));
       }
@@ -182,7 +213,7 @@ export default function useVisibleSections() {
       enabledModulesSet: modSet,
       hasExplicitConfig: hasConfig,
     };
-  }, [shop]);
+  }, [shop, isLoaded]);
 
   const visibleSections: SidebarSection[] = useMemo(() => {
     const base = HIDE_UNPUBLISHED
@@ -194,6 +225,11 @@ export default function useVisibleSections() {
           }))
           .filter((section) => section.items.length > 0)
       : sidebarSections;
+
+    // While loading without any cache or explicit config, keep it minimal (core only)
+    if (!isLoaded && !hasExplicitConfig) {
+      return base.filter((s) => s.id === 'dashboard' || s.id === 'settings');
+    }
 
     return base
       .map((section) => {
@@ -264,7 +300,7 @@ export default function useVisibleSections() {
         return { ...section, items };
       })
       .filter((section): section is SidebarSection => Boolean(section));
-  }, [enabledFeatures, enabledModulesSet, hasExplicitConfig]);
+  }, [enabledFeatures, enabledModulesSet, hasExplicitConfig, isLoaded]);
 
   return visibleSections;
 }

@@ -78,6 +78,10 @@ func (s *Service) CreateShop(ctx context.Context, ownerID string, req CreateShop
 		}
 	}
 
+	if len(req.EnabledModules) > 0 {
+		layoutConfig["enabledModules"] = req.EnabledModules
+	}
+
 	// Build module config for builder_config
 	var builderConfig map[string]any
 	if len(req.EnabledModules) > 0 || len(req.Specialties) > 0 || req.ModuleFeatures != nil {
@@ -234,6 +238,17 @@ func (s *Service) ListByStatus(ctx context.Context, req AdminShopListRequest) ([
 func (s *Service) UpdateMyShop(ctx context.Context, actor middleware.AuthUser, shopID string, body map[string]any) (*Shop, error) {
 	if actor.Role != string(auth.RoleAdmin) {
 		shopID = actor.ShopID
+	}
+	// If actor.ShopID is empty (JWT issued before shop was linked to user),
+	// resolve the shop by the authenticated user's ID so no logout/login is needed.
+	if shopID == "" && actor.ID != "" {
+		shop, err := s.repo.FindByOwnerID(ctx, actor.ID)
+		if err != nil {
+			return nil, err
+		}
+		if shop != nil {
+			shopID = shop.ID
+		}
 	}
 	if shopID == "" {
 		return nil, errors.NotFound("shop", "user")

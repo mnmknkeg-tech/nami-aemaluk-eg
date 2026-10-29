@@ -42,8 +42,17 @@ export const DEFAULT_DESIGN_TOKENS: DesignTokens = {
 
 export function resolveTheme(theme?: Partial<DesignTokens> | null): DesignTokens {
   if (!theme || typeof theme !== 'object') return DEFAULT_DESIGN_TOKENS;
+  const legacyPrimary = (theme as any).primaryColor;
+  const legacySecondary = (theme as any).secondaryColor;
+  const legacyAccent = (theme as any).accentColor;
   return {
-    colors: { ...DEFAULT_DESIGN_TOKENS.colors, ...(theme.colors || {}) },
+    colors: {
+      ...DEFAULT_DESIGN_TOKENS.colors,
+      ...(legacyPrimary ? { primary: legacyPrimary } : {}),
+      ...(legacySecondary ? { secondary: legacySecondary } : {}),
+      ...(legacyAccent ? { accent: legacyAccent } : {}),
+      ...(theme.colors || {}),
+    },
     typography: { ...DEFAULT_DESIGN_TOKENS.typography, ...(theme.typography || {}) },
     radius: { ...DEFAULT_DESIGN_TOKENS.radius, ...(theme.radius || {}) },
     shadows: { ...DEFAULT_DESIGN_TOKENS.shadows, ...(theme.shadows || {}) },

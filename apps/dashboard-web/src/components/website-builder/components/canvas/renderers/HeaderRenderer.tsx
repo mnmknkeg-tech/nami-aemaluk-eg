@@ -44,13 +44,14 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
   const cartSettings = website.settings?.cart;
   const isCartEnabled = cartSettings?.enabled !== false;
   const cartBusinessType = cartSettings?.businessType || 'orders';
-  const cartIconType =
-    cartSettings?.iconType || (node.props.cartIcon as string) || 'ShoppingBag';
+  const cartIconType = cartSettings?.iconType || (node.props.cartIcon as string) || 'ShoppingBag';
   const showCartInHeader =
     isCartEnabled &&
     cartBusinessType === 'orders' &&
     cartSettings?.showCartIcon !== false &&
-    (cartSettings?.position === 'header' || cartSettings?.position === 'both' || !cartSettings?.position) &&
+    (cartSettings?.position === 'header' ||
+      cartSettings?.position === 'both' ||
+      !cartSettings?.position) &&
     !Boolean(node.props.hideCart || (website.theme as any)?.hideCart);
   const hideCart = !showCartInHeader;
 
@@ -393,8 +394,10 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
                         >
                           {(() => {
                             const raw = website.name || '⚡';
-                            const emojiMatch = raw.match(/^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u);
-                            return emojiMatch ? emojiMatch[1] : (raw[0] || '⚡');
+                            const emojiMatch = raw.match(
+                              /^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/u
+                            );
+                            return emojiMatch ? emojiMatch[1] : raw[0] || '⚡';
                           })()}
                         </div>
                       )}
@@ -418,63 +421,65 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
                     </span>
 
                     {/* Section scroll / page navigation links from nav_items bullet text */}
-                    {navSectionLinks.length > 0 ? (
-                      navSectionLinks.map(({ label, anchor }) => {
-                        const isPage = anchor.startsWith('page_') || website.pages.some((p) => p.id === anchor || p.slug === anchor);
-                        return (
-                          <button
-                            key={label}
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (isPage) {
-                                const target = website.pages.find((p) => p.id === anchor || p.slug === anchor);
-                                if (target) switchPage(target.id);
-                              } else {
-                                const clean = anchor.replace('#', '');
-                                const el =
-                                  document.getElementById(clean) ||
-                                  document.getElementById(`gen_${clean}`) ||
-                                  document.getElementById(`comp_${clean}`) ||
-                                  document.querySelector(`[id*="${clean}"]`);
-                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                              }
-                              setIsMobileMenuDrawerOpen(false);
-                            }}
-                            className="w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all text-right cursor-pointer text-slate-700 hover:bg-slate-100"
-                          >
-                            <span>{label}</span>
-                            <ArrowRight className="w-3.5 h-3.5 text-slate-400 rtl:rotate-180" />
-                          </button>
-                        );
-                      })
-                    ) : (
-                      /* Fallback to pages when no bullet nav found */
-                      website.pages.map((p) => {
-                        const isActive = p.id === activePage.id;
-                        return (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              switchPage(p.id);
-                              setIsMobileMenuDrawerOpen(false);
-                            }}
-                            className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all text-right cursor-pointer ${
-                              isActive
-                                ? 'bg-blue-600 text-white shadow-xs'
-                                : 'text-slate-700 hover:bg-slate-100'
-                            }`}
-                          >
-                            <span>{p.name}</span>
-                            <ArrowRight
-                              className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'} rtl:rotate-180`}
-                            />
-                          </button>
-                        );
-                      })
-                    )}
+                    {navSectionLinks.length > 0
+                      ? navSectionLinks.map(({ label, anchor }) => {
+                          const isPage =
+                            anchor.startsWith('page_') ||
+                            website.pages.some((p) => p.id === anchor || p.slug === anchor);
+                          return (
+                            <button
+                              key={label}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isPage) {
+                                  const target = website.pages.find(
+                                    (p) => p.id === anchor || p.slug === anchor
+                                  );
+                                  if (target) switchPage(target.id);
+                                } else {
+                                  const clean = anchor.replace('#', '');
+                                  const el =
+                                    document.getElementById(clean) ||
+                                    document.getElementById(`gen_${clean}`) ||
+                                    document.getElementById(`comp_${clean}`) ||
+                                    document.querySelector(`[id*="${clean}"]`);
+                                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }
+                                setIsMobileMenuDrawerOpen(false);
+                              }}
+                              className="w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all text-right cursor-pointer text-slate-700 hover:bg-slate-100"
+                            >
+                              <span>{label}</span>
+                              <ArrowRight className="w-3.5 h-3.5 text-slate-400 rtl:rotate-180" />
+                            </button>
+                          );
+                        })
+                      : /* Fallback to pages when no bullet nav found */
+                        website.pages.map((p) => {
+                          const isActive = p.id === activePage.id;
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                switchPage(p.id);
+                                setIsMobileMenuDrawerOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all text-right cursor-pointer ${
+                                isActive
+                                  ? 'bg-blue-600 text-white shadow-xs'
+                                  : 'text-slate-700 hover:bg-slate-100'
+                              }`}
+                            >
+                              <span>{p.name}</span>
+                              <ArrowRight
+                                className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'} rtl:rotate-180`}
+                              />
+                            </button>
+                          );
+                        })}
 
                     {/* Multi-page links (always shown if more than 1 page) */}
                     {navSectionLinks.length > 0 && website.pages.length > 1 && (
@@ -523,8 +528,13 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
                               (headerCtaComp.props.linkUrl as string) ||
                               (headerCtaComp.props.url as string) ||
                               '#contact';
-                            if (link.startsWith('page_') || website.pages.some((p) => p.id === link || p.slug === link)) {
-                              const targetP = website.pages.find((p) => p.id === link || p.slug === link);
+                            if (
+                              link.startsWith('page_') ||
+                              website.pages.some((p) => p.id === link || p.slug === link)
+                            ) {
+                              const targetP = website.pages.find(
+                                (p) => p.id === link || p.slug === link
+                              );
                               if (targetP) switchPage(targetP.id);
                             } else if (link.startsWith('#')) {
                               const clean = link.replace('#', '');
@@ -540,7 +550,7 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
                           }
                         }}
                         style={{
-                          backgroundColor: website.theme.colors.primary,
+                          backgroundColor: website.theme?.colors?.primary || '#1d4ed8',
                           color: '#ffffff',
                         }}
                         className="w-full py-2.5 px-4 rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all text-white"
@@ -569,7 +579,7 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
                         <div className="flex items-center gap-2">
                           <div
                             className="w-6 h-6 rounded-lg text-white flex items-center justify-center shadow-xs"
-                            style={{ backgroundColor: website.theme.colors.primary }}
+                            style={{ backgroundColor: website.theme?.colors?.primary || '#1d4ed8' }}
                           >
                             <User className="w-3.5 h-3.5" />
                           </div>
@@ -639,8 +649,8 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
                 {/* Drawer Footer Branding */}
                 <div className="pt-6 border-t border-slate-100 text-center">
                   <span className="text-[10px] font-semibold text-slate-400">
-                    صنع بكل فخر عبر{' '}
-                    <strong className="text-blue-600 font-bold">نمّي أعمالك</strong> ⚡
+                    صنع بكل فخر عبر <strong className="text-blue-600 font-bold">نمّي أعمالك</strong>{' '}
+                    ⚡
                   </span>
                 </div>
               </div>
@@ -655,80 +665,79 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
               (If any button exists inside header, cart+login are rendered inline in the flex container by BasicElementsRenderer) */}
           {(showCartInHeader || showLogin || showWhatsapp || showPhone) &&
             !hasInlineHeaderActions && (
-            <div className="absolute ltr:right-4 rtl:left-4 sm:ltr:right-6 sm:rtl:left-6 top-1/2 -translate-y-1/2 flex items-center gap-2 z-20 pointer-events-auto">
+              <div className="absolute ltr:right-4 rtl:left-4 sm:ltr:right-6 sm:rtl:left-6 top-1/2 -translate-y-1/2 flex items-center gap-2 z-20 pointer-events-auto">
+                {showWhatsapp && (
+                  <a
+                    href={`https://wa.me/${whatsappNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => isInteractivePreview && e.stopPropagation()}
+                    title="تواصل عبر واتساب"
+                    className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-all flex items-center gap-1.5 cursor-pointer text-xs font-bold"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span className="hidden xl:inline">واتساب</span>
+                  </a>
+                )}
 
-              {showWhatsapp && (
-                <a
-                  href={`https://wa.me/${whatsappNumber}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => isInteractivePreview && e.stopPropagation()}
-                  title="تواصل عبر واتساب"
-                  className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-all flex items-center gap-1.5 cursor-pointer text-xs font-bold"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span className="hidden xl:inline">واتساب</span>
-                </a>
-              )}
+                {showPhone && (
+                  <a
+                    href={`tel:${phoneNumber}`}
+                    onClick={(e) => isInteractivePreview && e.stopPropagation()}
+                    title="اتصال هاتفي"
+                    className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all flex items-center gap-1.5 cursor-pointer text-xs font-bold"
+                  >
+                    <Phone className="w-4 h-4" />
+                    <span className="hidden xl:inline">اتصال</span>
+                  </a>
+                )}
 
-              {showPhone && (
-                <a
-                  href={`tel:${phoneNumber}`}
-                  onClick={(e) => isInteractivePreview && e.stopPropagation()}
-                  title="اتصال هاتفي"
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all flex items-center gap-1.5 cursor-pointer text-xs font-bold"
-                >
-                  <Phone className="w-4 h-4" />
-                  <span className="hidden xl:inline">اتصال</span>
-                </a>
-              )}
+                {/* Cart Button on Desktop */}
+                {!hideCart && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      if (isInteractivePreview) {
+                        e.stopPropagation();
+                        setIsCartOpen(true);
+                      }
+                    }}
+                    title="سلة التسوق"
+                    className="relative p-2 rounded-xl bg-slate-100/90 hover:bg-slate-200 text-slate-800 transition-colors flex items-center justify-center cursor-pointer active:scale-95"
+                  >
+                    {cartIconType === 'ShoppingCart' ? (
+                      <ShoppingCart className="w-4 h-4 text-blue-600" />
+                    ) : cartIconType === 'Package' ? (
+                      <Package className="w-4 h-4 text-blue-600" />
+                    ) : cartIconType === 'Store' ? (
+                      <Store className="w-4 h-4 text-blue-600" />
+                    ) : cartIconType === 'CreditCard' ? (
+                      <CreditCard className="w-4 h-4 text-blue-600" />
+                    ) : (
+                      <ShoppingBag className="w-4 h-4 text-blue-600" />
+                    )}
+                    {cartCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-xs">
+                        {cartCount}
+                      </span>
+                    )}
+                  </button>
+                )}
 
-              {/* Cart Button on Desktop */}
-              {!hideCart && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    if (isInteractivePreview) {
-                      e.stopPropagation();
-                      setIsCartOpen(true);
-                    }
-                  }}
-                  title="سلة التسوق"
-                  className="relative p-2 rounded-xl bg-slate-100/90 hover:bg-slate-200 text-slate-800 transition-colors flex items-center justify-center cursor-pointer active:scale-95"
-                >
-                  {cartIconType === 'ShoppingCart' ? (
-                    <ShoppingCart className="w-4 h-4 text-blue-600" />
-                  ) : cartIconType === 'Package' ? (
-                    <Package className="w-4 h-4 text-blue-600" />
-                  ) : cartIconType === 'Store' ? (
-                    <Store className="w-4 h-4 text-blue-600" />
-                  ) : cartIconType === 'CreditCard' ? (
-                    <CreditCard className="w-4 h-4 text-blue-600" />
-                  ) : (
-                    <ShoppingBag className="w-4 h-4 text-blue-600" />
-                  )}
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-xs">
-                      {cartCount}
-                    </span>
-                  )}
-                </button>
-              )}
-
-              {/* Account / Login Button on Desktop */}
-              {showLogin && (
-                <button
-                  type="button"
-                  onClick={handleLoginClick}
-                  title="تسجيل الدخول / حسابي"
-                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer text-xs font-bold active:scale-95"
-                >
-                  <User className="w-4 h-4 text-slate-700" />
-                  {showLoginText && <span>{loginText}</span>}
-                </button>
-              )}
-            </div>
-          )}
+                {/* Account / Login Button on Desktop */}
+                {showLogin && (
+                  <button
+                    type="button"
+                    onClick={handleLoginClick}
+                    title="تسجيل الدخول / حسابي"
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer text-xs font-bold active:scale-95"
+                  >
+                    <User className="w-4 h-4 text-slate-700" />
+                    {showLoginText && <span>{loginText}</span>}
+                  </button>
+                )}
+              </div>
+            )}
         </div>
       )}
     </header>

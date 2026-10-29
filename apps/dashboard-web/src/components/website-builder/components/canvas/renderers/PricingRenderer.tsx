@@ -1,7 +1,15 @@
 import React from 'react';
 import { BaseRendererProps } from './types';
 import { CheckCircle } from 'lucide-react';
-import { sectionBadgeStyle, sectionHeaderWrapClass, sectionShellClass, sectionSubtitleClass, sectionTitleClass, responsiveGridClass, cardBaseStyle } from '@ray-eg/shared/builder';
+import {
+  sectionBadgeStyle,
+  sectionHeaderWrapClass,
+  sectionShellClass,
+  sectionSubtitleClass,
+  sectionTitleClass,
+  responsiveGridClass,
+  cardBaseStyle,
+} from '@ray-eg/shared/builder';
 
 export const PricingRenderer: React.FC<BaseRendererProps> = ({
   node,
@@ -42,14 +50,10 @@ export const PricingRenderer: React.FC<BaseRendererProps> = ({
               </span>
             )}
             {node.props.title && (
-              <h2 className={`${sectionTitleClass} text-slate-900`}>
-                {node.props.title}
-              </h2>
+              <h2 className={`${sectionTitleClass} text-slate-900`}>{node.props.title}</h2>
             )}
             {node.props.subtitle && (
-              <p className={`${sectionSubtitleClass} text-slate-600`}>
-                {node.props.subtitle}
-              </p>
+              <p className={`${sectionSubtitleClass} text-slate-600`}>{node.props.subtitle}</p>
             )}
           </div>
         )}
@@ -80,15 +84,13 @@ export const PricingRenderer: React.FC<BaseRendererProps> = ({
 
                     <div className="flex items-baseline gap-1 py-2">
                       <span
-                        style={{ color: website.theme.colors.primary }}
+                        style={{ color: website.theme?.colors?.primary || '#1d4ed8' }}
                         className="text-3xl font-black font-mono"
                       >
                         {tier.price}
                       </span>
                       {tier.period && (
-                        <span className="text-xs text-slate-500 font-medium">
-                          /{tier.period}
-                        </span>
+                        <span className="text-xs text-slate-500 font-medium">/{tier.period}</span>
                       )}
                     </div>
 
@@ -108,17 +110,14 @@ export const PricingRenderer: React.FC<BaseRendererProps> = ({
                     onClick={(e) => {
                       if (isInteractivePreview) {
                         e.stopPropagation();
-                        handleInteraction(
-                          e,
-                          '/contact',
-                          'page_contact',
-                          tier.ctaText || 'اشتراك'
-                        );
+                        handleInteraction(e, '/contact', 'page_contact', tier.ctaText || 'اشتراك');
                       }
                     }}
                     style={{
-                      backgroundColor: isPopular ? website.theme.colors.primary : '#0f172a',
-                      borderRadius: website.theme.radius.lg || '10px',
+                      backgroundColor: isPopular
+                        ? website.theme?.colors?.primary || '#1d4ed8'
+                        : '#0f172a',
+                      borderRadius: website.theme?.radius?.lg || '10px',
                     }}
                     className="w-full mt-6 py-3 text-white font-bold text-xs shadow-xs hover:opacity-90 active:scale-98 transition-all cursor-pointer text-center"
                   >

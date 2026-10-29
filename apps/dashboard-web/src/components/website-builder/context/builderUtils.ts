@@ -1,5 +1,9 @@
 import { ComponentNode, StyleProperties, Website } from '../types/builder';
-import { defaultDesignTokens, getMergedThemeTokens } from '../data/defaultTheme';
+import {
+  defaultDesignTokens,
+  getMergedThemeTokens,
+  normalizeThemeTokens,
+} from '../data/defaultTheme';
 import { allActivityWebsites } from '../data/allActivityTemplates';
 import { sampleWebsites } from '../data/initialWebsites';
 
@@ -123,6 +127,25 @@ export const BLANK_WEBSITE: Website = {
   },
 };
 
+export const normalizeWebsite = (site: Website): Website => {
+  if (!site || typeof site !== 'object') return BLANK_WEBSITE;
+  const pages =
+    Array.isArray(site.pages) && site.pages.length > 0 ? site.pages : BLANK_WEBSITE.pages;
+  const components =
+    site.components &&
+    typeof site.components === 'object' &&
+    Object.keys(site.components).length > 0
+      ? site.components
+      : BLANK_WEBSITE.components;
+  return {
+    ...BLANK_WEBSITE,
+    ...site,
+    pages,
+    components,
+    theme: normalizeThemeTokens(site.theme),
+  };
+};
+
 export const getInitialBuilderState = (): {
   website: Website;
   templateId: string;
@@ -138,12 +161,12 @@ export const getInitialBuilderState = (): {
         urlParams.get('preset') || localStorage.getItem('ray_builder_selected_preset');
 
       const applyPreset = (site: Website): Website => {
-        if (!savedPreset) return site;
+        if (!savedPreset) return normalizeWebsite(site);
         try {
           const mergedTokens = getMergedThemeTokens(savedPreset);
-          return { ...site, theme: mergedTokens as any };
+          return normalizeWebsite({ ...site, theme: mergedTokens as any });
         } catch {
-          return site;
+          return normalizeWebsite(site);
         }
       };
 
@@ -170,10 +193,11 @@ export const getInitialBuilderState = (): {
       if (lastActiveSiteStr) {
         const parsed = JSON.parse(lastActiveSiteStr);
         if (parsed?.components && parsed?.pages?.length) {
+          const site = normalizeWebsite(parsed);
           return {
-            website: parsed,
-            templateId: parsed.id || 'custom',
-            pageId: parsed.pages[0]?.id || 'page_home',
+            website: site,
+            templateId: site.id || 'custom',
+            pageId: site.pages[0]?.id || 'page_home',
           };
         }
       }
@@ -182,7 +206,7 @@ export const getInitialBuilderState = (): {
 
   // Neutral blank canvas — never show a hardcoded template for unknown shops
   return {
-    website: BLANK_WEBSITE,
+    website: normalizeWebsite(BLANK_WEBSITE),
     templateId: 'blank',
     pageId: 'page_home',
   };

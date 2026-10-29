@@ -266,8 +266,10 @@ function SignupContent() {
       const activitySpecialties = selectedActivity.specialties || [];
       const finalSpecialties = Array.from(new Set([...chosenSpecialties, ...activitySpecialties]));
 
+      const shopCategory = (selectedActivity.category || 'RETAIL').toUpperCase();
       const shopPayload = {
         name: formData.shopName,
+        category: shopCategory,
         phone: formData.shopPhone || formData.phone,
         governorate: formData.governorate,
         city: formData.city,
@@ -283,6 +285,7 @@ function SignupContent() {
         enabledModules: resolvedModules,
         specialties: finalSpecialties,
         layoutConfig: {
+          enabledModules: resolvedModules,
           enabledFeatures: dashboardEnabledFeatures(resolvedModules),
           onboarding: { skipped, answers },
         },
@@ -312,7 +315,24 @@ function SignupContent() {
       if (!shopRes.ok) {
         const shopErr = await shopRes.json().catch(() => null);
         console.error('Shop creation error:', shopErr);
+        throw new Error(shopErr?.message || 'فشل إنشاء المتجر، يرجى مراجعة البيانات');
       }
+
+      // Pre-seed local cache so dashboard renders instantly without initial flash
+      try {
+        localStorage.setItem(
+          'ray_merchant_shop_cache',
+          JSON.stringify({
+            name: formData.shopName,
+            category: shopCategory,
+            enabledModules: resolvedModules,
+            layoutConfig: {
+              enabledModules: resolvedModules,
+              enabledFeatures: dashboardEnabledFeatures(resolvedModules),
+            },
+          })
+        );
+      } catch {}
 
       // 4) تسجيل الدخول التلقائي في نفس الأصل (dashboard-web) لتعيين الكوكيز
       try {
