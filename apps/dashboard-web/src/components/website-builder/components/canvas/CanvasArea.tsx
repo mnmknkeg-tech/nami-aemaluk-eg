@@ -82,7 +82,7 @@ export const CanvasArea: React.FC = () => {
               fontFamily: website.theme?.typography?.fontBody || 'Cairo, sans-serif',
             }}
           >
-            {isThemeLoading || !website?.components[activePage.rootNodeId] ? (
+            {isThemeLoading ? (
               <SiteSkeleton
                 website={website}
                 pageId={activePage?.id}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { SiteRenderer, SiteSkeleton } from '@ray-eg/shared/builder';
+import { PublicSiteRenderer, SiteSkeleton } from '@ray-eg/shared/builder';
 import type {
   SiteProduct,
   SiteShopContext,
@@ -56,7 +56,7 @@ export function SiteCartBridge({
   const isUnifiedCart = cartMode === 'unified';
 
   return (
-    <SiteRenderer
+    <PublicSiteRenderer
       website={website}
       shop={shop}
       products={products}

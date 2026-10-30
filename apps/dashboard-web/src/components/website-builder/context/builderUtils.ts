@@ -88,7 +88,7 @@ export const BLANK_WEBSITE: Website = {
       id: 'page_home',
       name: 'الرئيسية',
       slug: '',
-      rootNodeId: 'comp_blank_root',
+      rootNodeId: 'page_root', // ← الجذر الحقيقي: عنصر حاوية (container) مش هيدر
       metadata: {
         title: 'الرئيسية',
         description: '',
@@ -100,41 +100,38 @@ export const BLANK_WEBSITE: Website = {
     },
   ],
   components: {
-    comp_blank_root: {
-      id: 'comp_blank_root',
-      name: 'بداية الموقع',
-      type: 'hero',
-      category: 'section',
+    // ── الحاوية الجذرية للكانفاس الفارغ (container Layout) ──────────────
+    // تكون فاضي (childrenIds: []) عشان ما يظهرش محتوى ثابت، ويمكن للمستخدم
+    // إضافة أقسام ونواحي بداخلها. هذا هو "الغالف" الشكلي للكانفاس.
+    page_root: {
+      id: 'page_root',
+      name: 'الصفحة الرئيسية',
+      type: 'container',
+      category: 'layout',
       parentId: null,
-      props: {
-        title: 'مرحباً بكم',
-        subtitle: 'ابدأ بإضافة الأقسام والمنتجات من القائمة الجانبية',
-        badge: '',
-        align: 'center',
-      },
+      childrenIds: [],
+      props: {},
       styles: {
         desktop: {
-          paddingTop: '80px',
-          paddingBottom: '80px',
-          paddingLeft: '24px',
-          paddingRight: '24px',
-          backgroundColor: '#FFFFFF',
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%',
+          minHeight: '100vh',
+          backgroundColor: '#ffffff',
           textColor: '#0F172A',
         },
       },
-      childrenIds: [],
     },
   },
 };
 
 export const normalizeWebsite = (site: Website): Website => {
   if (!site || typeof site !== 'object') return BLANK_WEBSITE;
-  const pages =
-    Array.isArray(site.pages) && site.pages.length > 0 ? site.pages : BLANK_WEBSITE.pages;
+  // Preserve merchant data verbatim — never silently replace merchant pages/components
+  // with BLANK_WEBSITE fallbacks. Only fill in missing required shape fields.
+  const pages = Array.isArray(site.pages) ? site.pages : BLANK_WEBSITE.pages;
   const components =
-    site.components &&
-    typeof site.components === 'object' &&
-    Object.keys(site.components).length > 0
+    site.components && typeof site.components === 'object'
       ? site.components
       : BLANK_WEBSITE.components;
   return {

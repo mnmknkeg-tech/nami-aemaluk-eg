@@ -41,7 +41,70 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
   } = useBuilder();
 
   const node = website.components[nodeId];
-  if (!node || node.isHidden || node.props?.hidden) return null;
+  if (!node || node.isHidden || node.props?.hidden) {
+    // Blank-canvas fallback: render a starting hero so the canvas is never empty.
+    // This happens when rootNodeId doesn't match any component (fresh shop,
+    // template mismatch, or cleared config). The merchant can then add sections.
+    if (nodeId === (activePage?.rootNodeId ?? null)) {
+      return (
+        <div
+          id={nodeId}
+          style={{
+            paddingTop: '80px',
+            paddingBottom: '80px',
+            paddingLeft: '24px',
+            paddingRight: '24px',
+            backgroundColor: website.theme?.colors?.background || '#ffffff',
+            color: website.theme?.colors?.textPrimary || '#0f172a',
+            fontFamily: website.theme?.typography?.fontBody || 'Cairo, sans-serif',
+            textAlign: 'center',
+            minHeight: '60vh',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <h1
+            style={{
+              fontSize: '28px',
+              fontWeight: '700',
+              marginBottom: '12px',
+              color: website.theme?.colors?.textPrimary || '#0f172a',
+            }}
+          >
+            {website.name || 'موقعي الجديد'}
+          </h1>
+          <p
+            style={{
+              fontSize: '16px',
+              color: website.theme?.colors?.textSecondary || '#64748b',
+              maxWidth: '600px',
+              margin: '0 auto 24px',
+            }}
+          >
+            ابدأ بإضافة الأقسام والمنتجات من القائمة الجانبية لبناء موقعك.
+          </p>
+          <button
+            onClick={() => selectNode(null)}
+            style={{
+              backgroundColor: website.theme?.colors?.primary || '#1d4ed8',
+              color: '#ffffff',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+            }}
+          >
+            إضافة قسم أول
+          </button>
+        </div>
+      );
+    }
+    return null;
+  }
 
   const isSelected = selectedNodeId === node.id && !isInteractivePreview;
   const isHovered = hoveredNodeId === node.id && !isSelected && !isInteractivePreview;
@@ -695,6 +758,43 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
 
     case 'hero':
       return <HeroRenderer {...baseProps} />;
+
+    case 'container':
+      // Root container of a page: renders children only; if empty, show
+      // the editor empty state so the merchant knows they are in a blank canvas
+      // and can add sections/text/images/etc.
+      if (!node.childrenIds || node.childrenIds.length === 0) {
+        return (
+          <div
+            id={nodeId}
+            className="w-full h-full flex flex-col items-center justify-center p-8 text-center"
+            dir="rtl"
+          >
+            <div className="max-w-xl text-slate-400">
+              <p className="text-sm font-medium mb-1">الكانفاس فارغ حالياً</p>
+              <p className="text-xs text-slate-300">
+                ابدأ بإضافة أقسام، نصوص، صور أو روابط من القائمة الجانبية
+                لبناء موقعك.
+              </p>
+            </div>
+          </div>
+        );
+      }
+      return (
+        <div
+          id={nodeId}
+          className="w-full h-full flex flex-col items-center justify-center p-8 text-center"
+        >
+          {node.childrenIds.map((childId) => (
+            <ComponentRenderer
+              key={childId}
+              nodeId={childId}
+              isInteractivePreview={isInteractivePreview}
+              overrideViewport={overrideViewport}
+            />
+          ))}
+        </div>
+      );
 
     case 'products':
       return <ProductsRenderer {...baseProps} addToCart={addToCart} />;

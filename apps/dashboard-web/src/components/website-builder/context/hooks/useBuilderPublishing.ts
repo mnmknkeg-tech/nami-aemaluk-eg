@@ -21,6 +21,18 @@ export const useBuilderPublishing = (
     liveUrl: '',
   });
 
+  /** Public marketplace URL for this shop's published site. */
+  const publicSiteUrl = useCallback((): string => {
+    const slug = builderShopSlugRef.current;
+    if (typeof window === 'undefined' || !slug) return '';
+    const marketplaceBase =
+      process.env.NEXT_PUBLIC_MARKETPLACE_URL ||
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:5174'
+        : 'https://mnmknk.com');
+    return `${marketplaceBase}/site/${slug}`;
+  }, [builderShopSlugRef]);
+
   // Version Snapshots
   const createVersionSnapshot = useCallback(
     (label: string, description: string) => {
@@ -75,6 +87,22 @@ export const useBuilderPublishing = (
         });
         return;
       }
+
+      // Validate component tree before publishing
+      const pages = website.pages || [];
+      const components = website.components || {};
+      const hasRootPage = pages.some((p) => p.rootNodeId && components[p.rootNodeId]);
+      if (!hasRootPage) {
+        setPublishingStatus({
+          status: 'failed',
+          currentStep: 1,
+          totalSteps: 5,
+          stepMessage: 'شجرة المكونات غير صالحة — لم يتم العثور على صفحة جذر ومكون جذع.',
+          errors: ['لا توجد صفحة جذر أو مكون جذع في شجرة الموقع'],
+        });
+        return;
+      }
+
       await saveDraft(website, false);
       setPublishingStatus({
         status: 'building_nextjs',
@@ -114,7 +142,7 @@ export const useBuilderPublishing = (
         currentStep: 5,
         totalSteps: 5,
         stepMessage: 'تم نشر نسخة الموقع بنجاح، ومتاحة الآن على منصة Next.js.',
-        liveUrl: liveWebsiteUrl,
+        liveUrl: publicSiteUrl(),
         publishedAt: new Date().toLocaleTimeString('ar-EG'),
       });
       setHistoryLog((prev) => ['نشر الموقع المحفوظ بنجاح', ...prev]);

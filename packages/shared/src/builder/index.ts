@@ -7,6 +7,7 @@ export { CustomCodeFrame } from './CustomCodeFrame';
 export { NodeView } from './NodeView';
 export type { NodeViewContext } from './NodeView';
 export { SiteRenderer } from './SiteRenderer';
+export { PublicSiteRenderer } from './PublicSiteRenderer';
 export { SiteSubscriptionModal } from './SiteSubscriptionModal';
 export { SiteSkeleton } from './SiteSkeleton';
 export type { SiteSkeletonProps } from './SiteSkeleton';

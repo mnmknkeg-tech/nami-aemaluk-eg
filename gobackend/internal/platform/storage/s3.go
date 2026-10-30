@@ -29,20 +29,24 @@ func NewS3Client(cfg config.S3Config) (*S3Client, error) {
 		return nil, fmt.Errorf("s3 bucket is required")
 	}
 
-	resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...any) (aws.Endpoint, error) {
-		if cfg.Endpoint != "" {
+	region := cfg.Region
+	if region == "" || (cfg.Endpoint == "" && region == "auto") {
+		region = "us-east-1"
+	}
+
+	optFns := []func(*awsConfig.LoadOptions) error{
+		awsConfig.WithRegion(region),
+	}
+
+	if cfg.Endpoint != "" {
+		resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...any) (aws.Endpoint, error) {
 			return aws.Endpoint{
 				URL:               cfg.Endpoint,
 				HostnameImmutable: true,
 				Source:            aws.EndpointSourceCustom,
 			}, nil
-		}
-		return aws.Endpoint{}, fmt.Errorf("no endpoint configured")
-	})
-
-	optFns := []func(*awsConfig.LoadOptions) error{
-		awsConfig.WithRegion(cfg.Region),
-		awsConfig.WithEndpointResolverWithOptions(resolver),
+		})
+		optFns = append(optFns, awsConfig.WithEndpointResolverWithOptions(resolver))
 	}
 
 	if cfg.AccessKeyID != "" && cfg.SecretAccessKey != "" {
@@ -57,7 +61,9 @@ func NewS3Client(cfg config.S3Config) (*S3Client, error) {
 	}
 
 	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-		o.UsePathStyle = true
+		if cfg.Endpoint != "" {
+			o.UsePathStyle = true
+		}
 	})
 
 	return &S3Client{
@@ -102,7 +108,19 @@ func (c *S3Client) PutObject(ctx context.Context, key, contentType string, body 
 func (c *S3Client) PublicURL(key string) string {
 	base := strings.TrimSuffix(c.cfg.PublicBaseURL, "/")
 	if base == "" {
-		base = fmt.Sprintf("%s/%s", strings.TrimSuffix(c.cfg.Endpoint, "/"), c.cfg.Bucket)
+		if c.cfg.Endpoint != "" {
+			base = fmt.Sprintf("%s/%s", strings.TrimSuffix(c.cfg.Endpoint, "/"), c.cfg.Bucket)
+		} else {
+			region := c.cfg.Region
+			if region == "" || region == "auto" {
+				region = "us-east-1"
+			}
+			if region == "us-east-1" {
+				base = fmt.Sprintf("https://%s.s3.amazonaws.com", c.cfg.Bucket)
+			} else {
+				base = fmt.Sprintf("https://%s.s3.%s.amazonaws.com", c.cfg.Bucket, region)
+			}
+		}
 	}
 	return fmt.Sprintf("%s/%s", base, strings.TrimPrefix(key, "/"))
 }
@@ -197,4 +215,22 @@ func (c *S3Client) IsValidPublicURL(raw string) bool {
 		return true // No public base configured; accept any URL.
 	}
 	return u.Host == base.Host
+}
+
+// ValidateKey validates an S3 object key to prevent path traversal attacks.
+func (c *S3Client) ValidateKey(key string) error {
+	if key == "" {
+		return fmt.Errorf("key is required")
+	}
+	// Reject keys with parent directory traversal patterns
+	for _, part := range strings.Split(key, "/") {
+		if part == ".." {
+			return fmt.Errorf("invalid key: path traversal not allowed")
+		}
+	}
+	// Reject keys with null bytes
+	if strings.ContainsAny(key, "\x00") {
+		return fmt.Errorf("invalid key: null bytes not allowed")
+	}
+	return nil
 }

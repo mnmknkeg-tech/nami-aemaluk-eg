@@ -76,6 +76,8 @@ func (s *Service) PresignUpload(ctx context.Context, userID, actorRole, actorSho
 }
 
 // CompleteUpload records a media row after the client uploads directly to S3.
+// It is idempotent: if a media record with the same key already exists, the
+// existing record is returned without creating a duplicate.
 func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorShopID string, req CompleteUploadRequest) (*Media, error) {
 	if err := s.authorizeShop(req.ShopID, actorRole, actorShopID); err != nil {
 		return nil, err
@@ -84,9 +86,14 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 		return nil, errors.Internal("s3_not_configured", fmt.Errorf("object storage not configured"))
 	}
 
+	// Validate the key format to prevent path traversal attacks.
+	if err := s.s3.ValidateKey(req.Key); err != nil {
+		return nil, errors.Validation("invalid_key", "invalid upload key")
+	}
+
 	existing, err := s.repo.FindByKey(ctx, req.Key)
 	if err != nil {
-		return nil, err
+		return nil, errors.Internal("complete_upload_find_failed", err)
 	}
 	if existing != nil {
 		return existing, nil
@@ -142,7 +149,7 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 
 	created, err := s.repo.Create(ctx, m)
 	if err != nil {
-		return nil, err
+		return nil, errors.Internal("complete_upload_persist_failed", err)
 	}
 
 	// Best-effort: enqueue background optimization for images. Failure to
@@ -153,7 +160,10 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 			Key:     created.OriginalKey,
 			ShopID:  created.ShopID,
 		}); err != nil {
-			logger.Global().Warn("failed to enqueue image optimize job", zap.String("media_id", created.ID), zap.Error(err))
+			logger.Global().Warn("failed to enqueue image optimize job",
+				zap.String("media_id", created.ID),
+				zap.Error(err),
+			)
 		}
 	}
 

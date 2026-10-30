@@ -254,13 +254,16 @@ export const useBuilderComponentOperations = ({
   );
 
   // Delete Node (recursively removes child keys)
+  // Allows deleting ANY node, including the root container of the page.
+  // When the root is deleted, the page's rootNodeId is cleared so the page
+  // becomes truly empty and can stay blank.
   const deleteNode = useCallback(
     (id: string) => {
       const target = website.components[id];
-      if (!target || !target.parentId) return; // Prevent deleting root
+      if (!target) return;
 
-      const parent = website.components[target.parentId];
-      if (!parent) return;
+      const parentId = target.parentId;
+      const isRoot = !parentId;
 
       // Collect all descendant ids
       const idsToDelete = new Set<string>();
@@ -273,16 +276,41 @@ export const useBuilderComponentOperations = ({
       };
       collectDescendants(id);
 
-      const updatedParent: ComponentNode = {
-        ...parent,
-        childrenIds: parent.childrenIds.filter((childId) => childId !== id),
-      };
-
       const newComponents = { ...website.components };
       idsToDelete.forEach((delId) => {
         delete newComponents[delId];
       });
-      newComponents[parent.id] = updatedParent;
+
+      // If deleting the root container, clear the page's rootNodeId so the page
+      // is considered empty (and stays blank on save/load/refresh).
+      if (isRoot) {
+        const currentPage = website.pages.find((p) => p.rootNodeId === id);
+        if (currentPage) {
+          const updatedPages = website.pages.map((p) =>
+            p.id === currentPage.id ? { ...p, rootNodeId: null as unknown as string } : p
+          );
+          const newWebsite: Website = {
+            ...website,
+            components: newComponents,
+            pages: updatedPages,
+          };
+          recordHistory(`حذف (${target.name})`, newWebsite);
+          setSelectedNodeId(null);
+          return;
+        }
+      }
+
+      // Normal deletion: update the parent's children list
+      if (!parentId) return;
+      const parent = website.components[parentId];
+      if (!parent) return;
+
+      const updatedParent: ComponentNode = {
+        ...parent,
+        childrenIds: parent.childrenIds.filter((childId: string) => childId !== id),
+      };
+
+      newComponents[parentId] = updatedParent;
 
       const newWebsite: Website = {
         ...website,
@@ -290,7 +318,7 @@ export const useBuilderComponentOperations = ({
       };
 
       recordHistory(`حذف (${target.name})`, newWebsite);
-      setSelectedNodeId(parent.id);
+      setSelectedNodeId(parentId);
     },
     [website, recordHistory]
   );

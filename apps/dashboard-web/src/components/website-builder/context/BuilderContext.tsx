@@ -53,7 +53,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   children,
   onExit,
 }) => {
-  // ── UI / Layout state ────────────────────────────────────────────────────
+  // ── State ────────────────────────────────────────────────────────────────
   const [isMobileInspectorOpen, setIsMobileInspectorOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -79,6 +79,11 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isDevDrawerOpen, setIsDevDrawerOpen] = useState(false);
   const [isThemeLoading, setIsThemeLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  // ── Initializing state ───────────────────────────────────────────────────
+  // Suppresses flicker when loading the saved project: we mount the real editor
+  // skeleton and keep the canvas empty until the backend config arrives.
 
   // ── Editing mode & server draft version ──────────────────────────────────
   // editingMode is sent to the backend on every save so the server-side
@@ -260,6 +265,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   // Fetch shop & load builder config on mount
   useEffect(() => {
     let cancelled = false;
+    setIsInitializing(true);
     (async () => {
       try {
         const shop = await apiRequest('/shops/me').catch(() => null);
@@ -279,105 +285,13 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
           }));
         }
 
-        if (typeof window !== 'undefined') {
-          const urlParams = new URLSearchParams(window.location.search);
-          const chosenTemplate =
-            urlParams.get('template') ||
-            localStorage.getItem('ray_builder_selected_template') ||
-            shop?.layoutConfig?.selectedWebsiteTemplate;
-          const chosenPreset =
-            urlParams.get('preset') ||
-            localStorage.getItem('ray_builder_selected_preset') ||
-            shop?.layoutConfig?.selectedWebsitePreset;
-
-          if (chosenTemplate) {
-            try {
-              localStorage.removeItem('ray_builder_selected_template');
-            } catch {}
-
-            if (chosenTemplate === 'blank') {
-              setWebsite(
-                normalizeWebsite({
-                  id: `site_blank_${shopId || 'custom'}`,
-                  tenantId: shopId || 'custom',
-                  name: shop?.name || 'موقعي الجديد',
-                  domain: `${shop?.slug || 'shop'}.saassite.com`,
-                  subdomain: shop?.slug || 'shop',
-                  activity: (shop?.category || 'RETAIL') as any,
-                  language: 'ar',
-                  defaultDirection: 'rtl',
-                  theme: defaultDesignTokens,
-                  currentDraftVersion: 1,
-                  pages: [
-                    {
-                      id: 'page_home',
-                      name: 'الرئيسية',
-                      slug: '',
-                      rootNodeId: 'comp_blank_hero',
-                      metadata: {
-                        title: shop?.name || 'الرئيسية',
-                        description: 'الصفحة الرئيسية',
-                        slug: '',
-                        isHomePage: true,
-                      },
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                    },
-                  ],
-                  components: {
-                    comp_blank_hero: {
-                      id: 'comp_blank_hero',
-                      name: 'بداية الموقع',
-                      type: 'hero',
-                      category: 'section',
-                      parentId: null,
-                      childrenIds: [],
-                      props: {
-                        title: shop?.name || 'مرحباً بكم في متجرنا',
-                        subtitle: 'ابدأ بإضافة الأقسام والمنتجات من القائمة الجانبية',
-                        badge: 'قالب فارغ',
-                        align: 'center',
-                      },
-                      styles: {
-                        desktop: {
-                          padding: 'py-20 px-6',
-                          backgroundColor: '#FFFFFF',
-                          textColor: '#0F172A',
-                        },
-                      },
-                    },
-                  },
-                })
-              );
-              setActivePageId('page_home');
-              return;
-            }
-
-            const { getMergedThemeTokens } = await import('../data/defaultTheme');
-            const target = allActivityWebsites[chosenTemplate] || sampleWebsites[chosenTemplate];
-            if (target) {
-              const selectedTheme = chosenPreset
-                ? getMergedThemeTokens(chosenPreset)
-                : target.theme;
-              setWebsite(
-                normalizeWebsite({
-                  ...target,
-                  id: `site_${shopId || 'custom'}`,
-                  name: shop?.name || target.name,
-                  subdomain: shop?.slug || target.subdomain,
-                  theme: selectedTheme as any,
-                })
-              );
-              setActiveTemplateId(chosenTemplate);
-              setActivePageId(target.pages[0]?.id || 'page_home');
-              return;
-            }
-          }
-        }
-
+        // ── Initialization complete ─────────────────────────────────────────
+        // If the shop/config overrides the initial state, load it now.
+        // Otherwise the editor keeps the default (blank) state.
         if (shop.builderConfig?.website?.pages?.length && shop.builderConfig?.website?.components) {
           setWebsite(normalizeWebsite(shop.builderConfig.website as Website));
           setActivePageId(shop.builderConfig.website.pages[0]?.id || 'page_home');
+          setIsInitializing(false);
           return;
         }
 
@@ -385,8 +299,12 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         if (!cancelled && config?.website?.pages?.length && config?.website?.components) {
           setWebsite(normalizeWebsite(config.website as Website));
           setActivePageId(config.website.pages[0]?.id || 'page_home');
+          setIsInitializing(false);
+        } else {
+          setIsInitializing(false);
         }
       } catch {
+        // Fallback to localStorage if the API is unavailable
         if (typeof window !== 'undefined') {
           for (let i = 0; i < localStorage.length && !cancelled; i++) {
             const key = localStorage.key(i);
@@ -400,6 +318,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             } catch {}
           }
         }
+        setIsInitializing(false);
       }
     })();
     return () => {
@@ -596,7 +515,18 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         updateWebsiteSettings,
       }}
     >
-      {children}
+      {isInitializing ? (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+          <div className="text-center max-w-sm">
+            <div className="animate-spin rounded-full h-14 w-14 border-4 border-blue-600 border-t-transparent mx-auto mb-4" />
+            <p className="text-sm text-slate-500 font-medium">
+              جاري تحميل محرر الموقع... حمّل مبروك
+            </p>
+          </div>
+        </div>
+      ) : (
+        children
+      )}
     </BuilderContext.Provider>
   );
 };

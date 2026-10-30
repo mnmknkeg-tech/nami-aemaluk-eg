@@ -29,9 +29,7 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 
 	g.Post("/presign", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.PresignUpload)
 	g.Post("/complete", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.CompleteUpload)
-	// The dashboard still posts multipart form-data to /media/upload. The
-	// endpoint was missing from the router, so every image upload from the
-	// dashboard failed with a 404 and no product could ever get a picture.
+	// Direct multipart upload for clients that cannot use the presigned URL flow.
 	g.Post("/upload", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Upload)
 	g.Get("/", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.List)
 	g.Get("/:id", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.GetByID)
@@ -81,6 +79,16 @@ func (h *Handler) Upload(c *fiber.Ctx) error {
 
 	media, err := h.service.DirectUpload(c.UserContext(), user.ID, user.Role, user.ShopID, shopID, purpose, fh)
 	if err != nil {
+		// Log the error with safe context (no secrets)
+		logger.Global().Error("direct upload failed",
+			zap.String("shop_id", shopID),
+			zap.String("purpose", purpose),
+			zap.String("filename", fh.Filename),
+			zap.String("content_type", fh.Header.Get("Content-Type")),
+			zap.String("size", strconv.FormatInt(fh.Size, 10)),
+			zap.String("user_id", user.ID),
+			zap.Error(err),
+		)
 		return err
 	}
 
@@ -107,6 +115,15 @@ func (h *Handler) PresignUpload(c *fiber.Ctx) error {
 
 	resp, err := h.service.PresignUpload(c.UserContext(), user.ID, user.Role, user.ShopID, req)
 	if err != nil {
+		// Log the error with safe context (no secrets)
+		logger.Global().Error("presign failed",
+			zap.String("shop_id", req.ShopID),
+			zap.String("filename", req.Filename),
+			zap.String("content_type", req.ContentType),
+			zap.String("purpose", req.Purpose),
+			zap.String("user_id", user.ID),
+			zap.Error(err),
+		)
 		return err
 	}
 	return c.JSON(fiber.Map{"success": true, "data": resp})
@@ -127,6 +144,15 @@ func (h *Handler) CompleteUpload(c *fiber.Ctx) error {
 
 	media, err := h.service.CompleteUpload(c.UserContext(), user.ID, user.Role, user.ShopID, req)
 	if err != nil {
+		// Log the error with safe context (no secrets)
+		logger.Global().Error("complete upload failed",
+			zap.String("shop_id", req.ShopID),
+			zap.String("key", req.Key),
+			zap.String("mime_type", req.MimeType),
+			zap.String("purpose", req.Purpose),
+			zap.String("user_id", user.ID),
+			zap.Error(err),
+		)
 		return err
 	}
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"success": true, "data": media})
