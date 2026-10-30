@@ -5,6 +5,7 @@ import { BaseRendererProps } from './renderers/types';
 import { HeaderRenderer } from './renderers/HeaderRenderer';
 import { HeroRenderer } from './renderers/HeroRenderer';
 import { ProductsRenderer } from './renderers/ProductsRenderer';
+import { CustomCodeRenderer } from './renderers/CustomCodeRenderer';
 import { PricingRenderer } from './renderers/PricingRenderer';
 import { AuthRenderer } from './renderers/AuthRenderer';
 import { FeaturesRenderer } from './renderers/FeaturesRenderer';
@@ -843,6 +844,37 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
     case 'whatsapp_button':
     case 'mobile_footer':
       return <UtilityRenderers {...baseProps} />;
+
+    case 'navigation': {
+      return (
+        <div
+          id={nodeId}
+          style={getComputedStyles()}
+          className={`cursor-pointer transition-all ${outlineClass}`}
+          onClick={handleClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          {renderChildren()}
+        </div>
+      );
+    }
+
+    case 'custom-code': {
+      return (
+        <div
+          id={nodeId}
+          style={getComputedStyles()}
+          className={`cursor-pointer transition-all ${outlineClass}`}
+          onClick={handleClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <CustomCodeRenderer node={node} isInteractivePreview={isInteractivePreview} />
+          {renderChildren()}
+        </div>
+      );
+    }
 
     default:
       return (
