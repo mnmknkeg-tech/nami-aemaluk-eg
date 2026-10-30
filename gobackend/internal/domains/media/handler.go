@@ -7,9 +7,12 @@ import (
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/config"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/auth"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/errors"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/logger"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/middleware"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/validate"
 	"github.com/gofiber/fiber/v2"
+
+	"go.uber.org/zap"
 )
 
 // Handler exposes media HTTP endpoints.
