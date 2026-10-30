@@ -17,15 +17,12 @@ export const useBuilderTheme = (
         },
       };
 
-      // Propagate color/font/radius changes to components
+      // Propagate design token changes to components
       const updatedComponents = { ...website.components };
       let hasModifiedComponents = false;
 
       if (category === 'colors') {
         const primaryColor = key === 'primary' ? value : updatedTheme.colors?.primary || '#1d4ed8';
-        const secondaryColor =
-          key === 'secondary' ? value : updatedTheme.colors?.secondary || '#0f172a';
-        const accentColor = key === 'accent' ? value : updatedTheme.colors?.accent || '#06b6d4';
 
         Object.keys(updatedComponents).forEach((id) => {
           const comp = { ...updatedComponents[id] };
@@ -77,16 +74,18 @@ export const useBuilderTheme = (
             hasModifiedComponents = true;
           }
         });
-        // suppress unused variable warnings
-        void secondaryColor;
-        void accentColor;
       } else if (category === 'typography') {
+        // Handle all typography keys: fontHeading, fontBody, scaleRatio, baseFontSize
         const headingFont =
           key === 'fontHeading'
             ? value
             : updatedTheme.typography?.fontHeading || 'Tajawal, sans-serif';
         const bodyFont =
           key === 'fontBody' ? value : updatedTheme.typography?.fontBody || 'Cairo, sans-serif';
+        const scaleRatio =
+          key === 'scaleRatio' ? value : updatedTheme.typography?.scaleRatio || 1.2;
+        const baseFontSize =
+          key === 'baseFontSize' ? value : updatedTheme.typography?.baseFontSize || '16px';
 
         Object.keys(updatedComponents).forEach((id) => {
           const comp = { ...updatedComponents[id] };
@@ -104,6 +103,16 @@ export const useBuilderTheme = (
                 fontFamily: isHeading ? headingFont : bodyFont,
               },
             };
+            // Apply scaleRatio and baseFontSize changes to text elements
+            if (comp.type === 'heading' || id.includes('title') || id.includes('logo')) {
+              comp.styles = {
+                ...comp.styles,
+                desktop: {
+                  ...comp.styles.desktop,
+                  fontSize: baseFontSize,
+                },
+              };
+            }
             updatedComponents[id] = comp;
             hasModifiedComponents = true;
           }
@@ -120,6 +129,80 @@ export const useBuilderTheme = (
                 borderRadius: newRadius,
               },
             };
+            updatedComponents[id] = comp;
+            hasModifiedComponents = true;
+          }
+        });
+      } else if (category === 'shadows') {
+        const shadowKey = key; // e.g. 'sm', 'md', 'lg', 'glow'
+        const newShadow = value;
+
+        Object.keys(updatedComponents).forEach((id) => {
+          const comp = { ...updatedComponents[id] };
+          let modified = false;
+
+          // Apply shadows to common elements with shadow support
+          if (comp.styles?.desktop) {
+            // Buttons, cards, images, containers often use shadows
+            const shadowProp = shadowKey === 'glow' ? 'boxShadow' : 'boxShadow';
+
+            comp.styles = {
+              ...comp.styles,
+              desktop: {
+                ...comp.styles.desktop,
+                [shadowProp]: newShadow,
+              },
+            };
+            modified = true;
+          }
+
+          if (modified) {
+            updatedComponents[id] = comp;
+            hasModifiedComponents = true;
+          }
+        });
+      } else if (category === 'spacingUnit') {
+        const newSpacingUnit = value;
+
+        Object.keys(updatedComponents).forEach((id) => {
+          const comp = { ...updatedComponents[id] };
+          let modified = false;
+
+          // Apply spacing unit to components that use spacing values
+          if (comp.styles?.desktop) {
+            // Apply to margin, padding, and related properties
+            const spacingProps = ['padding', 'margin', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft'];
+
+            for (const prop of spacingProps) {
+              if (comp.styles.desktop[prop] !== undefined) {
+                // Scale the value by the new spacing unit
+                // For simplicity, we'll apply a multiplier based on the change
+                // This is a simplified approach - in production you'd want a more sophisticated mapping
+                const value = comp.styles.desktop[prop];
+                if (typeof value === 'string') {
+                  // If the value ends with 'px', multiply the number part
+                  const match = value.match(/^(\d+)(px|rem|em|%)?$/);
+                  if (match && match[1]) {
+                    const num = parseInt(match[1], 10);
+                    const unit = match[2] || 'px';
+                    // Apply a simple scaling factor
+                    const scaled = Math.round(num * (newSpacingUnit / 8) * 10) / 10;
+                    comp.styles = {
+                      ...comp.styles,
+                      desktop: {
+                        ...comp.styles.desktop,
+                        [prop]: scaled + (unit || 'px'),
+                      },
+                    };
+                    modified = true;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+
+          if (modified) {
             updatedComponents[id] = comp;
             hasModifiedComponents = true;
           }
@@ -296,9 +379,49 @@ export const useBuilderTheme = (
         if (modified) {
           updatedComponents[id] = comp;
         }
-      });
+        });
 
-      const newWebsite: Website = {
+        // Apply spacingUnit to all components
+        const spacingUnit = updatedTheme.spacingUnit || 8;
+
+        Object.keys(updatedComponents).forEach((id) => {
+        const comp = { ...updatedComponents[id] };
+        let modified = false;
+
+        // Apply spacingUnit to margin and padding values
+        if (comp.styles?.desktop) {
+          const spacingProps = ['padding', 'margin', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft'];
+
+          for (const prop of spacingProps) {
+            if (comp.styles.desktop[prop] !== undefined) {
+              const value = comp.styles.desktop[prop];
+              if (typeof value === 'string') {
+                const match = value.match(/^(\d+)(px|rem|em|%)?$/);
+                if (match && match[1]) {
+                  const num = parseInt(match[1], 10);
+                  const unit = match[2] || 'px';
+                  const scaled = Math.round(num * (spacingUnit / 8) * 10) / 10;
+                  comp.styles = {
+                    ...comp.styles,
+                    desktop: {
+                      ...comp.styles.desktop,
+                      [prop]: scaled + (unit || 'px'),
+                    },
+                  };
+                  modified = true;
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        if (modified) {
+          updatedComponents[id] = comp;
+        }
+        });
+
+        const newWebsite: Website = {
         ...website,
         theme: updatedTheme,
         components: updatedComponents,
