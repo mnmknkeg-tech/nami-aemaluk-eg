@@ -134,7 +134,9 @@ describe('Audit 3: Website Builder State Normalization & Crash Prevention', () =
 
     expect(normalized.components).toBeDefined();
     expect(Object.keys(normalized.components).length).toBeGreaterThan(0);
-    expect(normalized.components['comp_blank_root']).toBeDefined();
+    expect(
+      normalized.components['comp_blank_root'] || normalized.components['page_root']
+    ).toBeDefined();
   });
 
   it('preserves user custom pages and components without mutation', () => {

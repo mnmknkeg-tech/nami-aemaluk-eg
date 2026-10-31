@@ -122,6 +122,25 @@ export const BLANK_WEBSITE: Website = {
         },
       },
     },
+    comp_blank_root: {
+      id: 'comp_blank_root',
+      name: 'الصفحة الرئيسية',
+      type: 'container',
+      category: 'layout',
+      parentId: null,
+      childrenIds: [],
+      props: {},
+      styles: {
+        desktop: {
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%',
+          minHeight: '100vh',
+          backgroundColor: '#ffffff',
+          textColor: '#0F172A',
+        },
+      },
+    },
   },
 };
 
