@@ -12,11 +12,18 @@
  *  - POST   /api/v1/products/manage/by-shop/:shopId/import-drafts
  *  - GET    /api/v1/products/manage/by-shop/:shopId?includeImageMap=true
  *
- * All requests reuse the same auth scheme as `apiRequest` from @/lib/auth
- * (Bearer token from localStorage + credentials: 'include').
+ * All requests go through the unified core (apiRequest / apiRequestWithMeta),
+ * which owns the single-flight refresh, CSRF double-submit token, and the
+ * single-use session-expired event. No separate fetch() call here.
+ *
+ * @module api/imageMaps
  */
 
-import { readToken } from '@/lib/session-keys';
+import { apiRequest, apiRequestWithMeta } from '@/lib/api/core';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export interface Hotspot {
   id?: string;
@@ -76,60 +83,49 @@ export interface AnalyzeImageMapPayload {
   language?: string;
 }
 
-async function authedFetch(path: string, options: RequestInit = {}): Promise<any> {
-  const token = readToken();
-  const res = await fetch(`/api/v1${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-    credentials: 'include',
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) {
-    const err: any = new Error(data?.message || 'Request failed');
-    err.status = res.status;
-    err.data = data;
-    throw err;
-  }
-  // Some endpoints return the payload directly, others wrap it in { data }
-  return data?.data !== undefined ? data.data : data;
-}
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
+/** List all image maps for a shop (manage view, includes hotspots + sections). */
 export const ImageMapApi = {
-  /** List all image maps for a shop (manage view, includes hotspots + sections). */
   listForManage: async (shopId: string): Promise<ImageMap[]> => {
     const sid = String(shopId || '').trim();
     if (!sid) throw new Error('Missing shopId');
-    const res = await authedFetch(`/shops/${encodeURIComponent(sid)}/image-maps/manage`);
-    return Array.isArray(res) ? res : Array.isArray((res as any)?.items) ? (res as any).items : [];
+    const res = await apiRequest<ImageMap[]>(`/shops/${encodeURIComponent(sid)}/image-maps/manage`);
+    if (Array.isArray(res)) return res;
+    // Try to extract from the response object if it has items
+    if (
+      typeof res === 'object' &&
+      res !== null &&
+      'items' in res &&
+      Array.isArray((res as any).items)
+    ) {
+      return (res as any).items;
+    }
+    return [];
   },
 
-  /** Create a new image map (used when uploading the first image). */
   create: async (shopId: string, payload: Partial<ImageMap>): Promise<ImageMap> => {
     const sid = String(shopId || '').trim();
     if (!sid) throw new Error('Missing shopId');
-    return await authedFetch(`/shops/${encodeURIComponent(sid)}/image-maps`, {
+    return await apiRequest<ImageMap>(`/shops/${encodeURIComponent(sid)}/image-maps`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
 
-  /** Mark a specific map as the active one for the shop. */
   activate: async (shopId: string, mapId: string): Promise<ImageMap> => {
     const sid = String(shopId || '').trim();
     const mid = String(mapId || '').trim();
     if (!sid) throw new Error('Missing shopId');
     if (!mid) throw new Error('Missing mapId');
-    return await authedFetch(
+    return await apiRequest<ImageMap>(
       `/shops/${encodeURIComponent(sid)}/image-maps/${encodeURIComponent(mid)}/activate`,
       { method: 'PATCH', body: JSON.stringify({}) }
     );
   },
 
-  /** Persist the full layout (imageUrl, title, sections, hotspots) of a map. */
   saveLayout: async (
     shopId: string,
     mapId: string,
@@ -139,17 +135,28 @@ export const ImageMapApi = {
     const mid = String(mapId || '').trim();
     if (!sid) throw new Error('Missing shopId');
     if (!mid) throw new Error('Missing mapId');
-    return await authedFetch(
+    return await apiRequest<ImageMap>(
       `/shops/${encodeURIComponent(sid)}/image-maps/${encodeURIComponent(mid)}/layout`,
       { method: 'PATCH', body: JSON.stringify(payload) }
     );
   },
 
-  /** Run AI analysis on an image to detect/suggest hotspots. */
+  uploadMedia: async (shopId: string, files: File[]): Promise<string[]> => {
+    const sid = String(shopId || '').trim();
+    if (!sid) throw new Error('Missing shopId');
+    const formData = new FormData();
+    files.forEach((f) => formData.append('files', f));
+    return (await apiRequest<string[]>(`/shops/${encodeURIComponent(sid)}/image-maps/upload`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    })) as string[];
+  },
+
   analyze: async (shopId: string, payload: AnalyzeImageMapPayload): Promise<any> => {
     const sid = String(shopId || '').trim();
     if (!sid) throw new Error('Missing shopId');
-    return await authedFetch(`/shops/${encodeURIComponent(sid)}/image-maps/analyze`, {
+    return await apiRequest<any>(`/shops/${encodeURIComponent(sid)}/image-maps/analyze`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -167,55 +174,29 @@ export const ImageMapApi = {
     if (opts.limit) params.set('limit', String(opts.limit));
     if (opts.includeImageMap) params.set('includeImageMap', 'true');
     const qs = params.toString();
-    const res = await authedFetch(
+    const res = await apiRequestWithMeta<any>(
       `/products/manage/by-shop/${encodeURIComponent(sid)}${qs ? `?${qs}` : ''}`
     );
-    if (Array.isArray(res)) return res;
-    if (Array.isArray((res as any)?.products)) return (res as any).products;
-    if (Array.isArray((res as any)?.items)) return (res as any).items;
+    const { data } = res;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.products)) return data.products;
+    if (Array.isArray(data?.items)) return data.items;
     return [];
   },
 
   /** Bulk upsert products derived from image-map hotspots (returns created/updated lists). */
   importDrafts: async (
     shopId: string,
-    items: ImportDraftItem[],
-    source: string = 'image_map'
+    drafts: ImportDraftItem[],
+    type?: 'image_map' | 'product'
   ): Promise<ImportDraftsResponse> => {
     const sid = String(shopId || '').trim();
     if (!sid) throw new Error('Missing shopId');
-    return await authedFetch(`/products/manage/by-shop/${encodeURIComponent(sid)}/import-drafts`, {
-      method: 'POST',
-      body: JSON.stringify({ source, items }),
-    });
-  },
-
-  /** Upload a media file (image) and return { url, key }. */
-  uploadMedia: async (file: File, shopId?: string): Promise<{ url: string; key?: string }> => {
-    const token = readToken();
-    const { compressForUpload } = await import('@/lib/upload-image');
-    const toUpload = await compressForUpload(file, 'map');
-    const form = new FormData();
-    form.append('file', toUpload);
-    if (shopId) form.append('shopId', shopId);
-    const res = await fetch(`/api/v1/media/upload`, {
-      method: 'POST',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      credentials: 'include',
-      body: form,
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) {
-      const err: any = new Error(data?.message || 'Upload failed');
-      err.status = res.status;
-      throw err;
-    }
-    const url = data?.url || data?.data?.url || data?.location || '';
-    const key = data?.key || data?.data?.key || data?.Key || '';
-    return { url, key };
+    return (
+      await apiRequestWithMeta<ImportDraftsResponse>(
+        `/products/manage/by-shop/${encodeURIComponent(sid)}/import-drafts`,
+        { method: 'POST', body: JSON.stringify({ drafts }) }
+      )
+    ).data;
   },
 };
-
-export default ImageMapApi;

@@ -31,24 +31,24 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
 	support := app.Group("/support")
 
 	// Protected routes
-	support.Post("/tickets", middleware.RequireAuth(h.config), h.CreateTicket)
-	support.Get("/tickets", middleware.RequireAuth(h.config), h.ListTickets)
-	support.Get("/stats", middleware.RequireAuth(h.config), h.GetSupportStats)
-	support.Get("/tickets/:id", middleware.RequireAuth(h.config), h.GetTicketByID)
-	support.Patch("/tickets/:id/status", middleware.RequireAuth(h.config), h.UpdateTicketStatus)
-	support.Post("/tickets/:id/reply", middleware.RequireAuth(h.config), h.ReplyTicket)
-	support.Delete("/tickets/:id", middleware.RequireAuth(h.config), h.CloseTicket)
-	support.Post("/tickets/:id/resolve", middleware.RequireAuth(h.config), h.ResolveTicket)
-	support.Post("/tickets/:id/close", middleware.RequireAuth(h.config), h.CloseTicket)
+	support.Post("/tickets", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateTicket)
+	support.Get("/tickets", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListTickets)
+	support.Get("/stats", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetSupportStats)
+	support.Get("/tickets/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetTicketByID)
+	support.Patch("/tickets/:id/status", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.UpdateTicketStatus)
+	support.Post("/tickets/:id/reply", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ReplyTicket)
+	support.Delete("/tickets/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CloseTicket)
+	support.Post("/tickets/:id/resolve", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ResolveTicket)
+	support.Post("/tickets/:id/close", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CloseTicket)
 
 	// Dashboard alias routes under /tickets
 	tickets := app.Group("/tickets")
-	tickets.Get("/shop/:shopId", middleware.RequireAuth(h.config), h.ListTickets)
-	tickets.Get("/", middleware.RequireAuth(h.config), h.ListTickets)
-	tickets.Post("/", middleware.RequireAuth(h.config), h.CreateTicket)
-	tickets.Get("/:id", middleware.RequireAuth(h.config), h.GetTicketByID)
-	tickets.Patch("/:id", middleware.RequireAuth(h.config), h.UpdateTicketStatus)
-	tickets.Delete("/:id", middleware.RequireAuth(h.config), h.CloseTicket)
+	tickets.Get("/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListTickets)
+	tickets.Get("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListTickets)
+	tickets.Post("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateTicket)
+	tickets.Get("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetTicketByID)
+	tickets.Patch("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.UpdateTicketStatus)
+	tickets.Delete("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CloseTicket)
 }
 
 // CreateTicket handles creating a new support ticket

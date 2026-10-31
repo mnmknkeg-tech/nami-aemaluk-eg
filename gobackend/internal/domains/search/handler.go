@@ -32,7 +32,7 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
 	search.Get("/shops", h.SearchShops)
 	
 	// Protected search routes
-	search.Get("/orders", middleware.RequireAuth(h.config), h.SearchOrders)
+	search.Get("/orders", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.SearchOrders)
 }
 
 // SearchProducts handles product search

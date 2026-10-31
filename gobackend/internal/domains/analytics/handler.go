@@ -30,33 +30,33 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
 	analytics := app.Group("/analytics")
 
 	// System analytics routes (admin only)
-	analytics.Get("/system", middleware.RequireAuth(h.config), h.GetSystemAnalytics)
-	analytics.Get("/system/timeseries", middleware.RequireAuth(h.config), h.GetTimeseries)
-	analytics.Get("/system/activity", middleware.RequireAuth(h.config), h.GetSystemActivity)
+	analytics.Get("/system", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetSystemAnalytics)
+	analytics.Get("/system/timeseries", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetTimeseries)
+	analytics.Get("/system/activity", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetSystemActivity)
 
 	// Shop analytics routes
-	analytics.Get("/shop/:shopId", middleware.RequireAuth(h.config), h.GetShopAnalytics)
+	analytics.Get("/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetShopAnalytics)
 
 	// Shop analytics report pages (merchant-facing)
-	analytics.Get("/shop/:shopId/conversions", middleware.RequireAuth(h.config), h.GetConversions)
-	analytics.Get("/shop/:shopId/product-performance", middleware.RequireAuth(h.config), h.GetProductPerformanceReport)
-	analytics.Get("/shop/:shopId/overview", middleware.RequireAuth(h.config), h.GetOverview)
-	analytics.Get("/shop/:shopId/sales-report", middleware.RequireAuth(h.config), h.GetSalesReport)
-	analytics.Get("/shop/:shopId/traffic", middleware.RequireAuth(h.config), h.GetTraffic)
-	analytics.Get("/shop/:shopId/customer-insights", middleware.RequireAuth(h.config), h.GetCustomerInsights)
+	analytics.Get("/shop/:shopId/conversions", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetConversions)
+	analytics.Get("/shop/:shopId/product-performance", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetProductPerformanceReport)
+	analytics.Get("/shop/:shopId/overview", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetOverview)
+	analytics.Get("/shop/:shopId/sales-report", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetSalesReport)
+	analytics.Get("/shop/:shopId/traffic", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetTraffic)
+	analytics.Get("/shop/:shopId/customer-insights", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetCustomerInsights)
 
 	// Frontend compatibility: sales-performance metric cards
-	analytics.Get("/sales-performance/shop/:shopId", middleware.RequireAuth(h.config), h.GetSalesPerformance)
+	analytics.Get("/sales-performance/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetSalesPerformance)
 
 	// User analytics routes
-	analytics.Get("/user/:userId", middleware.RequireAuth(h.config), h.GetUserAnalytics)
+	analytics.Get("/user/:userId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetUserAnalytics)
 
 	// Page-visit tracking: public ingestion + admin-only reporting.
 	// POST /analytics/visits is called by the public storefronts on every page
 	// load (see pagevisits.go); the GET endpoints feed the admin dashboard.
 	analytics.Post("/visits", h.RecordVisit)
-	analytics.Get("/visits", middleware.RequireAuth(h.config), RequireVisitAdmin(), h.ListVisits)
-	analytics.Get("/visits/stats", middleware.RequireAuth(h.config), RequireVisitAdmin(), h.GetVisitStats)
+	analytics.Get("/visits", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), RequireVisitAdmin(), h.ListVisits)
+	analytics.Get("/visits/stats", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), RequireVisitAdmin(), h.GetVisitStats)
 }
 
 // GetSalesPerformance handles the dashboard metric cards: current vs previous

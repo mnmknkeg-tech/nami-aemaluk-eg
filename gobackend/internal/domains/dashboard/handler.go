@@ -15,7 +15,7 @@ var errNotFound = errors.New("entity not found")
 func (h *Handler) RegisterRoutes(app fiber.Router) {
 	register := func(route string, spec kindSpec) {
 		g := app.Group("/" + route)
-		auth := middleware.RequireAuth(h.config)
+		auth := middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience)
 
 		g.Get("/", auth, h.handleList(spec))
 		g.Get("/shop/:shopId", auth, h.handleList(spec))
@@ -44,16 +44,16 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
 	}
 
 	// Computed finance endpoints.
-	app.Get("/revenue/shop/:shopId", middleware.RequireAuth(h.config), h.Revenue)
-	app.Get("/cashflow/shop/:shopId", middleware.RequireAuth(h.config), h.Cashflow)
-	app.Get("/finance/profits/shop/:shopId", middleware.RequireAuth(h.config), h.Profits)
-	app.Get("/finance/reports/shop/:shopId", middleware.RequireAuth(h.config), h.FinancialReports)
-	app.Get("/marketing/hub/shop/:shopId", middleware.RequireAuth(h.config), h.MarketingHub)
-	app.Get("/inventory/low-stock/shop/:shopId", middleware.RequireAuth(h.config), h.LowStockList)
-	app.Put("/inventory/low-stock/:productId", middleware.RequireAuth(h.config), h.LowStockUpdate)
+	app.Get("/revenue/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.Revenue)
+	app.Get("/cashflow/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.Cashflow)
+	app.Get("/finance/profits/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.Profits)
+	app.Get("/finance/reports/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.FinancialReports)
+	app.Get("/marketing/hub/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.MarketingHub)
+	app.Get("/inventory/low-stock/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.LowStockList)
+	app.Put("/inventory/low-stock/:productId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.LowStockUpdate)
 
 	// Marketing push notifications (create + send).
-	app.Post("/notifications", middleware.RequireAuth(h.config), h.CreateNotification)
+	app.Post("/notifications", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateNotification)
 }
 
 func (h *Handler) resolveShop(c *fiber.Ctx, bodyShopID string) (string, string, bool) {

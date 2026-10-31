@@ -143,6 +143,11 @@ type AuthConfig struct {
 	AllowDevMerchantBoot     bool          `env:"ALLOW_DEV_MERCHANT_BOOTSTRAP" envDefault:"false"`
 	AllowDevCourierBoot      bool          `env:"ALLOW_DEV_COURIER_BOOTSTRAP" envDefault:"false"`
 	AllowDevCustomerBoot     bool          `env:"ALLOW_DEV_CUSTOMER_BOOTSTRAP" envDefault:"false"`
+	// Issuer and audience are registered claims that the backend stamps on every
+	// JWT it mints and validates against in RequireAuth/OptionalAuth. They must
+	// match the values in internal/domains/auth/jwt.go.
+	Issuer   string `env:"JWT_ISSUER" envDefault:"ray-backend-go"`
+	Audience string `env:"JWT_AUDIENCE" envDefault:"ray-platform"`
 }
 
 // Security groups security toggles.

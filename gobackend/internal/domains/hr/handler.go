@@ -24,7 +24,7 @@ func NewHandler(service *Service, config *config.Config) *Handler {
 
 // RegisterRoutes registers HR routes
 func (h *Handler) RegisterRoutes(app fiber.Router) {
-	hr := app.Group("/hr", middleware.RequireAuth(h.config))
+	hr := app.Group("/hr", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience))
 
 	// Roles & permissions
 	hr.Get("/shops/:shopId/roles", h.ListRoles)

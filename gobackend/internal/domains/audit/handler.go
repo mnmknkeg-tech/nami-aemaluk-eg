@@ -20,7 +20,7 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 // RegisterRoutes wires the audit endpoints under the provided router.
 func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g := r.Group("/audit")
-	g.Use(middleware.RequireAuth(h.cfg))
+	g.Use(middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience))
 
 	g.Get("/events", h.GetRecentEvents)
 	g.Get("/sessions/me", h.GetMySessions)

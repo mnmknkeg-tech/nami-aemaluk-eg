@@ -31,11 +31,11 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g.Get("/public/:id", h.GetPublicByID)
 
 	// Authenticated routes (merchant/admin)
-	g.Get("/shop/:shopId", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ListByShop)
-	g.Get("/:id", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.GetByID)
-	g.Post("/", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Create)
-	g.Put("/:id", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Update)
-	g.Delete("/:id", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Delete)
+	g.Get("/shop/:shopId", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ListByShop)
+	g.Get("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.GetByID)
+	g.Post("/", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Create)
+	g.Put("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Update)
+	g.Delete("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Delete)
 }
 
 func (h *Handler) ListPublic(c *fiber.Ctx) error {

@@ -25,7 +25,7 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 // RegisterRoutes registers accounting routes under /accounting.
 func (h *Handler) RegisterRoutes(app fiber.Router) {
 	g := app.Group("/accounting")
-	auth := middleware.RequireAuth(h.config)
+	auth := middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience)
 
 	// Accounts (chart of accounts)
 	g.Get("/accounts/shop/:shopId", auth, h.ListAccounts)

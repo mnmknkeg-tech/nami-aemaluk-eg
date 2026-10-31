@@ -36,7 +36,7 @@ export default function AdminAuditLogPage() {
       if (!silent) setLoading(true);
       else setRefreshing(true);
       try {
-        setRows(await fetchAuditLog(100));
+        setRows(await fetchAuditLog(undefined, 100));
       } catch {
         toast({ title: 'فشل تحميل السجل', variant: 'destructive' });
       } finally {

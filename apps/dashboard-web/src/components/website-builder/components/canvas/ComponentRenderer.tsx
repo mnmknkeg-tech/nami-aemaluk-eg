@@ -5,7 +5,7 @@ import { BaseRendererProps } from './renderers/types';
 import { HeaderRenderer } from './renderers/HeaderRenderer';
 import { HeroRenderer } from './renderers/HeroRenderer';
 import { ProductsRenderer } from './renderers/ProductsRenderer';
-import { CustomCodeRenderer } from './renderers/CustomCodeRenderer';
+import { CustomCodeRenderer } from '../code/CustomCodeRenderer';
 import { PricingRenderer } from './renderers/PricingRenderer';
 import { AuthRenderer } from './renderers/AuthRenderer';
 import { FeaturesRenderer } from './renderers/FeaturesRenderer';
@@ -479,7 +479,10 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
         return;
       }
 
-      const cleanSlug = url.replace(/^[#/]+/, '').toLowerCase().trim();
+      const cleanSlug = url
+        .replace(/^[#/]+/, '')
+        .toLowerCase()
+        .trim();
       const pageBySlug = website.pages.find(
         (p) =>
           p.slug.toLowerCase() === cleanSlug ||
@@ -522,7 +525,9 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
 
       // Home
       if (lowerText.includes('رئيسية') || lowerText.includes('home')) {
-        const home = website.pages.find((p) => p.slug === 'home' || p.id === 'page_home' || p.metadata?.isHomePage);
+        const home = website.pages.find(
+          (p) => p.slug === 'home' || p.id === 'page_home' || p.metadata?.isHomePage
+        );
         if (home) {
           e.preventDefault();
           e.stopPropagation();
@@ -675,7 +680,11 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
       }
 
       // Login / Account
-      if (lowerText.includes('دخول') || lowerText.includes('حسابي') || lowerText.includes('تسجيل')) {
+      if (
+        lowerText.includes('دخول') ||
+        lowerText.includes('حسابي') ||
+        lowerText.includes('تسجيل')
+      ) {
         const loginPage = website.pages.find(
           (p) => p.slug === 'login' || p.id.includes('login') || p.name.includes('تسجيل')
         );
@@ -749,13 +758,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
   // Delegate rendering by component type
   switch (node.type) {
     case 'header':
-      return (
-        <HeaderRenderer
-          {...baseProps}
-          cartCount={cartCount}
-          setIsCartOpen={setIsCartOpen}
-        />
-      );
+      return <HeaderRenderer {...baseProps} cartCount={cartCount} setIsCartOpen={setIsCartOpen} />;
 
     case 'hero':
       return <HeroRenderer {...baseProps} />;
@@ -774,8 +777,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
             <div className="max-w-xl text-slate-400">
               <p className="text-sm font-medium mb-1">الكانفاس فارغ حالياً</p>
               <p className="text-xs text-slate-300">
-                ابدأ بإضافة أقسام، نصوص، صور أو روابط من القائمة الجانبية
-                لبناء موقعك.
+                ابدأ بإضافة أقسام، نصوص، صور أو روابط من القائمة الجانبية لبناء موقعك.
               </p>
             </div>
           </div>

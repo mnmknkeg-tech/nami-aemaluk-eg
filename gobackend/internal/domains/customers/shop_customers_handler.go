@@ -16,22 +16,22 @@ import (
 func (h *Handler) RegisterShopCustomerRoutes(app fiber.Router) {
 	sc := app.Group("/shops/:shopId/customers")
 
-	sc.Post("/", middleware.RequireAuth(h.config), h.CreateShopCustomerHandler)
-	sc.Get("/", middleware.RequireAuth(h.config), h.ListShopCustomersHandler)
-	sc.Get("/:id", middleware.RequireAuth(h.config), h.GetShopCustomerHandler)
-	sc.Patch("/:id", middleware.RequireAuth(h.config), h.UpdateShopCustomerHandler)
-	sc.Post("/:id/archive", middleware.RequireAuth(h.config), h.ArchiveShopCustomerHandler)
-	sc.Post("/:id/restore", middleware.RequireAuth(h.config), h.ArchiveShopCustomerHandler)
-	sc.Get("/:id/activity", middleware.RequireAuth(h.config), h.CustomerActivityHandler)
-	sc.Get("/:id/statement", middleware.RequireAuth(h.config), h.CustomerStatementHandler)
-	sc.Get("/:id/contact-log", middleware.RequireAuth(h.config), h.ListContactLogHandler)
-	sc.Post("/:id/contact-log", middleware.RequireAuth(h.config), h.AddContactLogHandler)
+	sc.Post("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateShopCustomerHandler)
+	sc.Get("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListShopCustomersHandler)
+	sc.Get("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetShopCustomerHandler)
+	sc.Patch("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.UpdateShopCustomerHandler)
+	sc.Post("/:id/archive", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ArchiveShopCustomerHandler)
+	sc.Post("/:id/restore", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ArchiveShopCustomerHandler)
+	sc.Get("/:id/activity", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CustomerActivityHandler)
+	sc.Get("/:id/statement", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CustomerStatementHandler)
+	sc.Get("/:id/contact-log", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListContactLogHandler)
+	sc.Post("/:id/contact-log", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.AddContactLogHandler)
 
 	loyalty := app.Group("/shops/:shopId/loyalty")
-	loyalty.Get("/settings", middleware.RequireAuth(h.config), h.GetLoyaltySettingsHandler)
-	loyalty.Put("/settings", middleware.RequireAuth(h.config), h.SaveLoyaltySettingsHandler)
-	loyalty.Get("/ledger", middleware.RequireAuth(h.config), h.ListLoyaltyLedgerHandler)
-	loyalty.Post("/adjust", middleware.RequireAuth(h.config), h.AdjustLoyaltyHandler)
+	loyalty.Get("/settings", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetLoyaltySettingsHandler)
+	loyalty.Put("/settings", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.SaveLoyaltySettingsHandler)
+	loyalty.Get("/ledger", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListLoyaltyLedgerHandler)
+	loyalty.Post("/adjust", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.AdjustLoyaltyHandler)
 }
 
 func (h *Handler) shopScopeOK(c *fiber.Ctx, shopID string) bool {

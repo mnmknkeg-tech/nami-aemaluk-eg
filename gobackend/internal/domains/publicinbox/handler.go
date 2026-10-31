@@ -30,7 +30,7 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	r.Post("/contact", h.SubmitContact)
 	r.Post("/suggestions", h.SubmitSuggestion)
 
-	admin := middleware.RequireAuth(h.cfg)
+	admin := middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience)
 	r.Get("/public-messages", admin, requireRoles(h.service), h.List)
 	r.Patch("/public-messages/:id/handled", admin, requireRoles(h.service), h.MarkHandled)
 }

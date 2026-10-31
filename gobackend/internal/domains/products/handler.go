@@ -30,12 +30,12 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g.Get("/", h.List)
 	g.Get("/:id", h.GetByID)
 
-	g.Get("/manage/by-shop/:shopId", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ListManage)
-	g.Post("/manage/by-shop/:shopId/import-drafts", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ImportDrafts)
+	g.Get("/manage/by-shop/:shopId", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ListManage)
+	g.Post("/manage/by-shop/:shopId/import-drafts", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ImportDrafts)
 
-	g.Post("/", middleware.RequireAuth(h.cfg), h.Create)
-	g.Patch("/:id", middleware.RequireAuth(h.cfg), h.Update)
-	g.Delete("/:id", middleware.RequireAuth(h.cfg), h.Delete)
+	g.Post("/", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Create)
+	g.Patch("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Update)
+	g.Delete("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Delete)
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {

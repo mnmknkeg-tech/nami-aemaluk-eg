@@ -30,30 +30,30 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
 	notifications := app.Group("/notifications")
 
 	// Merchant push subscription routes
-	notifications.Post("/push/merchant/subscribe", middleware.RequireAuth(h.config), h.MerchantPushSubscribe)
-	notifications.Post("/push/merchant/unsubscribe", middleware.RequireAuth(h.config), h.MerchantPushUnsubscribe)
+	notifications.Post("/push/merchant/subscribe", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.MerchantPushSubscribe)
+	notifications.Post("/push/merchant/unsubscribe", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.MerchantPushUnsubscribe)
 
 	// Customer push subscription routes
-	notifications.Post("/push/customer/subscribe", middleware.RequireAuth(h.config), h.CustomerPushSubscribe)
-	notifications.Post("/push/customer/unsubscribe", middleware.RequireAuth(h.config), h.CustomerPushUnsubscribe)
+	notifications.Post("/push/customer/subscribe", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CustomerPushSubscribe)
+	notifications.Post("/push/customer/unsubscribe", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CustomerPushUnsubscribe)
 
 	// User notification routes
-	notifications.Get("/me", middleware.RequireAuth(h.config), h.ListMine)
-	notifications.Get("/me/unread-count", middleware.RequireAuth(h.config), h.UnreadCountMine)
-	notifications.Patch("/me/read", middleware.RequireAuth(h.config), h.MarkAllMineRead)
-	notifications.Patch("/me/:id/read", middleware.RequireAuth(h.config), h.MarkMineRead)
-	notifications.Delete("/me/:id", middleware.RequireAuth(h.config), h.DeleteMine)
+	notifications.Get("/me", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListMine)
+	notifications.Get("/me/unread-count", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.UnreadCountMine)
+	notifications.Patch("/me/read", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.MarkAllMineRead)
+	notifications.Patch("/me/:id/read", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.MarkMineRead)
+	notifications.Delete("/me/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.DeleteMine)
 
 	// Shop notification routes
-	notifications.Get("/shop/:shopId", middleware.RequireAuth(h.config), h.ListShop)
-	notifications.Get("/shop/:shopId/unread-count", middleware.RequireAuth(h.config), h.UnreadCountShop)
-	notifications.Patch("/shop/:shopId/read", middleware.RequireAuth(h.config), h.MarkAllShopRead)
-	notifications.Patch("/shop/:shopId/:id/read", middleware.RequireAuth(h.config), h.MarkShopNotificationRead)
-	notifications.Delete("/shop/:shopId/:id", middleware.RequireAuth(h.config), h.DeleteShopNotification)
+	notifications.Get("/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListShop)
+	notifications.Get("/shop/:shopId/unread-count", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.UnreadCountShop)
+	notifications.Patch("/shop/:shopId/read", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.MarkAllShopRead)
+	notifications.Patch("/shop/:shopId/:id/read", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.MarkShopNotificationRead)
+	notifications.Delete("/shop/:shopId/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.DeleteShopNotification)
 
 	// Preferences routes
-	notifications.Get("/preferences", middleware.RequireAuth(h.config), h.GetPreferences)
-	notifications.Put("/preferences", middleware.RequireAuth(h.config), h.UpdatePreferences)
+	notifications.Get("/preferences", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetPreferences)
+	notifications.Put("/preferences", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.UpdatePreferences)
 }
 
 // MerchantPushSubscribe handles merchant push subscription

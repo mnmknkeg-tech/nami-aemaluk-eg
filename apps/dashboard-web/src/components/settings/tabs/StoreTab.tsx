@@ -150,7 +150,10 @@ export default function StoreTab({ shop, onSaved }: StoreTabProps) {
         // Leaflet not installed — show fallback
         if (mapContainerRef.current && !mapRef.current) {
           mapContainerRef.current.innerHTML =
-            '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:12px;font-weight:bold;text-align:center;padding:1rem">الخريطة غير متاحة حالياً. شغّل: npm install leaflet</div>';
+            '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:12px;font-weight:bold;text-align:center;padding:1rem">' +
+            '<strong style="color:#64748b">الخريطة غير متاحة حالياً.</strong> ' +
+            '<span style="color:#94a3b8">شغّل: npm install leaflet</span>' +
+            '</div>';
         }
       }
     })();

@@ -31,15 +31,15 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g.Post("/guest", h.CreateGuest)
 
 	// Authenticated routes
-	g.Post("/", middleware.RequireAuth(h.cfg), h.Create)
-	g.Get("/me", middleware.RequireAuth(h.cfg), h.ListMine)
-	g.Get("/", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ListByShop)
-	g.Patch("/:id/status", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.UpdateStatus)
+	g.Post("/", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Create)
+	g.Get("/me", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.ListMine)
+	g.Get("/", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ListByShop)
+	g.Patch("/:id/status", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.UpdateStatus)
 
 	// Availability routes
-	g.Get("/availability/slot", middleware.RequireAuth(h.cfg), h.CheckSlotAvailability)
-	g.Get("/availability/resource", middleware.RequireAuth(h.cfg), h.CheckResourceAvailability)
-	g.Get("/slots/available", middleware.RequireAuth(h.cfg), h.GetAvailableSlots)
+	g.Get("/availability/slot", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.CheckSlotAvailability)
+	g.Get("/availability/resource", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.CheckResourceAvailability)
+	g.Get("/slots/available", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.GetAvailableSlots)
 }
 
 func (h *Handler) CreateGuest(c *fiber.Ctx) error {

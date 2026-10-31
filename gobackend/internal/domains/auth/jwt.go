@@ -208,6 +208,11 @@ func (s *TokenService) sign(claims TokenClaims) (string, error) {
 	return token.SignedString(s.secret)
 }
 
+// Sign is a public wrapper around sign for callers outside the auth package.
+func (s *TokenService) Sign(claims TokenClaims) (string, error) {
+	return s.sign(claims)
+}
+
 func strPtrValue(s *string) string {
 	if s == nil {
 		return ""

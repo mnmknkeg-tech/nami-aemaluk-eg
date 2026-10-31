@@ -30,12 +30,12 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g.Post("/public/track", h.PublicTrack)
 
 	// Authenticated tracking
-	g.Post("/", middleware.RequireAuth(h.cfg), h.Track)
+	g.Post("/", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Track)
 
 	// Merchant/admin routes
-	g.Get("/abandoned", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ListAbandoned)
-	g.Get("/stats", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.GetStats)
-	g.Patch("/:id/recover", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.MarkRecovered)
+	g.Get("/abandoned", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ListAbandoned)
+	g.Get("/stats", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.GetStats)
+	g.Patch("/:id/recover", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.MarkRecovered)
 }
 
 func (h *Handler) PublicTrack(c *fiber.Ctx) error {

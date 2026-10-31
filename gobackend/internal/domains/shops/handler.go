@@ -29,7 +29,7 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g.Get("/sitemap", h.Sitemap)
 	g.Get("/", h.ListPublic)
 
-	merchantAuth := []fiber.Handler{middleware.RequireAuth(h.cfg), requireRolesMiddleware("MERCHANT", "ADMIN")}
+	merchantAuth := []fiber.Handler{middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware("MERCHANT", "ADMIN")}
 	g.Post("/", append(merchantAuth, h.CreateShop)...)
 	g.Get("/me", append(merchantAuth, h.GetMyShop)...)
 	g.Patch("/me", append(merchantAuth, h.UpdateMyShop)...)
@@ -37,7 +37,7 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g.Get("/me/module-upgrade-requests", append(merchantAuth, h.ListMyModuleUpgradeRequests)...)
 	g.Post("/me/module-upgrade-requests", append(merchantAuth, h.CreateMyModuleUpgradeRequest)...)
 
-	admin := g.Group("/admin", middleware.RequireAuth(h.cfg), requireRolesMiddleware("ADMIN"))
+	admin := g.Group("/admin", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware("ADMIN"))
 	admin.Get("/", h.ListByStatus)
 	admin.Get("/pending", h.ListPending)
 	admin.Get("/:id", h.GetAdminShop)
@@ -48,17 +48,17 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	admin.Post("/module-upgrade-requests/:id/reject", h.AdminRejectModuleUpgradeRequest)
 
 	// Admin aliases directly under /shops for dashboard-web compatibility
-	g.Get("/pending", middleware.RequireAuth(h.cfg), requireRolesMiddleware("ADMIN"), h.ListPending)
-	g.Patch("/:id/status", middleware.RequireAuth(h.cfg), requireRolesMiddleware("ADMIN"), h.UpdateStatus)
-	g.Patch("/:id", middleware.RequireAuth(h.cfg), requireRolesMiddleware("ADMIN"), h.UpdateAdminShop)
+	g.Get("/pending", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware("ADMIN"), h.ListPending)
+	g.Patch("/:id/status", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware("ADMIN"), h.UpdateStatus)
+	g.Patch("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware("ADMIN"), h.UpdateAdminShop)
 
 	// Admin module requests and settings directly under /admin for dashboard-web compatibility
-	modAdmin := r.Group("/admin/module-requests", middleware.RequireAuth(h.cfg), requireRolesMiddleware("ADMIN"))
+	modAdmin := r.Group("/admin/module-requests", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware("ADMIN"))
 	modAdmin.Get("/", h.AdminListModuleUpgradeRequests)
 	modAdmin.Post("/:id/approve", h.AdminApproveModuleUpgradeRequest)
 	modAdmin.Post("/:id/reject", h.AdminRejectModuleUpgradeRequest)
 
-	adminSys := r.Group("/admin", middleware.RequireAuth(h.cfg), requireRolesMiddleware("ADMIN"))
+	adminSys := r.Group("/admin", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware("ADMIN"))
 	adminSys.Get("/settings", h.GetAdminSettings)
 	adminSys.Patch("/settings", h.UpdateAdminSettings)
 	adminSys.Post("/upgrade-dashboard-config", h.UpgradeDashboardConfig)
@@ -67,9 +67,9 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g.Get("/:slug", h.GetBySlug)
 
 	// Follow routes (authenticated)
-	g.Get("/:id/follow-status", middleware.RequireAuth(h.cfg), h.GetFollowStatus)
-	g.Post("/:id/follow", middleware.RequireAuth(h.cfg), h.FollowShop)
-	g.Delete("/:id/follow", middleware.RequireAuth(h.cfg), h.UnfollowShop)
+	g.Get("/:id/follow-status", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.GetFollowStatus)
+	g.Post("/:id/follow", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.FollowShop)
+	g.Delete("/:id/follow", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.UnfollowShop)
 }
 
 func (h *Handler) Sitemap(c *fiber.Ctx) error {

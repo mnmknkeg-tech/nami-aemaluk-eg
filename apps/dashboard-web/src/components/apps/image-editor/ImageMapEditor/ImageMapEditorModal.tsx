@@ -247,7 +247,8 @@ export default function ImageMapEditorModal({
       // Re-encode only — map hotspots are percentage-based, but keep near-original
       // resolution so analysis precision is unaffected.
       const toUpload = await compressForUpload(file, 'map');
-      const { url } = await ImageMapApi.uploadMedia(toUpload, shopId);
+      const urls = await ImageMapApi.uploadMedia(shopId, [toUpload]);
+      const url = urls[0];
       if (!url) throw new Error('لم يتم استرجاع رابط الصورة من الخادم');
 
       // Create a new map record on the backend

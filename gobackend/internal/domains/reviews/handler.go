@@ -29,16 +29,16 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 func (h *Handler) RegisterProductRoutes(r fiber.Router) {
 	g := r.Group("/products")
 	g.Get("/:id/reviews", h.ListProductReviews)
-	g.Post("/:id/reviews", middleware.RequireAuth(h.config), h.CreateProductReview)
-	g.Delete("/:id/reviews/:reviewId", middleware.RequireAuth(h.config), h.DeleteReview)
+	g.Post("/:id/reviews", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateProductReview)
+	g.Delete("/:id/reviews/:reviewId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.DeleteReview)
 }
 
 // RegisterShopRoutes registers review routes on the shop group
 func (h *Handler) RegisterShopRoutes(r fiber.Router) {
 	g := r.Group("/shops")
 	g.Get("/:id/reviews", h.ListShopReviews)
-	g.Post("/:id/reviews", middleware.RequireAuth(h.config), h.CreateShopReview)
-	g.Delete("/:id/reviews/:reviewId", middleware.RequireAuth(h.config), h.DeleteReview)
+	g.Post("/:id/reviews", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateShopReview)
+	g.Delete("/:id/reviews/:reviewId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.DeleteReview)
 }
 
 // ListProductReviews handles listing reviews for a product

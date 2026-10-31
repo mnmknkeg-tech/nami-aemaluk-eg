@@ -28,11 +28,11 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	shops.Get("/:slug/image-map/active", h.GetActiveForCustomer)
 
 	// Authenticated routes
-	shops.Get("/:shopId/image-maps/manage", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ListForManage)
-	shops.Post("/:shopId/image-maps", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Create)
-	shops.Patch("/:shopId/image-maps/:mapId/activate", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Activate)
-	shops.Patch("/:shopId/image-maps/:mapId/layout", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.SaveLayout)
-	shops.Post("/:shopId/image-maps/analyze", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Analyze)
+	shops.Get("/:shopId/image-maps/manage", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ListForManage)
+	shops.Post("/:shopId/image-maps", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Create)
+	shops.Patch("/:shopId/image-maps/:mapId/activate", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Activate)
+	shops.Patch("/:shopId/image-maps/:mapId/layout", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.SaveLayout)
+	shops.Post("/:shopId/image-maps/analyze", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Analyze)
 }
 
 func (h *Handler) GetActiveForCustomer(c *fiber.Ctx) error {

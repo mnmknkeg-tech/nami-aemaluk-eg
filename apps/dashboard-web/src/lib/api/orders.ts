@@ -1,13 +1,39 @@
 import { apiRequestWithMeta, buildQueryString, PageMeta } from './client';
 
-export type Order = Record<string, any>;
+// ---------------------------------------------------------------------------
+// Server-side pagination (cursor-based)
+//  - `limit` max is enforced by the backend (50 per page)
+//  - `cursor` is an opaque record ID (not an offset) — stable across
+//    deletions/reordering and safe for concurrent tab usage.
+//  - `page` is DEPRECATED and ignored by the backend.
+// ---------------------------------------------------------------------------
+export type Order = {
+  id: string;
+  orderedAt: string;
+  total: number;
+  status: string;
+  items: Array<{ productName: string; quantity: number; price: number }>;
+  customer: { name: string; phone: string };
+  paymentMethod: string;
+  paymentStatus: string;
+  billingAddress: string;
+  shippingAddress: string;
+  notes?: string;
+  itemsCount: number;
+  shippingFee: number;
+  tax: number;
+  subTotal: number;
+};
 
 export type OrderQuery = {
-  page?: number;
-  limit?: number;
+  search?: string;
   shopId?: string;
   from?: string;
   to?: string;
+  // @deprecated — backend ignores; use cursor + limit
+  page?: number;
+  limit?: number; // max 50 (backend enforces)
+  cursor?: string; // opaque record ID from previous response.meta.cursor
 };
 
 export type OrdersResult = {

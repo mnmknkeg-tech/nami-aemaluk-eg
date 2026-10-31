@@ -27,9 +27,9 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
 	customers := app.Group("/customers")
 
 	// Protected routes
-	customers.Get("/", middleware.RequireAuth(h.config), h.ListCustomers)
-	customers.Get("/:id", middleware.RequireAuth(h.config), h.GetCustomerByID)
-	customers.Get("/:id/stats", middleware.RequireAuth(h.config), h.GetCustomerStats)
+	customers.Get("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListCustomers)
+	customers.Get("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetCustomerByID)
+	customers.Get("/:id/stats", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetCustomerStats)
 
 	// Dashboard CRM routes (segments & tags) under /shops/:shopId/...
 	h.RegisterSegmentsTagsRoutes(app)

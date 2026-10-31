@@ -92,7 +92,7 @@ export default function AdminFinancePage() {
         }
       />
 
-      <TabBar tabs={tabs} active={tab} onChange={setTab} />
+      <TabBar tabs={tabs} active={tab} onChange={(id) => setTab(id as TabId)} />
 
       {tab === 'overview' && <OverviewTab data={overview} />}
       {tab === 'revenue' && <RevenueTab rows={revenue} />}

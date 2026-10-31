@@ -9,8 +9,8 @@ import (
 
 // RegisterDashboardRoutes adds dashboard compatibility routes.
 func (h *Handler) RegisterDashboardRoutes(app fiber.Router) {
-	app.Get("/customers/shop/:shopId", middleware.RequireAuth(h.config), h.ListShopCustomersAlias)
-	app.Post("/shops/:shopId/customers/:customerId/promote", middleware.RequireAuth(h.config), h.PromoteCustomer)
+	app.Get("/customers/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListShopCustomersAlias)
+	app.Post("/shops/:shopId/customers/:customerId/promote", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.PromoteCustomer)
 }
 
 // ListShopCustomersAlias handles GET /customers/shop/:shopId.

@@ -24,11 +24,11 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
 	g := app.Group("/reports")
 
 	// Anyone authenticated or guest can report
-	g.Post("/", middleware.OptionalAuth(h.config), h.Create)
+	g.Post("/", middleware.OptionalAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.Create)
 
 	// Admin routes
-	g.Get("/", middleware.RequireAuth(h.config), middleware.RequireRole(middleware.RoleAdmin), h.ListAll)
-	g.Patch("/:id", middleware.RequireAuth(h.config), middleware.RequireRole(middleware.RoleAdmin), h.UpdateStatus)
+	g.Get("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), middleware.RequireRole(middleware.RoleAdmin), h.ListAll)
+	g.Patch("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), middleware.RequireRole(middleware.RoleAdmin), h.UpdateStatus)
 }
 
 // Create handles POST /api/v1/reports — report a product.

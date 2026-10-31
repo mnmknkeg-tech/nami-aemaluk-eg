@@ -28,8 +28,8 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 
 	g.Get("/", h.List)
 	g.Get("/:id", h.GetByID)
-	g.Post("/", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Create)
-	g.Delete("/:id", middleware.RequireAuth(h.cfg), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Deactivate)
+	g.Post("/", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Create)
+	g.Delete("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.Deactivate)
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {

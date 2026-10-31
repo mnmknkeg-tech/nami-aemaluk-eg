@@ -33,9 +33,13 @@ type AuthUser struct {
 // RequireAuth verifies the JWT (from Authorization header or ray_session cookie)
 // and injects an AuthUser into fiber Locals. If authentication fails it returns
 // an authentication error.
-func RequireAuth(cfg *config.Config) fiber.Handler {
+//
+// Security: issuer and audience are validated against the configured values so
+// that tokens minted for other environments (or a forged token with a wrong
+// aud) can never authenticate on this deployment.
+func RequireAuth(cfg *config.Config, issuer, audience string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		user, source, err := extractUser(c, cfg.Auth.JWTSecret)
+		user, source, err := extractUser(c, cfg.Auth.JWTSecret, issuer, audience)
 		if err != nil {
 			return errors.Unauthorized("invalid_token", err.Error())
 		}
@@ -47,9 +51,9 @@ func RequireAuth(cfg *config.Config) fiber.Handler {
 
 // OptionalAuth extracts the user if a token is present, otherwise continues
 // without authentication.
-func OptionalAuth(cfg *config.Config) fiber.Handler {
+func OptionalAuth(cfg *config.Config, issuer, audience string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		user, source, err := extractUser(c, cfg.Auth.JWTSecret)
+		user, source, err := extractUser(c, cfg.Auth.JWTSecret, issuer, audience)
 		if err == nil {
 			c.Locals(AuthContextKey, user)
 			c.Locals(AuthSourceContextKey, source)
@@ -80,7 +84,7 @@ func AuthSourceFromContext(c *fiber.Ctx) string {
 
 // extractUser validates the request credential and also reports which source it
 // came from so callers can record it for telemetry.
-func extractUser(c *fiber.Ctx, secret string) (AuthUser, string, error) {
+func extractUser(c *fiber.Ctx, secret, issuer, audience string) (AuthUser, string, error) {
 	tokenStr, source := extractToken(c)
 	if tokenStr == "" {
 		return AuthUser{}, "", fmt.Errorf("missing token")
@@ -91,7 +95,9 @@ func extractUser(c *fiber.Ctx, secret string) (AuthUser, string, error) {
 			return nil, fmt.Errorf("unexpected signing method")
 		}
 		return []byte(secret), nil
-	}, jwt.WithValidMethods([]string{"HS256"}))
+	}, jwt.WithValidMethods([]string{"HS256"}),
+		jwt.WithIssuer(issuer),
+		jwt.WithAudience(audience))
 	if err != nil {
 		return AuthUser{}, "", err
 	}

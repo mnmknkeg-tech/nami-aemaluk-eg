@@ -30,21 +30,21 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
 	chat := app.Group("/chat")
 
 	// Protected routes
-	chat.Post("/", middleware.RequireAuth(h.config), h.CreateChat)
-	chat.Get("/", middleware.RequireAuth(h.config), h.ListChats)
-	chat.Get("/:id", middleware.RequireAuth(h.config), h.GetChat)
-	chat.Post("/:id/messages", middleware.RequireAuth(h.config), h.CreateMessage)
-	chat.Get("/:id/messages", middleware.RequireAuth(h.config), h.ListMessages)
-	chat.Patch("/:id/messages/:messageId/read", middleware.RequireAuth(h.config), h.MarkMessageAsRead)
+	chat.Post("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateChat)
+	chat.Get("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListChats)
+	chat.Get("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetChat)
+	chat.Post("/:id/messages", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateMessage)
+	chat.Get("/:id/messages", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListMessages)
+	chat.Patch("/:id/messages/:messageId/read", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.MarkMessageAsRead)
 
 	// Frontend compatibility aliases: the CRM calls /chats (plural)
 	chats := app.Group("/chats")
-	chats.Post("/", middleware.RequireAuth(h.config), h.CreateChat)
-	chats.Get("/", middleware.RequireAuth(h.config), h.ListChats)
-	chats.Get("/:id", middleware.RequireAuth(h.config), h.GetChat)
-	chats.Post("/:id/messages", middleware.RequireAuth(h.config), h.CreateMessage)
-	chats.Get("/:id/messages", middleware.RequireAuth(h.config), h.ListMessages)
-	chats.Patch("/:id/messages/:messageId/read", middleware.RequireAuth(h.config), h.MarkMessageAsRead)
+	chats.Post("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateChat)
+	chats.Get("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListChats)
+	chats.Get("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetChat)
+	chats.Post("/:id/messages", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateMessage)
+	chats.Get("/:id/messages", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListMessages)
+	chats.Patch("/:id/messages/:messageId/read", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.MarkMessageAsRead)
 }
 
 // CreateChat handles creating a new chat

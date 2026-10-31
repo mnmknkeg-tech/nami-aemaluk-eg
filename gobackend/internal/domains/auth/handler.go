@@ -50,7 +50,7 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g.Post("/verify-email", h.VerifyEmail)
 	g.Post("/resend-verification", h.ResendVerification)
 	g.Post("/bootstrap-admin", h.BootstrapAdmin)
-	g.Get("/me", middleware.RequireAuth(h.appCfg), h.Me)
+	g.Get("/me", middleware.RequireAuth(h.appCfg, h.appCfg.Auth.Issuer, h.appCfg.Auth.Audience), h.Me)
 
 	// Dev login endpoints (only in non-production AND when explicitly enabled)
 	if !h.appCfg.IsProduction() {
@@ -69,13 +69,13 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	// token (not an access token) is what proves the password step succeeded.
 	g.Post("/2fa/login", h.Login2FA)
 
-	g.Post("/2fa/generate", middleware.RequireAuth(h.appCfg), h.Generate2FA)
-	g.Post("/2fa/enable", middleware.RequireAuth(h.appCfg), h.Enable2FA)
-	g.Post("/2fa/disable", middleware.RequireAuth(h.appCfg), h.Disable2FA)
-	g.Post("/2fa/verify", middleware.RequireAuth(h.appCfg), h.Verify2FA)
-	g.Get("/me", middleware.RequireAuth(h.appCfg), h.Me)
-	g.Post("/change-password", middleware.RequireAuth(h.appCfg), h.ChangePassword)
-	g.Post("/deactivate", middleware.RequireAuth(h.appCfg), h.Deactivate)
+	g.Post("/2fa/generate", middleware.RequireAuth(h.appCfg, h.appCfg.Auth.Issuer, h.appCfg.Auth.Audience), h.Generate2FA)
+	g.Post("/2fa/enable", middleware.RequireAuth(h.appCfg, h.appCfg.Auth.Issuer, h.appCfg.Auth.Audience), h.Enable2FA)
+	g.Post("/2fa/disable", middleware.RequireAuth(h.appCfg, h.appCfg.Auth.Issuer, h.appCfg.Auth.Audience), h.Disable2FA)
+	g.Post("/2fa/verify", middleware.RequireAuth(h.appCfg, h.appCfg.Auth.Issuer, h.appCfg.Auth.Audience), h.Verify2FA)
+	g.Get("/me", middleware.RequireAuth(h.appCfg, h.appCfg.Auth.Issuer, h.appCfg.Auth.Audience), h.Me)
+	g.Post("/change-password", middleware.RequireAuth(h.appCfg, h.appCfg.Auth.Issuer, h.appCfg.Auth.Audience), h.ChangePassword)
+	g.Post("/deactivate", middleware.RequireAuth(h.appCfg, h.appCfg.Auth.Issuer, h.appCfg.Auth.Audience), h.Deactivate)
 }
 
 func (h *Handler) Logout(c *fiber.Ctx) error {

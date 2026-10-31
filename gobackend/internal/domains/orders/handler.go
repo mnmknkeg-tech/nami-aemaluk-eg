@@ -26,24 +26,24 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g := r.Group("/orders")
 
-	g.Post("/", middleware.RequireAuth(h.cfg), h.Create)
+	g.Post("/", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Create)
 	// Public guest checkout from published storefronts (no auth).
 	g.Post("/public", h.CreatePublic)
-	g.Get("/", middleware.RequireAuth(h.cfg), middleware.RequireRole(string(auth.RoleMerchant), string(auth.RoleAdmin)), h.List)
-	g.Get("/me", middleware.RequireAuth(h.cfg), h.ListMine)
-	g.Get("/admin", middleware.RequireAuth(h.cfg), middleware.RequireRole(string(auth.RoleAdmin)), h.ListAdmin)
-	g.Get("/courier/me", middleware.RequireAuth(h.cfg), middleware.RequireRole(string(auth.RoleCourier)), h.ListCourier)
-	g.Get("/customer/me", middleware.RequireAuth(h.cfg), h.ListCustomerOrders)
-	g.Get("/:id", middleware.RequireAuth(h.cfg), h.GetByID)
-	g.Patch("/:id", middleware.RequireAuth(h.cfg), middleware.RequireRole(string(auth.RoleMerchant), string(auth.RoleAdmin)), h.Update)
-	g.Patch("/:id/assign-courier", middleware.RequireAuth(h.cfg), middleware.RequireRole(string(auth.RoleAdmin)), h.AssignCourier)
-	g.Patch("/:id/courier", middleware.RequireAuth(h.cfg), middleware.RequireRole(string(auth.RoleCourier)), h.UpdateCourier)
+	g.Get("/", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), middleware.RequireRole(string(auth.RoleMerchant), string(auth.RoleAdmin)), h.List)
+	g.Get("/me", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.ListMine)
+	g.Get("/admin", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), middleware.RequireRole(string(auth.RoleAdmin)), h.ListAdmin)
+	g.Get("/courier/me", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), middleware.RequireRole(string(auth.RoleCourier)), h.ListCourier)
+	g.Get("/customer/me", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.ListCustomerOrders)
+	g.Get("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.GetByID)
+	g.Patch("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), middleware.RequireRole(string(auth.RoleMerchant), string(auth.RoleAdmin)), h.Update)
+	g.Patch("/:id/assign-courier", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), middleware.RequireRole(string(auth.RoleAdmin)), h.AssignCourier)
+	g.Patch("/:id/courier", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), middleware.RequireRole(string(auth.RoleCourier)), h.UpdateCourier)
 
 	// Dashboard compatibility aliases for legacy backend paths.
-	r.Get("/shops/:shopId/orders", middleware.RequireAuth(h.cfg), middleware.RequireRole(string(auth.RoleMerchant), string(auth.RoleAdmin)), h.ListShopOrders)
-	r.Post("/shops/:shopId/orders", middleware.RequireAuth(h.cfg), h.CreateShopOrder)
-	r.Patch("/shops/:shopId/orders/:orderId", middleware.RequireAuth(h.cfg), h.PatchShopOrder)
-	r.Get("/courier/orders", middleware.RequireAuth(h.cfg), middleware.RequireRole(string(auth.RoleCourier)), h.ListCourier)
+	r.Get("/shops/:shopId/orders", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), middleware.RequireRole(string(auth.RoleMerchant), string(auth.RoleAdmin)), h.ListShopOrders)
+	r.Post("/shops/:shopId/orders", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.CreateShopOrder)
+	r.Patch("/shops/:shopId/orders/:orderId", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.PatchShopOrder)
+	r.Get("/courier/orders", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), middleware.RequireRole(string(auth.RoleCourier)), h.ListCourier)
 
 	// Dashboard order returns (POS + website returns pages).
 	h.RegisterReturnRoutes(r)

@@ -129,6 +129,149 @@ function exec(command: string, commandValue?: string): void {
   }
 }
 
+function sanitizeHtml(html: string): string {
+  if (typeof window === 'undefined') return html;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const body = doc.body;
+  // Remove dangerous tags entirely
+  for (const el of body.querySelectorAll(
+    'script, iframe, object, embed, svg, math, noscript, link, meta, base'
+  )) {
+    el.remove();
+  }
+  // Remove on* event handlers and dangerous attributes
+  for (const el of body.querySelectorAll(
+    '[onerror], [onload], [onclick], [onmouseover], [onfocus], [onpointerdown], [onanimationstart]'
+  )) {
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (
+        name.startsWith('on') ||
+        name.startsWith('xlink:') ||
+        name.startsWith('formaction') ||
+        name.startsWith('srcdoc')
+      ) {
+        el.removeAttribute(attr.name);
+      }
+    }
+  }
+  // Allow only safe elements and attributes
+  const SAFE_ELEMENTS = new Set([
+    'b',
+    'strong',
+    'i',
+    'em',
+    'u',
+    's',
+    'strike',
+    'p',
+    'br',
+    'hr',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'ul',
+    'ol',
+    'li',
+    'blockquote',
+    'pre',
+    'code',
+    'a',
+    'img',
+    'video',
+    'audio',
+    'source',
+    'track',
+    'table',
+    'thead',
+    'tbody',
+    'tfoot',
+    'tr',
+    'th',
+    'td',
+    'div',
+    'span',
+    'section',
+    'article',
+    'aside',
+    'nav',
+    'header',
+    'footer',
+    'address',
+    'details',
+    'summary',
+    'main',
+    'small',
+    'abbr',
+    'cite',
+    'dfn',
+    'mark',
+    'sub',
+    'sup',
+    'time',
+    'dl',
+    'dt',
+    'dd',
+    'figcaption',
+    'figure',
+    'meter',
+    'progress',
+    'ins',
+    'del',
+    'wbr',
+    'ruby',
+    'rt',
+    'rp',
+  ]);
+  const SAFE_ATTRS = new Set([
+    'href',
+    'src',
+    'alt',
+    'title',
+    'target',
+    'rel',
+    'width',
+    'height',
+    'loading',
+    'crossorigin',
+    'controls',
+    'playsinline',
+    'loop',
+    'preload',
+  ]);
+
+  for (const el of body.querySelectorAll('*')) {
+    if (!SAFE_ELEMENTS.has(el.tagName.toLowerCase())) {
+      el.remove();
+      continue;
+    }
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (!SAFE_ATTRS.has(name)) {
+        el.removeAttribute(attr.name);
+      }
+      // Sanitize URL attributes (href, src) — strip javascript: and dangerous protocols
+      if (SAFE_ATTRS.has(name) && (name === 'href' || name === 'src')) {
+        const value = attr.value;
+        if (typeof value === 'string') {
+          const lower = value.toLowerCase();
+          if (
+            lower.startsWith('javascript:') ||
+            lower.startsWith('vbscript:') ||
+            (lower.startsWith('data:') && lower.includes('script'))
+          ) {
+            el.removeAttribute(attr.name);
+          }
+        }
+      }
+    }
+  }
+  return body.innerHTML;
+}
+
 function ToolbarIconButton({
   icon: Icon,
   title,
@@ -172,8 +315,9 @@ export function RichDescriptionEditor({
   useEffect(() => {
     if (showHtml) return;
     const el = editorRef.current;
-    if (el && el.innerHTML !== value) {
-      el.innerHTML = value;
+    if (el) {
+      // Sanitize user-provided HTML before writing to the DOM (prevents XSS).
+      el.innerHTML = sanitizeHtml(value);
     }
   }, [value, showHtml]);
 

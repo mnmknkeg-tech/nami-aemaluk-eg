@@ -29,11 +29,11 @@ func fail(c *fiber.Ctx, status int, msg string) error {
 func (h *Handler) RegisterRoutes(app fiber.Router) {
 	g := app.Group("/shops/:shopId/shifts")
 
-	g.Get("/active", middleware.RequireAuth(h.config), h.Active)
-	g.Get("/summary", middleware.RequireAuth(h.config), h.Summary)
-	g.Get("/", middleware.RequireAuth(h.config), h.List)
-	g.Post("/", middleware.RequireAuth(h.config), h.Open)
-	g.Post("/:shiftId/close", middleware.RequireAuth(h.config), h.Close)
+	g.Get("/active", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.Active)
+	g.Get("/summary", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.Summary)
+	g.Get("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.List)
+	g.Post("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.Open)
+	g.Post("/:shiftId/close", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.Close)
 }
 
 func (h *Handler) guard(c *fiber.Ctx) (userID string, shopID string, ok bool) {

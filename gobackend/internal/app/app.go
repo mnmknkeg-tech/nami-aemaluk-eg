@@ -626,7 +626,7 @@ func (a *App) registerRoutes() {
 
 		// Builder domain routes (auth required — owner/admin gated inside handlers).
 		if a.builderHandler != nil {
-			a.builderHandler.RegisterBuilderRoutes(api, middleware.RequireAuth(a.Config))
+			a.builderHandler.RegisterBuilderRoutes(api, middleware.RequireAuth(a.Config, a.Config.Auth.Issuer, a.Config.Auth.Audience))
 		}
 	}
 

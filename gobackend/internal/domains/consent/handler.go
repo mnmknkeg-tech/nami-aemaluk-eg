@@ -21,9 +21,9 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 func (h *Handler) RegisterRoutes(app fiber.Router) {
 	g := app.Group("/consent")
 
-	g.Post("/", middleware.RequireAuth(h.config), h.GrantOrRevoke)
-	g.Get("/me", middleware.RequireAuth(h.config), h.ListMine)
-	g.Patch("/me/:type", middleware.RequireAuth(h.config), h.RevokeByType)
+	g.Post("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GrantOrRevoke)
+	g.Get("/me", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListMine)
+	g.Patch("/me/:type", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.RevokeByType)
 }
 
 // GrantOrRevoke handles POST /api/v1/consent — grant or revoke a consent.

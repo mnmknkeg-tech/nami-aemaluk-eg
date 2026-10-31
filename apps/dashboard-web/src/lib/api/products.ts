@@ -1,19 +1,26 @@
 import { apiRequestWithMeta, buildQueryString, PageMeta } from './client';
 
+// ---------------------------------------------------------------------------
+// Server-side pagination (cursor-based)
+//  - `limit` max is enforced by the backend (50 per page)
+//  - `cursor` is an opaque record ID (not an offset) — stable across
+//    deletions/reordering and safe for concurrent tab usage.
+//  - `page` is DEPRECATED and ignored by the backend.
+// ---------------------------------------------------------------------------
 export type Product = {
   id: string;
+  shopId: string;
   name: string;
+  slug: string;
+  description: string;
   price: number;
-  stock?: number;
-  category?: string | { name?: string; id?: string };
-  imageUrl?: string;
-  image_url?: string;
-  description?: string;
-  isActive?: boolean;
-  unit?: string;
-  colors?: any[];
-  sizes?: any[];
-  createdAt?: string;
+  costPrice: number;
+  stock: number;
+  category: string;
+  status: string;
+  images: string[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ProductQuery = {
@@ -22,8 +29,10 @@ export type ProductQuery = {
   minPrice?: number;
   maxPrice?: number;
   sort?: 'newest' | 'price_asc' | 'price_desc' | 'name' | 'oldest';
+  // @deprecated — backend ignores; use cursor + limit
   page?: number;
-  limit?: number;
+  limit?: number; // max 50 (backend enforces)
+  cursor?: string; // opaque record ID from previous response.meta.cursor
   includeImageMap?: boolean;
 };
 
@@ -46,15 +55,11 @@ export async function fetchManageProducts(
   query: ProductQuery = {}
 ): Promise<ProductsResult> {
   const qs = buildQueryString({ ...query, shopId });
-  const { data, meta } = await apiRequestWithMeta<any>(
-    `/products/manage/by-shop/${shopId}${qs}`
-  );
+  const { data, meta } = await apiRequestWithMeta<any>(`/products/manage/by-shop/${shopId}${qs}`);
   return { products: normalize(data), meta };
 }
 
-export async function fetchPublicProducts(
-  query: ProductQuery = {}
-): Promise<ProductsResult> {
+export async function fetchPublicProducts(query: ProductQuery = {}): Promise<ProductsResult> {
   const qs = buildQueryString(query);
   const { data, meta } = await apiRequestWithMeta<any>(`/products${qs}`);
   return { products: normalize(data), meta };

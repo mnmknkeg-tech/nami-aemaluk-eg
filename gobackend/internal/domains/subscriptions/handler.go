@@ -24,7 +24,7 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 
 // RegisterRoutes wires subscription endpoints
 func (h *Handler) RegisterRoutes(r fiber.Router) {
-	g := r.Group("/shops/:shopId/subscriptions", middleware.RequireAuth(h.cfg))
+	g := r.Group("/shops/:shopId/subscriptions", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience))
 
 	// Stats
 	g.Get("/stats", h.GetStats)
@@ -45,7 +45,7 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 
 	// Customer-specific subscriptions
 	r.Get("/shops/:shopId/customers/:customerId/subscriptions",
-		middleware.RequireAuth(h.cfg), h.GetCustomerSubscriptions)
+		middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.GetCustomerSubscriptions)
 
 	// Public storefront routes (unauthenticated)
 	r.Get("/public/shops/:shopId/subscriptions/plans", h.PublicListPlans)

@@ -26,11 +26,11 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g := r.Group("/users")
 
-	g.Get("/me", middleware.RequireAuth(h.cfg), h.GetMe)
-	g.Patch("/me", middleware.RequireAuth(h.cfg), h.UpdateMe)
-	g.Put("/me/addresses", middleware.RequireAuth(h.cfg), h.ReplaceMyAddresses)
+	g.Get("/me", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.GetMe)
+	g.Patch("/me", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.UpdateMe)
+	g.Put("/me/addresses", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.ReplaceMyAddresses)
 
-	admin := g.Group("", middleware.RequireAuth(h.cfg), requireRoleMiddleware(auth.RoleAdmin))
+	admin := g.Group("", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRoleMiddleware(auth.RoleAdmin))
 	admin.Get("/", h.ListUsers)
 	admin.Get("/couriers", h.ListCouriers)
 	admin.Post("/couriers", h.CreateCourier)
@@ -44,7 +44,7 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	admin.Delete("/:id", h.DeleteUser)
 
 	// Top-level /couriers routes for dashboard delivery page compatibility
-	cGroup := r.Group("/couriers", middleware.RequireAuth(h.cfg), requireRoleMiddleware(auth.RoleAdmin))
+	cGroup := r.Group("/couriers", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRoleMiddleware(auth.RoleAdmin))
 	cGroup.Get("/", h.ListCouriers)
 	cGroup.Post("/", h.CreateCourier)
 	cGroup.Get("/pending", h.ListPendingCouriers)

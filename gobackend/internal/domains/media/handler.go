@@ -28,7 +28,7 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 
 // RegisterRoutes wires the media endpoints under the provided router.
 func (h *Handler) RegisterRoutes(r fiber.Router) {
-	g := r.Group("/media", middleware.RequireAuth(h.cfg))
+	g := r.Group("/media", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience))
 
 	g.Post("/presign", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.PresignUpload)
 	g.Post("/complete", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.CompleteUpload)

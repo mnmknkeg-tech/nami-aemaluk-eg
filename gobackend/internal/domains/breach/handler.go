@@ -23,7 +23,7 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 func (h *Handler) RegisterRoutes(app fiber.Router) {
 	g := app.Group("/breach")
 
-	adminAuth := []fiber.Handler{middleware.RequireAuth(h.config), middleware.RequireRole(middleware.RoleAdmin)}
+	adminAuth := []fiber.Handler{middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), middleware.RequireRole(middleware.RoleAdmin)}
 
 	g.Post("/", append(adminAuth, h.Create)...)
 	g.Get("/", append(adminAuth, h.ListAll)...)

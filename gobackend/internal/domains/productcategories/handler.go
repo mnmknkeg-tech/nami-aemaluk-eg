@@ -23,19 +23,19 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g := r.Group("/categories")
 
 	// GET /categories?shopId=xxx  – list categories for a shop (authenticated)
-	g.Get("/", middleware.RequireAuth(h.cfg), h.List)
+	g.Get("/", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.List)
 
 	// GET /categories/shop/:shopId  – list categories for a shop (public or merchant)
-	g.Get("/shop/:shopId", middleware.RequireAuth(h.cfg), h.ListByShop)
+	g.Get("/shop/:shopId", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.ListByShop)
 
 	// POST /categories
-	g.Post("/", middleware.RequireAuth(h.cfg), h.Create)
+	g.Post("/", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Create)
 
 	// PUT /categories/:id
-	g.Put("/:id", middleware.RequireAuth(h.cfg), h.Update)
+	g.Put("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Update)
 
 	// DELETE /categories/:id
-	g.Delete("/:id", middleware.RequireAuth(h.cfg), h.Delete)
+	g.Delete("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Delete)
 }
 
 // List handles GET /categories

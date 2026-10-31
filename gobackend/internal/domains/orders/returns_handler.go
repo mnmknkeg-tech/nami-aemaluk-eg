@@ -10,9 +10,9 @@ import (
 
 // RegisterReturnRoutes wires the dashboard order-return endpoints.
 func (h *Handler) RegisterReturnRoutes(r fiber.Router) {
-	r.Get("/shops/:shopId/orders/:orderId/returns", middleware.RequireAuth(h.cfg), h.ListOrderReturns)
-	r.Post("/shops/:shopId/orders/:orderId/returns", middleware.RequireAuth(h.cfg), h.CreateOrderReturn)
-	r.Patch("/shops/:shopId/orders/returns/:returnId/status", middleware.RequireAuth(h.cfg), h.UpdateOrderReturnStatus)
+	r.Get("/shops/:shopId/orders/:orderId/returns", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.ListOrderReturns)
+	r.Post("/shops/:shopId/orders/:orderId/returns", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.CreateOrderReturn)
+	r.Patch("/shops/:shopId/orders/returns/:returnId/status", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.UpdateOrderReturnStatus)
 }
 
 func returnFail(c *fiber.Ctx, status int, msg string) error {

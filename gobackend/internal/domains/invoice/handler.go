@@ -30,14 +30,14 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
 	invoice := app.Group("/invoices")
 
 	// Protected routes
-	invoice.Post("/", middleware.RequireAuth(h.config), h.CreateInvoice)
-	invoice.Get("/", middleware.RequireAuth(h.config), h.ListInvoices)
-	invoice.Get("/shop/:shopId", middleware.RequireAuth(h.config), h.ListInvoices)
-	invoice.Get("/:id", middleware.RequireAuth(h.config), h.GetInvoiceByID)
-	invoice.Patch("/:id/status", middleware.RequireAuth(h.config), h.UpdateInvoiceStatus)
-	invoice.Post("/:id/pay", middleware.RequireAuth(h.config), h.MarkAsPaid)
-	invoice.Post("/:id/cancel", middleware.RequireAuth(h.config), h.CancelInvoice)
-	invoice.Post("/:id/send", middleware.RequireAuth(h.config), h.SendInvoice)
+	invoice.Post("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateInvoice)
+	invoice.Get("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListInvoices)
+	invoice.Get("/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListInvoices)
+	invoice.Get("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetInvoiceByID)
+	invoice.Patch("/:id/status", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.UpdateInvoiceStatus)
+	invoice.Post("/:id/pay", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.MarkAsPaid)
+	invoice.Post("/:id/cancel", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CancelInvoice)
+	invoice.Post("/:id/send", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.SendInvoice)
 }
 
 // SendInvoice handles POST /invoices/:id/send — marks the invoice as sent.

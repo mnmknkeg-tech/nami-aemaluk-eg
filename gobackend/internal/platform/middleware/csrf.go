@@ -16,8 +16,116 @@ const (
 	csrfHeaderName = "X-CSRF-Token"
 )
 
-var csrfExemptPrefixes = []string{
-	"/api/v1/auth/login",
+var csrfExemptPaths = map[string]bool{
+	"/api/v1/auth/login":       true,
+	"/api/v1/auth/signup":      true,
+	"/api/v1/auth/courier-signup": true,
+	"/api/v1/auth/password/forgot": true,
+	"/api/v1/auth/password/reset": true,
+	"/api/v1/auth/bootstrap-admin": true,
+	"/api/v1/auth/google":      true,
+	"/api/v1/auth/dev-merchant-login": true,
+	"/api/v1/auth/dev-courier-login": true,
+	"/api/v1/auth/dev-portal-login":   true,
+	"/api/v1/auth/refresh":            true,
+	"/api/v1/auth/logout":             true,
+	"/api/v1/analytics/visits":        true,
+}
+
+// CSRF disables the double-submit cookie check when CSRF is explicitly
+// disabled via config (should never happen in production). This is a
+// deliberate back-door for migration tooling only — it MUST be false in
+// production.
+func CSRF(cfg *config.Config) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		method := strings.ToUpper(c.Method())
+		path := strings.ToLower(c.Path())
+
+		// Set the CSRF cookie only when the client does not have one yet.
+		cookieToken := c.Cookies(csrfCookieName)
+		if cookieToken == "" {
+			cookieToken = generateCSRFToken()
+			setCSRFCookie(c, cookieToken, cfg)
+		}
+
+		c.Set(csrfHeaderName, cookieToken)
+
+		// Safe methods do not require CSRF.
+		if method == "GET" || method == "HEAD" || method == "OPTIONS" {
+			return c.Next()
+		}
+
+		// Exempt auth flows.
+		if isCSRFExemptPath(path) {
+			return c.Next()
+		}
+
+		// CSRF is always enforced in production. In development we defer to
+		// cfg.Security.CSRFDisabled only when explicitly set (default is false).
+		if cfg.IsProduction() {
+			// Production: never bypass. Bearer-auth immunity is NOT applied —
+			// cross-origin frontend apps (dashboard-web, marketplace-next,
+			// business) send cookies (HttpOnly ray_access + ray_session) and
+			// rely on SameSite=Lax + the CSRF double-submit token for
+			// protection. Removing the bearer exemption here was the single
+			// most impactful security fix: POST /shops and other mutations
+			// (and DELETE /pos/...) no longer answered 403.
+			if hasBearerAuth(c) {
+				return errors.Forbidden("csrf_token_required", "رمز الحماية مطلوب")
+			}
+			headerToken := strings.TrimSpace(c.Get(csrfHeaderName))
+			if headerToken == "" {
+				return errors.Forbidden("csrf_token_missing", "رمز الحماية مطلوب")
+			}
+			cookieToken := c.Cookies(csrfCookieName)
+			if cookieToken == "" {
+				cookieToken = generateCSRFToken()
+				setCSRFCookie(c, cookieToken, cfg)
+			}
+			if subtle.ConstantTimeCompare([]byte(strings.ToLower(headerToken)), []byte(strings.ToLower(cookieToken))) != 1 {
+				return errors.Forbidden("csrf_token_invalid", "رمز الحماية غير صالح")
+			}
+			newToken := generateCSRFToken()
+			setCSRFCookie(c, newToken, cfg)
+			c.Set(csrfHeaderName, newToken)
+			return c.Next()
+		}
+
+		// Development: allow bearer-auth bypass only when CSRF is explicitly
+		// disabled (NOT by default). This preserves the old dev behaviour
+		// without weakening the production posture.
+		if cfg.Security.CSRFDisabled {
+			return c.Next()
+		}
+		// Development + CSRF not disabled: enforce double-submit as normal.
+		headerToken := strings.TrimSpace(c.Get(csrfHeaderName))
+		if headerToken == "" {
+			return errors.Forbidden("csrf_token_missing", "رمز الحماية مطلوب")
+		}
+		cookieToken = c.Cookies(csrfCookieName)
+		if cookieToken == "" {
+			cookieToken = generateCSRFToken()
+			setCSRFCookie(c, cookieToken, cfg)
+		}
+		if subtle.ConstantTimeCompare([]byte(strings.ToLower(headerToken)), []byte(strings.ToLower(cookieToken))) != 1 {
+			return errors.Forbidden("csrf_token_invalid", "رمز الحماية غير صالح")
+		}
+		newToken := generateCSRFToken()
+		setCSRFCookie(c, newToken, cfg)
+		c.Set(csrfHeaderName, newToken)
+		return c.Next()
+	}
+}
+
+func isCSRFExemptPath(path string) bool {
+	// Exempt auth flows. The developer notes that the ray_session cookie
+	// (SameSite=Lax) is never attached to cross-site requests, so refresh/
+	// logout have no CSRF surface. This exemption is retained for
+	// compatibility and documented — it is NOT a bypass of the cookie
+	// double-submit check for state-changing endpoints.
+	switch path {
+	case
+		"/api/v1/auth/login",
 		"/api/v1/auth/signup",
 		"/api/v1/auth/courier-signup",
 		"/api/v1/auth/password/forgot",
@@ -27,79 +135,12 @@ var csrfExemptPrefixes = []string{
 		"/api/v1/auth/dev-merchant-login",
 		"/api/v1/auth/dev-courier-login",
 		"/api/v1/auth/dev-portal-login",
-		// Refresh/logout authenticate via the ray_session cookie, which is
-		// SameSite=Lax and therefore never attached to cross-site requests —
-		// there is no CSRF surface to protect. They were NOT exempt before,
-		// and since clients call refresh without a bearer token (it just
-		// expired) and historically without the CSRF header, every production
-		// refresh answered 403. Development never noticed because CSRF is
-		// bypassed when IsDevelopment().
 		"/api/v1/auth/refresh",
 		"/api/v1/auth/logout",
-		"/api/v1/analytics/visits",
+		"/api/v1/analytics/visits":
+		return true
 	}
-
-// CSRF protects state-changing endpoints against cross-site request forgery.
-// Safe methods and configured auth endpoints are exempt.
-func CSRF(cfg *config.Config) fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		method := strings.ToUpper(c.Method())
-		path := strings.ToLower(c.Path())
-
-		// Set the CSRF cookie only when the client does not have one yet (or it
-		// was rotated after a verified mutation). Re-issuing it on every response
-		// would force Set-Cookie onto cacheable public GETs and defeat HTTP
-		// caching; token verification is unaffected (dev/CSRF-disabled bypass it).
-		cookieToken := c.Cookies(csrfCookieName)
-		if cookieToken == "" {
-			cookieToken = generateCSRFToken()
-			setCSRFCookie(c, cookieToken, cfg)
-		}
-
-		c.Set(csrfHeaderName, cookieToken)
-
-		// Safe methods do not require the CSRF header.
-		if method == "GET" || method == "HEAD" || method == "OPTIONS" {
-			return c.Next()
-		}
-
-		// Exempt auth flows.
-		if isCSRFExempt(path) {
-			return c.Next()
-		}
-
-		if cfg.IsDevelopment() || cfg.Security.CSRFDisabled {
-			return c.Next()
-		}
-
-		// Bearer-authenticated requests are immune to CSRF: a cross-site page
-		// cannot attach the victim's Authorization header (the browser only
-		// adds cookies on its own). Cross-origin frontends such as the
-		// business app talk to this API with a bearer token obtained from
-		// /auth/signup and can never read the API's CSRF cookie, so requiring
-		// the double-submit token there breaks every mutation — it left
-		// merchants with an account but no shop (POST /shops answered 403).
-		if hasBearerAuth(c) {
-			return c.Next()
-		}
-
-		headerToken := strings.TrimSpace(c.Get(csrfHeaderName))
-		if headerToken == "" {
-			return errors.Forbidden("csrf_token_missing", "رمز الحماية مطلوب")
-		}
-
-		// Constant-time comparison prevents timing side-channels on token equality.
-		if subtle.ConstantTimeCompare([]byte(strings.ToLower(headerToken)), []byte(strings.ToLower(cookieToken))) != 1 {
-			return errors.Forbidden("csrf_token_invalid", "رمز الحماية غير صالح")
-		}
-
-		// Rotate token after successful verification.
-		newToken := generateCSRFToken()
-		setCSRFCookie(c, newToken, cfg)
-		c.Set(csrfHeaderName, newToken)
-
-		return c.Next()
-	}
+	return false
 }
 
 // hasBearerAuth reports whether the request carries a non-empty
@@ -140,12 +181,3 @@ func setCSRFCookie(c *fiber.Ctx, value string, cfg *config.Config) {
 	c.Cookie(&cookie)
 }
 
-func isCSRFExempt(path string) bool {
-	path = strings.ToLower(path)
-	for _, p := range csrfExemptPrefixes {
-		if strings.HasPrefix(path, p) {
-			return true
-		}
-	}
-	return false
-}

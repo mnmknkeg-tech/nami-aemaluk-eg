@@ -23,12 +23,12 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 func (h *Handler) RegisterRoutes(app fiber.Router) {
 	g := app.Group("/dsr")
 
-	g.Post("/", middleware.RequireAuth(h.config), h.Submit)
-	g.Get("/me", middleware.RequireAuth(h.config), h.ListMine)
+	g.Post("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.Submit)
+	g.Get("/me", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListMine)
 
 	// Admin routes
-	g.Get("/", middleware.RequireAuth(h.config), middleware.RequireRole(middleware.RoleAdmin), h.ListAll)
-	g.Patch("/:id", middleware.RequireAuth(h.config), middleware.RequireRole(middleware.RoleAdmin), h.UpdateStatus)
+	g.Get("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), middleware.RequireRole(middleware.RoleAdmin), h.ListAll)
+	g.Patch("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), middleware.RequireRole(middleware.RoleAdmin), h.UpdateStatus)
 }
 
 // Submit handles POST /api/v1/dsr — submit a DSR.

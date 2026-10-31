@@ -23,15 +23,15 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g := r.Group("/measurements")
 
-	g.Post("/", middleware.RequireAuth(h.cfg), h.Create)
-	g.Get("/me", middleware.RequireAuth(h.cfg), h.ListMine)
-	g.Get("/summary", middleware.RequireAuth(h.cfg), h.GetSummary)
-	g.Get("/:id", middleware.RequireAuth(h.cfg), h.GetOne)
-	g.Patch("/:id", middleware.RequireAuth(h.cfg), h.Update)
-	g.Delete("/:id", middleware.RequireAuth(h.cfg), h.Remove)
-	g.Post("/bulk", middleware.RequireAuth(h.cfg), h.BulkCreate)
-	g.Patch("/bulk", middleware.RequireAuth(h.cfg), h.BulkUpdate)
-	g.Delete("/me/all", middleware.RequireAuth(h.cfg), h.DeleteAll)
+	g.Post("/", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Create)
+	g.Get("/me", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.ListMine)
+	g.Get("/summary", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.GetSummary)
+	g.Get("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.GetOne)
+	g.Patch("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Update)
+	g.Delete("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Remove)
+	g.Post("/bulk", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.BulkCreate)
+	g.Patch("/bulk", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.BulkUpdate)
+	g.Delete("/me/all", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.DeleteAll)
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {

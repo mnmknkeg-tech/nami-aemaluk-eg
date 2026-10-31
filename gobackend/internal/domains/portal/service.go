@@ -9,7 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/auth"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/errors"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // Service implements the Portal domain business logic.
@@ -304,10 +307,41 @@ func (s *Service) VerifyOtp(ctx context.Context, req VerifyOtpRequest) (*AuthRes
 	}, nil
 }
 
-func (s *Service) issuePortalToken(ownerID string, _ *string) (string, error) {
-	// Simple JWT implementation - in production use a proper JWT library
-	// For now, return a placeholder token
-	return fmt.Sprintf("portal_%s_%d", ownerID, time.Now().Unix()), nil
+// issuePortalToken mints a short-lived (15-minute) access token for the portal.
+//
+// Unlike the legacy placeholder this returns a signed HS256 JWT: it binds the
+// owner, role, shop, issuer and audience, and carries the jti of the server-side
+// session so rotations are traceable. The secret is shared with the auth domain
+// (cfg.Auth.JWTSecret), so RequireAuth validates these tokens with the same key.
+func (s *Service) issuePortalToken(ownerID string, phone *string) (string, error) {
+	if s.jwtSecret == "" {
+		return "", errors.Internal("jwt_secret_is_required_for_portal_tokens", errors.New(errors.KindInternal, "portal_token", "jwtSecret is empty"))
+	}
+	now := time.Now()
+	sessionID := fmt.Sprintf("%d-%d", ownerID, now.UnixNano())
+	claims := auth.TokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   ownerID,
+			Issuer:    "ray-backend-go",
+			Audience:  []string{"ray-platform"},
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(15 * time.Minute)),
+			NotBefore: jwt.NewNumericDate(now),
+			ID:        sessionID,
+		},
+		Type:   "access",
+		ShopID: "",
+	}
+	return s.signClaims(claims)
+}
+
+// signClaims mints a short-lived access token using the shared auth JWT service.
+func (s *Service) signClaims(claims auth.TokenClaims) (string, error) {
+	svc, err := auth.NewTokenService(s.jwtSecret, 15*time.Minute, 168*time.Hour)
+	if err != nil {
+		return "", err
+	}
+	return svc.Sign(claims)
 }
 
 func normalizePhone(phone string) string {

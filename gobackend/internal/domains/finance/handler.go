@@ -23,7 +23,7 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 // RegisterRoutes wires the finance endpoints under /finance.
 func (h *Handler) RegisterRoutes(app fiber.Router) {
 	g := app.Group("/finance")
-	auth := middleware.RequireAuth(h.config)
+	auth := middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience)
 
 	// Reports
 	g.Get("/reports/cashflow/shop/:shopId", auth, h.Cashflow)

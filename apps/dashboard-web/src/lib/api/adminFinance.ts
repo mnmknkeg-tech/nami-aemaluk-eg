@@ -1,12 +1,15 @@
 /**
- * طبقة بيانات قسم المالية في أدمن المنصة.
+ * طبقة بيانات قسم المالية: ربط بـ Go backend (gobackend/internal/domains/finance).
  *
- * كل الأرقام هنا تخص شركة "نمّي أعمالك" نفسها (مش المتاجر):
- * إيراد الاشتراكات، المصاريف التشغيلية، تسويات المتاجر، والوعاء الضريبي.
+ * المسارات المتوفرة بالخادم:
+ *   GET /finance/reports/cashflow/shop/:shopId
+ *   GET /finance/reports/profit/shop/:shopId
+ *   GET /finance/reports/revenue/shop/:shopId
  *
- * الـ endpoints مش موجودة في الـ backend لسه — لذلك كل دالة بترجع `null`
- * بدل ما ترمي استثناء، والواجهة بتعرض حالة "بانتظار الربط" بدل ما
- * تعرض أرقام وهمية أو تكرر نفس الـ placeholder في كل تبويب.
+ * ملاحظة:
+ *   - كل request يأخذ shopId من سياق المستخدم (User.ShopID).
+ *   - الـ economics للمتجر (التسويات، الضريبة، سجلات المراجعة) مش متاحة لسه
+ *     -> ردد `null` واعرض "لسه متاح" في الواجهة بدل رقم وهمي.
  */
 import { apiRequest } from '@/lib/auth';
 
@@ -89,14 +92,25 @@ async function tryGet<T>(path: string): Promise<T | null> {
   }
 }
 
-export const fetchFinanceOverview = () => tryGet<FinanceOverview>('/admin/finance/overview');
-export const fetchRevenueRows = () => tryGet<RevenueRow[]>('/admin/finance/revenue');
-export const fetchExpenseRows = () => tryGet<ExpenseRow[]>('/admin/finance/expenses');
-export const fetchSettlements = () => tryGet<SettlementRow[]>('/admin/finance/settlements');
-export const fetchTaxSummary = () => tryGet<TaxSummary>('/admin/tax/vat');
-export const fetchTaxObligations = () => tryGet<TaxObligation[]>('/admin/tax/obligations');
-export const fetchAuditLog = (limit = 100) =>
-  tryGet<AuditEntry[]>(`/admin/audit-log?limit=${limit}`);
+export const fetchFinanceOverview = (shopId?: string) => {
+  const id = shopId || 'me';
+  return tryGet<FinanceOverview>(`/finance/reports/revenue/shop/${id}`);
+};
+export const fetchRevenueRows = (shopId?: string) => {
+  const id = shopId || 'me';
+  return tryGet<RevenueRow[]>(`/finance/reports/revenue/shop/${id}`);
+};
+export const fetchExpenseRows = (shopId?: string) => {
+  const id = shopId || 'me';
+  return tryGet<ExpenseRow[]>(`/finance/reports/profit/shop/${id}`);
+};
+export const fetchSettlements = (): Promise<SettlementRow[] | null> => Promise.resolve(null); // not available in backend yet
+export const fetchTaxSummary = (): Promise<TaxSummary | null> => Promise.resolve(null); // not available in backend
+export const fetchTaxObligations = (): Promise<TaxObligation[] | null> => Promise.resolve(null); // not available
+export const fetchAuditLog = (shopId?: string, limit = 100) => {
+  const id = shopId || 'me';
+  return tryGet<AuditEntry[]>(`/accounting/audit-log/shop/${id}?limit=${limit}`);
+};
 
 /** نص تاريخ الاستحقاق بالعربي + تمييز المتأخر. */
 export function dueTone(dueAt: string): 'red' | 'amber' | 'green' {

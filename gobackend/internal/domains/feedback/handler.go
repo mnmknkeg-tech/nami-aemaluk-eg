@@ -33,13 +33,13 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
 	feedback.Get("/shop/:shopId", h.ListFeedbackByShop)
 
 	// Protected routes
-	feedback.Get("/", middleware.RequireAuth(h.config), h.ListAllFeedback)
-	feedback.Post("/", middleware.RequireAuth(h.config), h.CreateFeedback)
-	feedback.Get("/:id", middleware.RequireAuth(h.config), h.GetFeedbackByID)
-	feedback.Patch("/:id/status", middleware.RequireAuth(h.config), h.UpdateFeedbackStatus)
-	feedback.Delete("/:id", middleware.RequireAuth(h.config), h.DeleteFeedback)
-	feedback.Post("/:id/approve", middleware.RequireAuth(h.config), h.ApproveFeedback)
-	feedback.Post("/:id/reject", middleware.RequireAuth(h.config), h.RejectFeedback)
+	feedback.Get("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListAllFeedback)
+	feedback.Post("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateFeedback)
+	feedback.Get("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetFeedbackByID)
+	feedback.Patch("/:id/status", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.UpdateFeedbackStatus)
+	feedback.Delete("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.DeleteFeedback)
+	feedback.Post("/:id/approve", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ApproveFeedback)
+	feedback.Post("/:id/reject", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.RejectFeedback)
 }
 
 // CreateFeedback handles creating a new feedback

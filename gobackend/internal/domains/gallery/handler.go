@@ -34,10 +34,10 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
 	gallery.Get("/shop/:shopId", h.ListGalleryItemsByShop)
 
 	// Protected routes
-	gallery.Post("/", middleware.RequireAuth(h.config), h.CreateGalleryItem)
-	gallery.Get("/:id", middleware.RequireAuth(h.config), h.GetGalleryItemByID)
-	gallery.Patch("/:id", middleware.RequireAuth(h.config), h.UpdateGalleryItem)
-	gallery.Delete("/:id", middleware.RequireAuth(h.config), h.DeleteGalleryItem)
+	gallery.Post("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateGalleryItem)
+	gallery.Get("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetGalleryItemByID)
+	gallery.Patch("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.UpdateGalleryItem)
+	gallery.Delete("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.DeleteGalleryItem)
 }
 
 // CreateGalleryItem handles creating a new gallery item

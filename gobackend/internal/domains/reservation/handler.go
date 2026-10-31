@@ -32,9 +32,9 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
 	reservations.Get("/:id", h.GetReservationByID)
 
 	// Protected routes
-	reservations.Get("/", middleware.RequireAuth(h.config), h.ListReservations)
-	reservations.Patch("/:id/status", middleware.RequireAuth(h.config), h.UpdateReservationStatus)
-	reservations.Get("/analytics", middleware.RequireAuth(h.config), h.GetReservationAnalytics)
+	reservations.Get("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListReservations)
+	reservations.Patch("/:id/status", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.UpdateReservationStatus)
+	reservations.Get("/analytics", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetReservationAnalytics)
 }
 
 // CreateReservation handles creating a new reservation
