@@ -37,7 +37,15 @@ type AuthUser struct {
 // Security: issuer and audience are validated against the configured values so
 // that tokens minted for other environments (or a forged token with a wrong
 // aud) can never authenticate on this deployment.
-func RequireAuth(cfg *config.Config, issuer, audience string) fiber.Handler {
+func RequireAuth(cfg *config.Config, extra ...string) fiber.Handler {
+	issuer := cfg.Auth.Issuer
+	audience := cfg.Auth.Audience
+	if len(extra) >= 1 && extra[0] != "" {
+		issuer = extra[0]
+	}
+	if len(extra) >= 2 && extra[1] != "" {
+		audience = extra[1]
+	}
 	return func(c *fiber.Ctx) error {
 		user, source, err := extractUser(c, cfg.Auth.JWTSecret, issuer, audience)
 		if err != nil {
@@ -51,7 +59,15 @@ func RequireAuth(cfg *config.Config, issuer, audience string) fiber.Handler {
 
 // OptionalAuth extracts the user if a token is present, otherwise continues
 // without authentication.
-func OptionalAuth(cfg *config.Config, issuer, audience string) fiber.Handler {
+func OptionalAuth(cfg *config.Config, extra ...string) fiber.Handler {
+	issuer := cfg.Auth.Issuer
+	audience := cfg.Auth.Audience
+	if len(extra) >= 1 && extra[0] != "" {
+		issuer = extra[0]
+	}
+	if len(extra) >= 2 && extra[1] != "" {
+		audience = extra[1]
+	}
 	return func(c *fiber.Ctx) error {
 		user, source, err := extractUser(c, cfg.Auth.JWTSecret, issuer, audience)
 		if err == nil {

@@ -13,7 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiRequest } from '@/lib/auth';
+import { apiRequest } from '../lib/api/core';
 
 type ShopData = {
   enabledModules?: string[];

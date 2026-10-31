@@ -318,7 +318,7 @@ func (s *Service) issuePortalToken(ownerID string, phone *string) (string, error
 		return "", errors.Internal("jwt_secret_is_required_for_portal_tokens", errors.New(errors.KindInternal, "portal_token", "jwtSecret is empty"))
 	}
 	now := time.Now()
-	sessionID := fmt.Sprintf("%d-%d", ownerID, now.UnixNano())
+	sessionID := fmt.Sprintf("%s-%d", ownerID, now.UnixNano())
 	claims := auth.TokenClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   ownerID,
