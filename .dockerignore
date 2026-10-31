@@ -1,5 +1,5 @@
 # Docker
-Dockerfile
+# Dockerfile is kept
 Dockerfile.dev
 docker-compose.yml
 docker-compose.dev.yml

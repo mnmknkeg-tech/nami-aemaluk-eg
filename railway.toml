@@ -1,6 +1,6 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "gobackend/Dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 healthcheckPath = "/monitoring/ready"
