@@ -29,7 +29,7 @@ export const useBuilderPublishing = (
       process.env.NEXT_PUBLIC_MARKETPLACE_URL ||
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? 'http://localhost:5174'
-        : 'https://mnmknk.com');
+        : 'https://nami-aemaluk-marketplace-eg.vercel.app');
     return `${marketplaceBase}/site/${slug}`;
   }, [builderShopSlugRef]);
 
