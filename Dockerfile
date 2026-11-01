@@ -11,7 +11,7 @@ RUN go mod download
 COPY gobackend/ .
 
 # Static binary with no CGO dependencies.
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/api ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux GOMAXPROCS=2 go build -p=2 -ldflags="-s -w" -o /bin/api ./cmd/api
 
 # Final stage
 FROM alpine:3.20
