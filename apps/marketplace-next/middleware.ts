@@ -24,6 +24,8 @@ const MAIN_DOMAINS = new Set([
   'www.ray.eg',
   'mnmknk.com',
   'www.mnmknk.com',
+  'nami-aemaluk-marketplace-eg.vercel.app',
+  'www.nami-aemaluk-marketplace-eg.vercel.app',
 ]);
 
 /**
@@ -40,7 +42,7 @@ const MAIN_DOMAINS = new Set([
  * الفرعية/المخصّصة (/site/:slug) تفضل شغالة عادي.
  */
 const COMING_SOON_ACTIVE =
-  process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_MARKETPLACE_LIVE !== 'true';
+  process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_MARKETPLACE_LIVE === 'false';
 
 /**
  * Multi-tenant Next.js Middleware:

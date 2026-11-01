@@ -3,7 +3,7 @@ export const siteConfig = {
   nameArabic: 'من مكانك',
   nameBusiness: 'MNMKNK Business',
   description: 'منصة تسويق ومبيعات للأنشطة التجارية - اكتشف المتاجر والمنتجات والعروض',
-  url: 'https://mnmknk.com',
+  url: process.env.NEXT_PUBLIC_MARKETPLACE_URL || 'https://nami-aemaluk-marketplace-eg.vercel.app',
   ogImage: '/og-image.png',
   locale: 'ar',
   locales: ['ar', 'en'],

@@ -124,7 +124,7 @@ export const useBuilderPublishing = (
             (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
           const marketplaceBase = isDev
             ? process.env.NEXT_PUBLIC_MARKETPLACE_URL || 'http://localhost:5174'
-            : process.env.NEXT_PUBLIC_MARKETPLACE_URL || 'https://mnmknk.com';
+            : process.env.NEXT_PUBLIC_MARKETPLACE_URL || 'https://nami-aemaluk-marketplace-eg.vercel.app';
           const revalidateSecret =
             process.env.NEXT_PUBLIC_REVALIDATE_SECRET || 'dev-revalidate-secret';
           void fetch(`${marketplaceBase}/api/revalidate`, {
