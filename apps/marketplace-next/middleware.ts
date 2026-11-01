@@ -68,6 +68,11 @@ export default function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/coming-soon', req.url));
   }
 
+  // Keep the merchant-name URL working while the backend slug migration rolls out.
+  if (url.pathname === '/site/la-villa') {
+    return NextResponse.rewrite(new URL('/site/al-islam', req.url));
+  }
+
   // 1. Bypass main marketplace domains
   if (MAIN_DOMAINS.has(hostWithPort) || MAIN_DOMAINS.has(hostname)) {
     return NextResponse.next();
