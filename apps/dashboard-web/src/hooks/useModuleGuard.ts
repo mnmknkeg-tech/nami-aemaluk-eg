@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * useModuleGuard
- * ──────────────────────────────────────────────────────────────
- * Guards a page so that only merchants who have enabled the given
- * module can access it.  All others are silently redirected to
- * /dashboard.
- *
- * Usage (inside any page component):
- *   useModuleGuard('bookings');
- */
+ /** useModuleGuard
+  * ──────────────────────────────────────────────────────────────
+  * Reports whether a merchant has enabled the given module.  It never
+  * redirects — the merchant stays on the page; the board shows the section
+  * as "closed" so they can re-enable the module from the settings panel.
+  *
+  * Usage (inside any page component):
+  *   const { allowed } = useModuleGuard('bookings');
+  */
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -103,10 +103,8 @@ export function useModuleGuard(moduleId: string): { allowed: boolean | null } {
         if (cancelled) return;
         const ok = isModuleEnabled(shop, moduleId);
         setAllowed(ok);
-        if (!ok) {
-          // Redirect merchants who don't have this module
-          router.replace('/dashboard');
-        }
+        // No silent redirect — the merchant stays on the page and the board
+        // shows the section as "closed" (disabled) so they can re-enable it.
       } catch {
         // If we can't load shop data, don't block access (fail open)
         if (!cancelled) setAllowed(true);

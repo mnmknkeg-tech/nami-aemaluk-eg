@@ -15,6 +15,8 @@ import {
   Server,
   Layers,
   AlertCircle,
+  Share2,
+  MessageCircle,
 } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
 
@@ -32,6 +34,7 @@ export const PublishModal: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'pipeline' | 'nextjs_export' | 'seo_sitemap'>('pipeline');
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   if (!isPublishModalOpen) return null;
 
@@ -214,46 +217,123 @@ export default async function HomePage() {
                 </div>
               )}
 
-              {/* Published Success Card */}
-              {publishingStatus.status === 'published' && (
-                <div className="p-5 rounded-xl bg-emerald-50 border border-emerald-200 space-y-3 animate-in fade-in duration-300">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                      <span>الموقع متاح الآن عالمياً على شبكة الـCDN</span>
-                    </div>
-                    <a
-                      href={publishingStatus.liveUrl || liveWebsiteUrl || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-disabled={!publishingStatus.liveUrl && !liveWebsiteUrl}
-                      onClick={(e) => {
-                        if (!publishingStatus.liveUrl && !liveWebsiteUrl) e.preventDefault();
-                      }}
-                      className={`flex items-center gap-1.5 text-xs font-bold bg-white px-3 py-1.5 rounded-lg border border-emerald-300 transition-colors ${
-                        publishingStatus.liveUrl || liveWebsiteUrl
-                          ? 'text-emerald-700 hover:bg-emerald-100'
-                          : 'text-slate-400 cursor-not-allowed'
-                      }`}
-                    >
-                      <span>فتح الموقع المباشر</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
+              {/* Published Success Card & Live Store Marketing Link */}
+              {publishingStatus.status === 'published' && (() => {
+                const targetUrl = publishingStatus.liveUrl || liveWebsiteUrl || '';
+                const copyStoreLink = () => {
+                  if (!targetUrl) return;
+                  navigator.clipboard.writeText(targetUrl);
+                  setLinkCopied(true);
+                  setTimeout(() => setLinkCopied(false), 2500);
+                };
+                const waShareUrl = targetUrl
+                  ? `https://api.whatsapp.com/send?text=${encodeURIComponent(
+                      `تفضل بزيارة موقعنا ومتجرنا الرسمي وتسوّق أفضل المنتجات الآن:\n${targetUrl}`
+                    )}`
+                  : '#';
 
-                  {/* Publish facts (real values only) */}
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                    <div className="bg-white p-3 rounded-lg border border-emerald-200 text-center">
-                      <span className="text-[10px] text-slate-500 block">الصفحات المنشورة</span>
-                      <span className="text-lg font-bold text-slate-900">{website.pages.length}</span>
+                return (
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100/50 border-2 border-emerald-300 space-y-4 shadow-sm animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2.5 text-emerald-950 font-black text-sm sm:text-base">
+                        <span className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                          <CheckCircle2 className="w-5 h-5" />
+                        </span>
+                        <span>موقعك منشور الآن ومتاح عالمياً للعملاء!</span>
+                      </div>
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-200/80 text-emerald-900 border border-emerald-300">
+                        مباشر ومفعّل
+                      </span>
                     </div>
-                    <div className="bg-white p-3 rounded-lg border border-emerald-200 text-center">
-                      <span className="text-[10px] text-slate-500 block">استراتيجية الريندر</span>
-                      <span className="text-xs font-bold text-blue-600">Next.js ISR</span>
+
+                    {/* Prominent URL Card for marketing */}
+                    <div className="bg-white p-4 rounded-xl border border-emerald-200 shadow-xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                          <Globe className="w-4 h-4 text-emerald-600" />
+                          <span>رابط متجرك الحقيقي للتسويق والنشر:</span>
+                        </label>
+                        <span className="text-[10px] text-slate-400 font-medium">جاهز للمشاركة</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={targetUrl}
+                          dir="ltr"
+                          className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono font-bold text-slate-800 select-all outline-hidden focus:border-emerald-500 focus:bg-white transition-all truncate"
+                        />
+                        <button
+                          type="button"
+                          onClick={copyStoreLink}
+                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs"
+                        >
+                          {linkCopied ? (
+                            <>
+                              <Check className="w-4 h-4 text-emerald-200" />
+                              <span>تم النسخ!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4" />
+                              <span>نسخ الرابط</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1 flex-wrap">
+                        <a
+                          href={targetUrl || '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-disabled={!targetUrl}
+                          onClick={(e) => {
+                            if (!targetUrl) e.preventDefault();
+                          }}
+                          className={`flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-lg border transition-all cursor-pointer ${
+                            targetUrl
+                              ? 'bg-slate-900 text-white hover:bg-black shadow-xs'
+                              : 'bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200'
+                          }`}
+                        >
+                          <span>زيارة المتجر الآن</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+
+                        {targetUrl && (
+                          <a
+                            href={waShareUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-white transition-all shadow-xs cursor-pointer"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            <span>مشاركة عبر واتساب</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-emerald-500/10 border border-emerald-300/60 rounded-xl p-3 text-[11px] text-emerald-950 font-medium leading-relaxed">
+                      💡 <strong>ملاحظة للمبيعات:</strong> هذا هو الرابط الذي تسوّق به لعملائك ليدخلوا ويتصفحوا موقعك. المنتجات التي تضيفها في المخزون وتفعّل خيار ظهورها في الموقع ستظهر للمشترين هنا مباشرة مع إمكانية الشراء والطلب الفوري.
+                    </div>
+
+                    {/* Publish facts (real values only) */}
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="bg-white p-2.5 rounded-lg border border-emerald-200 text-center">
+                        <span className="text-[10px] text-slate-500 block">الصفحات المنشورة</span>
+                        <span className="text-base font-bold text-slate-900">{website.pages.length}</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-emerald-200 text-center">
+                        <span className="text-[10px] text-slate-500 block">استراتيجية الريندر</span>
+                        <span className="text-xs font-bold text-blue-600">Next.js ISR الحقيقي</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">

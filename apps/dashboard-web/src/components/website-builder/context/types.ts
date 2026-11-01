@@ -192,6 +192,7 @@ export interface BuilderContextType {
   toggleFocusMode: () => void;
   builderShopSlug: string;
   builderShopName: string;
+  shopProducts: any[];
   liveWebsiteUrl: string;
   isMobileInspectorOpen: boolean;
   setIsMobileInspectorOpen: (open: boolean) => void;

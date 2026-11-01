@@ -106,6 +106,8 @@ export type SidebarSection = {
   mainHref?: string;
   /** false = local-only / not yet released section */
   published?: boolean;
+  /** false = merchant disabled this module (appears as "closed" on the board) */
+  disabled?: boolean;
 };
 
 // Colored accent per section — used by TopNav and Sidebar so each

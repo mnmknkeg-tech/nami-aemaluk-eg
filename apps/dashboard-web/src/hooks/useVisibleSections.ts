@@ -254,12 +254,15 @@ export default function useVisibleSections() {
           MODULE_ALIASES[section.moduleId.toLowerCase()] || section.moduleId
         ).toLowerCase();
 
-        // If the merchant configured their modules during signup, ONLY show enabled modules!
+        // If the merchant configured their modules during signup, show all sections
+        // but keep disabled (deselected) modules visible on the board as "closed"
+        // — they must appear in the board (closed) so the merchant can re-enable
+        // them by clicking, instead of being silently removed.
         if (hasExplicitConfig) {
           const isModEnabled =
             enabledModulesSet.has(moduleId) || Boolean(enabledFeatures[moduleId]);
           if (!isModEnabled) {
-            return null;
+            return { ...section, disabled: true };
           }
         }
 

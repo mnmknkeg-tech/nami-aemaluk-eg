@@ -130,7 +130,11 @@ export const useBuilderPublishing = (
           void fetch(`${marketplaceBase}/api/revalidate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug: publishSlug, secret: revalidateSecret }),
+            body: JSON.stringify({
+              slug: publishSlug,
+              shopId: builderShopId,
+              secret: revalidateSecret,
+            }),
           }).catch(() => undefined);
         } catch {
           /* non-fatal */

@@ -113,6 +113,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   const [builderShopId, setBuilderShopId] = useState('');
   const [builderShopSlug, setBuilderShopSlug] = useState('');
   const [builderShopName, setBuilderShopName] = useState('');
+  const [shopProducts, setShopProducts] = useState<any[]>([]);
   const builderShopIdRef = useRef(builderShopId);
   const builderShopSlugRef = useRef(builderShopSlug);
   useEffect(() => {
@@ -284,6 +285,16 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             customDomain: `${shop.slug || 'shop'}.mnmknk.com`,
           }));
         }
+
+        // Fetch real active inventory products for this shop to bind to the website
+        apiRequest(`/products?shopId=${shopId}&surface=site&limit=100`)
+          .then((res) => {
+            if (!cancelled && res) {
+              const items = Array.isArray(res) ? res : res.data || res.items || [];
+              setShopProducts(items);
+            }
+          })
+          .catch(() => undefined);
 
         // ── Initialization complete ─────────────────────────────────────────
         // If the shop/config overrides the initial state, load it now.
@@ -505,6 +516,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         toggleFocusMode,
         builderShopSlug,
         builderShopName,
+        shopProducts,
         liveWebsiteUrl,
         isMobileInspectorOpen,
         setIsMobileInspectorOpen,

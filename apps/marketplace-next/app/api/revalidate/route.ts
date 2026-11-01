@@ -21,9 +21,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'not_configured' }, { status: 500 });
   }
   let slug = '';
+  let shopId = '';
   try {
     const body = await req.json();
     slug = String((body as any)?.slug || '').trim();
+    shopId = String((body as any)?.shopId || '').trim();
     if (String((body as any)?.secret || '') !== secret) {
       return NextResponse.json({ success: false, error: 'unauthorized' }, { status: 401 });
     }
@@ -36,5 +38,12 @@ export async function POST(req: NextRequest) {
   }
 
   revalidateTag(`site:${slug}`, 'max');
-  return NextResponse.json({ success: true, revalidated: `site:${slug}` });
+  if (shopId) {
+    revalidateTag(`products:${shopId}`, 'max');
+    revalidateTag(`sub-plans:${shopId}`, 'max');
+  }
+  return NextResponse.json({
+    success: true,
+    revalidated: [`site:${slug}`, ...(shopId ? [`products:${shopId}`, `sub-plans:${shopId}`] : [])],
+  });
 }

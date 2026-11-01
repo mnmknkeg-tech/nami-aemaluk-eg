@@ -3,6 +3,7 @@ import { BaseRendererProps } from './types';
 import { resolveProductCardOptions, productGridClass } from '@ray-eg/shared/builder';
 import { normalizeThemeTokens } from '../../../data/defaultTheme';
 import { ProductCardView } from './ProductCardView';
+import { useBuilder } from '../../../context/BuilderContext';
 
 export interface ProductsRendererProps extends BaseRendererProps {
   addToCart: (item: any) => void;
@@ -22,7 +23,21 @@ export const ProductsRenderer: React.FC<ProductsRendererProps> = ({
   addToCart,
   currentViewport,
 }) => {
-  const productsList = node.props.products || [];
+  const { shopProducts } = useBuilder();
+  // إذا أضاف التاجر منتجات حقيقية في المخزون، تظهر المنتجات الحقيقية تلقائياً على الموقع
+  const productsList =
+    shopProducts && shopProducts.length > 0
+      ? shopProducts.map((p: any) => ({
+          id: p.id,
+          title: p.name || p.title,
+          price: p.price,
+          comparePrice: p.oldPrice,
+          image: p.imageUrl || (Array.isArray(p.images) && p.images[0]) || '',
+          category: p.category,
+          description: p.description,
+          isAvailable: p.isActive !== false && p.is_active !== false,
+        }))
+      : node.props.products || [];
   const options = resolveProductCardOptions(node.props as any);
   const theme = normalizeThemeTokens(website.theme);
   const isMobile = currentViewport === 'mobile';
