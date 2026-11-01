@@ -24,8 +24,8 @@ func NewRepository(pool *db.Pool) *Repository {
 }
 
 const bookingColumns = `
-	b.id, b.booking_number, b.service_id, b.slot_id, b.shop_id, b.user_id,
-	b.customer_name, b.customer_phone, b.customer_email,
+	b.id, COALESCE(b.booking_number, ''), COALESCE(b.service_id, ''), b.slot_id, b.shop_id, b.user_id,
+	b.customer_name, b.customer_phone, COALESCE(b.customer_email, ''),
 	b.start_at, b.end_at, b.participants, b.total_amount, b.currency,
 	b.status, b.payment_status, b.notes, b.metadata,
 	b.confirmed_at, b.completed_at, b.cancelled_at,
