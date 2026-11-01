@@ -90,6 +90,6 @@ type ListReservationsRequest struct {
 	ShopID *string            `json:"shop_id,omitempty"`
 	UserID *string            `json:"user_id,omitempty"`
 	Status *ReservationStatus `json:"status,omitempty"`
-	Limit  int                `json:"limit,omitempty" validate:"omitempty,min=1,max=100"`
+	Limit  int                `json:"limit,omitempty" validate:"omitempty,min=1,max=500"` // service clamps to 100
 	Offset int                `json:"offset,omitempty" validate:"omitempty,min=0"`
 }
