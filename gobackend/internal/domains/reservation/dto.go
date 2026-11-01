@@ -37,7 +37,7 @@ type ListReservationsDTO struct {
 	ShopID *string            `json:"shop_id,omitempty" validate:"omitempty,uuid"`
 	UserID *string            `json:"user_id,omitempty" validate:"omitempty,uuid"`
 	Status *ReservationStatus `json:"status,omitempty" validate:"omitempty,oneof=PENDING CONFIRMED CANCELLED COMPLETED EXPIRED"`
-	Limit  int                `json:"limit,omitempty" validate:"omitempty,min=1,max=100"`
+	Limit  int                `json:"limit,omitempty" validate:"omitempty,min=1,max=500"` // service clamps to 100
 	Offset int                `json:"offset,omitempty" validate:"omitempty,min=0"`
 }
 

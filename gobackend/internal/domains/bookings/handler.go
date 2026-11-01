@@ -66,6 +66,11 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return errors.Validation("invalid_body", "تعذر قراءة بيانات الطلب")
 	}
+	// Dashboard bookings may omit shopId — default it from the token claims
+	// so merchants never need to know their own shop id.
+	if req.ShopID == "" {
+		req.ShopID = user.ShopID
+	}
 	if err := validate.Struct(req); err != nil {
 		return err
 	}
