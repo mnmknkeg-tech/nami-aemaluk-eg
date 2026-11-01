@@ -29,6 +29,7 @@ export const PublishModal: React.FC = () => {
     publishingStatus,
     runPublishPipeline,
     liveWebsiteUrl,
+    publishedSiteUrl,
     builderShopName,
   } = useBuilder();
 
@@ -221,6 +222,36 @@ export default async function HomePage() {
                   <span>{publishingStatus.stepMessage}</span>
                 </p>
               </div>
+
+              {/* Persistent public URL: available even before the first publish */}
+              {publishingStatus.status !== 'published' && publishedSiteUrl && (
+                <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-3">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
+                    <Globe className="w-4 h-4 text-blue-600" />
+                    <span>رابط موقع متجرك العام</span>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    سيصبح الرابط متاحاً للعملاء بعد إتمام أول عملية نشر ناجحة.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code dir="ltr" className="flex-1 min-w-0 truncate rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-700">
+                      {publishedSiteUrl}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(publishedSiteUrl);
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 2500);
+                      }}
+                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700 transition-colors"
+                    >
+                      {linkCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      {linkCopied ? 'تم النسخ' : 'نسخ الرابط'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Failure Card */}
               {publishingStatus.status === 'failed' && (

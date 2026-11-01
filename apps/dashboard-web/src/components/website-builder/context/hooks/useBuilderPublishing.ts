@@ -176,5 +176,6 @@ export const useBuilderPublishing = (
     restoreVersion,
     publishingStatus,
     runPublishPipeline,
+    publishedSiteUrl: publicSiteUrl(),
   };
 };

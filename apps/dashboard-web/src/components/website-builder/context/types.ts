@@ -159,6 +159,7 @@ export interface BuilderContextType {
   // Publishing Pipeline
   publishingStatus: PublishingPipelineStatus;
   runPublishPipeline: () => void;
+  publishedSiteUrl: string;
 
   // AI Modification Engine
   applyAiPatch: (patch: StructuredAiPatch) => void;
