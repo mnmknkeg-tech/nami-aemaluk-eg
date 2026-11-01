@@ -279,8 +279,8 @@ func (r *Repository) EnsureBookingService(ctx context.Context, shopID, serviceID
 	}
 
 	err = r.pool.QueryRow(ctx, `
-		INSERT INTO booking_services (shop_id, category_id, name, name_ar, description, duration_minutes, price, currency, capacity)
-		VALUES ($1, $2, $3, $3, 'تم إنشاؤها تلقائياً من لوحة الحجوزات', 30, $4, 'EGP', 1)
+		INSERT INTO booking_services (shop_id, category_id, name, name_ar, description, duration_minutes, price, currency, capacity, updated_at)
+		VALUES ($1, $2, $3, $3, 'تم إنشاؤها تلقائياً من لوحة الحجوزات', 30, $4, 'EGP', 1, NOW())
 		RETURNING id
 	`, shopID, categoryID, name, itemPrice).Scan(&existingID)
 	if err != nil {
@@ -296,8 +296,8 @@ func (r *Repository) EnsureBookingSlot(ctx context.Context, serviceID, shopID, r
 
 	var slotID string
 	err := r.pool.QueryRow(ctx, `
-		INSERT INTO booking_slots (service_id, shop_id, resource_id, date, start_time, end_time, start_at, end_at, status, max_capacity, current_bookings)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'BOOKED', $9, $9)
+		INSERT INTO booking_slots (service_id, shop_id, resource_id, date, start_time, end_time, start_at, end_at, status, max_capacity, current_bookings, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'BOOKED', $9, $9, NOW())
 		RETURNING id
 	`, serviceID, nullableStr(shopID), nullableStr(resourceID), dateStr, startTime, endTime, startAt, endAt, participants).Scan(&slotID)
 	if err != nil {
