@@ -1,7 +1,7 @@
 const RAW_BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   process.env.BACKEND_URL ||
-  (process.env.NODE_ENV === 'production' ? 'https://api2.mnmknk.com' : 'http://localhost:4000');
+  (process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? 'https://nami-aemaluk-eg-production.up.railway.app' : 'http://localhost:4000')); 
 
 const DEFAULT_API_TIMEOUT_MS = 15_000;
 const API_TIMEOUT_MS = parsePositiveInteger(
