@@ -38,6 +38,12 @@ const bookingJoinColumns = `
 	sh.name AS shop_name
 `
 
+// INSERT/UPDATE RETURNING has no table alias and no joined rows. Keep the same
+// scan shape by returning unqualified columns plus typed NULL join placeholders.
+var bookingReturningColumns = strings.ReplaceAll(bookingColumns, "b.", "")
+
+const bookingReturningJoins = `, NULL::text, NULL::double precision, NULL::text, NULL::text, NULL::text, NULL::text`
+
 // FindByID returns a booking by ID.
 func (r *Repository) FindByID(ctx context.Context, id string) (*Booking, error) {
 	query := "SELECT " + bookingColumns + ", " + bookingJoinColumns + `
@@ -103,7 +109,7 @@ func (r *Repository) Create(ctx context.Context, b *Booking) (*Booking, error) {
 			$6, $7, $8,
 			$9, $10, $11, $12, $13,
 			$14, $15, $16, $17
-		) RETURNING `+bookingColumns,
+		) RETURNING `+bookingReturningColumns+bookingReturningJoins,
 		b.BookingNumber, b.ServiceID, b.SlotID, b.ShopID, b.UserID,
 		b.CustomerName, b.CustomerPhone, b.CustomerEmail,
 		b.StartAt, b.EndAt, b.Participants, b.TotalAmount, b.Currency,
@@ -131,7 +137,7 @@ func (r *Repository) UpdateStatus(ctx context.Context, id, status string) (*Book
 			completed_at = COALESCE($4, completed_at),
 			cancelled_at = COALESCE($5, cancelled_at),
 			updated_at = NOW()
-		WHERE id = $1 RETURNING `+bookingColumns, id, status, confirmedAt, completedAt, cancelledAt)
+		WHERE id = $1 RETURNING `+bookingReturningColumns+bookingReturningJoins, id, status, confirmedAt, completedAt, cancelledAt)
 	return scanBooking(row)
 }
 
@@ -220,7 +226,7 @@ func (r *Repository) GetAvailableSlots(ctx context.Context, serviceID string, da
 	}
 
 	var slots []AvailableSlot
-	for t := dayStart; t.Add(time.Duration(durationMinutes) * time.Minute).Before(dayEnd) || t.Add(time.Duration(durationMinutes)*time.Minute).Equal(dayEnd); t = t.Add(time.Duration(durationMinutes) * time.Minute) {
+	for t := dayStart; t.Add(time.Duration(durationMinutes)*time.Minute).Before(dayEnd) || t.Add(time.Duration(durationMinutes)*time.Minute).Equal(dayEnd); t = t.Add(time.Duration(durationMinutes) * time.Minute) {
 		slotEnd := t.Add(time.Duration(durationMinutes) * time.Minute)
 		if slotEnd.After(dayEnd) {
 			break
