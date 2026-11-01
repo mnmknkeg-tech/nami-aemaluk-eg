@@ -160,7 +160,15 @@ export const useBuilderPublishing = (
       });
       setHistoryLog((prev) => ['فشل نشر الموقع — أعد المحاولة', ...prev]);
     }
-  }, [builderShopIdRef, builderShopSlugRef, websiteRef, liveWebsiteUrl, saveDraft, setHistoryLog, draftVersionRef]);
+  }, [
+    builderShopIdRef,
+    builderShopSlugRef,
+    websiteRef,
+    liveWebsiteUrl,
+    saveDraft,
+    setHistoryLog,
+    draftVersionRef,
+  ]);
 
   return {
     versions,
