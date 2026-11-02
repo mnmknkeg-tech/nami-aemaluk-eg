@@ -65,7 +65,7 @@ function buildSandboxHtml(node: ComponentNode): string {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; object-src 'none'; frame-ancestors 'none';" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob: https:; font-src data: https:; object-src 'none'; frame-ancestors 'none';" />
 <style>
   html, body { margin: 0; padding: 0; background: transparent; overflow-x: hidden; }
   ${customCss.replace(/<\/style>/gi, '\\u003c/style\\u003e')}
@@ -118,7 +118,7 @@ export const CustomCodeFrame: React.FC<{ node: ComponentNode }> = ({ node }) => 
       if (!isAllowedMessage(e.data)) return;
       if (e.data.id !== node.id) return;
 
-      setIframeHeight((prev) => Math.max(40, Math.min(e.data.height + 8, 4000)));
+      setIframeHeight(() => Math.max(40, Math.min(e.data.height + 8, 4000)));
     };
 
     window.addEventListener('message', handler);

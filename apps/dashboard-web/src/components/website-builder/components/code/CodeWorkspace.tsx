@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Code2, FileCode, Maximize2, Minimize2, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
 
-type CodeFile = 'html' | 'styles.css' | 'interactions.js';
+type CodeFile = 'component.tsx' | 'styles.css' | 'interactions.ts';
 
 const fileLabels: Record<CodeFile, string> = {
-  html: 'HTML',
+  'component.tsx': 'HTML',
   'styles.css': 'CSS',
-  'interactions.js': 'JavaScript',
+  'interactions.ts': 'JavaScript',
 };
 
 const emptyHtml =
@@ -43,14 +43,31 @@ export const CodeWorkspace: React.FC = () => {
     insertNode,
     deleteNode,
     activePage,
+    codeActiveFile,
+    setCodeActiveFile,
+    editingMode,
   } = useBuilder();
-  const [activeFile, setActiveFile] = useState<CodeFile>('html');
   const [isExpanded, setIsExpanded] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const activeFile = codeActiveFile as CodeFile;
+  const availableFiles = useMemo(
+    () =>
+      editingMode === 'html_only'
+        ? (['component.tsx'] as CodeFile[])
+        : editingMode === 'css_only'
+          ? (['styles.css'] as CodeFile[])
+          : (['component.tsx', 'styles.css', 'interactions.ts'] as CodeFile[]),
+    [editingMode]
+  );
+
+  useEffect(() => {
+    if (!availableFiles.includes(activeFile)) setCodeActiveFile(availableFiles[0]);
+  }, [activeFile, availableFiles, setCodeActiveFile]);
+
   const code = useMemo(() => {
     if (!selectedNode) return '';
-    if (activeFile === 'html') {
+    if (activeFile === 'component.tsx') {
       return (
         selectedNode.customCode?.tsxSnippet ||
         selectedNode.props?.html ||
@@ -68,7 +85,10 @@ export const CodeWorkspace: React.FC = () => {
           .join('\\n')
       );
     }
-    return selectedNode.customCode?.js || '// اكتب التفاعل الخاص بهذا المكوّن هنا';
+    if (activeFile === 'interactions.ts') {
+      return selectedNode.customCode?.js || '// اكتب التفاعل الخاص بهذا المكوّن هنا';
+    }
+    return selectedNode.customCode?.propsSchema || '{\n  "type": "object"\n}';
   }, [activeFile, selectedNode]);
 
   if (!isCodeWorkspaceOpen) return null;
@@ -80,7 +100,7 @@ export const CodeWorkspace: React.FC = () => {
 
   const handleCodeChange = (value: string) => {
     if (!selectedNode) return;
-    if (activeFile === 'html') {
+    if (activeFile === 'component.tsx') {
       updateNodeCustomCode(selectedNode.id, { tsxSnippet: value, enabled: true });
       updateNodeProps(selectedNode.id, { html: value });
       return;
@@ -89,7 +109,11 @@ export const CodeWorkspace: React.FC = () => {
       updateNodeCustomCode(selectedNode.id, { css: value, enabled: true });
       return;
     }
-    updateNodeCustomCode(selectedNode.id, { js: value, enabled: true });
+    if (activeFile === 'interactions.ts') {
+      updateNodeCustomCode(selectedNode.id, { js: value, enabled: true });
+      return;
+    }
+    updateNodeCustomCode(selectedNode.id, { propsSchema: value, enabled: true });
   };
 
   const createCustomNode = () => {
@@ -197,10 +221,10 @@ export const CodeWorkspace: React.FC = () => {
             className="flex shrink-0 gap-1 border-b border-slate-800 px-2 pt-2"
             aria-label="ملفات المكوّن"
           >
-            {(Object.keys(fileLabels) as CodeFile[]).map((file) => (
+            {availableFiles.map((file) => (
               <button
                 key={file}
-                onClick={() => setActiveFile(file)}
+                onClick={() => setCodeActiveFile(file)}
                 className={`flex items-center gap-1 rounded-t px-3 py-2 text-xs font-mono ${activeFile === file ? 'border-t-2 border-orange-500 bg-slate-900 text-orange-300' : 'text-slate-400 hover:bg-slate-900 hover:text-white'}`}
               >
                 <FileCode className="size-3.5" /> {fileLabels[file]}
