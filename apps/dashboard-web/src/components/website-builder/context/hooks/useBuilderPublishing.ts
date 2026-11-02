@@ -2,6 +2,24 @@ import { useState, useCallback, useEffect } from 'react';
 import { PublishingPipelineStatus, VersionHistoryItem, Website } from '../../types/builder';
 import { apiRequest } from '@/lib/auth';
 
+function findInvalidLinks(website: Website): string[] {
+  const invalid: string[] = [];
+  const components = website.components || {};
+
+  Object.values(components).forEach((component: any) => {
+    const props = component?.props || {};
+    for (const key of ['href', 'url', 'link', 'buttonUrl']) {
+      const value = props[key];
+      if (typeof value !== 'string') continue;
+      if (value.trim() === '' || /^tel:\s*$/i.test(value.trim())) {
+        invalid.push(`${component.name || component.id || 'قسم غير معروف'}: ${key}`);
+      }
+    }
+  });
+
+  return [...new Set(invalid)];
+}
+
 export const useBuilderPublishing = (
   websiteRef: { current: Website },
   builderShopIdRef: { current: string },
@@ -90,7 +108,6 @@ export const useBuilderPublishing = (
   // Publishing Pipeline Workflow
   const runPublishPipeline = useCallback(async () => {
     const builderShopId = builderShopIdRef.current;
-    const builderShopSlug = builderShopSlugRef.current;
     const website = websiteRef.current;
 
     setPublishingStatus({
@@ -123,6 +140,18 @@ export const useBuilderPublishing = (
           totalSteps: 5,
           stepMessage: 'شجرة المكونات غير صالحة — لم يتم العثور على صفحة جذر ومكون جذع.',
           errors: ['لا توجد صفحة جذر أو مكون جذع في شجرة الموقع'],
+        });
+        return;
+      }
+
+      const invalidLinks = findInvalidLinks(website);
+      if (invalidLinks.length > 0) {
+        setPublishingStatus({
+          status: 'failed',
+          currentStep: 1,
+          totalSteps: 5,
+          stepMessage: 'لا يمكن النشر قبل إصلاح الروابط الفارغة أو غير المكتملة.',
+          errors: invalidLinks.slice(0, 8),
         });
         return;
       }
