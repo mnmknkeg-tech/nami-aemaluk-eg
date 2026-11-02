@@ -1,18 +1,7 @@
 import React from 'react';
-import {
-  Paintbrush,
-  Sliders,
-  Type,
-  Maximize2,
-  Box,
-  Layers,
-  Sparkles,
-  Smartphone,
-  Check,
-  Eye,
-} from 'lucide-react';
+import { Paintbrush, Sliders, Type, Maximize2 } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
-import { StyleProperties, ViewportBreakpoint } from '../../types/builder';
+import { StyleProperties } from '../../types/builder';
 import { normalizeThemeTokens } from '../../data/defaultTheme';
 
 export const LayoutSection: React.FC = () => {
@@ -457,7 +446,7 @@ export const ColorBackgroundSection: React.FC = () => {
 };
 
 export const PropsInspector: React.FC = () => {
-  const { selectedNode, updateNodeProps } = useBuilder();
+  const { selectedNode, updateNodeProps, viewport } = useBuilder();
   if (!selectedNode) return null;
 
   const handlePropChange = (key: string, val: any) => {
@@ -466,6 +455,24 @@ export const PropsInspector: React.FC = () => {
 
   return (
     <div className="space-y-3.5 p-3 bg-white">
+      <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
+        <div>
+          <span className="block text-[10px] font-bold text-slate-700">استجابة العنصر</span>
+          <span className="text-[10px] text-slate-500">إخفاء هذا العنصر على الموبايل فقط</span>
+        </div>
+        <input
+          type="checkbox"
+          checked={selectedNode.props.mobileHidden === true}
+          onChange={(event) => handlePropChange('mobileHidden', event.target.checked)}
+          aria-label="إخفاء العنصر على الموبايل"
+          className="size-4 accent-blue-600"
+        />
+      </div>
+      {viewport === 'mobile' && selectedNode.props.mobileHidden === true && (
+        <p className="-mt-1 text-[10px] font-medium text-amber-700">
+          العنصر مخفي في معاينة الموبايل الحالية.
+        </p>
+      )}
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
           <Sliders className="w-3.5 h-3.5 text-blue-600" />

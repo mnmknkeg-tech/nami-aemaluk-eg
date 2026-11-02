@@ -41,8 +41,10 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
     addToCart,
   } = useBuilder();
 
+  const currentViewport = overrideViewport || viewport;
   const node = website.components[nodeId];
-  if (!node || node.isHidden || node.props?.hidden) {
+  const hiddenOnViewport = currentViewport === 'mobile' && node?.props?.mobileHidden === true;
+  if (!node || node.isHidden || node.props?.hidden || hiddenOnViewport) {
     // Blank-canvas fallback: render a starting hero so the canvas is never empty.
     // This happens when rootNodeId doesn't match any component (fresh shop,
     // template mismatch, or cleared config). The merchant can then add sections.
@@ -109,7 +111,6 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
 
   const isSelected = selectedNodeId === node.id && !isInteractivePreview;
   const isHovered = hoveredNodeId === node.id && !isSelected && !isInteractivePreview;
-  const currentViewport = overrideViewport || viewport;
 
   // Compute responsive styles merged by current breakpoint
   const getComputedStyles = (): React.CSSProperties => {
