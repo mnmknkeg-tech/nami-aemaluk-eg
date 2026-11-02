@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSiteCart } from '@/lib/site-cart';
 import { PublicSiteRenderer, SiteCartDrawer, SiteSkeleton } from '@ray-eg/shared/builder';
 import type {
   SiteProduct,
@@ -35,23 +36,18 @@ export function SiteCartBridge({
   products,
   subscriptionPlans = [],
 }: SiteCartBridgeProps) {
-  const [items, setItems] = useState<SiteProduct[]>([]);
+  const { items, totalItems, addItem, updateQuantity, removeItem, clearCart } = useSiteCart();
   const [isCartOpen, setCartOpen] = useState(false);
   const [ready, setReady] = useState(false);
 
-  const cartItems = useMemo(
-    () =>
-      items.map((product) => ({
-        id: product.id,
-        productId: product.id,
-        title: product.title,
-        price: typeof product.price === 'string' ? Number(product.price) || 0 : product.price,
-        quantity: 1,
-        image: product.image,
-      })),
-    [items]
-  );
-  const totalItems = cartItems.length;
+  const cartItems = items.map(({ product, quantity }) => ({
+    id: product.id,
+    productId: product.id,
+    title: product.title,
+    price: typeof product.price === 'string' ? Number(product.price) || 0 : product.price,
+    quantity,
+    image: product.image,
+  }));
 
   // One frame of skeleton so hydration doesn't flash an empty page.
   useEffect(() => {
@@ -77,10 +73,7 @@ export function SiteCartBridge({
         subscriptionPlans={subscriptionPlans}
         cartCount={totalItems}
         onAddToCart={(p) => {
-          setItems((current) => {
-            const existing = current.find((item) => item.id === p.id);
-            return existing ? current : [...current, p];
-          });
+          addItem(p, shop);
           setCartOpen(true);
         }}
         onOpenCart={() => setCartOpen(true)}
@@ -92,11 +85,11 @@ export function SiteCartBridge({
         shop={shop}
         website={website}
         onUpdateQuantity={(id, delta) => {
-          if (delta < 0) setItems((current) => current.filter((item) => item.id !== id));
+          updateQuantity(id, delta);
         }}
-        onRemoveItem={(id) => setItems((current) => current.filter((item) => item.id !== id))}
+        onRemoveItem={removeItem}
         onClearCart={() => {
-          setItems([]);
+          clearCart();
           setCartOpen(false);
         }}
       />

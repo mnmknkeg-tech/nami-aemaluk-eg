@@ -16,6 +16,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useCart } from '@/lib/cart';
+import { useSiteCart } from '@/lib/site-cart';
 import { formatPrice } from '@/lib/utils';
 import { isSessionActive, jsonRequest } from '@/lib/api';
 import { LocationPicker } from '@/components/LocationPicker';
@@ -26,7 +27,26 @@ export default function CheckoutPage() {
   const pathname = usePathname();
   const isMerchantCheckout = /^\/(shop|site)\/[^/]+\/checkout\/?$/.test(pathname || '');
   const formRef = useRef<HTMLFormElement | null>(null);
-  const { items, totalItems, totalPrice, itemsByShop, clearCart } = useCart();
+  const marketCart = useCart();
+  const siteCart = useSiteCart();
+  const items = isMerchantCheckout
+    ? siteCart.items.map(({ product, quantity, shop }) => ({
+        id: product.id,
+        productId: product.id,
+        name: product.title,
+        price: typeof product.price === 'string' ? Number(product.price) || 0 : product.price,
+        quantity,
+        image: product.image,
+        shopId: shop.id,
+        shopName: shop.name,
+      }))
+    : marketCart.items;
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const shopGroups = isMerchantCheckout
+    ? { [siteCart.items[0]?.shop.id || 'merchant-site']: items }
+    : marketCart.itemsByShop();
+  const clearCart = isMerchantCheckout ? siteCart.clearCart : marketCart.clearCart;
 
   // Compact replacement for the market navbar, which is intentionally not
   // rendered on /checkout (see AppChrome). Keeps a clear way back and a
@@ -44,7 +64,7 @@ export default function CheckoutPage() {
         </button>
         <span className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
         <h1 className="text-sm md:text-base font-black text-slate-900 dark:text-white">{title}</h1>
-        {typeof count === 'number' && count > 0 && (
+        {!isMerchantCheckout && typeof count === 'number' && count > 0 && (
           <span className="mr-auto inline-flex items-center gap-1.5 text-xs font-bold text-slate-500">
             <ShoppingBag className="w-4 h-4" />
             {count} منتج
@@ -72,8 +92,6 @@ export default function CheckoutPage() {
   const [notes, setNotes] = useState('');
   const paymentMethod = 'cod' as const;
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-
-  const shopGroups = itemsByShop();
 
   // Prefill name/phone from the logged-in account so returning customers
   // don't retype them — the chips below the phone field restore them too.
@@ -206,12 +224,14 @@ export default function CheckoutPage() {
             >
               العودة للرئيسية
             </Link>
-            <Link
-              href="/dalil"
-              className="px-6 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold text-sm"
-            >
-              متابعة التسوق
-            </Link>
+            {!isMerchantCheckout && (
+              <Link
+                href="/dalil"
+                className="px-6 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold text-sm"
+              >
+                متابعة التسوق
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -227,10 +247,10 @@ export default function CheckoutPage() {
           <h2 className="text-2xl font-bold mb-2">سلتك فارغة</h2>
           <p className="text-slate-500 font-semibold mb-6">أضف منتجات قبل إتمام الطلب</p>
           <Link
-            href="/dalil"
+            href={isMerchantCheckout ? (pathname || '/').replace(/\/checkout\/?$/, '') : '/dalil'}
             className="px-6 py-3 rounded-xl bg-brand-gradient text-white font-bold text-sm"
           >
-            تصفح المتاجر
+            {isMerchantCheckout ? 'العودة إلى المتجر' : 'تصفح المتاجر'}
           </Link>
         </div>
       </div>
@@ -429,13 +449,20 @@ export default function CheckoutPage() {
                       {shopItems.map((item) => (
                         <div key={item.id} className="flex items-center gap-3">
                           <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0">
-                            <Image
-                              src={item.image}
-                              alt={item.name}
-                              fill
-                              sizes="48px"
-                              className="object-cover"
-                            />
+                            {item.image ? (
+                              <Image
+                                src={item.image}
+                                alt={item.name}
+                                fill
+                                sizes="48px"
+                                className="object-cover"
+                              />
+                            ) : (
+                              <ShoppingBag
+                                className="w-5 h-5 text-slate-400 absolute inset-0 m-auto"
+                                aria-hidden="true"
+                              />
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-bold text-xs line-clamp-1">{item.name}</p>

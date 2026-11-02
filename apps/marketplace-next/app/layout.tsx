@@ -1,8 +1,9 @@
-﻿import type { Metadata, Viewport } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AppProvider } from '@/components/AppProvider';
 import { QueryProvider } from '@/components/QueryProvider';
 import { CartProvider } from '@/lib/cart';
+import { SiteCartProvider } from '@/lib/site-cart';
 import { WishlistProvider } from '@/lib/wishlist';
 import { AppChrome } from '@/components/AppChrome';
 import { PageViewTracker } from '@/components/PageViewTracker';
@@ -91,13 +92,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <QueryProvider>
           <AppProvider>
             <CartProvider>
-              <WishlistProvider>
-                <PageViewTracker />
-                <BreachNotice />
-                <AppChrome>{children}</AppChrome>
-                <PwaInstallPrompt />
-                <ConsentBanner />
-              </WishlistProvider>
+              <SiteCartProvider>
+                <WishlistProvider>
+                  <PageViewTracker />
+                  <BreachNotice />
+                  <AppChrome>{children}</AppChrome>
+                  <PwaInstallPrompt />
+                  <ConsentBanner />
+                </WishlistProvider>
+              </SiteCartProvider>
             </CartProvider>
           </AppProvider>
         </QueryProvider>
