@@ -603,7 +603,7 @@ const AuthSectionView: React.FC<{
                       <span>
                         {layout === 'phone_otp' && !isOtpSent
                           ? 'إرسال رمز التحقق السريع'
-                          : 'تسجيل الدخول ����لآن'}
+                          : 'تسجيل الدخول ������لآن'}
                       </span>
                     </>
                   ) : (
@@ -1040,25 +1040,24 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
         <header id={node.id} style={getComputedStyles()} className="relative transition-all">
           {isMobile ? (
             <div className="w-full flex items-center justify-between gap-3 px-3 py-2.5">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                {node.childrenIds && node.childrenIds.length > 0 ? (
-                  node.childrenIds.map((cId) => {
-                    const child = website.components[cId];
-                    if (!child) return null;
-                    if (
-                      child.id.includes('nav') ||
-                      child.type === 'paragraph' ||
-                      child.category === 'navigation'
-                    )
-                      return null;
-                    if (child.type === 'button' || child.id.includes('cta')) return null;
-                    return <NodeView key={cId} nodeId={cId} ctx={ctx} />;
-                  })
+              <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                {shop.logoUrl ? (
+                  <img
+                    src={shop.logoUrl}
+                    alt={shop.name || 'شعار المتجر'}
+                    className="h-9 w-9 shrink-0 rounded-xl object-cover"
+                  />
                 ) : (
-                  <div className="font-extrabold text-sm sm:text-base text-slate-900 truncate">
-                    {node.props.title || website.name || 'المتجر الإلكتروني'}
+                  <div
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-black text-white"
+                    style={{ backgroundColor: theme.colors.primary }}
+                  >
+                    {(shop.name || website.name || 'م')[0]}
                   </div>
                 )}
+                <span className="min-w-0 truncate text-sm font-black text-slate-900">
+                  {shop.name || node.props.title || website.name || 'المتجر الإلكتروني'}
+                </span>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
@@ -1567,7 +1566,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
       }
 
       if (typeof text === 'string' && (text.includes(' • ') || text.includes(' | '))) {
-        const delimiter = text.includes(' • ') ? ' • ' : ' | ';
+        const delimiter = text.includes(' • ') ? ' �� ' : ' | ';
         const items: string[] = text.split(delimiter);
         return (
           <p
