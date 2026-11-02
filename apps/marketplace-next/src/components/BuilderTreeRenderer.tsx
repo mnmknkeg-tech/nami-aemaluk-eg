@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { useCart } from '@/lib/cart';
-import { playCartSound } from '@/lib/sounds';
 import type { Shop, Product } from '@/lib/services';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -183,7 +182,7 @@ function getComputedStyles(
 
 function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWebsite }) {
   const node = website.components[nodeId];
-  const { addItem, setCartOpen, totalItems } = useCart();
+  const { addItem } = useCart();
   const { shop: ctxShop, products: ctxProducts } = React.useContext(ShopDataContext);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
@@ -485,9 +484,7 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
                               type="button"
                               disabled={!available}
                               onClick={() => {
-                                addItem(live, 1);
-                                playCartSound();
-                                setCartOpen(true);
+                                addItem(live, 1, true);
                               }}
                               style={{
                                 backgroundColor: theme.colors.primary,

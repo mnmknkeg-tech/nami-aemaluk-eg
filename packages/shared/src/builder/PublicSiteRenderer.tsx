@@ -51,9 +51,7 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
   const cartSettings = website.settings?.cart;
   const floating = website.settings?.floatingActions;
 
-  const cartMode = cartSettings?.mode || 'standalone';
-
-  const isUnifiedCart = cartMode === 'unified' && Boolean(onAddToCart);
+  const usesHostCart = Boolean(onAddToCart);
 
   const isOrdersFlow = (cartSettings?.businessType || 'orders') === 'orders';
 
@@ -83,7 +81,7 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
   }, [standaloneItems, shop.id]);
 
   const handleAddToCart = (product: SiteProduct) => {
-    if (isUnifiedCart && onAddToCart) {
+    if (usesHostCart && onAddToCart) {
       onAddToCart(product);
       return;
     }
@@ -110,7 +108,7 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
   };
 
   const handleOpenCart = () => {
-    if (isUnifiedCart && onOpenCart) {
+    if (usesHostCart && onOpenCart) {
       onOpenCart();
       return;
     }
@@ -133,7 +131,7 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
     }
   };
 
-  const effectiveCartCount = isUnifiedCart
+  const effectiveCartCount = usesHostCart
     ? (cartCount ?? 0)
     : standaloneItems.reduce((acc, it) => acc + it.quantity, 0);
 

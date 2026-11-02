@@ -54,7 +54,8 @@ export function AddToCartButton({
       router.push(productPath);
       return;
     }
-    addItem(product, qty, false);
+    const opensMerchantCart = pathname.startsWith('/site/') || pathname.startsWith('/shop/');
+    addItem(product, qty, opensMerchantCart);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };

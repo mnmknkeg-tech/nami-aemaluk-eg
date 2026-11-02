@@ -9,7 +9,6 @@ import type {
   Website,
 } from '@ray-eg/shared/builder';
 import { useCart } from '@/lib/cart';
-import { playCartSound } from '@/lib/sounds';
 
 interface SiteCartBridgeProps {
   website: Website;
@@ -19,10 +18,13 @@ interface SiteCartBridgeProps {
 }
 
 /**
- * Renders a published builder site wired into the marketplace unified cart:
- * "أضف للسلة" buttons on the site push into the same cart/drawer/checkout
+ * Renders a published builder site wired into the merchant checkout cart:
+ * "أضف للسلة" buttons on the site push into the cart/drawer/checkout
  * flow as the rest of the marketplace, and the mobile footer cart button
  * opens the shared drawer.
+ *
+ * The published site cart is scoped to this merchant and sends checkout
+ * orders through the merchant's dashboard order flow.
  *
  * The skeleton is drawn from the SAME component tree that renders the real
  * site, so the loading frame matches this merchant's layout exactly —
@@ -52,35 +54,27 @@ export function SiteCartBridge({
     );
   }
 
-  const cartMode = website.settings?.cart?.mode || 'standalone';
-  const isUnifiedCart = cartMode === 'unified';
-
   return (
     <PublicSiteRenderer
       website={website}
       shop={shop}
       products={products}
       subscriptionPlans={subscriptionPlans}
-      cartCount={isUnifiedCart ? totalItems : undefined}
-      onAddToCart={
-        isUnifiedCart
-          ? (p) => {
-              addItem({
-                id: p.id,
-                shopId: shop.id,
-                shopName: shop.name,
-                shopSlug: shop.slug,
-                name: p.title,
-                price: typeof p.price === 'string' ? parseFloat(p.price) || 0 : p.price,
-                imageUrl: p.image,
-                isAvailable: p.isAvailable !== false,
-              });
-              playCartSound();
-              setCartOpen(true);
-            }
-          : undefined
-      }
-      onOpenCart={isUnifiedCart ? () => setCartOpen(true) : undefined}
+      cartCount={totalItems}
+      onAddToCart={(p) => {
+        addItem({
+          id: p.id,
+          shopId: shop.id,
+          shopName: shop.name,
+          shopSlug: shop.slug,
+          name: p.title,
+          price: typeof p.price === 'string' ? parseFloat(p.price) || 0 : p.price,
+          imageUrl: p.image,
+          isAvailable: p.isAvailable !== false,
+        });
+        setCartOpen(true);
+      }}
+      onOpenCart={() => setCartOpen(true)}
     />
   );
 }

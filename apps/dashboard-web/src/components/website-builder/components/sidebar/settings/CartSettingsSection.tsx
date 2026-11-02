@@ -7,12 +7,7 @@ import {
   CreditCard,
   ChevronDown,
   ChevronUp,
-  Layers,
-  Sparkles,
-  ShieldCheck,
   CheckCircle2,
-  Lock,
-  Compass,
   CalendarCheck,
   CreditCard as SubCard,
 } from 'lucide-react';
@@ -30,7 +25,7 @@ export const CartSettingsSection: React.FC<CartSettingsSectionProps> = ({
   onToggle,
   settings,
 }) => {
-  const { updateWebsiteSettings, website } = useBuilder();
+  const { updateWebsiteSettings } = useBuilder();
   const cart: WebsiteCartSettings = settings.cart || {
     enabled: true,
     businessType: 'orders',
@@ -44,7 +39,6 @@ export const CartSettingsSection: React.FC<CartSettingsSectionProps> = ({
   const showCartIcon = cart.showCartIcon !== false;
   const iconType = cart.iconType || 'ShoppingBag';
   const position = cart.position || 'both';
-  const cartMode = cart.mode || 'standalone';
 
   const updateCart = (patch: Partial<WebsiteCartSettings>) => {
     updateWebsiteSettings({
@@ -290,25 +284,6 @@ export const CartSettingsSection: React.FC<CartSettingsSectionProps> = ({
                 ✅ يستقبل موقعك الطلبات بشكل مستقل ومباشر. تظهر كل مبيعة في قسم{' '}
                 <strong>الطلبات</strong> داخل لوحة تحكم التاجر مع إشعار الرنة الصوتي والواتساب، بدون
                 أي اختلاط بسلات المتاجر الأخرى.
-              </p>
-            </div>
-
-            {/* Option 2: Central Unified Marketplace Cart (Coming Soon) */}
-            <div className="p-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 space-y-1.5 relative overflow-hidden">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
-                  <Layers className="w-4 h-4 text-amber-600" />
-                  <span>الربط بسلة تطبيق راي الموحدة (Ray Unified Cart)</span>
-                </div>
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-white flex items-center gap-1">
-                  <Lock className="w-2.5 h-2.5" />
-                  قريباً (تحت التطوير)
-                </span>
-              </div>
-              <p className="text-[10px] text-amber-950/80 leading-relaxed">
-                ⚙️ تطبيق راي العام في المنشور قيد التطوير والتحديث حالياً، وسيتم فتح خيار السلة
-                المجمعة الشاملة تلقائياً فور إطلاق تحديث السوق الكبير لدمج سلات العملاء من عدة متاجر
-                في طلب واحد.
               </p>
             </div>
           </div>

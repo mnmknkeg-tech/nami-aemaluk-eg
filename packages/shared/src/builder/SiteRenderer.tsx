@@ -44,8 +44,7 @@ export const SiteRenderer: React.FC<SiteRendererProps> = ({
 
   // ── Merchant Website Standalone Cart System ──────────────────────────────
   const cartSettings = website.settings?.cart;
-  const cartMode = cartSettings?.mode || 'standalone';
-  const isUnifiedCart = cartMode === 'unified' && Boolean(onAddToCart);
+  const usesHostCart = Boolean(onAddToCart);
   const isOrdersFlow = (cartSettings?.businessType || 'orders') === 'orders';
   const showCartIcon = isOrdersFlow && cartSettings?.showCartIcon !== false;
   const cartPosition = cartSettings?.position || 'both';
@@ -70,7 +69,7 @@ export const SiteRenderer: React.FC<SiteRendererProps> = ({
   }, [standaloneItems, shop.id]);
 
   const handleAddToCart = (product: SiteProduct) => {
-    if (isUnifiedCart && onAddToCart) {
+    if (usesHostCart && onAddToCart) {
       onAddToCart(product);
       return;
     }
@@ -97,7 +96,7 @@ export const SiteRenderer: React.FC<SiteRendererProps> = ({
   };
 
   const handleOpenCart = () => {
-    if (isUnifiedCart && onOpenCart) {
+    if (usesHostCart && onOpenCart) {
       onOpenCart();
     } else {
       setIsSiteCartOpen(true);
@@ -105,7 +104,7 @@ export const SiteRenderer: React.FC<SiteRendererProps> = ({
   };
 
   const standaloneCount = standaloneItems.reduce((acc, it) => acc + it.quantity, 0);
-  const effectiveCartCount = isUnifiedCart ? (cartCount ?? 0) : standaloneCount;
+  const effectiveCartCount = usesHostCart ? (cartCount ?? 0) : standaloneCount;
 
   const pages = website.pages || [];
   const homePage = useMemo(
