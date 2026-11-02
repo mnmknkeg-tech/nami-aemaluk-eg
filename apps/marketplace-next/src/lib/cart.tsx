@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import type { Product } from './services';
 import { playCartSound } from './sounds';
 
@@ -42,10 +43,15 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 const STORAGE_KEY = 'mnmknk_cart';
 
-function loadFromStorage(): CartItem[] {
+function storageKeyForPath(pathname: string | null): string {
+  const merchant = pathname?.match(/^\/(site|shop)\/([^/]+)/);
+  return merchant ? `${STORAGE_KEY}:${merchant[1]}:${merchant[2]}` : STORAGE_KEY;
+}
+
+function loadFromStorage(storageKey: string): CartItem[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -54,26 +60,30 @@ function loadFromStorage(): CartItem[] {
   }
 }
 
-function saveToStorage(items: CartItem[]) {
+function saveToStorage(storageKey: string, items: CartItem[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    localStorage.setItem(storageKey, JSON.stringify(items));
   } catch {}
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const storageKey = storageKeyForPath(pathname);
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setCartOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setItems(loadFromStorage());
+    setHydrated(false);
+    setItems(loadFromStorage(storageKey));
     setHydrated(true);
-  }, []);
+    setCartOpen(false);
+  }, [storageKey]);
 
   useEffect(() => {
-    if (hydrated) saveToStorage(items);
-  }, [items, hydrated]);
+    if (hydrated) saveToStorage(storageKey, items);
+  }, [items, hydrated, storageKey]);
 
   const addItem = useCallback((product: Product, quantity = 1, openDrawer = true) => {
     setItems((prev) => {

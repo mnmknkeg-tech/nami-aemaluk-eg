@@ -11,8 +11,13 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // Merchant sites are fully independent: /shop/[slug] pages and published
   // /site/[slug] builder sites render their own header/footer — no market chrome.
+  const isMerchantCheckout = !!pathname && /^\/(shop|site)\/[^/]+\/checkout\/?$/.test(pathname);
   const isMerchantSite =
     !!pathname && (pathname.startsWith('/shop/') || pathname.startsWith('/site/'));
+
+  if (isMerchantCheckout || pathname === '/checkout') {
+    return <main className="min-h-screen">{children}</main>;
+  }
 
   if (isMerchantSite) {
     return (
@@ -21,15 +26,6 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
         <CartDrawer />
       </>
     );
-  }
-
-  // Checkout is a focused, one-task flow: the market navbar, the big footer and
-  // the fixed mobile bar are all distractions there (the bar also sits on top of
-  // the order summary / pay button on mobile). The page renders its own compact
-  // back bar, and the cart is already summarised inside it, so the drawer is
-  // dropped too — otherwise "إتمام الطلب" could be re-triggered behind the modal.
-  if (pathname === '/checkout') {
-    return <main className="min-h-screen">{children}</main>;
   }
 
   // صفحة «قيد التطوير» بتصميمها الخاص بالكامل (full-screen) — مفيش هيدر ولا

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -12,7 +12,6 @@ import {
   Loader2,
   CheckCircle,
   Store,
-  Truck,
   Banknote,
   UserRound,
 } from 'lucide-react';
@@ -24,6 +23,8 @@ import { playOrderNotifSound } from '@/lib/sounds';
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isMerchantCheckout = /^\/(shop|site)\/[^/]+\/checkout\/?$/.test(pathname || '');
   const formRef = useRef<HTMLFormElement | null>(null);
   const { items, totalItems, totalPrice, itemsByShop, clearCart } = useCart();
 
@@ -69,7 +70,7 @@ export default function CheckoutPage() {
   const [district, setDistrict] = useState('');
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card'>('cod');
+  const paymentMethod = 'cod' as const;
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const shopGroups = itemsByShop();
@@ -136,7 +137,7 @@ export default function CheckoutPage() {
             deliveryNote: notes || undefined,
             paymentMethod: paymentMethod === 'cod' ? 'COD' : 'CARD',
             total: shopTotal,
-            source: 'marketplace',
+            source: isMerchantCheckout ? 'website' : 'marketplace',
           }),
         }).catch((err) => {
           throw new Error(err?.message || `فشل إنشاء الطلب من ${shopItems[0]?.shopName}`);

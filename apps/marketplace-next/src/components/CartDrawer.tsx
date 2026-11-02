@@ -5,6 +5,7 @@ import { X, ShoppingBag, Plus, Minus, Trash2, ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/lib/cart';
+import { usePathname } from 'next/navigation';
 import { formatPrice } from '@/lib/utils';
 
 export function CartDrawer() {
@@ -18,6 +19,11 @@ export function CartDrawer() {
     totalPrice,
     itemsByShop,
   } = useCart();
+  const pathname = usePathname();
+  const merchantPath = pathname?.match(/^\/(site|shop)\/([^/]+)/);
+  const merchantCheckoutPath = merchantPath
+    ? `/${merchantPath[1]}/${merchantPath[2]}/checkout`
+    : '/checkout';
 
   const shopGroups = itemsByShop();
 
@@ -160,7 +166,7 @@ export function CartDrawer() {
                   </span>
                 </div>
                 <Link
-                  href="/checkout"
+                  href={merchantCheckoutPath}
                   onClick={() => setCartOpen(false)}
                   className="w-full py-4 bg-brand-gradient text-white rounded-xl font-bold text-center flex items-center justify-center gap-2 hover:shadow-glow-cyan transition-all"
                 >
