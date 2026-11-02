@@ -17,7 +17,16 @@ import {
 } from './panels';
 
 export const IntegratedSectionEditor: React.FC = () => {
-  const { applyThemePreset, selectionBreadcrumbs } = useBuilder();
+  const {
+    website,
+    selectedNodeId,
+    selectNode,
+    updateNodeProps,
+    updateNodeStyle,
+    viewport,
+    applyThemePreset,
+    selectionBreadcrumbs,
+  } = useBuilder();
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     content: true,
