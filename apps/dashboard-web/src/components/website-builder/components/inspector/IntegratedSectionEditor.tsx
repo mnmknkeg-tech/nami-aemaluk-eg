@@ -275,9 +275,10 @@ export const IntegratedSectionEditor: React.FC = () => {
                 {parentSection.type}
               </span>
             </div>
-            <span className="text-[10px] text-blue-600/80 font-medium">
-              لوحة التعديل الشاملة (All-in-One)
-            </span>
+            <div className="flex items-center gap-1.5 text-[10px] text-blue-600/80 font-medium">
+              <span>تعديل الجزء المحدد فقط</span>
+              {!isSectionSelected && <span className="text-blue-400">· {node.name}</span>}
+            </div>
           </div>
         </div>
 

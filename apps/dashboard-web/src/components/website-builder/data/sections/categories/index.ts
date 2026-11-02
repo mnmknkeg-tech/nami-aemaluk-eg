@@ -15,6 +15,7 @@ import { footerTemplates } from './footer';
 import { statsTemplates } from './stats';
 import { authTemplates } from './auth';
 import { tabsTemplates } from './tabs';
+import { supplementalTemplates } from './supplemental';
 
 export const allSectionTemplates: SectionTemplate[] = [
   ...productDetailTemplates,
@@ -33,6 +34,7 @@ export const allSectionTemplates: SectionTemplate[] = [
   ...statsTemplates,
   ...authTemplates,
   ...tabsTemplates,
+  ...supplementalTemplates,
 ];
 
 export * from './productDetail';

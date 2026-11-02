@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Search, Plus, Check, Eye, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Plus, Check, Eye } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
 import {
   sectionCategoriesList,
@@ -49,14 +49,27 @@ export const SectionLibraryPanel: React.FC = () => {
       {!selectedCategory ? (
         <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
           {sectionCategoriesList.map((cat) => {
+            const templateCount = sectionTemplates.filter(
+              (template) => template.category === cat.id
+            ).length;
+            const isEmpty = templateCount === 0;
+
             return (
               <button
                 key={cat.id}
+                type="button"
+                disabled={isEmpty}
+                aria-label={`${cat.nameAr}، ${templateCount} نماذج`}
                 onClick={() => {
+                  if (isEmpty) return;
                   setSelectedCategory(cat.id);
                   setSearchQuery('');
                 }}
-                className="w-full px-5 py-3.5 flex items-center justify-between text-right hover:bg-slate-50 active:bg-slate-100 transition-colors cursor-pointer group"
+                className={`w-full px-5 py-3.5 flex items-center justify-between text-right transition-colors group ${
+                  isEmpty
+                    ? 'cursor-not-allowed bg-slate-50/60 opacity-60'
+                    : 'cursor-pointer hover:bg-slate-50 active:bg-slate-100'
+                }`}
               >
                 {/* Left chevron arrow (Pointing left in RTL) */}
                 <ChevronLeft className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-colors" />
