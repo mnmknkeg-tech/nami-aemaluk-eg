@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getProducts } from '@/lib/services';
-import { ProductCard } from '@/components/ProductCard';
 import { SiteProductActions } from '@/components/SiteProductActions';
+import { SiteStoreProductCard } from '@/components/SiteStoreProductCard';
 import { ReviewsSection } from '@/components/ReviewsSection';
 
 export const dynamic = 'force-dynamic';
@@ -202,7 +202,12 @@ export default async function MerchantProductPage({ params }: Props) {
             <h2 className="mb-6 text-2xl font-black">منتجات أخرى من {site.shop.name}</h2>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {related.map((item: any) => (
-                <ProductCard key={item.id} product={item} siteSlug={site.shop.slug} />
+                <SiteStoreProductCard
+                  key={item.id}
+                  product={item}
+                  siteSlug={site.shop.slug}
+                  shop={site.shop}
+                />
               ))}
             </div>
           </section>

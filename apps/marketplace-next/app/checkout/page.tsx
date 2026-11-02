@@ -63,7 +63,23 @@ export default function CheckoutPage() {
           رجوع
         </button>
         <span className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
-        <h1 className="text-sm md:text-base font-black text-slate-900 dark:text-white">{title}</h1>
+        {isMerchantCheckout && siteCart.items[0]?.shop.logoUrl && (
+          <img
+            src={siteCart.items[0].shop.logoUrl}
+            alt={siteCart.items[0].shop.name}
+            className="h-8 w-8 rounded-lg object-cover"
+          />
+        )}
+        <div className="min-w-0">
+          {isMerchantCheckout && siteCart.items[0]?.shop.name && (
+            <p className="truncate text-[11px] font-bold text-slate-500">
+              {siteCart.items[0].shop.name}
+            </p>
+          )}
+          <h1 className="truncate text-sm font-black text-slate-900 dark:text-white md:text-base">
+            {title}
+          </h1>
+        </div>
         {!isMerchantCheckout && typeof count === 'number' && count > 0 && (
           <span className="mr-auto inline-flex items-center gap-1.5 text-xs font-bold text-slate-500">
             <ShoppingBag className="w-4 h-4" />
