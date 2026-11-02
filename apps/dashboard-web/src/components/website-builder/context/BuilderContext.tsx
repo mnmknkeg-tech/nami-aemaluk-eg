@@ -38,7 +38,6 @@ import { useBuilderAI } from './hooks/useBuilderAI';
 
 // Utilities
 import { getInitialBuilderState, normalizeWebsite } from './builderUtils';
-import { defaultDesignTokens } from '../data/defaultTheme';
 
 // Types
 import { BuilderContextType } from './types';
@@ -158,6 +157,32 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
 
   const undo = useCallback(() => _undoRaw(setWebsite), [_undoRaw]);
   const redo = useCallback(() => _redoRaw(setWebsite), [_redoRaw]);
+
+  useEffect(() => {
+    const handleHistoryShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping = Boolean(
+        target?.closest('input, textarea, select, [contenteditable="true"]')
+      );
+      if (isTyping || !(event.metaKey || event.ctrlKey)) return;
+
+      if (event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      } else if (event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        redo();
+      }
+    };
+
+    window.addEventListener('keydown', handleHistoryShortcut);
+    return () => window.removeEventListener('keydown', handleHistoryShortcut);
+  }, [redo, undo]);
+
   const saveDraftWithWebsite = useCallback(
     (manual?: boolean) => saveDraft(websiteRef.current, manual),
     [saveDraft]
