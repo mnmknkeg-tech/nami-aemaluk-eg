@@ -15,6 +15,22 @@ const fileLabels: Record<CodeFile, string> = {
 const emptyHtml =
   '<section class="custom-section">\n  <h2>عنوان القسم</h2>\n  <p>اكتب محتوى هذا المكوّن هنا.</p>\n</section>';
 
+function starterMarkup(node: {
+  type: string;
+  name: string;
+  id: string;
+  props?: Record<string, unknown>;
+}) {
+  const label = node.name || node.type;
+  const props = JSON.stringify(node.props || {}, null, 2);
+  const templates: Record<string, string> = {
+    header: `<header class="site-header" data-node-id="${node.id}">\n  <div class="site-header__brand">${label}</div>\n  <nav class="site-header__nav">\n    <a href="#home">الرئيسية</a>\n    <a href="#products">المنتجات</a>\n    <a href="#contact">تواصل معنا</a>\n  </nav>\n</header>`,
+    hero: `<section class="site-hero" data-node-id="${node.id}">\n  <h1>${label}</h1>\n  <p>اكتب وصف هذا القسم هنا.</p>\n  <a class="site-hero__button" href="#products">اكتشف المزيد</a>\n</section>`,
+    footer: `<footer class="site-footer" data-node-id="${node.id}">\n  <p>${label}</p>\n  <small>جميع الحقوق محفوظة</small>\n</footer>`,
+  };
+  return `${templates[node.type] || `<section class="${node.type}" data-node-id="${node.id}">\n  <h2>${label}</h2>\n</section>`}\n\n<!-- خصائص العنصر الأصلية:\n${props}\n-->`;
+}
+
 export const CodeWorkspace: React.FC = () => {
   const {
     isCodeWorkspaceOpen,
@@ -38,7 +54,7 @@ export const CodeWorkspace: React.FC = () => {
       return (
         selectedNode.customCode?.tsxSnippet ||
         selectedNode.props?.html ||
-        `<div class="${selectedNode.type}">\n  <!-- ${selectedNode.name} -->\n</div>`
+        starterMarkup(selectedNode)
       );
     }
     if (activeFile === 'styles.css') {
@@ -210,8 +226,8 @@ export const CodeWorkspace: React.FC = () => {
         <aside className="hidden w-72 shrink-0 flex-col gap-3 overflow-y-auto border-r border-slate-800 bg-slate-900/80 p-4 text-xs md:flex">
           <div className="font-bold text-slate-200">تحرير مباشر</div>
           <p className="leading-6 text-slate-400">
-            كل ملف هنا يخص المكوّن المحدد فقط. لا توجد قوالب إجبارية ولا يتم استبدال المكوّن
-            تلقائياً.
+            كل ملف هنا يخص المكوّن المحدد فقط. عند تعديل HTML أو CSS يتم تفعيل النسخة البرمجية لهذا
+            العنصر فقط، ثم يظهر التغيير مباشرة في المعاينة.
           </p>
           <div className="rounded-lg border border-slate-700 bg-slate-950 p-3 text-[11px] leading-6 text-slate-400">
             <p className="text-emerald-300">HTML</p>
