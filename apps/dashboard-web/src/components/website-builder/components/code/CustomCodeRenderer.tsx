@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ComponentNode } from '../../types/builder';
-import { AlertCircle } from 'lucide-react';
 
 interface CustomCodeRendererProps {
   node: ComponentNode;
@@ -12,7 +11,6 @@ export const CustomCodeRenderer: React.FC<CustomCodeRendererProps> = ({
   isInteractivePreview = false,
 }) => {
   const [iframeHeight, setIframeHeight] = useState<number>(180);
-  const [error, setError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const customHtml =
@@ -27,6 +25,11 @@ export const CustomCodeRenderer: React.FC<CustomCodeRendererProps> = ({
 
   const customCss = node.customCode?.css || node.customCode?.cssSnippet || '';
   const customJs = node.customCode?.js || node.customCode?.jsSnippet || '';
+  const safeHtml = customHtml
+    .replace(/<\/?script\b[^>]*>/gi, '')
+    .replace(/<\/?(?:iframe|object|embed|form)\b[^>]*>/gi, '')
+    .replace(/\s(on[a-z]+)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/javascript\s*:/gi, '');
 
   // Listen for height reports from the sandboxed iframe so the canvas
   // sizes the component correctly. Only trust messages from our own iframe,
@@ -79,7 +82,7 @@ export const CustomCodeRenderer: React.FC<CustomCodeRendererProps> = ({
 </style>
 </head>
 <body>
-${customHtml}
+${safeHtml}
 <script>
   (function () {
     function reportHeight() {
@@ -108,12 +111,6 @@ ${customHtml}
 </body>
 </html>`}
       />
-      {error && (
-        <div className="mt-2 p-2 bg-red-950/80 border border-red-800 text-red-300 text-xs rounded-lg flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>تنبيه كود: {error}</span>
-        </div>
-      )}
     </div>
   );
 };
