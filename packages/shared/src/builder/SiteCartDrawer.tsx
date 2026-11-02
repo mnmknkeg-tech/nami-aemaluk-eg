@@ -103,31 +103,27 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
     setPlacedOrderNumber(orderNum);
 
     const newOrder = {
-      id: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
-      orderNumber: orderNum,
-      source: 'website',
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      tenantId: shop.id,
       shopId: shop.id,
-      shopName: shop.name || website.name,
-      items: [...items],
+      source: 'website',
       total: Math.round(finalTotal),
-      subtotal: rawSubtotal,
-      discount: discountAmount,
-      tax: 0,
       paymentMethod: paymentMethod === 'cod' ? 'cash_on_delivery' : 'whatsapp_direct',
-      notes: orderNotes,
+      notes: orderNotes || undefined,
       customer: {
         name: customerName || 'عميل المتجر الإلكتروني',
         phone: customerPhone || '',
         address: customerAddress || 'توصيل مباشر',
       },
+      items: items.map((item) => ({
+        productId: item.productId || item.id,
+        quantity: item.quantity,
+        ...(item.addons ? { addons: item.addons } : {}),
+        ...(item.variantSelection ? { variantSelection: item.variantSelection } : {}),
+      })),
     };
 
     // Persist only after the backend accepts the order so the dashboard is the source of truth.
     try {
-      const response = await fetch('/api/v1/orders', {
+      const response = await fetch('/api/v1/orders/public', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
