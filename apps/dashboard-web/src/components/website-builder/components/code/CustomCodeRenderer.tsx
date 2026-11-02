@@ -52,6 +52,7 @@ export const CustomCodeRenderer: React.FC<CustomCodeRendererProps> = ({
   // - JSON embedded in <script> must not be able to close the script tag
   //   (JSON.stringify does not escape "<" by default).
   const safeCss = customCss.replace(/<\/style/gi, '<\\/style');
+  const safeJs = customJs.replace(/<\/script/gi, '<\\/script');
   const propsJson = JSON.stringify({ id: node.id, props: node.props || {} }).replace(
     /</g,
     '\\u003c'
@@ -99,7 +100,7 @@ ${safeHtml}
         ? `
     try {
       (function (container, node) {
-        ${customJs}
+        ${safeJs}
       })(document.body, ${propsJson});
     } catch (err) {
       console.warn('Custom Script Runtime:', err);
