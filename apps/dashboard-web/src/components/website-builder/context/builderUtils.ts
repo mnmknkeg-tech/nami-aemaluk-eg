@@ -146,13 +146,39 @@ export const BLANK_WEBSITE: Website = {
 
 export const normalizeWebsite = (site: Website): Website => {
   if (!site || typeof site !== 'object') return BLANK_WEBSITE;
-  // Preserve merchant data verbatim — never silently replace merchant pages/components
-  // with BLANK_WEBSITE fallbacks. Only fill in missing required shape fields.
-  const pages = Array.isArray(site.pages) ? site.pages : BLANK_WEBSITE.pages;
-  const components =
+  // Preserve merchant data verbatim while repairing the minimum tree shape needed
+  // by the canvas. Older drafts may omit props, styles, parentId, or valid children.
+  const rawComponents =
     site.components && typeof site.components === 'object'
       ? site.components
       : BLANK_WEBSITE.components;
+  const componentIds = new Set(Object.keys(rawComponents));
+  const components = Object.fromEntries(
+    Object.entries(rawComponents).map(([id, rawNode]) => {
+      const node = rawNode as ComponentNode;
+      const childrenIds = Array.isArray(node.childrenIds)
+        ? [...new Set(node.childrenIds.filter((childId) => componentIds.has(childId)))]
+        : [];
+      return [
+        id,
+        {
+          ...node,
+          id: node.id || id,
+          parentId: node.parentId && componentIds.has(node.parentId) ? node.parentId : null,
+          childrenIds,
+          props: node.props && typeof node.props === 'object' ? node.props : {},
+          styles: node.styles && typeof node.styles === 'object' ? node.styles : {},
+        },
+      ];
+    })
+  ) as Record<string, ComponentNode>;
+
+  const fallbackRootId = Object.values(components).find((node) => node.type === 'container')?.id;
+  const pages = (Array.isArray(site.pages) ? site.pages : BLANK_WEBSITE.pages).map((page) => ({
+    ...page,
+    rootNodeId: componentIds.has(page.rootNodeId) ? page.rootNodeId : fallbackRootId || 'page_root',
+  }));
+
   return {
     ...BLANK_WEBSITE,
     ...site,
