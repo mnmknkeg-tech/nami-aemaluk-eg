@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { CSSProperties } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -7,7 +8,6 @@ import { api } from '@/lib/api';
 import { getProducts } from '@/lib/services';
 import { ProductCard } from '@/components/ProductCard';
 import { AddToCartButton } from '@/components/AddToCartButton';
-import { siteConfig } from '@/lib/config';
 
 export const revalidate = 120;
 
