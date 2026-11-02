@@ -93,27 +93,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const homeMeta =
     website?.pages?.find((p) => p.metadata?.isHomePage)?.metadata || website?.pages?.[0]?.metadata;
 
-  const title = `${homeMeta?.ogTitle || homeMeta?.title || site.shop.name} | ${siteConfig.name}`;
+  const title = homeMeta?.ogTitle || homeMeta?.title || site.shop.name;
   const description =
     homeMeta?.ogDescription ||
     homeMeta?.description ||
     c.homeIntroText ||
     c.bannerSubtitle ||
-    `${site.shop.name} - تسوق أونلاين من ${site.shop.name} على منصة ${siteConfig.name}`;
-  const image = homeMeta?.ogImage || c.bannerUrl || site.shop.logoUrl || siteConfig.ogImage;
+    `${site.shop.name} - الموقع الرسمي`;
+  const image = homeMeta?.ogImage || c.bannerUrl || site.shop.logoUrl;
 
   return {
-    title,
+    title: { absolute: title },
     description,
+    icons: image ? { icon: image, shortcut: image, apple: image } : undefined,
     alternates: { canonical: `/site/${site.shop.slug}` },
     openGraph: {
       title,
       description,
-      images: [{ url: image, width: 1200, height: 630 }],
+      ...(image ? { images: [{ url: image, width: 1200, height: 630 }] } : {}),
+      siteName: site.shop.name,
       type: 'website',
       locale: 'ar_EG',
     },
-    twitter: { card: 'summary_large_image', title, description, images: [image] },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
   };
 }
 
