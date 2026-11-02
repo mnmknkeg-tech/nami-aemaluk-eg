@@ -2389,7 +2389,11 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                       `مرحبًا، أريد طلب: ${item.title}${formattedPrice ? ` (${formattedPrice})` : ''}`
                     ) || '#';
 
-                  const productHref = item.id ? `/product/${item.id}` : '#';
+                  const productHref = item.id
+                    ? ctx.shop?.slug
+                      ? `/site/${ctx.shop.slug}/product/${item.id}`
+                      : `/product/${item.id}`
+                    : '#';
 
                   return (
                     <div
