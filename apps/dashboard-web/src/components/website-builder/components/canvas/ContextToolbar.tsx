@@ -34,6 +34,9 @@ export const ContextToolbar: React.FC = () => {
   // ONLY render when an element is explicitly selected for editing
   if (!selectedNode) return null;
 
+  const isLocked = Boolean(selectedNode.isLocked);
+  const disabledWhileLocked = isLocked ? 'pointer-events-none opacity-45' : '';
+
   return (
     <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl px-2.5 sm:px-3.5 py-1.5 sm:py-2 flex items-center gap-1 sm:gap-1.5 border border-slate-700/90 animate-in fade-in slide-in-from-top-2 duration-150 select-none text-xs max-w-[95vw] overflow-x-auto">
       {/* Node Info Badge */}
@@ -50,7 +53,8 @@ export const ContextToolbar: React.FC = () => {
       {/* Design Inspector Tab Trigger */}
       <button
         onClick={() => setActiveInspectorTab('style')}
-        className="flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition-colors cursor-pointer shrink-0"
+        disabled={isLocked}
+        className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition-colors cursor-pointer shrink-0 ${disabledWhileLocked}`}
         title="تعديل المظهر والتصميم"
       >
         <Paintbrush className="w-3.5 h-3.5 text-purple-400" />
@@ -60,7 +64,8 @@ export const ContextToolbar: React.FC = () => {
       {/* Content Props Trigger */}
       <button
         onClick={() => setActiveInspectorTab('props')}
-        className="flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition-colors cursor-pointer shrink-0"
+        disabled={isLocked}
+        className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition-colors cursor-pointer shrink-0 ${disabledWhileLocked}`}
         title="تعديل المحتوى والخصائص"
       >
         <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />
@@ -70,7 +75,8 @@ export const ContextToolbar: React.FC = () => {
       {/* Code Workspace Trigger */}
       <button
         onClick={() => setIsCodeWorkspaceOpen(true)}
-        className="hidden sm:flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition-colors cursor-pointer shrink-0"
+        disabled={isLocked}
+        className={`hidden sm:flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition-colors cursor-pointer shrink-0 ${disabledWhileLocked}`}
         title="تعديل الكود المخصص للمكون"
       >
         <Code2 className="w-3.5 h-3.5 text-blue-400" />
@@ -81,7 +87,8 @@ export const ContextToolbar: React.FC = () => {
       {!HIDE_UNPUBLISHED && (
         <button
           onClick={() => setIsAiModalOpen(true)}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold transition-all shadow-xs cursor-pointer shrink-0 animate-in fade-in"
+          disabled={isLocked}
+          className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold transition-all shadow-xs cursor-pointer shrink-0 animate-in fade-in ${disabledWhileLocked}`}
           title="تعديل هذا المكون بالذكاء الاصطناعي (AI)"
         >
           <Sparkles className="w-3.5 h-3.5 text-yellow-300 animate-pulse" />
@@ -94,7 +101,8 @@ export const ContextToolbar: React.FC = () => {
       {/* Move Up */}
       <button
         onClick={() => moveNode(selectedNode.id, 'up')}
-        className="p-1 sm:p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
+        disabled={isLocked}
+        className={`p-1 sm:p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0 ${disabledWhileLocked}`}
         title="تحريك لأعلى"
       >
         <ArrowUp className="w-3.5 h-3.5" />
@@ -103,7 +111,8 @@ export const ContextToolbar: React.FC = () => {
       {/* Move Down */}
       <button
         onClick={() => moveNode(selectedNode.id, 'down')}
-        className="p-1 sm:p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
+        disabled={isLocked}
+        className={`p-1 sm:p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0 ${disabledWhileLocked}`}
         title="تحريك لأسفل"
       >
         <ArrowDown className="w-3.5 h-3.5" />
@@ -112,7 +121,8 @@ export const ContextToolbar: React.FC = () => {
       {/* Duplicate */}
       <button
         onClick={() => duplicateNode(selectedNode.id)}
-        className="p-1 sm:p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
+        disabled={isLocked}
+        className={`p-1 sm:p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0 ${disabledWhileLocked}`}
         title="تكرار المكون"
       >
         <Copy className="w-3.5 h-3.5" />
@@ -121,7 +131,8 @@ export const ContextToolbar: React.FC = () => {
       {/* Quick Visibility Toggle */}
       <button
         onClick={() => toggleNodeVisibility(selectedNode.id)}
-        className={`p-1 sm:p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
+        disabled={isLocked}
+        className={`p-1 sm:p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${disabledWhileLocked} ${
           selectedNode.isHidden
             ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
             : 'hover:bg-slate-800 text-slate-300 hover:text-white'
@@ -140,6 +151,7 @@ export const ContextToolbar: React.FC = () => {
         onClick={() => toggleNodeLock(selectedNode.id)}
         className="p-1 sm:p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
         title={selectedNode.isLocked ? 'إلغاء القفل' : 'قفل'}
+        aria-pressed={isLocked}
       >
         {selectedNode.isLocked ? (
           <Lock className="w-3.5 h-3.5 text-amber-400" />
@@ -152,7 +164,8 @@ export const ContextToolbar: React.FC = () => {
       {selectedNode.parentId && (
         <button
           onClick={() => deleteNode(selectedNode.id)}
-          className="p-1 sm:p-1.5 rounded-lg hover:bg-red-500/20 text-slate-300 hover:text-red-400 transition-colors cursor-pointer shrink-0"
+          disabled={isLocked}
+          className={`p-1 sm:p-1.5 rounded-lg hover:bg-red-500/20 text-slate-300 hover:text-red-400 transition-colors cursor-pointer shrink-0 ${disabledWhileLocked}`}
           title="حذف المكون"
         >
           <Trash2 className="w-3.5 h-3.5" />
