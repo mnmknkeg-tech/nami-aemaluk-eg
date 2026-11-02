@@ -54,11 +54,7 @@ export default async function MerchantProductPage({ params }: Props) {
   const logo = site.shop.logoUrl;
 
   return (
-    <main dir="rtl" className="min-h-screen" style={{ backgroundColor: colors.background || '#fff', color: colors.textPrimary || '#111827', fontFamily: theme.typography?.fontBody || 'Cairo, sans-serif',
-        '--site-primary': primary,
-        '--site-surface': colors.surface || '#f8fafc',
-        '--site-radius': radius.lg || '24px',
-        '--site-shadow': shadow }}>
+    <main dir="rtl" className="min-h-screen" style={{ backgroundColor: colors.background || '#fff', color: colors.textPrimary || '#111827', fontFamily: theme.typography?.fontBody || 'Cairo, sans-serif' }}>
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
         <nav className="mb-8 flex items-center gap-2 text-sm font-semibold text-slate-500"><Link href={`/site/${site.shop.slug}`}>الرئيسية</Link><ArrowRight className="h-4 w-4" /><span>{product.name}</span></nav>
         <section className="grid gap-8 lg:grid-cols-2 lg:gap-14">
