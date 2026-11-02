@@ -266,3 +266,29 @@ section {
 .animate-cart-pop {
   animation: cartPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
+
+.pub-site {
+  overflow-x: hidden;
+}
+
+.pub-site img {
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .pub-site h1 {
+    font-size: clamp(2rem, 10vw, 3.25rem) !important;
+    line-height: 1.12 !important;
+    overflow-wrap: anywhere;
+  }
+
+  .pub-site h2 {
+    font-size: clamp(1.5rem, 7vw, 2.25rem) !important;
+    line-height: 1.2 !important;
+  }
+
+  .pub-site button,
+  .pub-site a {
+    max-width: 100%;
+  }
+}

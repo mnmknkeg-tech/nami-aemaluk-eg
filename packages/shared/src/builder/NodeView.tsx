@@ -603,7 +603,7 @@ const AuthSectionView: React.FC<{
                       <span>
                         {layout === 'phone_otp' && !isOtpSent
                           ? 'إرسال رمز التحقق السريع'
-                          : 'تسجيل الدخول ������لآن'}
+                          : 'تسجيل الدخول ��������لآن'}
                       </span>
                     </>
                   ) : (
@@ -670,7 +670,9 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
   const [isMobileMenuDrawerOpen, setIsMobileMenuDrawerOpen] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
 
-  const isMobile = viewport === 'mobile';
+  const isMobile =
+    viewport === 'mobile' ||
+    (typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
 
   // Compute responsive styles merged by current breakpoint (faithful port).
   const getComputedStyles = (): React.CSSProperties => {
