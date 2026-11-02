@@ -377,17 +377,9 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
         }
       }
 
-      // Hide desktop nav separators & desktop nav paragraphs on mobile
-      if (
-        (typeof node.props.text === 'string' &&
-          (node.props.text.includes('•') ||
-            node.props.text.includes('|') ||
-            node.props.text.includes('▾'))) ||
-        ((node.parentId?.includes('header') ||
-          node.parentId?.includes('sec_') ||
-          node.id?.includes('nav')) &&
-          (node.type === 'paragraph' || node.id?.includes('nav') || node.category === 'navigation'))
-      ) {
+      // Only hide a node on mobile when the section explicitly opts into it.
+      // Content symbols such as separators and dropdown markers are valid user content.
+      if (m.display === 'none' || (node.props.mobileHidden === true && !m.display)) {
         css.display = 'none';
       }
     }
