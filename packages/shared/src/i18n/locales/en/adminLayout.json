@@ -1,0 +1,16 @@
+{
+  "dashboard": "Dashboard",
+  "approvals": "Approvals",
+  "shops": "Shop Management",
+  "users": "User Management",
+  "operations": "All Operations",
+  "delivery": "Delivery Management",
+  "feedback": "Feedback Center",
+  "customerService": "Customer Service & Complaints",
+  "analytics": "Analytics",
+  "notifications": "Notifications",
+  "content": "Content Management",
+  "settings": "System Settings",
+  "adminLogout": "Admin Logout",
+  "systemVersion": "MNMKNK System v1.1 - Root Access"
+}

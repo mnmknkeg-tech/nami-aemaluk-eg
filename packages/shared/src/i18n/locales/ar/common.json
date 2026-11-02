@@ -1,0 +1,148 @@
+{
+  "login": "دخول",
+  "signup": "التسجيل",
+  "logout": "تسجيل الخروج",
+  "home": "الرئيسية",
+  "profile": "حسابي",
+  "cart": "السلة",
+  "search": "ابحث عن أقوى العروض الآن...",
+  "quickNav": "تنقل سريع",
+  "openMenu": "فتح القائمة",
+  "closeMenu": "إغلاق القائمة",
+  "backToTop": "الرجوع للأعلى",
+  "close": "إغلاق القائمة",
+  "save": "حفظ",
+  "back": "رجوع",
+  "aboutUs": "من نحن",
+  "support": "الدعم",
+  "contactUs": "تواصل معنا",
+  "helpCenter": "مركز المساعدة",
+  "terms": "شروط الخدمة",
+  "privacy": "سياسة الخصوصية",
+  "allRightsReserved": "جميع الحقوق محفوظة.",
+  "loading": "جاري التحميل...",
+  "email": "البريد الإلكتروني",
+  "phone": "الهاتف",
+  "address": "العنوان",
+  "addressValue": "القاهرة، مصر",
+  "newNotification": "إشعار جديد",
+  "headerSearch": "ابحث عن متاجر، منتجات، أو خدمات...",
+  "headerSearchAria": "بحث",
+  "headerCartAria": "السلة",
+  "headerLogin": "تسجيل الدخول",
+  "forms": {
+    "login": {
+      "emailLabel": "البريد الإلكتروني",
+      "passwordLabel": "كلمة المرور",
+      "submit": "تسجيل الدخول"
+    },
+    "signup": {
+      "nameLabel": "الاسم الكامل",
+      "namePlaceholder": "أدخل اسمك الكامل",
+      "emailLabel": "البريد الإلكتروني",
+      "passwordLabel": "كلمة المرور",
+      "submit": "إنشاء حساب جديد"
+    },
+    "shop": {
+      "nameLabel": "اسم المتجر",
+      "namePlaceholder": "أدخل اسم المتجر",
+      "emailLabel": "البريد الإلكتروني",
+      "phoneLabel": "رقم الهاتف",
+      "addressLabel": "العنوان",
+      "addressPlaceholder": "أدخل العنوان الكامل",
+      "descriptionLabel": "الوصف",
+      "descriptionPlaceholder": "اكتب وصفاً للمتجر...",
+      "submit": "حفظ بيانات المتجر"
+    }
+  },
+  "languageToggle": {
+    "switchToEnglish": "التبديل للإنجليزية",
+    "switchToArabic": "التبديل للعربية",
+    "englishShort": "EN",
+    "arabicShort": "عربي",
+    "arabicLabel": "العربية",
+    "englishLabel": "English"
+  },
+  "cartIcon": {
+    "ariaLabel": "سلة المشتريات ({{count}})",
+    "title": "سلة المشتريات"
+  },
+  "backendStatusBanner": {
+    "reconnecting": "جاري إعادة الاتصال تلقائيًا...",
+    "offline": "تم فصل الإنترنت مؤقتًا.",
+    "serviceUnavailable": "الخدمة غير متاحة مؤقتًا.",
+    "reconnectingHint": "ثواني بسيطة وبنرجع نكمل من نفس المكان بدون مقاطعة.",
+    "offlineHint": "ارجع افتح الصفحة بعد ما الاتصال يرجع، أو جرّب تاني بعد لحظات.",
+    "tryAgainLater": "جرب تاني بعد شوية.",
+    "lastAttempt": "آخر محاولة: {{path}}",
+    "panelTitle": "الخدمة غير متاحة الآن",
+    "panelDesc": "بنحاول نوصل للسيرفر… من فضلك جرّب تاني بعد شوية.",
+    "retry": "إعادة المحاولة",
+    "home": "الرئيسية",
+    "refreshPage": "تحديث الصفحة"
+  },
+  "pwaInstallPrompt": {
+    "title": "ثبّت التطبيق على موبايلك",
+    "desc": "ثبت التطبيق للوصول الأسرع، شاشة كاملة، وتجربة أقرب لتطبيق موبايل حقيقي مع تحميل أفضل للزيارات المتكررة.",
+    "installing": "جاري التثبيت...",
+    "installNow": "تثبيت الآن",
+    "later": "لاحقًا",
+    "iosDescPrefix": "على iPhone أو iPad: افتح قائمة",
+    "iosShare": "مشاركة",
+    "iosDescMiddle": "ثم اختر",
+    "iosAddToHome": "إضافة إلى الشاشة الرئيسية",
+    "iosDescSuffix": "لتحصل على تجربة تطبيق أسرع وأسهل."
+  },
+  "errorBoundary": {
+    "title": "حصل خطأ غير متوقع",
+    "desc": "حاول تحديث الصفحة. لو المشكلة بتتكرر، ابعتلنا صورة من الخطأ.",
+    "refreshPage": "تحديث الصفحة"
+  },
+  "toaster": {
+    "saved": "تم الحفظ"
+  },
+  "purchaseModeButton": {
+    "label": "وضع الشراء"
+  },
+  "syncStatus": {
+    "offline": "وضع عدم الاتصال",
+    "syncing": "جاري المزامنة...",
+    "pendingCount": "عمليات في الانتظار: {{count}}",
+    "lastSync": "آخر مزامنة",
+    "justNow": "الآن",
+    "minutesAgo": "من {{count}} دقيقة",
+    "hoursAgo": "من {{count}} ساعة",
+    "syncNow": "مزامنة الآن"
+  },
+  "governorates": {
+    "all": "الكل",
+    "cairo": "القاهرة",
+    "giza": "الجيزة",
+    "alexandria": "الإسكندرية"
+  },
+  "abandonedCart": {
+    "title": "السلة المتروكة",
+    "manageTitle": "السلة المتروكة",
+    "manageSubtitle": "تابع العملاء اللي ضافو منتجات ومكملش الدفع",
+    "addedToCart": "أضيف للسلة",
+    "checkoutStarted": "بدأ الدفع",
+    "abandoned": "متروك",
+    "recovered": "تم استعادته",
+    "abandonmentRate": "معدل الترك",
+    "recoveryRate": "معدل الاستعادة",
+    "listTitle": "أحداث السلة",
+    "refresh": "تحديث",
+    "loadError": "فشل تحميل بيانات السلة المتروكة",
+    "recoverError": "فشل تعليم كـمستعاد",
+    "noData": "لا توجد أحداث سلة متروكة",
+    "date": "التاريخ",
+    "event": "الحدث",
+    "customer": "العميل",
+    "product": "المنتج",
+    "quantity": "الكمية",
+    "price": "السعر",
+    "actions": "الإجراءات",
+    "recover": "علّم كمستعاد",
+    "recoveredLabel": "مستعاد"
+  }
+}

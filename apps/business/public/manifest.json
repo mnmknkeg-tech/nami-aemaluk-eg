@@ -1,0 +1,53 @@
+{
+  "name": "نمّي أعمالك - MNMKNK",
+  "short_name": "نمّي أعمالك",
+  "description": "لوحة تحكم التجار لإدارة المتجر والمنتجات والطلبات والتحليلات",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "background_color": "#0f172a",
+  "theme_color": "#00E5FF",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["business", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/brand/logo-business.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/brand/logo-business.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "الطلبات",
+      "short_name": "الطلبات",
+      "description": "إدارة الطلبات الجديدة",
+      "url": "/dashboard?tab=orders",
+      "icons": [{ "src": "/brand/logo-business.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "المنتجات",
+      "short_name": "المنتجات",
+      "description": "إدارة المنتجات",
+      "url": "/dashboard?tab=products",
+      "icons": [{ "src": "/brand/logo-business.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "الحجوزات",
+      "short_name": "الحجوزات",
+      "description": "إدارة المواعيد والحجوزات",
+      "url": "/dashboard?tab=bookings",
+      "icons": [{ "src": "/brand/logo-business.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

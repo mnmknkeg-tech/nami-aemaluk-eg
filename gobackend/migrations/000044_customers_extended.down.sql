@@ -1,0 +1,4 @@
+ALTER TABLE customers DROP COLUMN IF EXISTS address;
+ALTER TABLE customers DROP COLUMN IF EXISTS city;
+ALTER TABLE customers DROP COLUMN IF EXISTS country;
+ALTER TABLE customers DROP COLUMN IF EXISTS description;

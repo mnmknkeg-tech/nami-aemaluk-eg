@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, 'Noto Kufi Arabic', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+/* receipt print — only the receipt frame content goes to paper */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #receipt-print-frame,
+  #receipt-print-frame * {
+    visibility: visible;
+  }
+  #receipt-print-frame {
+    position: fixed;
+    inset: 0;
+    width: 80mm;
+  }
+}

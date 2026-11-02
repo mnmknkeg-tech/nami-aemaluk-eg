@@ -1,0 +1,12 @@
+{
+  "section": "Section",
+  "cart3d": "3D Cart",
+  "productCount": "{{count}} products",
+  "cartEmpty": "Cart is empty",
+  "lookToAdd": "Look at a product to add it",
+  "total": "Total",
+  "checkout": "Checkout",
+  "decrease": "Decrease",
+  "increase": "Increase",
+  "remove": "Remove"
+}

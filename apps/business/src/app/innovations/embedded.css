@@ -1,0 +1,34 @@
+/* صفحة «جديد» داخل نافذة نمّي — إخفاء الشريط العلوي المكرر ودمج الخلفية.
+   كل القواعد scoped تحت .growth-embedded عشان صفحة /new الأصلية تفضل زي ما هي. */
+.growth-embedded .growth-page {
+  min-height: 0;
+  overflow: visible;
+  background: transparent;
+  border-radius: 1.5rem;
+}
+
+/* الشريط العلوي الداخلي (البراند + تحديثات جديدة) مكرر مع DesktopHeader وزر ابدأ — نخفيه */
+.growth-embedded .growth-page .navbar {
+  display: none;
+}
+
+/* الـ hero كان مصمم full-page — نقلل ارتفاعه داخل النافذة */
+.growth-embedded .growth-page .hero {
+  min-height: 0;
+  padding-top: 1rem;
+}
+
+/* توسيط المحتوى العريض داخل النافذة الضيقة */
+.growth-embedded .growth-page .hero-grid,
+.growth-embedded .growth-page .features-band,
+.growth-embedded .growth-page .coming-section,
+.growth-embedded .growth-page .bottom-cta {
+  max-width: 100%;
+}
+
+@media (max-width: 760px) {
+  .growth-embedded .growth-page .hero {
+    min-height: 0;
+    padding: 0.5rem;
+  }
+}

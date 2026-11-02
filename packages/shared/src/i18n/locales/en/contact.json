@@ -1,0 +1,16 @@
+{
+  "title": "Contact Us",
+  "intro": "We're here to help. You can reach us through any of the following channels:",
+  "email": "Email",
+  "phone": "Phone",
+  "address": "Address",
+  "addressValue": "Cairo, Arab Republic of Egypt",
+  "whatsapp": "WhatsApp",
+  "facebook": "Facebook",
+  "nameLabel": "Name",
+  "namePlaceholder": "Your name",
+  "emailLabel": "Email",
+  "messageLabel": "Message",
+  "messagePlaceholder": "How can we help you?",
+  "send": "Send Message"
+}

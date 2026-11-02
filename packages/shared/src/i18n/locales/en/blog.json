@@ -1,0 +1,88 @@
+{
+  "pageTitle": "Blog",
+  "pageSubtitle": "Tips and ideas to grow your business",
+  "allCategories": "All",
+  "notFound": "Post not found",
+  "backToBlog": "Back to Blog",
+  "backToBusiness": "Back to Business",
+  "relatedPosts": "Related Posts",
+  "categories": {
+    "ecommerce": "E-commerce",
+    "businessManagement": "Business Management",
+    "mnmknk": "MNMKNK",
+    "digitalMarketing": "Digital Marketing",
+    "tech": "Tech",
+    "merchantTips": "Merchant Tips"
+  },
+  "post1": {
+    "title": "How to Start Your Online Store in 5 Steps",
+    "excerpt": "A practical guide to building a successful digital store from scratch — from choosing your niche to your first sale.",
+    "date": "April 15, 2026",
+    "readTime": "8 min read",
+    "p1": "Creating an online store no longer requires a coding expert or a huge budget. In this guide, we take you step by step from idea to your first real sale.",
+    "p2": "Step 1: Define your business type — Do you sell clothes? Food products? Booking services? Defining your activity helps you choose the right tools.",
+    "p3": "Step 2: Register on an all-in-one platform like MNMKNK — In less than a minute, you'll have a merchant account ready to go.",
+    "p4": "Step 3: Design your store interface — Use the page builder to choose colors, images, and categories that reflect your brand identity.",
+    "p5": "Step 4: Add your products — Upload images, set prices, and organize products into clear categories.",
+    "p6": "Step 5: Start selling — Enable payment methods, share your store link, and receive your first orders!"
+  },
+  "post2": {
+    "title": "Secrets to Effective Inventory Management",
+    "excerpt": "Learn best practices for inventory management to reduce waste and increase profits.",
+    "date": "April 10, 2026",
+    "readTime": "6 min read",
+    "p1": "Inventory management is one of the biggest challenges any merchant faces — whether they run a supermarket, a clothing store, or a pharmacy.",
+    "p2": "Problem 1: Products expiring. The solution? An automatic alert system that notifies you before a product runs out or expires.",
+    "p3": "Problem 2: Too many items and hard to track. The solution? A clear dashboard that shows every product, its stock, and its status at a glance.",
+    "p4": "Problem 3: Over-ordering or under-ordering. The solution? Sales reports help you forecast demand and order the right quantities.",
+    "p5": "On MNMKNK, all inventory management tools are available in one place — no need for separate software or complex spreadsheets."
+  },
+  "post3": {
+    "title": "Why Do You Need an All-in-One Platform for Your Store?",
+    "excerpt": "How a single platform saves you the time and effort of managing multiple separate tools.",
+    "date": "April 5, 2026",
+    "readTime": "5 min read",
+    "p1": "Many merchants use separate tools — one for inventory, an app for orders, a website for analytics. The result? Chaos and wasted time.",
+    "p2": "An all-in-one platform means everything in one place: the store, orders, inventory, analytics, and notifications.",
+    "p3": "Save time: Instead of opening 5 programs, open one place and find everything ready.",
+    "p4": "Save money: One subscription instead of paying for each program separately.",
+    "p5": "Greater accuracy: Data is automatically synced — no errors from manual transfer between systems.",
+    "p6": "MNMKNK was designed to be the only platform you need to manage your store from A to Z."
+  },
+  "post4": {
+    "title": "Digital Marketing Guide for Beginners",
+    "excerpt": "The most important digital marketing strategies every merchant should know to increase sales.",
+    "date": "April 1, 2026",
+    "readTime": "7 min read",
+    "p1": "Digital marketing is no longer optional — it's the foundation of any successful business. But where do you start?",
+    "p2": "First: Know your audience — Who are your customers? What are they looking for? Where do they spend time online?",
+    "p3": "Second: Work on real content — Professional product photos, clear descriptions, and special offers.",
+    "p4": "Third: Use social media — Share your products on Instagram, Facebook, and TikTok.",
+    "p5": "Fourth: Measure results — Track who visits your store, what they buy, and what they ignore.",
+    "p6": "Fifth: Improve continuously — Change images, try new offers, and focus on what works."
+  },
+  "post5": {
+    "title": "Mobile-First Store Design",
+    "excerpt": "80% of customers browse on mobile — Learn how to create a store that captures their attention.",
+    "date": "March 28, 2026",
+    "readTime": "5 min read",
+    "p1": "If your store doesn't work well on mobile, you're losing 80% of your potential customers.",
+    "p2": "Rule 1: Speed — The page must load in under 3 seconds. Large, slow images make customers leave.",
+    "p3": "Rule 2: Simplicity — The simpler the interface, the easier it is to use. No need for complex design.",
+    "p4": "Rule 3: Clear buy button — The customer must find the \"Buy Now\" button without searching for it.",
+    "p5": "Rule 4: Clear images — Product images must be clear even on a small screen.",
+    "p6": "On MNMKNK, all stores automatically work on mobile without any additional settings."
+  },
+  "post6": {
+    "title": "Protecting Your Store and Customer Data",
+    "excerpt": "How to ensure your data and your customers' data are safe — without being a tech expert.",
+    "date": "March 20, 2026",
+    "readTime": "4 min read",
+    "p1": "Data security is not a luxury — it's a responsibility to your customers and your store's reputation.",
+    "p2": "Encryption: Make sure payment data and personal information are encrypted. On MNMKNK, all data is encrypted with world-class technologies.",
+    "p3": "Passwords: Use a strong password and change it regularly. There's no excuse for a password like \"123456\".",
+    "p4": "Backups: Your data should be stored in more than one place. The platform performs automatic backups.",
+    "p5": "Access permissions: If you have employees, give each one only the permissions they need — nothing extra.",
+    "p6": "Updates: Make sure the platform updates automatically to close any new security vulnerabilities."
+  }
+}

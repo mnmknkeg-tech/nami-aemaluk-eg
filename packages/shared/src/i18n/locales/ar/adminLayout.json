@@ -1,0 +1,16 @@
+{
+  "dashboard": "لوحة التحكم",
+  "approvals": "طلبات الموافقة",
+  "shops": "إدارة المتاجر",
+  "users": "إدارة المستخدمين",
+  "operations": "كافة العمليات",
+  "delivery": "إدارة التوصيل",
+  "feedback": "مركز الاقتراحات",
+  "customerService": "خدمة العملاء والشكاوى",
+  "analytics": "التحليلات",
+  "notifications": "الإشعارات",
+  "content": "إدارة المحتوى",
+  "settings": "إعدادات النظام",
+  "adminLogout": "خروج الآدمن",
+  "systemVersion": "MNMKNK سيستم v1.1 - Root Access"
+}

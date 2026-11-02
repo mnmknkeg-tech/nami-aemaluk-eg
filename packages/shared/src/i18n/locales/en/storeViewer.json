@@ -1,0 +1,16 @@
+{
+  "labels": {
+    "stock": "Available"
+  },
+  "cm": "cm",
+  "egp": "EGP",
+  "egpShort": "E",
+  "unavailable": "Unavailable",
+  "packLabel": "Pack",
+  "color": "Color",
+  "size": "Size",
+  "limitedQuantity": "Limited Quantity",
+  "added": "Added",
+  "addToCart": "Add to Cart",
+  "reserve": "Reserve"
+}

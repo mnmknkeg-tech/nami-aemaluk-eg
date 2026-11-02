@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend – lint, typecheck, tests & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test -- --ci
+      - name: Build marketplace
+        run: npm run build:marketplace
+        env:
+          NEXT_PUBLIC_BACKEND_URL: http://localhost:4000
+
+  gobackend:
+    name: Go Backend – build, vet & test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./gobackend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          cache-dependency-path: gobackend/go.sum
+      - run: go mod download
+      - run: go vet ./...
+      - run: go test ./cmd/... ./internal/...
+      - run: go build -o /tmp/ray-api ./cmd/api
+      - run: go build -o /tmp/ray-worker ./cmd/worker
+
+  # E2E (Playwright) — enable once a staging URL or local backend is wired in CI:
+  # e2e:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with: { node-version: 22, cache: npm }
+  #     - run: npm ci
+  #     - run: npx playwright install chromium --with-deps
+  #     - run: npm run e2e

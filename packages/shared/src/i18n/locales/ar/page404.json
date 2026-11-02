@@ -1,0 +1,11 @@
+{
+  "offlineTitle": "لا يوجد اتصال بالإنترنت",
+  "serviceTitle": "الخدمة غير متاحة مؤقتًا",
+  "errorTitle": "حدث خطأ غير متوقع",
+  "notFoundTitle": "404 - الصفحة غير موجودة",
+  "offlineMessage": "الإنترنت مفصول",
+  "serviceMessage": "الخدمة غير متاحة الآن",
+  "errorMessage": "حصل خطأ غير متوقع",
+  "notFoundMessage": "الصفحة غير موجودة",
+  "backHome": "العودة للرئيسية"
+}

@@ -1,0 +1,12 @@
+{
+  "section": "القسم",
+  "cart3d": "سلة ثلاثية الأبعاد",
+  "productCount": "{{count}} منتجات",
+  "cartEmpty": "السلة فارغة",
+  "lookToAdd": "انظر للمنتج لإضافته",
+  "total": "المجموع",
+  "checkout": "إتمام الشراء",
+  "decrease": "تقليل",
+  "increase": "زيادة",
+  "remove": "حذف"
+}

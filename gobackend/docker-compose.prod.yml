@@ -1,0 +1,24 @@
+services:
+  # Production uses the platform-managed Redis service configured by REDIS_URL.
+  # PostgreSQL is Supabase and is configured by DATABASE_URL; neither database
+  # is started by this compose file.
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ray-api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-4000}:${PORT:-4000}"
+    env_file:
+      - .env.production
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: ray-worker
+    restart: unless-stopped
+    env_file:
+      - .env.production
+

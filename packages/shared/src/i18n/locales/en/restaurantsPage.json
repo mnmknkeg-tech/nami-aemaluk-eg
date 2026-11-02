@@ -1,0 +1,20 @@
+{
+  "title": "World of",
+  "subtitle": "Restaurants.",
+  "description": "The best dining experiences and delicious offers await you.",
+  "searchPlaceholder": "Search for a restaurant or meal...",
+  "all": "All",
+  "noData": "No restaurants available at the moment",
+  "orderNow": "Order Now",
+  "closed": "Closed",
+  "open": "Open",
+  "loading": "Loading...",
+  "loadMore": "Load More",
+  "retry": "Retry",
+  "categoryIcons": {
+    "clothing": "Clothing",
+    "electronics": "Electronics",
+    "shoes": "Shoes",
+    "watches": "Watches"
+  }
+}

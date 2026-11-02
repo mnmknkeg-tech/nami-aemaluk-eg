@@ -1,0 +1,11 @@
+{
+  "offlineTitle": "No Internet Connection",
+  "serviceTitle": "Service Temporarily Unavailable",
+  "errorTitle": "An Unexpected Error Occurred",
+  "notFoundTitle": "404 - Page Not Found",
+  "offlineMessage": "The internet is disconnected",
+  "serviceMessage": "The service is currently unavailable",
+  "errorMessage": "An unexpected error occurred",
+  "notFoundMessage": "Page not found",
+  "backHome": "Back to Home"
+}

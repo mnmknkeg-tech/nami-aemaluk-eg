@@ -1,0 +1,29 @@
+{
+  "adminPanel": "Admin Panel",
+  "merchantPanel": "Merchant Panel",
+  "controlPanel": "Control Panel",
+  "admin": {
+    "dashboard": "Dashboard",
+    "approvals": "Approval Requests",
+    "shopMgmt": "Shop Management",
+    "userMgmt": "User Management",
+    "allOperations": "All Operations",
+    "deliveryMgmt": "Delivery Management",
+    "feedback": "Feedback Center",
+    "systemSettings": "System Settings"
+  },
+  "merchant": {
+    "dashboard": "Dashboard",
+    "shopMgmt": "Shop Management",
+    "appearance": "Appearance",
+    "orders": "Orders",
+    "messages": "Messages",
+    "settings": "Settings"
+  },
+  "customer": {
+    "home": "Home",
+    "myOrders": "My Orders",
+    "messages": "Messages",
+    "settings": "Settings"
+  }
+}

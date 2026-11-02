@@ -1,0 +1,60 @@
+{
+  "title": "MNMKNK - The Comprehensive Directory in Egypt",
+  "intro": "If you're looking for a shop directory, restaurant directory, or activity directory, MNMKNK platform brings nearby places to you with offers and ratings on one page.",
+  "shopsGuide": "Shops Directory",
+  "shopsGuideDesc": "Discover nearby shops by location, category, and available offers.",
+  "restaurantsGuide": "Restaurants Directory",
+  "restaurantsGuideDesc": "See the best nearby restaurants with the latest offers, photos, and reviews.",
+  "activitiesGuide": "Activities Directory",
+  "activitiesGuideDesc": "Various places and activities you can easily find through the MNMKNK map.",
+  "quickLinks": "Quick Links",
+  "homeLink": "Home Page",
+  "mapLink": "Map",
+  "offersLink": "Offers",
+  "aboutLink": "About MNMKNK",
+  "faqTitle": "FAQ",
+  "faq1Q": "What is MNMKNK?",
+  "faq1A": "MNMKNK is an Egyptian platform that helps you find nearby shops, restaurants, and activities quickly and easily.",
+  "faq2Q": "Is MNMKNK suitable for finding shop and restaurant directories?",
+  "faq2A": "Yes, because the platform focuses on shop and restaurant directories with a map, offers, and ratings.",
+  "alternateNames": [
+    "mnmknk",
+    "MNMKNK",
+    "Directory of Shops",
+    "Directory of Restaurants",
+    "Directory of Activities"
+  ],
+  "faq": {
+    "q1": "What does MNMKNK mean?",
+    "a1": "MNMKNK is a directory platform that helps you discover shops, restaurants, and activities near you easily.",
+    "q2": "Is MNMKNK a directory of shops and restaurants?",
+    "a2": "Yes, MNMKNK provides a directory of shops, restaurants, and activities all in one place."
+  },
+  "routes": {
+    "home": {
+      "title": "MNMKNK | Directory of Shops, Restaurants & Activities in Egypt",
+      "description": "MNMKNK is the directory of shops, restaurants, and activities in Egypt to discover nearby places with offers and ratings.",
+      "keywords": "MNMKNK, mnmknk, directory of shops, directory of restaurants, directory of activities, nearby shops, nearby restaurants, nearby activities"
+    },
+    "dalil": {
+      "title": "MNMKNK | Directory of Shops, Restaurants & Activities in Egypt",
+      "description": "Discover the best shops, restaurants, and activities near you on MNMKNK with offers, ratings, and information to help you choose quickly.",
+      "keywords": "MNMKNK, mnmknk, directory of shops, directory of restaurants, directory of activities, directory of places, nearby places, nearby shops, nearby restaurants"
+    },
+    "map": {
+      "title": "MNMKNK Map | Discover Nearby Shops & Restaurants",
+      "description": "Interactive map to discover shops, restaurants, and activities near you in Egypt on the MNMKNK platform.",
+      "keywords": "shops map, restaurants map, shops near me, restaurants near me, MNMKNK"
+    },
+    "offers": {
+      "title": "MNMKNK Offers | Latest Shop & Restaurant Deals",
+      "description": "Follow the latest offers and discounts from shops and restaurants near you on the MNMKNK platform.",
+      "keywords": "shop offers, restaurant offers, nearby discounts, MNMKNK offers"
+    },
+    "about": {
+      "title": "About MNMKNK | Directory of Shops & Restaurants in Egypt",
+      "description": "Learn about the MNMKNK platform and its mission to facilitate discovering shops, restaurants, and activities nearby in Egypt.",
+      "keywords": "about MNMKNK, MNMKNK platform, directory of shops in Egypt"
+    }
+  }
+}

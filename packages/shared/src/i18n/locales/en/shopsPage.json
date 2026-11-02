@@ -1,0 +1,13 @@
+{
+  "title": "Discover",
+  "subtitle": "Shops.",
+  "description": "The best clothing and electronics stores in your area.",
+  "searchPlaceholder": "Search for a shop...",
+  "all": "All",
+  "noData": "No shops available at the moment",
+  "visitStore": "Visit Store",
+  "closed": "Closed",
+  "open": "Open",
+  "loading": "Loading...",
+  "loadMore": "Load More"
+}

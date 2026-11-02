@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS hr_checkouts;
+DROP TABLE IF EXISTS hr_tasks;
+DROP TABLE IF EXISTS hr_leaves;
+DROP TABLE IF EXISTS hr_payroll;
+DROP TABLE IF EXISTS hr_attendance;
+DROP TABLE IF EXISTS hr_employees;
+DROP TABLE IF EXISTS hr_access_logs;
+DROP TABLE IF EXISTS hr_role_permissions;
+DROP TABLE IF EXISTS hr_roles;

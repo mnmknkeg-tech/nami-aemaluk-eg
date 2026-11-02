@@ -1,0 +1,10 @@
+{
+  "title": "المدفوعات",
+  "subtitle": "إعداد بوابة الدفع وبيانات التاجر",
+  "saved": "تم الحفظ",
+  "paymentSettingsUpdated": "تم تحديث إعدادات المدفوعات بنجاح",
+  "error": "خطأ",
+  "saveChangesFailed": "حدث خطأ أثناء حفظ التغييرات",
+  "paymentGatewayDetails": "بيانات بوابة الدفع",
+  "paymentGatewayDetailsDesc": "أضف مفاتيح بوابة الدفع الخاصة بك."
+}

@@ -1,0 +1,12 @@
+{
+  "title": "Order Summary",
+  "subtotal": "Subtotal",
+  "discount": "Discount",
+  "delivery": "Delivery Fee",
+  "free": "Free",
+  "total": "Total",
+  "checkout": "Place Order",
+  "promoCode": "Promo Code",
+  "enterPromoCode": "Enter promo code",
+  "apply": "Apply"
+}

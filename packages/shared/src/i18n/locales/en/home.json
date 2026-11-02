@@ -1,0 +1,164 @@
+{
+  "hero": {
+    "badge": "Exclusive Deals",
+    "title": "MNMKNK",
+    "subtitle": "Your Local Shops & Activities Guide.",
+    "description": "The MNMKNK platform to discover the best shops and activities near you with deals and ratings.",
+    "mapBtn": "Map"
+  },
+  "stores": {
+    "title": "Available Stores Now",
+    "showMore": "Show More",
+    "visitShop": "Visit Shop",
+    "scrollRight": "Right",
+    "scrollLeft": "Left",
+    "sendPrescription": "Send Prescription",
+    "viaWhatsApp": "Via WhatsApp",
+    "specialOffer": "Special Offer",
+    "browseStore": "Browse Store",
+    "whatsappPrescription": "Hi {{shopName}}, I'd like to add a prescription"
+  },
+  "offers": {
+    "title": "Latest Price Drops",
+    "viewAll": "View All",
+    "noOffers": "No active offers at the moment.",
+    "loadMoreAria": "Load more offers",
+    "loading": "Loading...",
+    "loadMore": "Load More"
+  },
+  "categories": {
+    "title": "Explore Deals by Category",
+    "subtitle": "Choose the category that interests you and see the latest specialized deals",
+    "restaurants": "Restaurant Deals",
+    "restaurantsDesc": "Best restaurant and kitchen deals",
+    "fashion": "Fashion Deals",
+    "fashionDesc": "Clothes and shoes at great prices",
+    "supermarket": "Supermarket Deals",
+    "supermarketDesc": "Grocery and food products",
+    "previous": "Previous",
+    "next": "Next",
+    "category": "Category"
+  },
+  "topVisited": {
+    "title": "Most Visited Activities",
+    "noData": "No activities available at the moment.",
+    "subtitle": "Discover the most popular shops among our customers",
+    "viewAll": "View All",
+    "next": "Next",
+    "previous": "Previous"
+  },
+  "topSelling": {
+    "bestSellers": "Best Sellers",
+    "featuredOffers": "Featured Offers",
+    "bestSellersDesc": "Most requested products by our customers",
+    "featuredOffersDesc": "Discover the latest deals and discounts",
+    "noData": "No data available at the moment.",
+    "viewAll": "View All",
+    "next": "Next",
+    "previous": "Previous",
+    "sold": "sold",
+    "reserve": "Reserve",
+    "addToCart": "Add to Cart",
+    "currency": "EGP",
+    "product": "Product"
+  },
+  "feedback": {
+    "title": "MNMKNK Improvement Assistant",
+    "close": "Close",
+    "thanksSuccess": "Thanks champ, your suggestion arrived and we'll review it soon!",
+    "thanksError": "A minor issue occurred, but your suggestion reached our engineers!",
+    "thanksBtn": "Thanks MNMKNK!",
+    "prompt": "Got an idea or see something you don't like? We're still testing and need your opinion.",
+    "placeholder": "Write your suggestion here champ...",
+    "send": "Send to our engineers",
+    "openAssistant": "Open Assistant"
+  },
+  "marketplace": {
+    "badge": "New Version",
+    "title": "MNMKNK",
+    "subtitle": "A marketplace for services and business activities in one place.",
+    "description": "Discover, compare, and connect with thousands of suppliers, shops, and professional services near you.",
+    "searchPlaceholder": "Search for any service or activity...",
+    "searchBtn": "Search",
+    "locationLabel": "Egypt",
+    "allGovernorates": "All governorates",
+    "categoriesTitle": "Explore Activities",
+    "categoriesSubtitle": "Choose the activity you need and browse specialized services.",
+    "moreSubcategories": "+{{count}} more",
+    "browseActivity": "Browse activity",
+    "noResults": "No activities match your search.",
+    "noProducts": "No products available.",
+    "moreProducts": "+{{count}} more products",
+    "backToHome": "Home",
+    "ctaTitle": "Have a business or service?",
+    "ctaSubtitle": "Join now and reach more customers through MNMKNK.",
+    "ctaBtn": "Join as a seller",
+    "activities": {
+      "title": "Activities",
+      "filters": "Filters",
+      "all": "All",
+      "shops": "Shops & Services",
+      "noResults": "No matching results.",
+      "clearFilters": "Reset filters",
+      "cars": {
+        "title": "Cars",
+        "subtitle": "Buy, sell, rent, maintain, spare parts, insurance and car financing."
+      },
+      "realEstate": {
+        "title": "Real Estate",
+        "subtitle": "Buy, sell, rent, invest, real estate financing and real estate offices."
+      },
+      "agriculture": {
+        "title": "Agriculture",
+        "subtitle": "Seeds, seedlings, fertilizers, pesticides, agricultural equipment and consulting."
+      },
+      "medical": {
+        "title": "Medical",
+        "subtitle": "Doctor appointments, labs, radiology, pharmacies, physiotherapy and medical supplies."
+      },
+      "factories": {
+        "title": "Factories",
+        "subtitle": "Raw materials, suppliers, warehouses, transport, packaging, printing and industrial services."
+      },
+      "construction": {
+        "title": "Construction",
+        "subtitle": "Engineers, contractors, equipment, concrete, steel, cement and finishing."
+      },
+      "trade": {
+        "title": "Trade & Companies",
+        "subtitle": "Suppliers, distributors, shipping, warehouses, import, export and trade services."
+      },
+      "tourism": {
+        "title": "Tourism & Trips",
+        "subtitle": "Hotels, apartments, guides, cars, flights, travel insurance and tourism companies."
+      },
+      "animal": {
+        "title": "Livestock",
+        "subtitle": "Feed, medicine, veterinary, equipment, transport, slaughterhouses and breeding services."
+      },
+      "fish": {
+        "title": "Fisheries",
+        "subtitle": "Fry, feed, equipment, cooling, transport, export and fish farms."
+      },
+      "energy": {
+        "title": "Energy",
+        "subtitle": "Solar panels, batteries, generators, electricians, installation and maintenance."
+      },
+      "professional": {
+        "title": "Professional Services",
+        "subtitle": "Accountants, lawyers, translators, designers, programmers and consultants."
+      },
+      "home": {
+        "title": "Home Services",
+        "subtitle": "Plumbers, electricians, carpenters, painters, AC, cleaning and home maintenance."
+      }
+    },
+    "howItWorksTitle": "How we help you",
+    "howItWorksSubtitle": "Two steps and you'll find what you need",
+    "step1Title": "Choose the activity",
+    "step1Desc": "Search or browse specialized activities and services.",
+    "step2Title": "Compare & connect",
+    "step2Desc": "View details and reviews, then contact the provider directly."
+  },
+  "loading": "Loading..."
+}

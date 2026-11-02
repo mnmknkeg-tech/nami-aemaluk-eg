@@ -1,0 +1,13 @@
+{
+  "badge": "Restaurant Deals",
+  "title": "Deals",
+  "subtitle": "Restaurants & Kitchens.",
+  "description": "Discover the best restaurant and kitchen deals near you with exclusive discounts on your favorite meals.",
+  "mapBtn": "Map",
+  "sectionTitle": "Latest Restaurant Deals",
+  "viewAll": "View All",
+  "noOffers": "No active restaurant deals at the moment.",
+  "loadMoreAria": "Load more offers",
+  "loading": "Loading...",
+  "loadMore": "Load More"
+}

@@ -1,0 +1,92 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ray-go-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ray_marketplace
+      POSTGRES_USER: ray_user
+      POSTGRES_PASSWORD: ray_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ray_user -d ray_marketplace"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ray-go-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: ray-go-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ray_minio
+      MINIO_ROOT_PASSWORD: ray_minio_dev_password
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+
+  gobackend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ray-go-backend
+    restart: unless-stopped
+    ports:
+      - "1000:1000"
+    environment:
+      APP_ENV: development
+      PORT: "1000"
+      HOST: "0.0.0.0"
+      DATABASE_URL: "postgresql://ray_user:ray_password@postgres:5432/ray_marketplace?sslmode=disable"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-32-chars-long-minimum}
+      FRONTEND_APP_URL: ${FRONTEND_APP_URL:-http://localhost:5174}
+      LOG_LEVEL: debug
+      LOG_FORMAT: console
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+
+  gobackend-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: ray-go-worker
+    restart: unless-stopped
+    environment:
+      APP_ENV: development
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

@@ -1,0 +1,20 @@
+{
+  "title": "عالم",
+  "subtitle": "المطاعم.",
+  "description": "أفضل تجارب الطعام والعروض الشهية بانتظارك.",
+  "searchPlaceholder": "ابحث عن مطعم أو وجبة...",
+  "all": "الكل",
+  "noData": "لا توجد مطاعم حالياً",
+  "orderNow": "اطلب الآن",
+  "closed": "مقفول",
+  "open": "مفتوح",
+  "loading": "تحميل...",
+  "loadMore": "تحميل المزيد",
+  "retry": "إعادة المحاولة",
+  "categoryIcons": {
+    "clothing": "ملابس",
+    "electronics": "إلكترونيات",
+    "shoes": "أحذية",
+    "watches": "ساعات"
+  }
+}

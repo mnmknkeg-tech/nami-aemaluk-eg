@@ -1,0 +1,21 @@
+# Business app ignore rules (Project root = apps/business)
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+business-dev.log
+
+# Local env & secrets
+.env
+.env.*
+!.env.example
+
+# Other apps & backend aren't part of the business build
+../backend/
+../gobackend/
+../saas-backend/
+../_archive/
+../packages/config/
+../packages/types/
+../packages/ui/
+../packages/utils/

@@ -1,0 +1,6 @@
+{
+  "loadingProducts": "Loading products...",
+  "searchProducts": "Search for products...",
+  "foundProducts": "{{count}} products found",
+  "noMatchingProducts": "No matching products found"
+}
