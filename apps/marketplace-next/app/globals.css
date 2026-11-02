@@ -13,16 +13,34 @@
   --shadow-color: rgba(0, 0, 0, 0.05);
 }
 
-.dark {
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #141414;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --border-color: #1e293b;
-  --navbar-bg: rgba(10, 10, 10, 0.8);
-  --card-bg: #141414;
-  --shadow-color: rgba(0, 0, 0, 0.3);
+.merchant-site-builder {
+  overflow-x: hidden;
 }
+
+@media (max-width: 767px) {
+  .merchant-site-builder,
+  .merchant-site-builder * {
+    min-width: 0;
+  }
+
+  .merchant-site-builder img {
+    max-width: 100%;
+  }
+
+  .merchant-site-builder [data-section="products"] {
+    width: 100% !important;
+    overflow: hidden;
+  }
+
+  .merchant-site-builder [style*="display: flex"] {
+    flex-wrap: wrap !important;
+  }
+
+  .merchant-site-builder h1 {
+    overflow-wrap: anywhere;
+  }
+}
+
 
 * {
   -webkit-tap-highlight-color: transparent;

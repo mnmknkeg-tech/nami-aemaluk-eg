@@ -369,7 +369,12 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
         : rawList.filter((i: any) => i.category === activeCategory);
 
     return (
-      <section id={node.id} style={computed} data-section="products">
+      <section
+        id={node.id}
+        style={computed}
+        data-section="products"
+        data-product-ids={rawList.map((item: any) => String(item.id)).join(',')}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
           {/* Section header */}
           {(node.props.title || node.props.badge) && (
@@ -995,11 +1000,13 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
             {node.props.heading}
           </h4>
           <div className="flex flex-col gap-1.5 text-xs text-slate-400">
-            {(node.props.links as string[]).map((link, i) => (
-              <span key={i} className="hover:text-white cursor-pointer transition-colors">
-                {link}
-              </span>
-            ))}
+            {(node.props.links as string[])
+              .filter((link) => !/نمّي|صنع بكل فخر|powered by|platform/i.test(link))
+              .map((link, i) => (
+                <span key={i} className="hover:text-white cursor-pointer transition-colors">
+                  {link}
+                </span>
+              ))}
           </div>
         </div>
       )}
@@ -1010,9 +1017,9 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
             {node.props.heading}
           </h4>
           <div className="flex flex-col gap-1.5 text-xs text-slate-400">
-            {(node.props.info as string[]).map((inf, i) => (
-              <span key={i}>{inf}</span>
-            ))}
+            {(node.props.info as string[])
+              .filter((inf) => !/نمّي|صنع بكل فخر|powered by|platform/i.test(inf))
+              .map((inf, i) => <span key={i}>{inf}</span>)}
           </div>
         </div>
       )}
@@ -1141,13 +1148,29 @@ interface BuilderTreeRendererProps {
 
 export function BuilderTreeRenderer({ website, shop, products }: BuilderTreeRendererProps) {
   const activePage = website.pages?.[0];
+  const rootRef = React.useRef<HTMLDivElement>(null);
   if (!activePage) return null;
+
+  React.useEffect(() => {
+    const sections = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[data-section="products"]') || []);
+    const seen = new Set<string>();
+
+    [...sections].reverse().forEach((section) => {
+      const ids = (section.dataset.productIds || '').split(',').filter(Boolean);
+      if (ids.some((id) => seen.has(id))) section.hidden = true;
+      ids.forEach((id) => seen.add(id));
+    });
+
+    return () => sections.forEach((section) => {
+      section.hidden = false;
+    });
+  }, [website]);
 
   const direction = (website.defaultDirection || 'rtl') as React.CSSProperties['direction'];
 
   return (
     <ShopDataContext.Provider value={{ shop, products }}>
-      <div style={{ direction, minHeight: '100vh' }}>
+      <div ref={rootRef} className="merchant-site-builder" style={{ direction, minHeight: '100vh' }}>
         <NodeRenderer nodeId={activePage.rootNodeId} website={website} />
       </div>
     </ShopDataContext.Provider>
