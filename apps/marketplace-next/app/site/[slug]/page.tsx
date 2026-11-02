@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { MapPin, MessageCircle, Store } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getProducts } from '@/lib/services';
-import { ProductCard } from '@/components/ProductCard';
+import { SiteStoreProductCard } from '@/components/SiteStoreProductCard';
 import { siteConfig } from '@/lib/config';
 import {
   mapSiteProduct,
@@ -357,7 +357,11 @@ function LegacyPublishedSiteView({
           >
             {products.map((p) => (
               <div key={p.id} className="pub-card">
-                <ProductCard product={p as any} siteSlug={site.shop.slug} />
+                <SiteStoreProductCard
+                  product={p as any}
+                  siteSlug={site.shop.slug}
+                  shop={site.shop}
+                />
               </div>
             ))}
           </div>
@@ -377,7 +381,7 @@ function LegacyPublishedSiteView({
               <span>{site.shop.address}</span>
             </div>
           )}
-          <div className="text-slate-400 text-xs">مشغل بواسطة {siteConfig.name}</div>
+          <div className="text-slate-400 text-xs">جميع الحقوق محفوظة لـ {site.shop.name}</div>
         </div>
       </footer>
     </div>
