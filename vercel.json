@@ -1,16 +1,11 @@
 {
-  "services": {
-    "web": {
-      "root": "apps/marketplace-next"
-    }
-  },
+  "framework": "nextjs",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --dir apps/marketplace-next build",
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": {
-        "type": "service",
-        "service": "web"
-      }
+      "destination": "/$1"
     }
   ]
 }
