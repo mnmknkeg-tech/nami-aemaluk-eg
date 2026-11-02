@@ -178,7 +178,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     viewport,
     recordHistory,
     setIsMobileInspectorOpen,
-    initialSelectedNodeId: 'comp_hero',
+    initialSelectedNodeId: activePage?.rootNodeId ?? null,
   });
 
   // ── Page operations sub-hook ─────────────────────────────────────────────

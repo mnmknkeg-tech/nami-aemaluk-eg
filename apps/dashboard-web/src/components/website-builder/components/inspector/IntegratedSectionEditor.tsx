@@ -26,6 +26,7 @@ export const IntegratedSectionEditor: React.FC = () => {
     theme,
     viewport,
     applyThemePreset,
+    selectionBreadcrumbs,
   } = useBuilder();
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -279,6 +280,26 @@ export const IntegratedSectionEditor: React.FC = () => {
               <span>تعديل الجزء المحدد فقط</span>
               {!isSectionSelected && <span className="text-blue-400">· {node.name}</span>}
             </div>
+            {selectionBreadcrumbs.length > 1 && (
+              <nav
+                aria-label="مسار التحديد"
+                className="mt-1 flex max-w-[260px] items-center gap-1 overflow-x-auto text-[9px] text-blue-700/70"
+              >
+                {selectionBreadcrumbs.map((crumb, index) => (
+                  <React.Fragment key={crumb.id}>
+                    {index > 0 && <span aria-hidden="true">/</span>}
+                    <button
+                      type="button"
+                      onClick={() => selectNode(crumb.id)}
+                      className="shrink-0 rounded px-1 py-0.5 transition-colors hover:bg-blue-100 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                      aria-current={index === selectionBreadcrumbs.length - 1 ? 'page' : undefined}
+                    >
+                      {crumb.name}
+                    </button>
+                  </React.Fragment>
+                ))}
+              </nav>
+            )}
           </div>
         </div>
 

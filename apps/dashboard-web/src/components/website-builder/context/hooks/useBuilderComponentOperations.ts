@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   ComponentNode,
   CustomCodeScope,
@@ -61,6 +61,18 @@ export const useBuilderComponentOperations = ({
   const setHoveredNode = useCallback((id: string | null) => {
     setHoveredNodeId(id);
   }, []);
+
+  // Escape moves from an element back to its parent section, then clears selection.
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !selectedNodeId) return;
+      const current = website.components[selectedNodeId];
+      setSelectedNodeId(current?.parentId ?? null);
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [selectedNodeId, website.components]);
 
   // Update Props
   const updateNodeProps = useCallback(

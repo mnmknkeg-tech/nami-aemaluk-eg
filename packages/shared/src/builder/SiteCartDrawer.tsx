@@ -30,6 +30,9 @@ export interface SiteCartItem {
   quantity: number;
   image?: string;
   category?: string;
+  productId?: string;
+  addons?: unknown;
+  variantSelection?: unknown;
 }
 
 interface SiteCartDrawerProps {
