@@ -95,14 +95,15 @@ export async function getShopBySlug(slug: string): Promise<Shop | null> {
 export async function getProducts(
   shopId: string,
   limit = 12,
-  surface?: 'site' | 'app'
+  surface?: 'site' | 'app',
+  fresh = false
 ): Promise<Product[]> {
   try {
     // The public catalog endpoint filters by shopId — /shops/:id/products
     // does not exist on the backend and always came back empty.
     const surfaceQs = surface ? `&surface=${surface}` : '';
     const data = await api.get<any>(`/products?shopId=${shopId}&limit=${limit}${surfaceQs}`, {
-      revalidate: 300,
+      revalidate: fresh ? 0 : 300,
       tags: [`products:${shopId}`],
     });
     return Array.isArray(data) ? data : (data?.data ?? data?.items ?? []);

@@ -9,14 +9,15 @@ import { getProducts } from '@/lib/services';
 import { ProductCard } from '@/components/ProductCard';
 import { AddToCartButton } from '@/components/AddToCartButton';
 
-export const revalidate = 120;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 type Props = { params: Promise<{ slug: string; id: string }> };
 
 async function getWebsite(slug: string) {
   try {
     const result = await api.get<any>(`/shops/${slug}/website`, {
-      revalidate: 120,
+      revalidate: 0,
       tags: [`site:${slug}`],
     });
     return result?.data?.shop ? result.data : null;
@@ -28,7 +29,7 @@ async function getWebsite(slug: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, id } = await params;
   const site = await getWebsite(slug);
-  const products = site ? await getProducts(site.shop.id, 100, 'site') : [];
+  const products = site ? await getProducts(site.shop.id, 100, 'site', true) : [];
   const product = products.find((item: any) => String(item.id) === String(id));
   if (!site || !product) return { title: 'المنتج غير موجود', robots: { index: false } };
   return {
@@ -48,7 +49,7 @@ export default async function MerchantProductPage({ params }: Props) {
   const { slug, id } = await params;
   const site = await getWebsite(slug);
   if (!site) notFound();
-  const products = await getProducts(site.shop.id, 100, 'site');
+  const products = await getProducts(site.shop.id, 100, 'site', true);
   const product = products.find((item: any) => String(item.id) === String(id));
   if (!product) notFound();
   const config = site.config || {};

@@ -16,7 +16,8 @@ import { SiteCartBridge } from '@/components/SiteCartBridge';
 import { serializeJsonLd } from '@/lib/jsonld';
 import { sanitizeCssValue } from '@/lib/sanitize';
 
-export const revalidate = 120;
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 type BuilderConfig = Record<string, any>;
 
@@ -38,7 +39,7 @@ type PublicWebsite = {
 async function getWebsite(slug: string): Promise<PublicWebsite | null> {
   try {
     const data = await api.get<any>(`/shops/${slug}/website`, {
-      revalidate: 120,
+      revalidate: 0,
       tags: [`site:${slug}`],
     });
     if (data?.data?.shop) {
@@ -53,7 +54,7 @@ async function getWebsite(slug: string): Promise<PublicWebsite | null> {
 async function getSubscriptionPlans(shopId: string): Promise<SiteSubscriptionPlan[]> {
   try {
     const res = await api.get<any>(`/public/shops/${shopId}/subscriptions/plans`, {
-      revalidate: 60,
+      revalidate: 0,
       tags: [`sub-plans:${shopId}`],
     });
     if (res?.data && Array.isArray(res.data)) {
@@ -126,7 +127,7 @@ export default async function PublishedSitePage({ params }: Props) {
 
   // Fetch products + subscription plans in parallel for best performance
   const [products, subscriptionPlans] = await Promise.all([
-    getProducts(site.shop.id, 100, 'site'),
+    getProducts(site.shop.id, 100, 'site', true),
     getSubscriptionPlans(site.shop.id),
   ]);
 
