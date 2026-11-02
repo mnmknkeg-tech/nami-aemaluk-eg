@@ -41,15 +41,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const products = site ? await getProducts(site.shop.id, 100, 'site', true) : [];
   const product = products.find((item: any) => String(item.id) === String(id));
   if (!site || !product) return { title: 'المنتج غير موجود', robots: { index: false } };
+  const pageTitle = `${product.name} | ${site.shop.name}`;
+  const icon = site.shop.logoUrl || undefined;
   return {
-    title: `${product.name} | ${site.shop.name}`,
+    title: { absolute: pageTitle },
     description: product.description || `تفاصيل ${product.name} من ${site.shop.name}`,
+    icons: icon ? { icon, shortcut: icon, apple: icon } : undefined,
     alternates: { canonical: `/site/${site.shop.slug}/product/${product.id}` },
     openGraph: {
-      title: product.name,
+      title: pageTitle,
       description: product.description || site.shop.name,
+      siteName: site.shop.name,
       images: product.imageUrl ? [product.imageUrl] : [],
       locale: 'ar_EG',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: pageTitle,
+      description: product.description || site.shop.name,
+      ...(product.imageUrl ? { images: [product.imageUrl] } : {}),
     },
   };
 }
