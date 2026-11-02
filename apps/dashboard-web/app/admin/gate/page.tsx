@@ -240,32 +240,35 @@ export default function AdminGatePage() {
     }
   };
 
-  const handleDevMerchantLoginWithCategory = async (shopCategory?: string) => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch('/api/v1/auth/dev-merchant-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(shopCategory ? { shopCategory } : {}),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || 'فشل');
-      persistDevSession(data);
+  const handleDevMerchantLoginWithCategory = useCallback(
+    async (shopCategory?: string) => {
+      setLoading(true);
+      setError('');
       try {
-        if (shopCategory)
-          localStorage.setItem('ray_dev_shop_category', String(shopCategory).toUpperCase());
-        else localStorage.removeItem('ray_dev_shop_category');
-      } catch {}
-      await refreshUser();
-      router.replace('/dashboard');
-    } catch (err: any) {
-      setError(err?.message || 'فشل دخول المطور');
-    } finally {
-      setLoading(false);
-    }
-  };
+        const res = await fetch('/api/v1/auth/dev-merchant-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(shopCategory ? { shopCategory } : {}),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.message || 'فشل');
+        persistDevSession(data);
+        try {
+          if (shopCategory)
+            localStorage.setItem('ray_dev_shop_category', String(shopCategory).toUpperCase());
+          else localStorage.removeItem('ray_dev_shop_category');
+        } catch {}
+        await refreshUser();
+        router.replace('/dashboard');
+      } catch (err: any) {
+        setError(err?.message || 'فشل دخول المطور');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [refreshUser, router]
+  );
 
   const handleDevActivitySelect = useCallback(
     (activityId: string, category: DevActivityCategory) => {

@@ -30,10 +30,8 @@ import {
   Play,
   ScanLine,
   Camera,
-  Filter,
   Mail,
   Gift,
-  Percent,
   Users,
   Table2,
   Eraser,
@@ -94,7 +92,6 @@ import {
   emailReceiptViaMailto,
   loadLayaways,
   saveLayaways,
-  isCustomerTaxExempt,
   loadCashMovements,
   addCashMovement,
   loadQuickKeys,
@@ -119,6 +116,7 @@ import {
   cashierHasPermission,
   type PosCashier,
 } from '@/lib/posSettings';
+import PosProductToolbar from '@/components/pos/PosProductToolbar';
 
 const MotionDiv = motion.div as any;
 
@@ -1875,7 +1873,7 @@ const POSSystemPage: React.FC = () => {
         price: Number(it.price) || 0,
       }));
     if (items.length === 0) return;
-    const allReturned = items.every((it: any, idx: number) => {
+    const allReturned = items.every((it: any, _idx: number) => {
       const orig = (returnOrder.items || []).find((x: any) => x.id === it.orderItemId);
       return orig ? it.quantity >= Number(orig.quantity) : false;
     });
@@ -2906,66 +2904,17 @@ const POSSystemPage: React.FC = () => {
           <Link href="/dashboard" className="p-2 hover:bg-slate-100 rounded-xl shrink-0">
             <ChevronRight />
           </Link>
-          <div className="flex-1 relative min-w-[150px]">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder={isArabic ? 'بحث عن منتج... (F2)' : 'Search products... (F2)'}
-              className="w-full bg-slate-50 border rounded-2xl py-2.5 md:py-3 pr-12 pl-4 outline-none focus:ring-2 focus:ring-[#BD00FF] text-sm md:text-base"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          {/* Category filter */}
-          {categories.length > 0 && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowCategoryFilter((v) => !v)}
-                className={`p-2.5 md:p-3 rounded-xl border flex items-center gap-1.5 text-xs font-black transition-all ${categoryFilter !== 'all' ? 'bg-[#BD00FF]/10 border-[#BD00FF] text-[#BD00FF]' : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'}`}
-                title={isArabic ? 'تصنيفات' : 'Categories'}
-              >
-                <Filter size={16} />
-                <span className="hidden md:inline">
-                  {categoryFilter === 'all'
-                    ? isArabic
-                      ? 'الكل'
-                      : 'All'
-                    : categories.find((c) => c.id === categoryFilter)?.name || '...'}
-                </span>
-              </button>
-              {showCategoryFilter && (
-                <div className="absolute top-full left-0 mt-2 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 max-h-72 overflow-y-auto min-w-[180px]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCategoryFilter('all');
-                      setShowCategoryFilter(false);
-                    }}
-                    className={`w-full text-right px-4 py-2.5 text-xs font-black hover:bg-slate-50 ${categoryFilter === 'all' ? 'text-[#BD00FF]' : 'text-slate-700'}`}
-                  >
-                    {isArabic ? 'كل التصنيفات' : 'All categories'}
-                  </button>
-                  {categories.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        setCategoryFilter(c.id);
-                        setShowCategoryFilter(false);
-                      }}
-                      className={`w-full text-right px-4 py-2.5 text-xs font-black hover:bg-slate-50 border-t border-slate-50 ${categoryFilter === c.id ? 'text-[#BD00FF]' : 'text-slate-700'}`}
-                    >
-                      {c.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
+          <PosProductToolbar
+            isArabic={isArabic}
+            searchInputRef={searchInputRef}
+            search={search}
+            setSearch={setSearch}
+            categories={categories}
+            categoryFilter={categoryFilter}
+            setCategoryFilter={setCategoryFilter}
+            showCategoryFilter={showCategoryFilter}
+            setShowCategoryFilter={setShowCategoryFilter}
+          />
           <div className="flex items-center">
             <button
               type="button"
