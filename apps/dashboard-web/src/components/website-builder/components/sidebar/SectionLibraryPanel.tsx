@@ -66,6 +66,9 @@ export const SectionLibraryPanel: React.FC = () => {
                   <span className="text-sm font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
                     {cat.nameAr}
                   </span>
+                  <span className="text-[10px] font-mono text-slate-400 bg-slate-100 rounded-full px-1.5 py-0.5">
+                    {sectionTemplates.filter((template) => template.category === cat.id).length}
+                  </span>
                 </div>
               </button>
             );
@@ -133,7 +136,7 @@ export const SectionLibraryPanel: React.FC = () => {
                       <SectionWireframePreview template={tmpl} />
 
                       {/* Quick Action Overlay on hover (Live Preview & Direct Insert) */}
-                      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-xl p-2">
+                      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-xl p-2">
                         <button
                           onClick={() => setPreviewTemplate(tmpl)}
                           className="bg-white/90 hover:bg-white text-slate-800 font-bold text-xs px-3 py-2 rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"

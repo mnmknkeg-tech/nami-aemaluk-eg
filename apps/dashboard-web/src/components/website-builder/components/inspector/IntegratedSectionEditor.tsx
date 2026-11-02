@@ -17,8 +17,16 @@ import {
 } from './panels';
 
 export const IntegratedSectionEditor: React.FC = () => {
-  const { website, selectedNodeId, selectNode, updateNodeProps, updateNodeStyle, theme, viewport } =
-    useBuilder();
+  const {
+    website,
+    selectedNodeId,
+    selectNode,
+    updateNodeProps,
+    updateNodeStyle,
+    theme,
+    viewport,
+    applyThemePreset,
+  } = useBuilder();
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     content: true,
@@ -240,11 +248,11 @@ export const IntegratedSectionEditor: React.FC = () => {
   };
 
   // Group themes by category for the theme gallery panel
-  const themesByCategory = Object.values(themePresets).reduce(
-    (acc: Record<string, ThemePreset[]>, p) => {
+  const themesByCategory = Object.entries(themePresets).reduce(
+    (acc: Record<string, Array<ThemePreset & { key: string }>>, [key, p]) => {
       const cat = p.category || 'general';
       if (!acc[cat]) acc[cat] = [];
-      acc[cat].push(p);
+      acc[cat].push({ ...p, key });
       return acc;
     },
     {}
@@ -291,12 +299,16 @@ export const IntegratedSectionEditor: React.FC = () => {
       {/* ACCORDION PANELS */}
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
         <ContentSection {...sharedProps} />
-        <HeaderSettingsSection {...sharedProps} />
-        <MediaSection {...sharedProps} />
-        <ProductCardSection {...sharedProps} />
+        {isHeader && <HeaderSettingsSection {...sharedProps} />}
+        {(isHero || isHeader || isProductOrCard || isCta || isTestimonials) && (
+          <MediaSection {...sharedProps} />
+        )}
+        {isProductOrCard && <ProductCardSection {...sharedProps} />}
         <ColorsSection {...sharedProps} />
-        <ActionsSection {...sharedProps} />
-        <SubItemsSection {...sharedProps} />
+        {(isHero || isHeader || isCta || isProductOrCard) && <ActionsSection {...sharedProps} />}
+        {(isVehicles || isBento || isTestimonials || isProductOrCard) && (
+          <SubItemsSection {...sharedProps} />
+        )}
         <AdvancedSection {...sharedProps} />
 
         {/* THEME GALLERY — visual theme selection using new category/descriptionAr/preview fields */}
@@ -325,22 +337,8 @@ export const IntegratedSectionEditor: React.FC = () => {
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
                     {presets.map((p) => (
                       <button
-                        key={p.name}
-                        onClick={() => {
-                          const tokens = p.tokens;
-                          if (tokens.colors) {
-                            handleStyleChange(
-                              parentSection.id,
-                              'backgroundColor',
-                              tokens.colors.background ?? tokens.colors.surface ?? '#ffffff'
-                            );
-                            handleStyleChange(
-                              parentSection.id,
-                              'textColor',
-                              tokens.colors.textPrimary ?? '#0f172a'
-                            );
-                          }
-                        }}
+                        key={p.key}
+                        onClick={() => applyThemePreset(p.key)}
                         className="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg flex flex-col items-center text-right transition-colors cursor-pointer group"
                       >
                         <div
