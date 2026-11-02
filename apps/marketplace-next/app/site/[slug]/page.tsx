@@ -340,7 +340,7 @@ function LegacyPublishedSiteView({
           >
             {products.map((p) => (
               <div key={p.id} className="pub-card">
-                <ProductCard product={p as any} />
+                <ProductCard product={p as any} siteSlug={site.shop.slug} />
               </div>
             ))}
           </div>

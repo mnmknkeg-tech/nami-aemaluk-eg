@@ -18,6 +18,7 @@ export function ProductCard({
   shop,
   activity,
   commerce,
+  siteSlug,
 }: {
   product: Product;
   priority?: boolean;
@@ -27,6 +28,8 @@ export function ProductCard({
   activity?: Pick<MarketActivity, 'mode'> | null;
   /** لو Decision جاهز (من صفحة القسم) بيستخدمه على طول */
   commerce?: CommerceDecision;
+  /** Optional merchant-site context for product detail links. */
+  siteSlug?: string;
 }) {
   const image = resolveProductImage(product);
   // لو الصفحة مرّرت shop (صفحة القسم) نستخدمه، وإلا نجيب قرار التاجر من فهرس المتاجر —
@@ -43,7 +46,7 @@ export function ProductCard({
     <div className="card-contain group relative flex flex-col h-full bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 hover:border-brand-cyan/40 hover:shadow-lg dark:hover:shadow-cyan-950/20 transition-all duration-300">
       {/* Clickable link over the whole card */}
       <Link
-        href={`/product/${product.id}`}
+        href={siteSlug ? `/site/${siteSlug}/product/${product.id}` : `/product/${product.id}`}
         className="absolute inset-0 z-0"
         aria-label={product.name || 'تفاصيل المنتج'}
       >

@@ -45,9 +45,11 @@ export function AddToCartButton({
     // Products with sizes/colors/variants must be configured on the product
     // page first — adding them blind would put an unspecified variant in the cart.
     // Skip when we are already there (the product page's own button).
-    const onProductPage = pathname === `/product/${product.id}`;
+    const siteMatch = pathname.match(/^\/site\/([^/]+)\/product\//);
+    const productPath = siteMatch ? `/site/${siteMatch[1]}/product/${product.id}` : `/product/${product.id}`;
+    const onProductPage = pathname === productPath;
     if (!onProductPage && productHasOptions(product)) {
-      router.push(`/product/${product.id}`);
+      router.push(productPath);
       return;
     }
     addItem(product, qty, false);
