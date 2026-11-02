@@ -114,10 +114,8 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
         address: customerAddress || 'توصيل مباشر',
       },
       items: items.map((item) => ({
-        productId: item.productId || item.id,
+        productId: item.id,
         quantity: item.quantity,
-        ...(item.addons ? { addons: item.addons } : {}),
-        ...(item.variantSelection ? { variantSelection: item.variantSelection } : {}),
       })),
     };
 
