@@ -17,17 +17,7 @@ import {
 } from './panels';
 
 export const IntegratedSectionEditor: React.FC = () => {
-  const {
-    website,
-    selectedNodeId,
-    selectNode,
-    updateNodeProps,
-    updateNodeStyle,
-    theme,
-    viewport,
-    applyThemePreset,
-    selectionBreadcrumbs,
-  } = useBuilder();
+  const { applyThemePreset, selectionBreadcrumbs } = useBuilder();
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     content: true,
@@ -333,59 +323,61 @@ export const IntegratedSectionEditor: React.FC = () => {
         )}
         <AdvancedSection {...sharedProps} />
 
-        {/* THEME GALLERY — visual theme selection using new category/descriptionAr/preview fields */}
-        <div className="space-y-2 p-3">
-          <button
-            onClick={() => toggleAccordion('theme')}
-            className="w-full flex items-center justify-between text-xs font-bold text-slate-800 hover:text-blue-600 transition-colors py-1 cursor-pointer"
-          >
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-              <span>اختيار الثيم (Theme Gallery)</span>
-            </div>
-            {expandedSections.theme ? (
-              <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            )}
-          </button>
-          {expandedSections.theme && (
-            <div className="space-y-3 pt-2.5">
-              {Object.entries(themesByCategory).map(([category, presets]) => (
-                <div key={category} className="space-y-1.5">
-                  <span className="text-[10px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
-                    {category}
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
-                    {presets.map((p) => (
-                      <button
-                        key={p.key}
-                        onClick={() => applyThemePreset(p.key)}
-                        className="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg flex flex-col items-center text-right transition-colors cursor-pointer group"
-                      >
-                        <div
-                          className="w-8 h-8 rounded-lg border border-black/10 mb-1"
-                          style={{ background: p.preview?.bg || '#f1f5f9' }}
+        {/* Theme tokens belong to the section/page level, not nested controls. */}
+        {isSectionSelected && (
+          <div className="space-y-2 p-3">
+            <button
+              onClick={() => toggleAccordion('theme')}
+              className="w-full flex items-center justify-between text-xs font-bold text-slate-800 hover:text-blue-600 transition-colors py-1 cursor-pointer"
+            >
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                <span>اختيار الثيم (Theme Gallery)</span>
+              </div>
+              {expandedSections.theme ? (
+                <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              )}
+            </button>
+            {expandedSections.theme && (
+              <div className="space-y-3 pt-2.5">
+                {Object.entries(themesByCategory).map(([category, presets]) => (
+                  <div key={category} className="space-y-1.5">
+                    <span className="text-[10px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">
+                      {category}
+                    </span>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
+                      {presets.map((p) => (
+                        <button
+                          key={p.key}
+                          onClick={() => applyThemePreset(p.key)}
+                          className="p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg flex flex-col items-center text-right transition-colors cursor-pointer group"
                         >
                           <div
-                            className="w-4 h-4 rounded-full mt-1 mx-auto"
-                            style={{ background: p.preview?.card || '#ffffff' }}
-                          />
-                        </div>
-                        <span className="text-[9px] font-bold text-slate-700 truncate text-center leading-tight">
-                          {p.nameAr}
-                        </span>
-                        <span className="text-[8px] text-slate-400 text-center leading-tight">
-                          {p.descriptionAr}
-                        </span>
-                      </button>
-                    ))}
+                            className="w-8 h-8 rounded-lg border border-black/10 mb-1"
+                            style={{ background: p.preview?.bg || '#f1f5f9' }}
+                          >
+                            <div
+                              className="w-4 h-4 rounded-full mt-1 mx-auto"
+                              style={{ background: p.preview?.card || '#ffffff' }}
+                            />
+                          </div>
+                          <span className="text-[9px] font-bold text-slate-700 truncate text-center leading-tight">
+                            {p.nameAr}
+                          </span>
+                          <span className="text-[8px] text-slate-400 text-center leading-tight">
+                            {p.descriptionAr}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
