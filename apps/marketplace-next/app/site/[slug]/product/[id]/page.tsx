@@ -3,11 +3,20 @@ import type { CSSProperties } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowRight, CheckCircle, MessageCircle, ShoppingBag } from 'lucide-react';
+import {
+  ArrowRight,
+  CheckCircle,
+  MessageCircle,
+  ShoppingBag,
+  Truck,
+  ShieldCheck,
+  Star,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import { getProducts } from '@/lib/services';
 import { ProductCard } from '@/components/ProductCard';
-import { AddToCartButton } from '@/components/AddToCartButton';
+import { SiteProductActions } from '@/components/SiteProductActions';
+import { ReviewsSection } from '@/components/ReviewsSection';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -146,7 +155,7 @@ export default async function MerchantProductPage({ params }: Props) {
             </div>
             <div className="flex flex-wrap gap-3">
               {product.isAvailable !== false && (
-                <AddToCartButton product={product} size="lg" variant="button" showQuantityStepper />
+                <SiteProductActions product={product} shop={site.shop} />
               )}
               {whatsapp && (
                 <a
@@ -161,6 +170,22 @@ export default async function MerchantProductPage({ params }: Props) {
               )}
             </div>
           </div>
+        </section>
+        <section className="mt-10 grid gap-4 sm:grid-cols-3">
+          {[
+            { icon: Truck, title: 'توصيل موثوق', text: 'يتم تأكيد تفاصيل التوصيل معك بعد الطلب.' },
+            { icon: ShieldCheck, title: 'طلب آمن', text: 'بيانات طلبك تصل مباشرة إلى المتجر.' },
+            { icon: Star, title: 'رأيك يهمنا', text: 'شارك تجربتك وساعد الآخرين على الاختيار.' },
+          ].map(({ icon: Icon, title, text }) => (
+            <div key={title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <Icon className="mb-3 h-6 w-6" style={{ color: 'var(--site-primary)' }} />
+              <h2 className="font-black">{title}</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-500">{text}</p>
+            </div>
+          ))}
+        </section>
+        <section className="mt-14 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-8">
+          <ReviewsSection type="product" targetId={String(product.id)} />
         </section>
         {related.length > 0 && (
           <section className="mt-16">
