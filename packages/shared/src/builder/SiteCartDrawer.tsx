@@ -64,6 +64,7 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
   const [customerAddress, setCustomerAddress] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
   const [placedOrderNumber, setPlacedOrderNumber] = useState('');
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'whatsapp'>('cod');
 
   if (!isOpen) return null;
@@ -92,11 +93,12 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
     }
   };
 
-  const handleCheckoutSubmit = (e: React.FormEvent) => {
+  const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return;
 
     setIsCheckingOut(true);
+    setCheckoutError(null);
     const orderNum = '#' + Math.floor(100000 + Math.random() * 900000);
     setPlacedOrderNumber(orderNum);
 
@@ -123,34 +125,32 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
       },
     };
 
-    // 1. Save to merchant's local storage for real-time dashboard display
+    // Persist only after the backend accepts the order so the dashboard is the source of truth.
     try {
-      const storageKey = `ray_merchant_orders_${shop.id}`;
-      const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      existing.unshift(newOrder);
-      localStorage.setItem(storageKey, JSON.stringify(existing));
-
-      // Also notify merchant dashboard listeners (order bell & list watcher)
-      window.dispatchEvent(new CustomEvent('ray_new_website_order', { detail: newOrder }));
-      window.dispatchEvent(new Event('orders-updated'));
-    } catch (err) {
-      console.warn('Could not persist website order to localStorage', err);
-    }
-
-    // 2. Attempt backend order creation asynchronously
-    try {
-      fetch('/api/v1/orders', {
+      const response = await fetch('/api/v1/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(newOrder),
-      }).catch(() => {});
-    } catch {}
+      });
+      if (!response.ok) throw new Error(`Order submission failed: ${response.status}`);
 
-    setTimeout(() => {
+      try {
+        const storageKey = `ray_merchant_orders_${shop.id}`;
+        const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        existing.unshift(newOrder);
+        localStorage.setItem(storageKey, JSON.stringify(existing));
+        window.dispatchEvent(new CustomEvent('ray_new_website_order', { detail: newOrder }));
+        window.dispatchEvent(new Event('orders-updated'));
+      } catch {}
+
       setIsCheckingOut(false);
       setCheckoutCompleted(true);
       onClearCart();
-    }, 600);
+    } catch {
+      setIsCheckingOut(false);
+      setCheckoutError('تعذر إرسال الطلب الآن. حاول مرة أخرى، ولم يتم تأكيد الطلب.');
+    }
   };
 
   // Build WhatsApp invoice summary link
@@ -210,6 +210,7 @@ ${itemsList}
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {checkoutError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{checkoutError}</div>}
           {checkoutCompleted ? (
             /* Order Success View */
             <div className="py-8 px-2 text-center space-y-4 animate-in zoom-in-95 duration-200">
