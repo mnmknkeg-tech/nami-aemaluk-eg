@@ -23,7 +23,7 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       id: `${meta.id}_item_1`,
       title: `الباقة المتميزة الأولى من ${meta.name}`,
       subtitle: `خيار مثالي يلبي أعلى تطلعات عملائنا مع ضمان وخدمة ما بعد البيع`,
-      price: '1,450 ج.م',
+      price: 'السعر حسب الطلب',
       badge: 'الأكثر طلباً',
       imageUrl: heroImg,
       features: ['ضمان معتمد', 'توصيل وتركيب فوري', 'دعم فني 24/7', 'تقسيط بدون فوائد'],
@@ -33,7 +33,7 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       id: `${meta.id}_item_2`,
       title: `الباقة الفاخرة VIP المتكاملة`,
       subtitle: `حل شامل ومخصص للمشاريع والفلل والمؤسسات بأعلى المواصفات`,
-      price: '3,800 ج.م',
+      price: 'عرض سعر مخصص',
       badge: 'VIP متكامل',
       imageUrl:
         'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&auto=format&fit=crop&q=80',
@@ -49,7 +49,7 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       id: `${meta.id}_item_3`,
       title: `الخدمة الاقتصادية السريعة`,
       subtitle: `خدمة سريعة في نفس اليوم بجودة عالية وأسعار تنافسية`,
-      price: '490 ج.م',
+      price: 'استفسر عن السعر',
       badge: 'عرض خاص',
       imageUrl:
         'https://images.unsplash.com/photo-1558997519-83ea9252edf8?w=800&auto=format&fit=crop&q=80',
@@ -229,7 +229,7 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
         secondaryCtaLink: '#contact',
         imageUrl: heroImg,
         stats: [
-          { label: 'عميل سعيد وخدمة منفذة', value: '+5,000' },
+          { label: 'عميل وخدمة منفذة', value: '+5,000' },
           { label: 'نسبة الرضا والتقييم', value: '4.9 ★' },
           { label: 'ضمان ودعم معتمد', value: '100% موثوق' },
         ],
@@ -263,7 +263,7 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       parentId: 'page_root',
       childrenIds: [],
       props: {
-        title: 'لماذا يختارنا آلاف العملاء في مصر؟',
+        title: `لماذا يختارنا عملاء ${meta.name}؟`,
         subtitle: 'نلتزم بأعلى معايير الحرفية، الدقة في المواعيد، وخدمات ما بعد البيع المعتمدة',
         features: [
           {
@@ -396,10 +396,10 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       childrenIds: [],
       props: {
         brandName: meta.name,
-        description: `${meta.name} - ريادة وتميز في تقديم أرقى الحلول والخدمات بجمهورية مصر العربية.`,
-        phone: '+20 100 123 4567',
+        description: `${meta.name} - حلول وخدمات موثوقة مصممة لتلبية احتياجات عملائك.`,
+        phone: '',
         email: `contact@${meta.id.replace('site_', '')}.com`,
-        address: 'جمهورية مصر العربية - القاهرة، الجيزة، الإسكندرية',
+        address: '',
       },
       styles: {
         desktop: {
@@ -428,7 +428,12 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       type: 'container',
       category: 'layout',
       parentId: null,
-      childrenIds: ['gen_header', 'gen_items_grid', 'gen_form', 'gen_footer'],
+      childrenIds: [
+        'gen_header__services',
+        'gen_items_grid__services',
+        'gen_form__services',
+        'gen_footer__services',
+      ],
       props: {},
       styles: {
         desktop: {
@@ -447,7 +452,12 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       type: 'container',
       category: 'layout',
       parentId: null,
-      childrenIds: ['gen_header', 'gen_features', 'gen_form', 'gen_footer'],
+      childrenIds: [
+        'gen_header__about',
+        'gen_features__about',
+        'gen_form__about',
+        'gen_footer__about',
+      ],
       props: {},
       styles: {
         desktop: {
@@ -466,7 +476,7 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       type: 'container',
       category: 'layout',
       parentId: null,
-      childrenIds: ['gen_header', 'gen_form', 'gen_footer'],
+      childrenIds: ['gen_header__contact', 'gen_form__contact', 'gen_footer__contact'],
       props: {},
       styles: {
         desktop: {
@@ -480,6 +490,52 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       },
     },
   };
+
+  // Each page owns its node instances. Sharing generated IDs between pages makes
+  // selection and edits leak across pages in the builder.
+  const clonePageNodes = (pageKey: string, rootId: string, nodeIds: string[]) => {
+    for (const nodeId of nodeIds) {
+      const source = components[nodeId];
+      if (!source) continue;
+      const cloneId = `${nodeId}__${pageKey}`;
+      components[cloneId] = {
+        ...source,
+        id: cloneId,
+        parentId: source.parentId === 'page_root' ? rootId : `${source.parentId}__${pageKey}`,
+        childrenIds: source.childrenIds.map((childId) => `${childId}__${pageKey}`),
+      };
+    }
+  };
+
+  clonePageNodes('services', 'page_services_root', [
+    'gen_header',
+    'gen_header_inner',
+    'gen_brand_badge',
+    'gen_nav_items',
+    'gen_header_cta',
+    'gen_items_grid',
+    'gen_form',
+    'gen_footer',
+  ]);
+  clonePageNodes('about', 'page_about_root', [
+    'gen_header',
+    'gen_header_inner',
+    'gen_brand_badge',
+    'gen_nav_items',
+    'gen_header_cta',
+    'gen_features',
+    'gen_form',
+    'gen_footer',
+  ]);
+  clonePageNodes('contact', 'page_contact_root', [
+    'gen_header',
+    'gen_header_inner',
+    'gen_brand_badge',
+    'gen_nav_items',
+    'gen_header_cta',
+    'gen_form',
+    'gen_footer',
+  ]);
 
   const pages = [
     {
