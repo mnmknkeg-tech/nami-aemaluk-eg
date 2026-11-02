@@ -59,6 +59,7 @@ export interface PublishedCardCtx {
   realProducts: Array<Record<string, any>>;
   waLink: (text: string) => string | null;
   onAddToCart?: (product: any) => void;
+  siteSlug?: string;
 }
 
 export const CardActions: React.FC<{
@@ -110,9 +111,7 @@ export const CardActions: React.FC<{
         ))}
       {options.showCtaButton && (
         <a
-          href={ctx.waLink(`مرحبًا، أريد تفاصيل عن: ${title}`) || '#'}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={ctx.siteSlug && prod.id ? `/site/${ctx.siteSlug}/product/${prod.id}` : '#'}
           className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all text-center active:scale-98"
         >
           {options.ctaText}

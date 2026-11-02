@@ -603,7 +603,7 @@ const AuthSectionView: React.FC<{
                       <span>
                         {layout === 'phone_otp' && !isOtpSent
                           ? 'إرسال رمز التحقق السريع'
-                          : 'تسجيل الدخول ��لآن'}
+                          : 'تسجيل الدخول ����لآن'}
                       </span>
                     </>
                   ) : (
@@ -1908,6 +1908,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
         realProducts: realProducts as any,
         waLink,
         onAddToCart: ctx.onAddToCart as any,
+        siteSlug: shop.slug,
       };
       return (
         <section
