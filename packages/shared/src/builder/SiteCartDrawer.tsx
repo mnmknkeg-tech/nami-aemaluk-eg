@@ -1,27 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  X,
-  ShoppingBag,
-  ShoppingCart,
-  Store,
-  Package,
-  Trash2,
-  Plus,
-  Minus,
-  ArrowRight,
-  Sparkles,
-  ShieldCheck,
-  CheckCircle2,
-  Tag,
-  CreditCard,
-  MessageCircle,
-  Phone,
-  Truck,
-} from 'lucide-react';
+import { X, ShoppingBag, ShoppingCart, Trash2, Plus, Minus, ArrowRight, Tag } from 'lucide-react';
 import type { SiteShopContext, Website } from './types';
-import { buildWhatsAppLink, formatPrice } from './theme';
+import { formatPrice } from './theme';
 
 export interface SiteCartItem {
   id: string;
@@ -43,7 +25,7 @@ interface SiteCartDrawerProps {
   website: Website;
   onUpdateQuantity: (id: string, delta: number) => void;
   onRemoveItem: (id: string) => void;
-  onClearCart: () => void;
+  onProceedToCheckout: () => void;
 }
 
 export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
@@ -54,21 +36,12 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
   website,
   onUpdateQuantity,
   onRemoveItem,
-  onClearCart,
+  onProceedToCheckout,
 }) => {
   const [couponCode, setCouponCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [checkoutCompleted, setCheckoutCompleted] = useState(false);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
-  const [orderNotes, setOrderNotes] = useState('');
-  const [placedOrderNumber, setPlacedOrderNumber] = useState('');
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'whatsapp'>('cod');
 
   if (!isOpen) return null;
 
@@ -94,83 +67,6 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
     } else {
       setCouponError('كود الخصم غير صحيح أو منتهي الصلاحية');
     }
-  };
-
-  const handleCheckoutSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (items.length === 0) return;
-
-    setIsCheckingOut(true);
-    setCheckoutError(null);
-    const orderNum = '#' + Math.floor(100000 + Math.random() * 900000);
-    setPlacedOrderNumber(orderNum);
-
-    const newOrder = {
-      shopId: shop.id,
-      source: 'website',
-      total: Math.round(finalTotal),
-      paymentMethod: paymentMethod === 'cod' ? 'cash_on_delivery' : 'whatsapp_direct',
-      notes: orderNotes || undefined,
-      customer: {
-        name: customerName || 'عميل المتجر الإلكتروني',
-        phone: customerPhone || '',
-        address: customerAddress || 'توصيل مباشر',
-      },
-      items: items.map((item) => ({
-        productId: item.productId || item.id,
-        quantity: item.quantity,
-        ...(item.addons ? { addons: item.addons } : {}),
-        ...(item.variantSelection ? { variantSelection: item.variantSelection } : {}),
-      })),
-    };
-
-    // Persist only after the backend accepts the order so the dashboard is the source of truth.
-    try {
-      const response = await fetch('/api/v1/orders/public', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(newOrder),
-      });
-      if (!response.ok) throw new Error(`Order submission failed: ${response.status}`);
-
-      try {
-        const storageKey = `ray_merchant_orders_${shop.id}`;
-        const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        existing.unshift(newOrder);
-        localStorage.setItem(storageKey, JSON.stringify(existing));
-        window.dispatchEvent(new CustomEvent('ray_new_website_order', { detail: newOrder }));
-        window.dispatchEvent(new Event('orders-updated'));
-      } catch {}
-
-      setIsCheckingOut(false);
-      setCheckoutCompleted(true);
-      onClearCart();
-    } catch {
-      setIsCheckingOut(false);
-      setCheckoutError('تعذر إرسال الطلب الآن. حاول مرة أخرى، ولم يتم تأكيد الطلب.');
-    }
-  };
-
-  // Build WhatsApp invoice summary link
-  const buildWhatsAppOrderLink = () => {
-    const itemsList = items
-      .map((it, idx) => `${idx + 1}. ${it.title} × ${it.quantity} (${it.price * it.quantity} ج.م)`)
-      .join('\n');
-
-    const msg = `مرحبًا ${shop.name}، أود تأكيد طلبي من الموقع الإلكتروني:
-رقم الطلب: ${placedOrderNumber}
-العميل: ${customerName || 'عميل المتجر'}
-الهاتف: ${customerPhone}
-العنوان: ${customerAddress}
-المنتجات:
-${itemsList}
-
-الإجمالي: ${Math.round(finalTotal)} ج.م
-طريقة الاستلام: ${paymentMethod === 'cod' ? 'الدفع عند الاستلام' : 'تأكيد مباشر عبر واتساب'}
-ملاحظات: ${orderNotes || 'لا توجد'}`;
-
-    return buildWhatsAppLink(shop.whatsapp || shop.phone, msg);
   };
 
   return (
@@ -209,60 +105,7 @@ ${itemsList}
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {checkoutError && (
-            <div
-              role="alert"
-              className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700"
-            >
-              {checkoutError}
-            </div>
-          )}
-          {checkoutCompleted ? (
-            /* Order Success View */
-            <div className="py-8 px-2 text-center space-y-4 animate-in zoom-in-95 duration-200">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center shadow-inner">
-                <CheckCircle2 className="w-9 h-9" />
-              </div>
-              <div>
-                <h4 className="text-base font-extrabold text-slate-900">
-                  تم استلام طلبك بنجاح! 🎉
-                </h4>
-                <p className="text-xs text-slate-500 mt-1">
-                  رقم طلبك هو{' '}
-                  <span className="font-black text-emerald-600 font-mono text-sm">
-                    {placedOrderNumber}
-                  </span>
-                </p>
-                <p className="text-[11px] text-slate-600 mt-1">
-                  تم إرسال الطلب مباشرة إلى لوحة تحكم التاجر وسيتواصل معك لتأكيد التوصيل.
-                </p>
-              </div>
-
-              {/* Direct WhatsApp Confirmation Button */}
-              {(shop.whatsapp || shop.phone) && (
-                <a
-                  href={buildWhatsAppOrderLink() || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>إرسال تفاصيل الفاتورة عبر واتساب</span>
-                </a>
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  setCheckoutCompleted(false);
-                  onClose();
-                }}
-                className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
-              >
-                متابعة تصفح المتجر
-              </button>
-            </div>
-          ) : items.length === 0 ? (
+          {items.length === 0 ? (
             /* Empty Cart View */
             <div className="py-16 text-center space-y-3">
               <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
@@ -362,78 +205,23 @@ ${itemsList}
                 {couponError && <p className="text-[10px] text-red-500 font-bold">{couponError}</p>}
               </form>
 
-              {/* Customer Details Form */}
+              {/* Delivery details are collected on the full merchant checkout page. */}
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-                <span className="text-xs font-bold text-slate-800 block">بيانات استلام الطلب</span>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="الاسم بالكامل *"
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs focus:outline-hidden focus:border-emerald-500"
-                />
-                <input
-                  type="tel"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="رقم الهاتف للتواصل وتأكيد الطلب *"
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs focus:outline-hidden focus:border-emerald-500"
-                />
-                <input
-                  type="text"
-                  value={customerAddress}
-                  onChange={(e) => setCustomerAddress(e.target.value)}
-                  placeholder="عنوان التوصيل أو الفرع المطلوب *"
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs focus:outline-hidden focus:border-emerald-500"
-                />
-                <textarea
-                  value={orderNotes}
-                  onChange={(e) => setOrderNotes(e.target.value)}
-                  placeholder="ملاحظات إضافية على الطلب (اختياري)"
-                  rows={2}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs focus:outline-hidden focus:border-emerald-500 resize-none"
-                />
-
-                {/* Payment Method */}
-                <div className="pt-1">
-                  <span className="text-[11px] font-bold text-slate-700 block mb-1.5">
-                    طريقة الدفع
-                  </span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('cod')}
-                      className={`p-2 rounded-lg border text-center text-xs font-bold cursor-pointer transition-all ${
-                        paymentMethod === 'cod'
-                          ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
-                          : 'border-slate-200 bg-white text-slate-600'
-                      }`}
-                    >
-                      💵 عند الاستلام
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('whatsapp')}
-                      className={`p-2 rounded-lg border text-center text-xs font-bold cursor-pointer transition-all ${
-                        paymentMethod === 'whatsapp'
-                          ? 'border-emerald-600 bg-emerald-50 text-emerald-800'
-                          : 'border-slate-200 bg-white text-slate-600'
-                      }`}
-                    >
-                      💬 واتساب مباشر
-                    </button>
-                  </div>
-                </div>
+                <p className="text-xs font-bold text-slate-700">
+                  أكمل بيانات الاسم والهاتف والعنوان والخريطة في صفحة الطلب التالية.
+                </p>
+              </div>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                <p className="text-xs font-bold text-slate-700">
+                  أكمل بيانات الاسم والهاتف والعنوان والخريطة في صفحة الطلب التالية.
+                </p>
               </div>
             </>
           )}
         </div>
 
         {/* Footer & Submit Action */}
-        {!checkoutCompleted && items.length > 0 && (
+        {items.length > 0 && (
           <div className="p-4 border-t border-slate-100 bg-white space-y-3">
             {/* Price Breakdown */}
             <div className="space-y-1 text-xs">
@@ -458,18 +246,13 @@ ${itemsList}
             {/* Confirm Order Button */}
             <button
               type="button"
-              disabled={isCheckingOut}
-              onClick={handleCheckoutSubmit}
+              onClick={onProceedToCheckout}
               className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-98 cursor-pointer disabled:opacity-50"
             >
-              {isCheckingOut ? (
-                <span>جاري إرسال الطلب...</span>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>تأكيد وإرسال الطلب ({formatPrice(finalTotal)})</span>
-                </>
-              )}
+              <>
+                <ArrowRight className="w-4 h-4" />
+                <span>تأكيد السلة وإدخال بيانات التوصيل ({formatPrice(finalTotal)})</span>
+              </>
             </button>
           </div>
         )}

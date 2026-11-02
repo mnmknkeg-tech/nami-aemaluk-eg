@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSiteCart } from '@/lib/site-cart';
 import { PublicSiteRenderer, SiteCartDrawer, SiteSkeleton } from '@ray-eg/shared/builder';
 import type {
@@ -36,7 +37,8 @@ export function SiteCartBridge({
   products,
   subscriptionPlans = [],
 }: SiteCartBridgeProps) {
-  const { items, totalItems, addItem, updateQuantity, removeItem, clearCart } = useSiteCart();
+  const router = useRouter();
+  const { items, totalItems, addItem, updateQuantity, removeItem } = useSiteCart();
   const [isCartOpen, setCartOpen] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -88,9 +90,9 @@ export function SiteCartBridge({
           updateQuantity(id, delta);
         }}
         onRemoveItem={removeItem}
-        onClearCart={() => {
-          clearCart();
+        onProceedToCheckout={() => {
           setCartOpen(false);
+          router.push(`/site/${shop.slug}/checkout`);
         }}
       />
     </div>

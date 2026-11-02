@@ -303,24 +303,28 @@ export const SiteRenderer: React.FC<SiteRendererProps> = ({
       )}
 
       {/* 4. Standalone Site Cart Drawer */}
-      <SiteCartDrawer
-        isOpen={isSiteCartOpen}
-        onClose={() => setIsSiteCartOpen(false)}
-        items={standaloneItems}
-        shop={shop}
-        website={website}
-        onUpdateQuantity={(id, delta) => {
-          setStandaloneItems((prev) =>
-            prev
-              .map((it) => (it.id === id ? { ...it, quantity: it.quantity + delta } : it))
-              .filter((it) => it.quantity > 0)
-          );
-        }}
-        onRemoveItem={(id) => {
-          setStandaloneItems((prev) => prev.filter((it) => it.id !== id));
-        }}
-        onClearCart={() => setStandaloneItems([])}
-      />
+      {!usesHostCart && (
+        <SiteCartDrawer
+          isOpen={isSiteCartOpen}
+          onClose={() => setIsSiteCartOpen(false)}
+          items={standaloneItems}
+          shop={shop}
+          website={website}
+          onUpdateQuantity={(id, delta) => {
+            setStandaloneItems((prev) =>
+              prev
+                .map((it) => (it.id === id ? { ...it, quantity: it.quantity + delta } : it))
+                .filter((it) => it.quantity > 0)
+            );
+          }}
+          onRemoveItem={(id) => {
+            setStandaloneItems((prev) => prev.filter((it) => it.id !== id));
+          }}
+          onProceedToCheckout={() => {
+            window.location.assign(`/site/${shop.slug}/checkout`);
+          }}
+        />
+      )}
 
       <SiteSubscriptionModal
         isOpen={Boolean(subModalPlan)}
