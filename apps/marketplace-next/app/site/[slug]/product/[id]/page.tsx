@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import type { CSSProperties } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -63,13 +62,13 @@ export default async function MerchantProductPage({ params }: Props) {
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
         <nav className="mb-8 flex items-center gap-2 text-sm font-semibold text-slate-500"><Link href={`/site/${site.shop.slug}`}>الرئيسية</Link><ArrowRight className="h-4 w-4" /><span>{product.name}</span></nav>
         <section className="grid gap-8 lg:grid-cols-2 lg:gap-14">
-          <div className="relative aspect-square overflow-hidden border bg-slate-50" style={{ borderColor: colors.border || '#e2e8f0', borderRadius: 'var(--site-radius)', boxShadow: 'var(--site-shadow)' }}>
+          <div className="relative aspect-square overflow-hidden border bg-slate-50" style={{ borderColor: colors.border || '#e2e8f0', borderRadius: radius.lg || '24px', boxShadow: shadow }}>
             <Image src={product.imageUrl || '/placeholder-product.png'} alt={product.name} fill priority sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
           </div>
           <div className="flex flex-col justify-center">
-            <Link href={`/site/${site.shop.slug}`} className="mb-5 flex items-center gap-3 font-black" style={{ color: 'var(--site-primary)' }}>{logo ? <Image src={logo} alt={site.shop.name} width={44} height={44} className="h-11 w-11 rounded-xl object-cover" /> : <ShoppingBag className="h-6 w-6" />}{site.shop.name}</Link>
+            <Link href={`/site/${site.shop.slug}`} className="mb-5 flex items-center gap-3 font-black" style={{ color: primary }}>{logo ? <Image src={logo} alt={site.shop.name} width={44} height={44} className="h-11 w-11 rounded-xl object-cover" /> : <ShoppingBag className="h-6 w-6" />}{site.shop.name}</Link>
             <h1 className="mb-4 text-3xl font-black md:text-5xl">{product.name}</h1>
-            {product.price != null && <p className="mb-6 text-3xl font-black" style={{ color: 'var(--site-primary)' }}>{product.price} {product.currency || 'ج.م'}</p>}
+            {product.price != null && <p className="mb-6 text-3xl font-black" style={{ color: primary }}>{product.price} {product.currency || 'ج.م'}</p>}
             {product.description && <p className="mb-6 whitespace-pre-wrap text-base font-semibold leading-8 text-slate-600">{product.description}</p>}
             <div className="mb-7 flex items-center gap-2 text-sm font-bold text-emerald-600"><CheckCircle className="h-5 w-5" />{product.isAvailable === false ? 'غير متوفر حالياً' : 'متوفر الآن'}</div>
             <div className="flex flex-wrap gap-3">{product.isAvailable !== false && <AddToCartButton product={product} size="lg" variant="button" showQuantityStepper />}{whatsapp && <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-4 font-black text-white"><MessageCircle className="h-5 w-5" />اطلب عبر واتساب</a>}</div>
