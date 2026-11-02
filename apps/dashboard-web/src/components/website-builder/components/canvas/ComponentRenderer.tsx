@@ -749,6 +749,21 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
   };
 
   // Delegate rendering by component type
+  if (node.customCode?.enabled) {
+    return (
+      <div
+        id={nodeId}
+        style={getComputedStyles()}
+        className={`cursor-pointer transition-all ${outlineClass}`}
+        onClick={handleClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <CustomCodeRenderer node={node} isInteractivePreview={isInteractivePreview} />
+      </div>
+    );
+  }
+
   switch (node.type) {
     case 'header':
       return <HeaderRenderer {...baseProps} cartCount={cartCount} setIsCartOpen={setIsCartOpen} />;

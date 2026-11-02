@@ -18,6 +18,8 @@ const emptyHtml =
 export const CodeWorkspace: React.FC = () => {
   const {
     isCodeWorkspaceOpen,
+    saveDraft,
+    autosaveStatus,
     setIsCodeWorkspaceOpen,
     selectedNode,
     updateNodeCustomCode,
@@ -33,10 +35,24 @@ export const CodeWorkspace: React.FC = () => {
   const code = useMemo(() => {
     if (!selectedNode) return '';
     if (activeFile === 'html') {
-      return selectedNode.customCode?.tsxSnippet || selectedNode.props?.html || '';
+      return (
+        selectedNode.customCode?.tsxSnippet ||
+        selectedNode.props?.html ||
+        `<div class="${selectedNode.type}">\n  <!-- ${selectedNode.name} -->\n</div>`
+      );
     }
-    if (activeFile === 'styles.css') return selectedNode.customCode?.css || '';
-    return selectedNode.customCode?.js || '';
+    if (activeFile === 'styles.css') {
+      return (
+        selectedNode.customCode?.css ||
+        Object.entries(selectedNode.styles?.desktop || {})
+          .map(
+            ([property, value]) =>
+              `  ${property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}: ${value};`
+          )
+          .join('\\n')
+      );
+    }
+    return selectedNode.customCode?.js || '// اكتب التفاعل الخاص بهذا المكوّن هنا';
   }, [activeFile, selectedNode]);
 
   if (!isCodeWorkspaceOpen) return null;
@@ -49,15 +65,15 @@ export const CodeWorkspace: React.FC = () => {
   const handleCodeChange = (value: string) => {
     if (!selectedNode) return;
     if (activeFile === 'html') {
-      updateNodeCustomCode(selectedNode.id, { tsxSnippet: value });
+      updateNodeCustomCode(selectedNode.id, { tsxSnippet: value, enabled: true });
       updateNodeProps(selectedNode.id, { html: value });
       return;
     }
     if (activeFile === 'styles.css') {
-      updateNodeCustomCode(selectedNode.id, { css: value });
+      updateNodeCustomCode(selectedNode.id, { css: value, enabled: true });
       return;
     }
-    updateNodeCustomCode(selectedNode.id, { js: value });
+    updateNodeCustomCode(selectedNode.id, { js: value, enabled: true });
   };
 
   const createCustomNode = () => {
@@ -73,7 +89,7 @@ export const CodeWorkspace: React.FC = () => {
         childrenIds: [],
         props: { html: emptyHtml, title: 'مكوّن مخصص جديد' },
         styles: { desktop: { paddingTop: '1rem', paddingBottom: '1rem' } },
-        customCode: { tsxSnippet: emptyHtml, css: '', js: '' },
+        customCode: { enabled: true, tsxSnippet: emptyHtml, css: '', js: '' },
       },
       parentId
     );
@@ -107,6 +123,22 @@ export const CodeWorkspace: React.FC = () => {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <button
+            onClick={() => {
+              saveDraft(true);
+              flash('تم حفظ تعديلات المكوّن.');
+            }}
+            className="rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-blue-500"
+          >
+            حفظ التعديلات
+          </button>
+          <span className="px-1 text-[10px] text-slate-400" aria-live="polite">
+            {autosaveStatus === 'saving'
+              ? 'جارٍ الحفظ...'
+              : autosaveStatus === 'saved'
+                ? 'محفوظ'
+                : 'تعديلات غير محفوظة'}
+          </span>
           <button
             onClick={createCustomNode}
             className="flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-500"

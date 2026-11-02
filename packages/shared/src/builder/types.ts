@@ -204,6 +204,7 @@ export interface DataBinding {
 }
 
 export interface CustomCodeScope {
+  enabled?: boolean;
   tsx?: string;
   css?: string;
   js?: string;
