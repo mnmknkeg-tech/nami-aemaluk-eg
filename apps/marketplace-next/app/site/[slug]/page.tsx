@@ -249,6 +249,15 @@ function LegacyPublishedSiteView({
             .pub-site .pub-hero-title { border-radius: ${rXl}; }
             .pub-site .pub-card { border-radius: ${cardRadius}; box-shadow: ${shadowSm}; transition: box-shadow .2s; }
             .pub-site .pub-card:hover { box-shadow: ${shadowMd}; }
+            @media (max-width: 640px) {
+              .pub-site header .pub-header-inner { height: auto; min-height: 4rem; padding-top: .75rem; padding-bottom: .75rem; }
+              .pub-site .pub-brand-name { max-width: 11rem; font-size: 1rem; }
+              .pub-site .pub-hero { height: 20rem; min-height: 20rem; }
+              .pub-site .pub-hero-content { padding: 1.25rem; }
+              .pub-site .pub-hero-title { font-size: clamp(2rem, 10vw, 3rem); line-height: 1.12; overflow-wrap: anywhere; }
+              .pub-site .pub-products-grid { grid-template-columns: 1fr; }
+              .pub-site .pub-footer-inner { align-items: stretch; text-align: center; }
+            }
           `,
         }}
       />
@@ -262,7 +271,7 @@ function LegacyPublishedSiteView({
         className="sticky top-0 z-50 backdrop-blur border-b border-black/5"
         style={{ backgroundColor: `${headerBg}F2`, color: headerText }}
       >
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+        <div className="pub-header-inner max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 min-w-0">
             {site.shop.logoUrl ? (
               <Image
@@ -280,7 +289,7 @@ function LegacyPublishedSiteView({
                 <Store size={20} className="text-white" />
               </div>
             )}
-            <span className="font-black text-lg truncate">{site.shop.name}</span>
+            <span className="pub-brand-name font-black text-lg truncate">{site.shop.name}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -302,7 +311,7 @@ function LegacyPublishedSiteView({
 
       {/* Hero banner */}
       {bannerUrl && (
-        <section className="relative w-full h-[42vh] min-h-[280px] max-h-[480px]">
+        <section className="pub-hero relative w-full h-[42vh] min-h-[280px] max-h-[480px]">
           <Image
             src={bannerUrl}
             alt={site.shop.name}
@@ -312,8 +321,8 @@ function LegacyPublishedSiteView({
             style={{ objectPosition: `${c.bannerPosX || 50}% ${c.bannerPosY || 50}%` }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10 text-white text-right">
-            <h1 className="text-3xl sm:text-5xl font-black drop-shadow-lg">
+          <div className="pub-hero-content absolute inset-x-0 bottom-0 p-6 sm:p-10 text-white text-right">
+            <h1 className="pub-hero-title text-3xl sm:text-5xl font-black drop-shadow-lg">
               {c.bannerTitle || site.shop.name}
             </h1>
             {(c.bannerSubtitle || c.homeIntroText) && (
@@ -340,7 +349,7 @@ function LegacyPublishedSiteView({
           </div>
         ) : (
           <div
-            className={`grid gap-4 sm:gap-6 ${
+            className={`pub-products-grid grid gap-4 sm:gap-6 ${
               c.productsLayout === 'horizontal'
                 ? 'grid-cols-1'
                 : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4'
