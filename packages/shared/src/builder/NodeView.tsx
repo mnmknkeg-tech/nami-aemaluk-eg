@@ -603,7 +603,7 @@ const AuthSectionView: React.FC<{
                       <span>
                         {layout === 'phone_otp' && !isOtpSent
                           ? 'إرسال رمز التحقق السريع'
-                          : 'تسجيل الدخول الآن'}
+                          : 'تسجيل الدخول ��لآن'}
                       </span>
                     </>
                   ) : (
@@ -1771,29 +1771,6 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
             style={getComputedStyles()}
             className="transition-all flex flex-col justify-between"
           >
-            {/* PRODUCT CARD - موحدة مع المحرر (نفس الشكل/الخيارات) */}
-            {node.props.image &&
-              node.props.price &&
-              (() => {
-                const m = node.id.match(/\d+/);
-                const ci = m ? parseInt(m[0], 10) - 1 : 0;
-                return (
-                  <PublishedProductCard
-                    item={node.props as any}
-                    index={ci}
-                    sectionProps={node.props as any}
-                    ctx={{
-                      theme: {
-                        colors: { primary: theme.colors.primary, accent: theme.colors.accent },
-                      },
-                      realProducts: realProducts as any,
-                      waLink,
-                      onAddToCart: ctx.onAddToCart as any,
-                    }}
-                  />
-                );
-              })()}
-
             {/* BENTO FEATURE CARD */}
             {node.props.icon && (
               <div className="space-y-3">
@@ -2509,7 +2486,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
       const fieldsList = node.props.fields || [
         { name: 'name', label: 'الاسم الكريم', type: 'text', placeholder: 'الاسم بالكامل' },
         { name: 'phone', label: 'رقم الهاتف / واتساب', type: 'tel', placeholder: '01xxxxxxxxx' },
-        { notes: 'notes', label: 'ملاحظات', type: 'text', placeholder: 'اكتب رسالتك...' },
+        { notes: 'notes', label: 'ملاحظات', type: 'text', placeholder: 'اك��ب رسالتك...' },
       ];
       const primaryColor = theme.colors.primary;
 
