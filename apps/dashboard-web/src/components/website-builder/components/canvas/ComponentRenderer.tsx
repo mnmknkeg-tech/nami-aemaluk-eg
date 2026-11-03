@@ -1,4 +1,5 @@
 import React from 'react';
+import { mergeResponsiveStyles } from '@ray-eg/shared/builder';
 import { useBuilder } from '../../context/BuilderContext';
 import { StyleProperties, ViewportBreakpoint } from '../../types/builder';
 import { BaseRendererProps } from './renderers/types';
@@ -117,13 +118,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
     const d = node.styles.desktop || {};
     const t = node.styles.tablet || {};
     const m = node.styles.mobile || {};
-
-    let merged: StyleProperties = { ...d };
-    if (currentViewport === 'tablet') {
-      merged = { ...merged, ...t };
-    } else if (currentViewport === 'mobile') {
-      merged = { ...merged, ...t, ...m };
-    }
+    const merged: StyleProperties = mergeResponsiveStyles(node.styles, currentViewport);
 
     const css: React.CSSProperties = {
       display: merged.display,
@@ -779,14 +774,16 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
         return (
           <div
             id={nodeId}
-            className="w-full h-full flex flex-col items-center justify-center p-8 text-center"
+            style={getComputedStyles()}
             dir="rtl"
           >
-            <div className="max-w-xl text-slate-400">
-              <p className="text-sm font-medium mb-1">الكانفاس فارغ حالياً</p>
-              <p className="text-xs text-slate-300">
-                ابدأ بإضافة أقسام، نصوص، صور أو روابط من القائمة الجانبية لبناء موقعك.
-              </p>
+            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
+              <div className="max-w-xl text-slate-400">
+                <p className="text-sm font-medium mb-1">الكانفاس فارغ حالياً</p>
+                <p className="text-xs text-slate-300">
+                  ابدأ بإضافة أقسام، نصوص، صور أو روابط من القائمة الجانبية لبناء موقعك.
+                </p>
+              </div>
             </div>
           </div>
         );
@@ -794,7 +791,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
       return (
         <div
           id={nodeId}
-          className="w-full h-full flex flex-col items-center justify-center p-8 text-center"
+          style={getComputedStyles()}
         >
           {node.childrenIds.map((childId) => (
             <ComponentRenderer

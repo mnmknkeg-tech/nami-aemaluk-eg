@@ -52,6 +52,7 @@ import {
 } from './productCard';
 import { CustomCodeFrame } from './CustomCodeFrame';
 import { PublishedProductCard } from './PublishedProductCard';
+import { mergeResponsiveStyles } from './responsiveStyles';
 
 export interface NodeViewContext {
   website: Website;
@@ -679,13 +680,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
     const d = node.styles.desktop || {};
     const t = node.styles.tablet || {};
     const m = node.styles.mobile || {};
-
-    let merged: StyleProperties = { ...d };
-    if (viewport === 'tablet') {
-      merged = { ...merged, ...t };
-    } else if (viewport === 'mobile') {
-      merged = { ...merged, ...t, ...m };
-    }
+    const merged: StyleProperties = mergeResponsiveStyles(node.styles, viewport);
 
     const css: React.CSSProperties = {
       display: merged.display,

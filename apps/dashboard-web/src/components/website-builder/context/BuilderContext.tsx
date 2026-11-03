@@ -25,12 +25,12 @@ import { EditingModeId } from './types';
 import { mockTenants, mockAssets } from '../data/mockTenants';
 import { allActivityWebsites, activityTemplatesMeta } from '../data/allActivityTemplates';
 import { sampleWebsites } from '../data/initialWebsites';
-import { apiRequest } from '@/lib/auth';
+import { apiRequest } from '../../../lib/api/client';
 
 // Sub-hooks
 import { useBuilderCart } from './hooks/useBuilderCart';
 import { useBuilderPageOperations } from './hooks/useBuilderPageOperations';
-import { useBuilderComponentOperations } from './hooks/useBuilderComponentOperations';
+import { useBuilderComponentOperations, type WebsiteReducer } from './hooks/useBuilderComponentOperations';
 import { useBuilderTheme } from './hooks/useBuilderTheme';
 import { useBuilderHistory } from './hooks/useBuilderHistory';
 import { useBuilderPublishing } from './hooks/useBuilderPublishing';
@@ -99,15 +99,21 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   // ── Core website state ───────────────────────────────────────────────────
   const [initialBuilderData] = useState(() => getInitialBuilderState());
   const [currentTenant, setCurrentTenant] = useState<Tenant>(mockTenants[0]);
-  const [website, setWebsite] = useState<Website>(initialBuilderData.website);
+  const [website, setWebsiteState] = useState<Website>(initialBuilderData.website);
   const [activeTemplateId, setActiveTemplateId] = useState(initialBuilderData.templateId);
   const [activePageId, setActivePageId] = useState(initialBuilderData.pageId);
 
-  // Stable refs for closures inside async hooks (avoid stale captures)
+  // Mutations update the ref synchronously so back-to-back actions compose even
+  // before React has committed a render. The revision also guards in-flight saves.
   const websiteRef = useRef(website);
-  useEffect(() => {
-    websiteRef.current = website;
-  }, [website]);
+  const websiteRevisionRef = useRef(0);
+  const setWebsite = useCallback<React.Dispatch<React.SetStateAction<Website>>>((value) => {
+    const next = typeof value === 'function' ? value(websiteRef.current) : value;
+    if (next === websiteRef.current) return;
+    websiteRef.current = next;
+    websiteRevisionRef.current += 1;
+    setWebsiteState(next);
+  }, []);
 
   const [builderShopId, setBuilderShopId] = useState('');
   const [builderShopSlug, setBuilderShopSlug] = useState('');
@@ -144,15 +150,16 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     websiteRef,
     builderShopId,
     editingModeRef,
-    draftVersionRef
+    draftVersionRef,
+    websiteRevisionRef
   );
 
   // Stable wrappers that inject setWebsite into the raw hook callbacks
   const recordHistory = useCallback(
-    (actionDesc: string, newWebsite: Website) => {
+    (actionDesc: string, newWebsite: Website | WebsiteReducer) => {
       _recordHistoryRaw(actionDesc, newWebsite, setWebsite);
     },
-    [_recordHistoryRaw]
+    [_recordHistoryRaw, setWebsite]
   );
 
   const undo = useCallback(() => _undoRaw(setWebsite), [_undoRaw]);
@@ -199,6 +206,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
 
   const componentOps = useBuilderComponentOperations({
     website,
+    websiteRef,
     activePage,
     viewport,
     recordHistory,
@@ -209,6 +217,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   // ── Page operations sub-hook ─────────────────────────────────────────────
   const pageOps = useBuilderPageOperations({
     website,
+    websiteRef,
     activePageId,
     setActivePageId,
     setSelectedNodeId: componentOps.setSelectedNodeId,
@@ -216,7 +225,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   });
 
   // ── Theme sub-hook ───────────────────────────────────────────────────────
-  const themeOps = useBuilderTheme(website, recordHistory);
+  const themeOps = useBuilderTheme(website, recordHistory, websiteRef);
 
   // ── Computed URLs ────────────────────────────────────────────────────────
   // Real preview URL: a dedicated /preview route inside this dashboard app.
@@ -242,11 +251,13 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   // ── AI sub-hook ──────────────────────────────────────────────────────────
   const aiOps = useBuilderAI({
     website,
+    websiteRef,
     activePage,
     selectedNodeId: componentOps.selectedNodeId,
     recordHistory,
     setSelectedNodeId: componentOps.setSelectedNodeId,
     setWebsite,
+    setAutosaveStatus,
     setActiveTemplateId,
     setActivePageId,
     setHoveredNodeId: componentOps.setHoveredNode,
@@ -276,17 +287,18 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
 
   // Sync local storage on every website change
   useEffect(() => {
-    if (typeof window !== 'undefined' && website?.components && website?.pages?.length) {
+    if (!isInitializing && typeof window !== 'undefined' && website?.components && website?.pages?.length) {
       try {
         localStorage.setItem('ray_builder_last_active_site', JSON.stringify(website));
       } catch {}
     }
-  }, [website]);
+  }, [isInitializing, website]);
 
   // Autosave on unsaved changes
   useEffect(() => {
+    if (isInitializing) return undefined;
     return runAutosave(website);
-  }, [autosaveStatus, builderShopId, website]); // eslint-disable-line
+  }, [autosaveStatus, builderShopId, isInitializing, website]); // eslint-disable-line
 
   // Fetch shop & load builder config on mount
   useEffect(() => {
@@ -313,7 +325,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
 
         // Fetch real active inventory products for this shop to bind to the website
         apiRequest(`/products?shopId=${shopId}&surface=site&limit=100`)
-          .then((res) => {
+          .then((res: any) => {
             if (!cancelled && res) {
               const items = Array.isArray(res) ? res : res.data || res.items || [];
               setShopProducts(items);
@@ -321,13 +333,12 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
           })
           .catch(() => undefined);
 
-        // ── Initialization complete ─────────────────────────────────────────
-        // If the shop/config overrides the initial state, load it now.
-        // Otherwise the editor keeps the default (blank) state.
+        // If the shop/config overrides the initial state, load it before leaving
+        // the initialization gate. GET currently returns BuilderConfig only and
+        // does not expose draftVersion; the first PUT therefore starts at 0.
         if (shop.builderConfig?.website?.pages?.length && shop.builderConfig?.website?.components) {
           setWebsite(normalizeWebsite(shop.builderConfig.website as Website));
           setActivePageId(shop.builderConfig.website.pages[0]?.id || 'page_home');
-          setIsInitializing(false);
           return;
         }
 
@@ -335,9 +346,6 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         if (!cancelled && config?.website?.pages?.length && config?.website?.components) {
           setWebsite(normalizeWebsite(config.website as Website));
           setActivePageId(config.website.pages[0]?.id || 'page_home');
-          setIsInitializing(false);
-        } else {
-          setIsInitializing(false);
         }
       } catch {
         // Only restore the explicitly local draft. Never scan arbitrary shop keys:
@@ -350,7 +358,9 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             }
           } catch {}
         }
-        setIsInitializing(false);
+      } finally {
+        // Also release the gate when /shops/me fails or the shop has no config.
+        if (!cancelled) setIsInitializing(false);
       }
     })();
     return () => {
@@ -404,8 +414,9 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
       );
       if (found) setCurrentTenant(found);
       resetHistory(`تم تبديل القالب بالكامل إلى نشاط (${target.name})`);
+      setAutosaveStatus('unsaved');
     },
-    [componentOps, resetHistory]
+    [componentOps, resetHistory, setAutosaveStatus]
   );
 
   const switchTenant = useCallback(
@@ -424,9 +435,10 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         setActivePageId(firstPage ? firstPage.id : 'page_home');
         componentOps.setSelectedNodeId(firstPage ? firstPage.rootNodeId : 'comp_hero');
         resetHistory(`تم تبديل القالب والمستأجر إلى (${site.name})`);
+        setAutosaveStatus('unsaved');
       }
     },
-    [componentOps, resetHistory]
+    [componentOps, resetHistory, setAutosaveStatus]
   );
 
   const uploadMockAsset = useCallback(

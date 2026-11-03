@@ -23,6 +23,7 @@ import {
 import { sanitizeHtml } from '@/lib/sanitize';
 import { useCart } from '@/lib/cart';
 import type { Shop, Product } from '@/lib/services';
+import { mergeResponsiveStyles } from '@ray-eg/shared/builder';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,12 +113,12 @@ function getComputedStyles(
   theme: BuilderWebsite['theme'],
   isMobileClient = false
 ): React.CSSProperties {
-  const d = node.styles.desktop || {};
-  const t = node.styles.tablet || {};
-  const m = node.styles.mobile || {};
-
-  // If running on mobile or narrow viewport, merge tablet and mobile overrides
-  const merged = isMobileClient ? { ...d, ...t, ...m } : { ...d };
+  // Marketplace currently switches between desktop and mobile; mobile also
+  // inherits tablet overrides using the same shared merge as other renderers.
+  const merged = mergeResponsiveStyles(
+    node.styles,
+    isMobileClient ? 'mobile' : 'desktop'
+  );
 
   const css: React.CSSProperties = {
     display: merged.display as any,

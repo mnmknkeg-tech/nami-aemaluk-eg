@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { PublishingPipelineStatus, VersionHistoryItem, Website } from '../../types/builder';
-import { apiRequest } from '@/lib/auth';
+import { apiRequest } from '../../../../lib/api/client';
+import { validateWebsiteForPublishing } from './publishValidation';
 
 function findInvalidLinks(website: Website): string[] {
   const invalid: string[] = [];
@@ -129,17 +130,15 @@ export const useBuilderPublishing = (
         return;
       }
 
-      // Validate component tree before publishing
-      const pages = website.pages || [];
-      const components = website.components || {};
-      const hasRootPage = pages.some((p) => p.rootNodeId && components[p.rootNodeId]);
-      if (!hasRootPage) {
+      // Validate the complete component tree and custom code before saving.
+      const validationErrors = validateWebsiteForPublishing(website);
+      if (validationErrors.length > 0) {
         setPublishingStatus({
           status: 'failed',
           currentStep: 1,
           totalSteps: 5,
-          stepMessage: 'شجرة المكونات غير صالحة — لم يتم العثور على صفحة جذر ومكون جذع.',
-          errors: ['لا توجد صفحة جذر أو مكون جذع في شجرة الموقع'],
+          stepMessage: 'تعذّر حفظ المسودة أو نشرها — أصلح أخطاء التحقق من صفحات ومكونات الموقع أولًا.',
+          errors: validationErrors.slice(0, 8),
         });
         return;
       }

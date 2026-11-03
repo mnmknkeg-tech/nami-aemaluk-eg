@@ -3,8 +3,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Code2, FileCode, Maximize2, Minimize2, Plus, ShieldCheck, Trash2, X } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
+import type { CustomCodeScope } from '../../types/builder';
 
 type CodeFile = 'component.tsx' | 'styles.css' | 'interactions.ts';
+type CssJsKind = 'css' | 'js';
 
 const fileLabels: Record<CodeFile, string> = {
   'component.tsx': 'HTML',
@@ -14,6 +16,22 @@ const fileLabels: Record<CodeFile, string> = {
 
 const emptyHtml =
   '<section class="custom-section">\n  <h2>عنوان القسم</h2>\n  <p>اكتب محتوى هذا المكوّن هنا.</p>\n</section>';
+
+export const readCustomCodeSnippet = (
+  customCode: CustomCodeScope | undefined,
+  kind: CssJsKind
+): string | undefined =>
+  kind === 'css'
+    ? (customCode?.cssSnippet ?? customCode?.css)
+    : (customCode?.jsSnippet ?? customCode?.js);
+
+export const customCodePatchForSnippet = (
+  kind: CssJsKind,
+  value: string
+): Partial<CustomCodeScope> =>
+  kind === 'css'
+    ? { enabled: true, cssSnippet: value, css: undefined }
+    : { enabled: true, jsSnippet: value, js: undefined };
 
 function starterMarkup(node: {
   type: string;
@@ -74,8 +92,9 @@ export const CodeWorkspace: React.FC = () => {
       );
     }
     if (activeFile === 'styles.css') {
+      const cssSnippet = readCustomCodeSnippet(selectedNode.customCode, 'css');
+      if (cssSnippet !== undefined) return cssSnippet;
       return (
-        selectedNode.customCode?.css ||
         Object.entries(selectedNode.styles?.desktop || {})
           .map(
             ([property, value]) =>
@@ -85,7 +104,10 @@ export const CodeWorkspace: React.FC = () => {
       );
     }
     if (activeFile === 'interactions.ts') {
-      return selectedNode.customCode?.js || '// اكتب التفاعل الخاص بهذا المكوّن هنا';
+      return (
+        readCustomCodeSnippet(selectedNode.customCode, 'js') ??
+        '// اكتب التفاعل الخاص بهذا المكوّن هنا'
+      );
     }
     return selectedNode.customCode?.propsSchema || '{\n  "type": "object"\n}';
   }, [activeFile, selectedNode]);
@@ -104,11 +126,11 @@ export const CodeWorkspace: React.FC = () => {
       return;
     }
     if (activeFile === 'styles.css') {
-      updateNodeCustomCode(selectedNode.id, { css: value, enabled: true });
+      updateNodeCustomCode(selectedNode.id, customCodePatchForSnippet('css', value));
       return;
     }
     if (activeFile === 'interactions.ts') {
-      updateNodeCustomCode(selectedNode.id, { js: value, enabled: true });
+      updateNodeCustomCode(selectedNode.id, customCodePatchForSnippet('js', value));
       return;
     }
     updateNodeCustomCode(selectedNode.id, { propsSchema: value, enabled: true });
@@ -127,7 +149,7 @@ export const CodeWorkspace: React.FC = () => {
         childrenIds: [],
         props: { html: emptyHtml, title: 'مكوّن مخصص جديد' },
         styles: { desktop: { paddingTop: '1rem', paddingBottom: '1rem' } },
-        customCode: { enabled: true, tsxSnippet: emptyHtml, css: '', js: '' },
+        customCode: { enabled: true, tsxSnippet: emptyHtml, cssSnippet: '', jsSnippet: '' },
       },
       parentId
     );

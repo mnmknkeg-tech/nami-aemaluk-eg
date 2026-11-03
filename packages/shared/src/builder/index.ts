@@ -1,4 +1,5 @@
 export * from './types';
+export * from './responsiveStyles';
 export * from './theme';
 export * from './productCard';
 export * from './sectionUi';

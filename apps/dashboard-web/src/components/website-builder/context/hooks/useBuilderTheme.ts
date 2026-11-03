@@ -2,13 +2,69 @@ import { useCallback } from 'react';
 import { DesignTokens, Website } from '../../types/builder';
 import { defaultDesignTokens, themePresets, normalizeThemeTokens } from '../../data/defaultTheme';
 
+type ThemeStyleUpdate = {
+  property: string;
+  nextValue: unknown;
+  previousValues: readonly unknown[];
+};
+
+/**
+ * Old builder documents do not record which styles came from theme tokens.
+ * Infer that provenance by comparing each value to the previous token-derived
+ * value; an unset property can still be initialized by the theme. This keeps
+ * existing documents compatible without adding metadata to component nodes.
+ */
+const updateThemeDerivedStyles = (
+  component: Website['components'][string],
+  updates: ThemeStyleUpdate[]
+): { component: Website['components'][string]; changed: boolean } => {
+  const desktop = (component.styles?.desktop || {}) as Record<string, unknown>;
+  const nextDesktop: Record<string, unknown> = { ...desktop };
+  let changed = false;
+
+  updates.forEach(({ property, nextValue, previousValues }) => {
+    const currentValue = desktop[property];
+    const isUnset = currentValue === undefined;
+    const wasDerivedFromPreviousTheme = previousValues.includes(currentValue);
+    if ((isUnset || wasDerivedFromPreviousTheme) && currentValue !== nextValue) {
+      nextDesktop[property] = nextValue;
+      changed = true;
+    }
+  });
+
+  if (!changed) return { component, changed: false };
+  return {
+    component: {
+      ...component,
+      styles: {
+        ...component.styles,
+        desktop: nextDesktop as NonNullable<typeof component.styles>['desktop'],
+      },
+    },
+    changed: true,
+  };
+};
+
+const presetHeroColors: Record<string, { hero: string; title: string; subtitle: string }> = {
+  luxuryGold: { hero: '#090d16', title: '#f8fafc', subtitle: '#94a3b8' },
+  automotiveSpeed: { hero: '#09090b', title: '#ffffff', subtitle: '#a1a1aa' },
+  realEstateEmerald: { hero: '#f0fdf4', title: '#064e3b', subtitle: '#047857' },
+  clinicalClean: { hero: '#f0fdfa', title: '#164e63', subtitle: '#0e7490' },
+  modernBlue: { hero: '#f8fafc', title: '#0f172a', subtitle: '#475569' },
+};
+
+const knownPresetHeroValues = (property: 'hero' | 'title' | 'subtitle') =>
+  Object.values(presetHeroColors).map((colors) => colors[property]);
+
 export const useBuilderTheme = (
   website: Website,
-  recordHistory: (actionDesc: string, newWebsite: Website) => void
+  recordHistory: (actionDesc: string, newWebsite: Website) => void,
+  websiteRef?: { current: Website }
 ) => {
   const updateThemeToken = useCallback(
     (category: keyof DesignTokens, key: string, value: any) => {
-      const currentTheme = normalizeThemeTokens(website.theme);
+      const currentWebsite = websiteRef?.current ?? website;
+      const currentTheme = normalizeThemeTokens(currentWebsite.theme);
       const updatedTheme: DesignTokens = {
         ...currentTheme,
         [category]: {
@@ -16,187 +72,156 @@ export const useBuilderTheme = (
           [key]: value,
         },
       };
-
-      // Propagate color/font/radius changes to components
-      const updatedComponents = { ...website.components };
+      const updatedComponents = { ...currentWebsite.components };
       let hasModifiedComponents = false;
 
-      if (category === 'colors') {
-        const primaryColor = key === 'primary' ? value : updatedTheme.colors?.primary || '#1d4ed8';
-        const secondaryColor =
-          key === 'secondary' ? value : updatedTheme.colors?.secondary || '#0f172a';
-        const accentColor = key === 'accent' ? value : updatedTheme.colors?.accent || '#06b6d4';
-
+      if (category === 'colors' && key === 'primary') {
+        const previousPrimary = currentTheme.colors?.primary || defaultDesignTokens.colors.primary;
         Object.keys(updatedComponents).forEach((id) => {
-          const comp = { ...updatedComponents[id] };
-          let modified = false;
-
-          // Primary Buttons & Action CTAs
+          const comp = updatedComponents[id];
+          const updates: ThemeStyleUpdate[] = [];
           if (
             comp.type === 'button' &&
             (comp.props?.variant === 'primary' || id.includes('primary') || id.includes('cta'))
           ) {
-            comp.styles = {
-              ...comp.styles,
-              desktop: {
-                ...comp.styles.desktop,
-                backgroundColor: primaryColor,
-                boxShadow: `0 10px 15px -3px ${primaryColor}40`,
-              },
-            };
-            modified = true;
+            updates.push(
+              { property: 'backgroundColor', nextValue: value, previousValues: [previousPrimary] },
+              {
+                property: 'boxShadow',
+                nextValue: `0 10px 15px -3px ${value}40`,
+                previousValues: [`0 10px 15px -3px ${previousPrimary}40`],
+              }
+            );
           }
-
-          // Badges & Accents
           if (comp.type === 'badge' || id.includes('badge')) {
-            comp.styles = {
-              ...comp.styles,
-              desktop: {
-                ...comp.styles.desktop,
-                backgroundColor: `${primaryColor}18`,
-                textColor: primaryColor,
+            updates.push(
+              {
+                property: 'backgroundColor',
+                nextValue: `${value}18`,
+                previousValues: [`${previousPrimary}18`],
               },
-            };
-            modified = true;
+              { property: 'textColor', nextValue: value, previousValues: [previousPrimary] }
+            );
           }
-
-          // Active Navigation link
           if (id === 'nav_link_1') {
-            comp.styles = {
-              ...comp.styles,
-              desktop: {
-                ...comp.styles.desktop,
-                textColor: primaryColor,
-              },
-            };
-            modified = true;
+            updates.push({ property: 'textColor', nextValue: value, previousValues: [previousPrimary] });
           }
-
-          if (modified) {
-            updatedComponents[id] = comp;
+          const result = updateThemeDerivedStyles(comp, updates);
+          if (result.changed) {
+            updatedComponents[id] = result.component;
             hasModifiedComponents = true;
           }
         });
-        // suppress unused variable warnings
-        void secondaryColor;
-        void accentColor;
-      } else if (category === 'typography') {
-        const headingFont =
-          key === 'fontHeading'
-            ? value
-            : updatedTheme.typography?.fontHeading || 'Tajawal, sans-serif';
-        const bodyFont =
-          key === 'fontBody' ? value : updatedTheme.typography?.fontBody || 'Cairo, sans-serif';
-
+      } else if (category === 'typography' && (key === 'fontHeading' || key === 'fontBody')) {
+        const previousFont = currentTheme.typography?.[key] || defaultDesignTokens.typography[key];
         Object.keys(updatedComponents).forEach((id) => {
-          const comp = { ...updatedComponents[id] };
+          const comp = updatedComponents[id];
           if (
-            comp.category === 'typography' ||
-            comp.type === 'heading' ||
-            comp.type === 'paragraph'
+            comp.category !== 'typography' &&
+            comp.type !== 'heading' &&
+            comp.type !== 'paragraph'
           ) {
-            const isHeading =
-              comp.type === 'heading' || id.includes('title') || id.includes('logo');
-            comp.styles = {
-              ...comp.styles,
-              desktop: {
-                ...comp.styles.desktop,
-                fontFamily: isHeading ? headingFont : bodyFont,
-              },
-            };
-            updatedComponents[id] = comp;
+            return;
+          }
+          const isHeading = comp.type === 'heading' || id.includes('title') || id.includes('logo');
+          if ((key === 'fontHeading') !== isHeading) return;
+          const result = updateThemeDerivedStyles(comp, [
+            { property: 'fontFamily', nextValue: value, previousValues: [previousFont] },
+          ]);
+          if (result.changed) {
+            updatedComponents[id] = result.component;
             hasModifiedComponents = true;
           }
         });
       } else if (category === 'radius') {
-        const newRadius = value;
+        const previousRadiusValues = Object.values(currentTheme.radius || {});
+        const previousRadius = currentTheme.radius?.lg || defaultDesignTokens.radius.lg;
         Object.keys(updatedComponents).forEach((id) => {
-          const comp = { ...updatedComponents[id] };
-          if (comp.type === 'button') {
-            comp.styles = {
-              ...comp.styles,
-              desktop: {
-                ...comp.styles.desktop,
-                borderRadius: newRadius,
-              },
-            };
-            updatedComponents[id] = comp;
+          const comp = updatedComponents[id];
+          if (comp.type !== 'button') return;
+          const result = updateThemeDerivedStyles(comp, [
+            {
+              property: 'borderRadius',
+              nextValue: value,
+              previousValues: previousRadiusValues.length ? previousRadiusValues : [previousRadius],
+            },
+          ]);
+          if (result.changed) {
+            updatedComponents[id] = result.component;
             hasModifiedComponents = true;
           }
         });
       }
 
       const newWebsite: Website = {
-        ...website,
+        ...currentWebsite,
         theme: updatedTheme,
-        components: hasModifiedComponents ? updatedComponents : website.components,
+        components: hasModifiedComponents ? updatedComponents : currentWebsite.components,
       };
-
       recordHistory(`تحديث متغير التصميم (${String(category)}.${key})`, newWebsite);
     },
-    [website, recordHistory]
+    [website, websiteRef, recordHistory]
   );
 
   const applyThemePreset = useCallback(
     (presetKey: string) => {
       const preset = themePresets[presetKey];
       if (!preset) return;
-
+      const currentWebsite = websiteRef?.current ?? website;
+      const previousTheme = normalizeThemeTokens(currentWebsite.theme);
       const updatedTheme: DesignTokens = {
         ...defaultDesignTokens,
-        ...website.theme,
+        ...currentWebsite.theme,
         ...preset.tokens,
         colors: {
           ...defaultDesignTokens.colors,
-          ...(website.theme?.colors || {}),
+          ...(currentWebsite.theme?.colors || {}),
           ...(preset.tokens.colors || {}),
         },
         typography: {
           ...defaultDesignTokens.typography,
-          ...(website.theme?.typography || {}),
+          ...(currentWebsite.theme?.typography || {}),
           ...(preset.tokens.typography || {}),
         },
         radius: {
           ...defaultDesignTokens.radius,
-          ...(website.theme?.radius || {}),
+          ...(currentWebsite.theme?.radius || {}),
           ...(preset.tokens.radius || {}),
         },
         shadows: {
           ...defaultDesignTokens.shadows,
-          ...(website.theme?.shadows || {}),
+          ...(currentWebsite.theme?.shadows || {}),
           ...(preset.tokens.shadows || {}),
         },
       };
-
-      const newColors = updatedTheme.colors;
+      const newPrimary = updatedTheme.colors.primary;
       const newRadius = updatedTheme.radius?.lg || '10px';
       const newHeadingFont = updatedTheme.typography?.fontHeading || 'Tajawal, sans-serif';
       const newBodyFont = updatedTheme.typography?.fontBody || 'Cairo, sans-serif';
-
-      const updatedComponents = { ...website.components };
+      const previousPrimary = previousTheme.colors.primary;
+      const previousRadius = previousTheme.radius?.lg || defaultDesignTokens.radius.lg;
+      const previousBadgeRadius = previousTheme.radius?.full || defaultDesignTokens.radius.full;
+      const previousRadiusValues = Object.values(previousTheme.radius || {});
+      const updatedComponents = { ...currentWebsite.components };
+      let hasModifiedComponents = false;
 
       Object.keys(updatedComponents).forEach((id) => {
-        const comp = { ...updatedComponents[id] };
-        let modified = false;
-
-        // Update typography
+        const comp = updatedComponents[id];
+        const updates: ThemeStyleUpdate[] = [];
         if (
           comp.category === 'typography' ||
           comp.type === 'heading' ||
           comp.type === 'paragraph'
         ) {
           const isHeading = comp.type === 'heading' || id.includes('title') || id.includes('logo');
-          comp.styles = {
-            ...comp.styles,
-            desktop: {
-              ...comp.styles.desktop,
-              fontFamily: isHeading ? newHeadingFont : newBodyFont,
-            },
-          };
-          modified = true;
+          updates.push({
+            property: 'fontFamily',
+            nextValue: isHeading ? newHeadingFont : newBodyFont,
+            previousValues: [
+              isHeading ? previousTheme.typography.fontHeading : previousTheme.typography.fontBody,
+            ],
+          });
         }
-
-        // Update primary buttons & CTAs
         if (
           comp.type === 'button' &&
           (comp.props?.variant === 'primary' ||
@@ -204,109 +229,91 @@ export const useBuilderTheme = (
             id.includes('cta') ||
             id.includes('book'))
         ) {
-          comp.styles = {
-            ...comp.styles,
-            desktop: {
-              ...comp.styles.desktop,
-              backgroundColor: newColors.primary,
-              borderRadius: newRadius,
-              boxShadow: `0 10px 15px -3px ${newColors.primary}40`,
+          updates.push(
+            { property: 'backgroundColor', nextValue: newPrimary, previousValues: [previousPrimary] },
+            {
+              property: 'borderRadius',
+              nextValue: newRadius,
+              previousValues: previousRadiusValues.length ? previousRadiusValues : [previousRadius],
             },
-          };
-          modified = true;
+            {
+              property: 'boxShadow',
+              nextValue: `0 10px 15px -3px ${newPrimary}40`,
+              previousValues: [`0 10px 15px -3px ${previousPrimary}40`],
+            }
+          );
         }
-
-        // Update secondary/outline buttons
         if (
           comp.type === 'button' &&
           (comp.props?.variant === 'outline' ||
             comp.props?.variant === 'secondary' ||
             id.includes('secondary'))
         ) {
-          comp.styles = {
-            ...comp.styles,
-            desktop: {
-              ...comp.styles.desktop,
-              borderRadius: newRadius,
-            },
-          };
-          modified = true;
+          updates.push({
+            property: 'borderRadius',
+            nextValue: newRadius,
+            previousValues: previousRadiusValues.length ? previousRadiusValues : [previousRadius],
+          });
         }
-
-        // Update badges
         if (comp.type === 'badge' || id.includes('badge')) {
-          comp.styles = {
-            ...comp.styles,
-            desktop: {
-              ...comp.styles.desktop,
-              backgroundColor: `${newColors.primary}18`,
-              textColor: newColors.primary,
-              borderRadius: updatedTheme.radius.full || '9999px',
+          updates.push(
+            {
+              property: 'backgroundColor',
+              nextValue: `${newPrimary}18`,
+              previousValues: [`${previousPrimary}18`],
             },
-          };
-          modified = true;
+            { property: 'textColor', nextValue: newPrimary, previousValues: [previousPrimary] },
+            {
+              property: 'borderRadius',
+              nextValue: updatedTheme.radius.full || '9999px',
+              previousValues: [previousBadgeRadius],
+            }
+          );
         }
-
-        // Update active nav link
         if (id === 'nav_link_1') {
-          comp.styles = {
-            ...comp.styles,
-            desktop: {
-              ...comp.styles.desktop,
-              textColor: newColors.primary,
-            },
-          };
-          modified = true;
+          updates.push({ property: 'textColor', nextValue: newPrimary, previousValues: [previousPrimary] });
         }
 
-        // Theme-specific section color themes
-        const heroColorMap: Record<string, { hero: string; title: string; subtitle: string }> = {
-          luxuryGold: { hero: '#090d16', title: '#f8fafc', subtitle: '#94a3b8' },
-          automotiveSpeed: { hero: '#09090b', title: '#ffffff', subtitle: '#a1a1aa' },
-          realEstateEmerald: { hero: '#f0fdf4', title: '#064e3b', subtitle: '#047857' },
-          clinicalClean: { hero: '#f0fdfa', title: '#164e63', subtitle: '#0e7490' },
-          modernBlue: { hero: '#f8fafc', title: '#0f172a', subtitle: '#475569' },
-        };
-
-        if (heroColorMap[presetKey]) {
-          const colors = heroColorMap[presetKey];
+        const heroColors = presetHeroColors[presetKey];
+        if (heroColors) {
           if (comp.id === 'comp_hero') {
-            comp.styles = {
-              ...comp.styles,
-              desktop: { ...comp.styles.desktop, backgroundColor: colors.hero },
-            };
-            modified = true;
+            updates.push({
+              property: 'backgroundColor',
+              nextValue: heroColors.hero,
+              previousValues: knownPresetHeroValues('hero'),
+            });
           }
           if (comp.id === 'hero_title') {
-            comp.styles = {
-              ...comp.styles,
-              desktop: { ...comp.styles.desktop, textColor: colors.title },
-            };
-            modified = true;
+            updates.push({
+              property: 'textColor',
+              nextValue: heroColors.title,
+              previousValues: knownPresetHeroValues('title'),
+            });
           }
           if (comp.id === 'hero_subtitle') {
-            comp.styles = {
-              ...comp.styles,
-              desktop: { ...comp.styles.desktop, textColor: colors.subtitle },
-            };
-            modified = true;
+            updates.push({
+              property: 'textColor',
+              nextValue: heroColors.subtitle,
+              previousValues: knownPresetHeroValues('subtitle'),
+            });
           }
         }
 
-        if (modified) {
-          updatedComponents[id] = comp;
+        const result = updateThemeDerivedStyles(comp, updates);
+        if (result.changed) {
+          updatedComponents[id] = result.component;
+          hasModifiedComponents = true;
         }
       });
 
       const newWebsite: Website = {
-        ...website,
+        ...currentWebsite,
         theme: updatedTheme,
-        components: updatedComponents,
+        components: hasModifiedComponents ? updatedComponents : currentWebsite.components,
       };
-
       recordHistory(`تطبيق سمة التصميم (${preset.nameAr})`, newWebsite);
     },
-    [website, recordHistory]
+    [website, websiteRef, recordHistory]
   );
 
   return {

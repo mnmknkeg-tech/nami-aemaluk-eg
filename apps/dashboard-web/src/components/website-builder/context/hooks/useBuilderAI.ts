@@ -4,11 +4,13 @@ import { StructuredAiPatch } from '../../types/ai';
 
 export interface UseBuilderAIProps {
   website: Website;
+  websiteRef?: { current: Website };
   activePage: Page;
   selectedNodeId: string | null;
   recordHistory: (actionDesc: string, newWebsite: Website) => void;
   setSelectedNodeId: (id: string | null) => void;
   setWebsite: (w: Website) => void;
+  setAutosaveStatus?: (status: 'saved' | 'saving' | 'unsaved' | 'error') => void;
   setActiveTemplateId: (id: string) => void;
   setActivePageId: (id: string) => void;
   setHoveredNodeId: (id: string | null) => void;
@@ -19,11 +21,13 @@ export interface UseBuilderAIProps {
 
 export const useBuilderAI = ({
   website,
+  websiteRef,
   activePage,
   selectedNodeId,
   recordHistory,
   setSelectedNodeId,
   setWebsite,
+  setAutosaveStatus,
   setActiveTemplateId,
   setActivePageId,
   setHoveredNodeId,
@@ -33,8 +37,9 @@ export const useBuilderAI = ({
 }: UseBuilderAIProps) => {
   const applyAiPatch = useCallback(
     (patch: StructuredAiPatch) => {
-      const updatedComponents = { ...website.components };
-      let updatedTheme = { ...website.theme };
+      const currentWebsite = websiteRef?.current ?? website;
+      const updatedComponents = { ...currentWebsite.components };
+      let updatedTheme = { ...currentWebsite.theme };
       let targetSelectId = patch.targetNodeIds?.[0] || selectedNodeId;
 
       patch.operations.forEach((op) => {
@@ -121,7 +126,7 @@ export const useBuilderAI = ({
       });
 
       const newWebsite: Website = {
-        ...website,
+        ...currentWebsite,
         components: updatedComponents,
         theme: updatedTheme,
       };
@@ -140,12 +145,13 @@ export const useBuilderAI = ({
         }
       }
     },
-    [website, selectedNodeId, activePage.rootNodeId, recordHistory, setSelectedNodeId]
+    [website, websiteRef, selectedNodeId, activePage.rootNodeId, recordHistory, setSelectedNodeId]
   );
 
   const loadCustomWebsite = useCallback(
     (newWebsite: Website) => {
       setWebsite(newWebsite);
+      setAutosaveStatus?.('unsaved');
       setActiveTemplateId(newWebsite.id);
       const firstPage = newWebsite.pages[0];
       setActivePageId(firstPage ? firstPage.id : 'page_home');
@@ -160,6 +166,7 @@ export const useBuilderAI = ({
     },
     [
       setWebsite,
+      setAutosaveStatus,
       setActiveTemplateId,
       setActivePageId,
       setSelectedNodeId,

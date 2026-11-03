@@ -10,6 +10,7 @@ import {
 
 export interface UseBuilderPageOperationsProps {
   website: Website;
+  websiteRef?: { current: Website };
   activePageId: string;
   setActivePageId: (id: string) => void;
   setSelectedNodeId: (id: string | null) => void;
@@ -18,6 +19,7 @@ export interface UseBuilderPageOperationsProps {
 
 export const useBuilderPageOperations = ({
   website,
+  websiteRef,
   activePageId,
   setActivePageId,
   setSelectedNodeId,
@@ -65,6 +67,7 @@ export const useBuilderPageOperations = ({
       maybeSlug?: string,
       extraOptions?: Partial<AddPageOptions>
     ) => {
+      const currentWebsite = websiteRef?.current ?? website;
       let options: AddPageOptions;
       if (typeof nameOrOptions === 'string') {
         options = {
@@ -102,7 +105,7 @@ export const useBuilderPageOperations = ({
       const newPageId = `page_${Date.now().toString(36)}`;
       const rootId = `root_${newPageId}`;
       const cleanSlug = (slug || name).toLowerCase().replace(/\s+/g, '-');
-      const newComponents = { ...website.components };
+      const newComponents = { ...currentWebsite.components };
 
       // Build template sections
       const pageSectionIds: string[] = [];
@@ -441,8 +444,8 @@ export const useBuilderPageOperations = ({
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         metadata: {
-          title: `${name} | ${website.name}`,
-          description: `صفحة ${name} الرسمية في ${website.name}`,
+          title: `${name} | ${currentWebsite.name}`,
+          description: `صفحة ${name} الرسمية في ${currentWebsite.name}`,
           slug: cleanSlug,
           isHomePage: false,
           robots: 'index, follow',
@@ -453,8 +456,8 @@ export const useBuilderPageOperations = ({
       };
 
       const newWebsite: Website = {
-        ...website,
-        pages: [...website.pages, newPage],
+        ...currentWebsite,
+        pages: [...currentWebsite.pages, newPage],
         components: newComponents,
       };
 
@@ -470,7 +473,7 @@ export const useBuilderPageOperations = ({
       recordHistory(`إضافة صفحة جديدة (${name}) - [${placementLabel}]`, newWebsite);
       setActivePageId(newPageId);
     },
-    [website, recordHistory, setActivePageId]
+    [website, websiteRef, recordHistory, setActivePageId]
   );
 
   const updatePagePlacement = useCallback(
@@ -484,10 +487,11 @@ export const useBuilderPageOperations = ({
         dropdownBadge?: string;
       }
     ) => {
-      const page = website.pages.find((p) => p.id === pageId);
+      const currentWebsite = websiteRef?.current ?? website;
+      const page = currentWebsite.pages.find((p) => p.id === pageId);
       if (!page) return;
 
-      const newComponents = { ...website.components };
+      const newComponents = { ...currentWebsite.components };
       const navText = opts.headerTitle || page.name;
       const cleanSlug = page.slug;
 
@@ -583,7 +587,7 @@ export const useBuilderPageOperations = ({
       }
 
       // Update page metadata
-      const newPages = website.pages.map((p) => {
+      const newPages = currentWebsite.pages.map((p) => {
         if (p.id === pageId) {
           return {
             ...p,
@@ -599,22 +603,23 @@ export const useBuilderPageOperations = ({
       });
 
       const newWebsite: Website = {
-        ...website,
+        ...currentWebsite,
         pages: newPages,
         components: newComponents,
       };
 
       recordHistory(`تحديث موضع ظهور صفحة (${page.name})`, newWebsite);
     },
-    [website, recordHistory]
+    [website, websiteRef, recordHistory]
   );
 
   const deletePage = useCallback(
     (pageId: string) => {
-      if (website.pages.length <= 1) return; // Prevent deleting only page
-      const newPages = website.pages.filter((p) => p.id !== pageId);
+      const currentWebsite = websiteRef?.current ?? website;
+      if (currentWebsite.pages.length <= 1) return; // Prevent deleting only page
+      const newPages = currentWebsite.pages.filter((p) => p.id !== pageId);
       const newWebsite: Website = {
-        ...website,
+        ...currentWebsite,
         pages: newPages,
       };
 
@@ -623,12 +628,13 @@ export const useBuilderPageOperations = ({
         setActivePageId(newPages[0].id);
       }
     },
-    [website, activePageId, recordHistory, setActivePageId]
+    [website, websiteRef, activePageId, recordHistory, setActivePageId]
   );
 
   const updatePageMetadata = useCallback(
     (pageId: string, metaPatch: Partial<PageMetadata>) => {
-      const newPages = website.pages.map((p) => {
+      const currentWebsite = websiteRef?.current ?? website;
+      const newPages = currentWebsite.pages.map((p) => {
         if (p.id === pageId) {
           return {
             ...p,
@@ -643,13 +649,13 @@ export const useBuilderPageOperations = ({
       });
 
       const newWebsite: Website = {
-        ...website,
+        ...currentWebsite,
         pages: newPages,
       };
 
       recordHistory(`تحديث بيانات SEO للصفحة`, newWebsite);
     },
-    [website, recordHistory]
+    [website, websiteRef, recordHistory]
   );
 
   return {
