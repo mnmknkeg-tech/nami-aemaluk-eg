@@ -23,7 +23,12 @@ import {
 import { sanitizeHtml } from '@/lib/sanitize';
 import { useCart } from '@/lib/cart';
 import type { Shop, Product } from '@/lib/services';
-import { mergeResponsiveStyles } from '@ray-eg/shared/builder';
+import {
+  mergeResponsiveStyles,
+  productGridClass,
+  PublishedProductCard,
+  resolveProductCardOptions,
+} from '@ray-eg/shared/builder';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,6 +85,7 @@ interface StyleProperties {
 interface ComponentNode {
   id: string;
   type: string;
+  parentId?: string | null;
   childrenIds?: string[];
   props: Record<string, any>;
   styles: {
@@ -172,6 +178,30 @@ function getComputedStyles(
     left: merged.left,
     zIndex: merged.zIndex as any,
   };
+
+  if (isMobileClient) {
+    css.boxSizing = 'border-box';
+    css.maxWidth = '100%';
+    if (typeof css.width === 'string' && /px$/.test(css.width) && Number.parseInt(css.width) > 360) {
+      css.width = '100%';
+    }
+    if (typeof css.minWidth === 'string' && /px$/.test(css.minWidth) && Number.parseInt(css.minWidth) > 280) {
+      css.minWidth = '0';
+    }
+    if (typeof css.gap === 'string' && Number.parseInt(css.gap) > 20) css.gap = '16px';
+    if (!node.styles.mobile?.gridColumns && css.gridTemplateColumns) {
+      css.gridTemplateColumns = 'minmax(0, 1fr)';
+    }
+    if (!node.styles.mobile?.flexDirection && merged.display === 'flex' && merged.flexDirection === 'row') {
+      const isHeader = node.type === 'header' || node.parentId?.includes('header') || node.id.includes('nav');
+      if (!isHeader) {
+        css.flexDirection = 'column';
+        css.alignItems = 'stretch';
+      } else {
+        css.flexWrap = 'wrap';
+      }
+    }
+  }
 
   // Remove undefined keys so they don't override inherited values
   return Object.fromEntries(
@@ -428,7 +458,7 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
 
           {/* Items grid */}
           {filtered.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className={`${productGridClass(resolveProductCardOptions(node.props))} gap-4 sm:gap-6`}>
               {filtered.map((item: any, idx: number) => {
                 const title = item.name || item.title || '';
                 const price = item.priceFormatted || (item.price ? `${item.price}` : '');
@@ -887,6 +917,40 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
 
   // ── card (testimonial / bento / FAQ / pricing card) ───────────────────────
   if (node.type === 'card') {
+    // Product cards are first-class builder nodes too. Keep this branch before
+    // the generic card variants so a card placed inside a hero/grid survives
+    // publishing with the same renderer and options as the editor preview.
+    if (node.props.image || node.props.price !== undefined) {
+      const waNumber = String(ctxShop?.whatsapp || ctxShop?.phone || '').replace(/\D/g, '');
+      const waLink = (text: string) =>
+        waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}` : null;
+      return (
+        <div id={node.id} style={computed} data-builder-node-id={node.id}>
+          <PublishedProductCard
+            item={node.props}
+            index={0}
+            sectionProps={node.props}
+            ctx={{
+              theme: {
+                colors: {
+                  primary: theme.colors.primary,
+                  accent: theme.colors.accent || theme.colors.primary,
+                },
+              },
+              realProducts: (ctxProducts || []) as any,
+              waLink,
+              siteSlug: ctxShop?.slug,
+              onAddToCart: (product) => {
+                const live = (ctxProducts || []).find((p) => String(p.id) === String(product.id));
+                addItem((live || product) as any, 1, true);
+              },
+            }}
+          />
+          {renderChildren()}
+        </div>
+      );
+    }
+
     // Testimonial / Quote card
     if (node.props.quote) {
       return (

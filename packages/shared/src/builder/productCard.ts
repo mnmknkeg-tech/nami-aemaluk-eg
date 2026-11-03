@@ -88,8 +88,8 @@ export function resolveProductCardOptions(
   const p = props || {};
   const shape: ProductCardShape = (
     ['classic', 'minimal', 'overlay', 'horizontal', 'compact'] as string[]
-  ).includes(String(p.cardShape))
-    ? (p.cardShape as ProductCardShape)
+  ).includes(String(p.cardShape ?? p.shape))
+    ? ((p.cardShape ?? p.shape) as ProductCardShape)
     : 'classic';
 
   const buyButtonMode: BuyButtonMode = (['full', 'icon', 'hidden'] as string[]).includes(
@@ -99,12 +99,16 @@ export function resolveProductCardOptions(
     : 'full';
 
   // الإخفاء يتحقق من كل المفاتيح القديمة والجديدة للتوافق.
-  const showBadge = !(p.hideBadge || p.badgeHidden);
-  const showPrice = !(p.hidePrice || p.priceHidden);
+  const showBadge =
+    p.showBadge !== false && p.showBadges !== false && !(p.hideBadge || p.badgeHidden);
+  const showPrice = p.showPrice !== false && !(p.hidePrice || p.priceHidden);
   const showSpecs = !(p.hideSpecs || p.specsHidden);
   const showDescription = !(p.hideDescription || p.descriptionHidden);
   const showCtaButton = !(p.hideCtaBtn || p.hideSecondaryBtn);
-  const showStock = p.showStock === true && p.hideStock !== true;
+  const showStock =
+    (p.showStock === true || p.showStockStatus === true) &&
+    p.showStockStatus !== false &&
+    p.hideStock !== true;
   const showSizes = p.showSizes === true && p.hideSizes !== true;
 
   return {
@@ -123,9 +127,9 @@ export function resolveProductCardOptions(
     ctaText: String(p.ctaText || 'تفاصيل وحجز'),
     badgeText: String(p.badge || 'حصري'),
     defaultSizes: normalizeProductSizes(p.sizes || p.defaultSizes),
-    columnsDesktop: clampCols(p.columnsDesktop, 3, 4),
-    columnsTablet: clampCols(p.columnsTablet, 2, 3),
-    columnsMobile: clampCols(p.columnsMobile, 1, 2),
+    columnsDesktop: clampCols(p.columnsDesktop ?? p.gridColumnsDesktop, 3, 4),
+    columnsTablet: clampCols(p.columnsTablet ?? p.gridColumnsTablet, 2, 3),
+    columnsMobile: clampCols(p.columnsMobile ?? p.gridColumnsMobile, 1, 2),
   };
 }
 

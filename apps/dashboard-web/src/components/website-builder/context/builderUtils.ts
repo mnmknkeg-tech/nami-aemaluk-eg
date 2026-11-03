@@ -157,7 +157,13 @@ export const normalizeWebsite = (site: Website): Website => {
     Object.entries(rawComponents).map(([id, rawNode]) => {
       const node = rawNode as ComponentNode;
       const childrenIds = Array.isArray(node.childrenIds)
-        ? [...new Set(node.childrenIds.filter((childId) => componentIds.has(childId)))]
+        ? [
+            ...new Set(
+              node.childrenIds.filter(
+                (childId) => componentIds.has(childId) && childId !== id
+              )
+            ),
+          ]
         : [];
       return [
         id,
@@ -178,6 +184,33 @@ export const normalizeWebsite = (site: Website): Website => {
     ...page,
     rootNodeId: componentIds.has(page.rootNodeId) ? page.rootNodeId : fallbackRootId || 'page_root',
   }));
+
+  // Older drafts can contain conflicting parentId/childrenIds after a section
+  // was duplicated or moved. Rebuild reachable parent links from each page
+  // root and keep the first occurrence of a child to prevent double rendering.
+  const claimedParent = new Map<string, string>();
+  const visit = (parentId: string, childId: string, trail: Set<string>) => {
+    const child = components[childId];
+    if (!child || trail.has(childId)) return;
+    if (claimedParent.has(childId) && claimedParent.get(childId) !== parentId) return;
+    claimedParent.set(childId, parentId);
+    child.parentId = parentId;
+    child.childrenIds = child.childrenIds.filter((id) => id !== childId);
+    const nextTrail = new Set(trail);
+    nextTrail.add(childId);
+    child.childrenIds.forEach((id) => visit(childId, id, nextTrail));
+  };
+  pages.forEach((page) => {
+    const root = components[page.rootNodeId];
+    if (!root) return;
+    root.parentId = null;
+    root.childrenIds.forEach((childId) => visit(root.id, childId, new Set([root.id])));
+  });
+  Object.values(components).forEach((node) => {
+    node.childrenIds = node.childrenIds.filter(
+      (childId) => !claimedParent.has(childId) || claimedParent.get(childId) === node.id
+    );
+  });
 
   return {
     ...BLANK_WEBSITE,

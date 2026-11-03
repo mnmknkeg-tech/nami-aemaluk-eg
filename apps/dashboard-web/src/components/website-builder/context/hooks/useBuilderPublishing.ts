@@ -167,9 +167,9 @@ export const useBuilderPublishing = (
       });
       await apiRequest(`/builder/${builderShopId}/publish`, {
         method: 'POST',
-            // Publish the draft just saved by this editor session. The API will
-            // assign the next version and must not reject a stale client counter.
-            body: JSON.stringify({ clientVersion: 0 }),
+        // Publish the draft just saved by this editor session using the
+        // server version tracked by the builder save flow.
+        body: JSON.stringify({ clientVersion: draftVersionRef.current }),
       });
 
       setPublishingStatus({

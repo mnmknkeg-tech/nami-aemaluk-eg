@@ -99,7 +99,7 @@ export const ProductCardSection: React.FC<ProductCardSectionProps> = ({
   const p = node.props || {};
   const isExpanded = expandedSections?.productCard ?? true;
 
-  const currentShape = (p.shape as ProductCardShape) || 'classic';
+  const currentShape = (p.cardShape ?? p.shape ?? 'classic') as ProductCardShape;
   const currentBuyMode = (p.buyButtonMode as BuyButtonMode) || 'full';
   const showPrice = p.showPrice !== false;
   const showOriginalPrice = Boolean(p.showOriginalPrice);
@@ -162,7 +162,7 @@ export const ProductCardSection: React.FC<ProductCardSectionProps> = ({
                     <button
                       key={s.id}
                       type="button"
-                      onClick={() => handlePropChange(node.id, 'shape', s.id)}
+                      onClick={() => handlePropChange(node.id, 'cardShape', s.id)}
                       className={`w-full p-2.5 rounded-xl border text-right cursor-pointer transition-all flex items-center justify-between ${
                         isSelected
                           ? 'border-blue-600 bg-blue-50/50 text-blue-900 shadow-xs'
