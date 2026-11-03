@@ -35,6 +35,7 @@ export const CodeWorkspace: React.FC = () => {
   const {
     isCodeWorkspaceOpen,
     saveDraft,
+    runPublishPipeline,
     autosaveStatus,
     setIsCodeWorkspaceOpen,
     selectedNode,
@@ -140,13 +141,14 @@ export const CodeWorkspace: React.FC = () => {
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <button
-            onClick={() => {
-              saveDraft(true);
-              flash('تم حفظ تعديلات المكوّن.');
+            onClick={async () => {
+              await saveDraft(true);
+              await runPublishPipeline();
+              flash('تم حفظ التعديلات ونشرها على الموقع.');
             }}
             className="rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-blue-500"
           >
-            حفظ التعديلات
+            حفظ ونشر التعديلات
           </button>
           <span className="px-1 text-[10px] text-slate-400" aria-live="polite">
             {autosaveStatus === 'saving'
