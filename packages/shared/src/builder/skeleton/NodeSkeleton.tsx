@@ -2,6 +2,7 @@
 
 import React from 'react';
 import type { ComponentNode, StyleProperties, ViewportBreakpoint, Website } from '../types';
+import { stylePropertiesToCss } from '../responsiveStyles';
 import { Bar, SK, fontSizePx, px, rightText, type Align } from './parts';
 import { KnownBlock } from './KnownBlock';
 
@@ -79,41 +80,32 @@ export function NodeSkeleton({
   node,
   website,
   viewport = 'desktop',
+  ancestors = new Set<string>(),
 }: {
   node: ComponentNode;
   website: Website;
   viewport?: ViewportBreakpoint;
+  ancestors?: Set<string>;
 }) {
   const s = resolveStyles(node, viewport);
+  if (
+    ancestors.has(node.id) ||
+    node.isHidden ||
+    node.props?.hidden ||
+    (viewport === 'mobile' && node.props?.mobileHidden === true) ||
+    s.display === 'none'
+  ) {
+    return null;
+  }
+
+  const childAncestors = new Set(ancestors);
+  childAncestors.add(node.id);
   const childIds = node.childrenIds || [];
 
-  // الـ layout والـ spacing مأخوذة من ستايل التاجر نفسه — عشان الأبعاد
-  // تطلع مطابقة للصفحة الحقيقية (من غير layout shift).
+  // Use the same saved-style mapper as the live renderer to reduce load shifts.
   const box: React.CSSProperties = {
-    display: s.display ?? (childIds.length ? 'flex' : 'block'),
-    flexDirection: s.flexDirection,
-    justifyContent: s.justifyContent,
-    alignItems: s.alignItems,
-    flexWrap: s.flexWrap,
-    gridTemplateColumns: s.display === 'grid' ? s.gridColumns : undefined,
-    gap: s.gap,
-    width: s.width,
-    minWidth: s.minWidth,
-    maxWidth: s.maxWidth,
-    height: s.height,
-    minHeight: s.minHeight,
-    maxHeight: s.maxHeight,
-    paddingTop: s.paddingTop,
-    paddingRight: s.paddingRight,
-    paddingBottom: s.paddingBottom,
-    paddingLeft: s.paddingLeft,
-    marginTop: s.marginTop,
-    marginRight: s.marginRight,
-    marginBottom: s.marginBottom,
-    marginLeft: s.marginLeft,
-    backgroundColor: s.backgroundColor,
-    borderRadius: s.borderRadius,
-    textAlign: s.textAlign,
+    ...stylePropertiesToCss(s),
+    display: s.display || 'block',
   };
 
   if (childIds.length === 0) {
@@ -125,7 +117,15 @@ export function NodeSkeleton({
       {childIds.map((id) => {
         const child = website.components?.[id];
         if (!child) return null;
-        return <NodeSkeleton key={id} node={child} website={website} viewport={viewport} />;
+        return (
+          <NodeSkeleton
+            key={id}
+            node={child}
+            website={website}
+            viewport={viewport}
+            ancestors={childAncestors}
+          />
+        );
       })}
     </div>
   );

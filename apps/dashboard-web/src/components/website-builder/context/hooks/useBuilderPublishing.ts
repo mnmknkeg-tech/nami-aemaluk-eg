@@ -177,12 +177,18 @@ export const useBuilderPublishing = (
         totalSteps: 5,
         stepMessage: '2/5 تم حفظ مسودة الموقع وتجهيز حزم النشر السريع...',
       });
-      await apiRequest(`/builder/${builderShopId}/publish`, {
+      const publishResult = await apiRequest<{ versionNumber?: number }>(`/builder/${builderShopId}/publish`, {
         method: 'POST',
         // Publish the draft just saved by this editor session using the
         // server version tracked by the builder save flow.
         body: JSON.stringify({ clientVersion: draftVersionRef.current }),
       });
+      // Publishing creates a new globally-monotonic builder_versions row.
+      // Keep the editor's optimistic-concurrency token in sync so subsequent
+      // autosaves do not fail with a 409 immediately after a successful publish.
+      if (typeof publishResult?.versionNumber === 'number') {
+        draftVersionRef.current = publishResult.versionNumber;
+      }
 
       setPublishingStatus({
         status: 'published',

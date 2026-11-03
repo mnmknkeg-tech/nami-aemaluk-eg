@@ -25,66 +25,23 @@ import { useCart } from '@/lib/cart';
 import type { Shop, Product } from '@/lib/services';
 import {
   mergeResponsiveStyles,
+  normalizeWebsiteTree,
   productGridClass,
   PublishedProductCard,
+  resolveTheme,
   resolveProductCardOptions,
+  stylePropertiesToCss,
+  useResponsiveViewport,
+  type ResponsiveViewport,
+  type StyleProperties,
 } from '@ray-eg/shared/builder';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface StyleProperties {
-  display?: string;
-  flexDirection?: string;
-  justifyContent?: string;
-  alignItems?: string;
-  flexWrap?: string;
-  gridColumns?: string;
-  gap?: string;
-  width?: string;
-  minWidth?: string;
-  maxWidth?: string;
-  height?: string;
-  minHeight?: string;
-  maxHeight?: string;
-  paddingTop?: string;
-  paddingRight?: string;
-  paddingBottom?: string;
-  paddingLeft?: string;
-  marginTop?: string;
-  marginRight?: string;
-  marginBottom?: string;
-  marginLeft?: string;
-  fontFamily?: string;
-  fontSize?: string;
-  fontWeight?: string;
-  lineHeight?: string;
-  letterSpacing?: string;
-  textAlign?: string;
-  textColor?: string;
-  textTransform?: string;
-  backgroundColor?: string;
-  backgroundImage?: string;
-  backgroundSize?: string;
-  backgroundPosition?: string;
-  borderWidth?: string;
-  borderStyle?: string;
-  borderColor?: string;
-  borderRadius?: string;
-  boxShadow?: string;
-  opacity?: string | number;
-  backdropBlur?: string;
-  overflow?: string;
-  position?: string;
-  top?: string;
-  right?: string;
-  bottom?: string;
-  left?: string;
-  zIndex?: string | number;
-}
-
 interface ComponentNode {
   id: string;
   type: string;
+  category?: string;
   parentId?: string | null;
   childrenIds?: string[];
   props: Record<string, any>;
@@ -98,7 +55,13 @@ interface ComponentNode {
 }
 
 interface BuilderWebsite {
-  pages: Array<{ id: string; rootNodeId: string; name?: string; slug?: string }>;
+  pages: Array<{
+    id: string;
+    rootNodeId: string;
+    name?: string;
+    slug?: string;
+    metadata?: { isHomePage?: boolean };
+  }>;
   components: Record<string, ComponentNode>;
   theme: {
     colors: { primary: string; secondary?: string; accent?: string };
@@ -110,87 +73,61 @@ interface BuilderWebsite {
 
 /** Live shop + catalog passed down the tree so product cards and the mobile
  *  footer can bind to the REAL unified cart instead of dead WhatsApp buttons. */
-const ShopDataContext = React.createContext<{ shop?: Shop; products?: Product[] }>({});
+const ShopDataContext = React.createContext<{
+  shop?: Shop;
+  products?: Product[];
+  viewport: ResponsiveViewport;
+}>({ viewport: 'desktop' });
 
 // ─── getComputedStyles ────────────────────────────────────────────────────────
 
 function getComputedStyles(
   node: ComponentNode,
   theme: BuilderWebsite['theme'],
-  isMobileClient = false
+  viewport: ResponsiveViewport
 ): React.CSSProperties {
-  // Marketplace currently switches between desktop and mobile; mobile also
-  // inherits tablet overrides using the same shared merge as other renderers.
-  const merged = mergeResponsiveStyles(
-    node.styles,
-    isMobileClient ? 'mobile' : 'desktop'
-  );
-
+  const merged: StyleProperties = mergeResponsiveStyles(node.styles, viewport);
   const css: React.CSSProperties = {
-    display: merged.display as any,
-    flexDirection: merged.flexDirection as any,
-    justifyContent: merged.justifyContent as any,
-    alignItems: merged.alignItems as any,
-    flexWrap: merged.flexWrap as any,
-    gridTemplateColumns: merged.gridColumns,
-    gap: merged.gap,
-    width: merged.width,
-    minWidth: merged.minWidth,
-    maxWidth: merged.maxWidth,
-    height: merged.height,
-    minHeight: merged.minHeight,
-    maxHeight: merged.maxHeight,
-    paddingTop: merged.paddingTop,
-    paddingRight: merged.paddingRight,
-    paddingBottom: merged.paddingBottom,
-    paddingLeft: merged.paddingLeft,
-    marginTop: merged.marginTop,
-    marginRight: merged.marginRight,
-    marginBottom: merged.marginBottom,
-    marginLeft: merged.marginLeft,
-    fontFamily: merged.fontFamily || theme?.typography?.fontBody || 'Cairo, sans-serif',
-    fontSize: merged.fontSize,
-    fontWeight: merged.fontWeight as any,
-    lineHeight: merged.lineHeight,
-    letterSpacing: merged.letterSpacing,
-    textAlign: merged.textAlign as any,
-    color: merged.textColor,
-    textTransform: merged.textTransform as any,
-    backgroundColor: merged.backgroundColor,
-    backgroundImage: merged.backgroundImage,
-    backgroundSize: merged.backgroundSize,
-    backgroundPosition: merged.backgroundPosition,
-    borderWidth: merged.borderWidth,
-    borderStyle: merged.borderStyle as any,
-    borderColor: merged.borderColor,
-    borderRadius: merged.borderRadius,
-    boxShadow: merged.boxShadow,
-    opacity: merged.opacity as any,
-    backdropFilter: merged.backdropBlur ? `blur(${merged.backdropBlur})` : undefined,
-    WebkitBackdropFilter: merged.backdropBlur ? `blur(${merged.backdropBlur})` : undefined,
-    overflow: merged.overflow as any,
+    ...stylePropertiesToCss(merged, theme?.typography?.fontBody || 'Cairo, sans-serif'),
     wordBreak: 'break-word',
     overflowWrap: 'break-word',
-    position: merged.position as any,
-    top: merged.top,
-    right: merged.right,
-    bottom: merged.bottom,
-    left: merged.left,
-    zIndex: merged.zIndex as any,
   };
 
-  if (isMobileClient) {
+  // Authored desktop widths must not force the public shop wider than a small
+  // laptop viewport, even when that viewport uses the desktop breakpoint.
+  if (node.type === 'header' || node.category === 'section' || node.type === 'container') {
+    css.maxWidth = '100%';
+  }
+
+  if (viewport === 'tablet' || viewport === 'mobile') {
     css.boxSizing = 'border-box';
     css.maxWidth = '100%';
-    if (typeof css.width === 'string' && /px$/.test(css.width) && Number.parseInt(css.width) > 360) {
-      css.width = '100%';
+    if (typeof css.width === 'string' && /px$/.test(css.width)) {
+      const width = Number.parseInt(css.width);
+      if (width > (viewport === 'mobile' ? 340 : 640)) css.width = '100%';
     }
-    if (typeof css.minWidth === 'string' && /px$/.test(css.minWidth) && Number.parseInt(css.minWidth) > 280) {
-      css.minWidth = '0';
+    if (typeof css.minWidth === 'string' && /px$/.test(css.minWidth)) {
+      const minWidth = Number.parseInt(css.minWidth);
+      if (minWidth > (viewport === 'mobile' ? 280 : 640)) css.minWidth = '0px';
     }
-    if (typeof css.gap === 'string' && Number.parseInt(css.gap) > 20) css.gap = '16px';
+    if (typeof css.gap === 'string' && Number.parseInt(css.gap) > (viewport === 'mobile' ? 20 : 28)) {
+      css.gap = viewport === 'mobile' ? '16px' : '20px';
+    }
+  }
+
+  if (viewport === 'tablet' && !node.styles.tablet?.gridColumns && css.gridTemplateColumns) {
+    const columns = String(css.gridTemplateColumns);
+    if (/(repeat\s*\(\s*[3-9]|1fr\s+1fr\s+1fr)/.test(columns)) {
+      css.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+    }
+  }
+
+  if (viewport === 'mobile') {
     if (!node.styles.mobile?.gridColumns && css.gridTemplateColumns) {
-      css.gridTemplateColumns = 'minmax(0, 1fr)';
+      const columns = String(css.gridTemplateColumns);
+      if (/(repeat\s*\(\s*[2-9]|1fr\s+1fr)/.test(columns)) {
+        css.gridTemplateColumns = 'repeat(1, minmax(0, 1fr))';
+      }
     }
     if (!node.styles.mobile?.flexDirection && merged.display === 'flex' && merged.flexDirection === 'row') {
       const isHeader = node.type === 'header' || node.parentId?.includes('header') || node.id.includes('nav');
@@ -214,23 +151,17 @@ function getComputedStyles(
 function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWebsite }) {
   const node = website.components[nodeId];
   const { addItem } = useCart();
-  const { shop: ctxShop, products: ctxProducts } = React.useContext(ShopDataContext);
+  const { shop: ctxShop, products: ctxProducts, viewport } = React.useContext(ShopDataContext);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [isFaqOpen, setIsFaqOpen] = useState(true);
-  const [isMobileScreen, setIsMobileScreen] = useState(false);
-
-  useEffect(() => {
-    const checkScreen = () => {
-      setIsMobileScreen(window.innerWidth < 768);
-    };
-    checkScreen();
-    window.addEventListener('resize', checkScreen);
-    return () => window.removeEventListener('resize', checkScreen);
-  }, []);
-
-  if (!node || node.isHidden) return null;
+  if (
+    !node ||
+    node.isHidden ||
+    node.props?.hidden ||
+    (viewport === 'mobile' && node.props?.mobileHidden === true)
+  ) return null;
 
   // Fixed mobile bottom bar — rendered by its own component (uses cart hooks).
   if (node.type === 'mobile_footer') {
@@ -238,7 +169,7 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
   }
 
   const theme = website.theme;
-  const computed = getComputedStyles(node, theme, isMobileScreen);
+  const computed = getComputedStyles(node, theme, viewport);
 
   const renderChildren = () =>
     (node.childrenIds || []).map((cid) => (
@@ -1212,11 +1143,25 @@ interface BuilderTreeRendererProps {
 }
 
 export function BuilderTreeRenderer({ website, shop, products }: BuilderTreeRendererProps) {
-  const activePage = website.pages?.[0];
+  const safeWebsite = React.useMemo(
+    () => {
+      const normalized = normalizeWebsiteTree(website as any);
+      return {
+        ...normalized,
+        theme: resolveTheme(normalized.theme),
+      } as BuilderWebsite;
+    },
+    [website]
+  );
+  const viewport = useResponsiveViewport();
+  const activePage =
+    safeWebsite.pages?.find((page) => page.metadata?.isHomePage) ||
+    safeWebsite.pages?.find((page) => page.id === 'page_home') ||
+    safeWebsite.pages?.[0];
   const rootRef = React.useRef<HTMLDivElement>(null);
-  if (!activePage) return null;
 
   React.useEffect(() => {
+    if (!activePage) return;
     const sections = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[data-section="products"]') || []);
     const seen = new Set<string>();
 
@@ -1229,14 +1174,16 @@ export function BuilderTreeRenderer({ website, shop, products }: BuilderTreeRend
     return () => sections.forEach((section) => {
       section.hidden = false;
     });
-  }, [website]);
+  }, [safeWebsite, activePage?.id]);
 
-  const direction = (website.defaultDirection || 'rtl') as React.CSSProperties['direction'];
+  if (!activePage) return null;
+
+  const direction = (safeWebsite.defaultDirection || 'rtl') as React.CSSProperties['direction'];
 
   return (
-    <ShopDataContext.Provider value={{ shop, products }}>
+    <ShopDataContext.Provider value={{ shop, products, viewport }}>
       <div ref={rootRef} className="merchant-site-builder" style={{ direction, minHeight: '100vh' }}>
-        <NodeRenderer nodeId={activePage.rootNodeId} website={website} />
+        <NodeRenderer nodeId={activePage.rootNodeId} website={safeWebsite} />
       </div>
     </ShopDataContext.Provider>
   );

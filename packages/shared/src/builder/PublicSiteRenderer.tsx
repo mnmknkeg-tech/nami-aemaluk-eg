@@ -280,7 +280,7 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
         </a>
       )}
       <div
-        className="min-h-screen"
+        className="published-site-renderer min-h-screen"
         style={{
           backgroundColor: theme.colors.background,
           color: theme.colors.textPrimary,

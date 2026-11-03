@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Fragment, useState } from 'react';
 import {
   Sparkles,
   ShieldCheck,
@@ -52,7 +52,7 @@ import {
 } from './productCard';
 import { CustomCodeFrame } from './CustomCodeFrame';
 import { PublishedProductCard } from './PublishedProductCard';
-import { mergeResponsiveStyles } from './responsiveStyles';
+import { mergeResponsiveStyles, stylePropertiesToCss } from './responsiveStyles';
 
 export interface NodeViewContext {
   website: Website;
@@ -687,65 +687,9 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
     const merged: StyleProperties = mergeResponsiveStyles(node.styles, viewport);
 
     const css: React.CSSProperties = {
-      display: merged.display,
-      flexDirection: merged.flexDirection,
-      justifyContent: merged.justifyContent,
-      alignItems: merged.alignItems,
-      flexWrap: merged.flexWrap,
-      gridTemplateColumns: merged.gridColumns,
-      gap: merged.gap,
-
-      width: merged.width,
-      minWidth: merged.minWidth,
-      maxWidth: merged.maxWidth,
-      height: merged.height,
-      minHeight: merged.minHeight,
-      maxHeight: merged.maxHeight,
-
-      paddingTop: merged.paddingTop,
-      paddingRight: merged.paddingRight,
-      paddingBottom: merged.paddingBottom,
-      paddingLeft: merged.paddingLeft,
-
-      marginTop: merged.marginTop,
-      marginRight: merged.marginRight,
-      marginBottom: merged.marginBottom,
-      marginLeft: merged.marginLeft,
-
-      fontFamily: merged.fontFamily || theme.typography.fontBody || 'Cairo, sans-serif',
-      fontSize: merged.fontSize,
-      fontWeight: merged.fontWeight as any,
-      lineHeight: merged.lineHeight,
-      letterSpacing: merged.letterSpacing,
-      textAlign: merged.textAlign,
-      color: merged.textColor,
-      textTransform: merged.textTransform,
-
-      backgroundColor: merged.backgroundColor,
-      backgroundImage: merged.backgroundImage,
-      backgroundSize: merged.backgroundSize,
-      backgroundPosition: merged.backgroundPosition,
-
-      borderWidth: merged.borderWidth,
-      borderStyle: merged.borderStyle,
-      borderColor: merged.borderColor,
-      borderRadius: merged.borderRadius,
-
-      boxShadow: merged.boxShadow,
-      opacity: merged.opacity,
-      backdropFilter: merged.backdropBlur ? `blur(${merged.backdropBlur})` : undefined,
-      WebkitBackdropFilter: merged.backdropBlur ? `blur(${merged.backdropBlur})` : undefined,
-      overflow: merged.overflow,
-      textOverflow: merged.textOverflow,
-      flexShrink: merged.flexShrink as any,
+      ...stylePropertiesToCss(merged, theme.typography.fontBody || 'Cairo, sans-serif'),
       wordBreak: 'normal',
       overflowWrap: 'break-word',
-      position: merged.position,
-      top: merged.top,
-      right: merged.right,
-      bottom: merged.bottom,
-      left: merged.left,
-      zIndex: merged.zIndex,
     };
 
     // Keep page-level layout nodes bounded by the current viewport on every
@@ -954,19 +898,6 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
         }
       }
 
-      // Hide desktop nav separators & desktop nav paragraphs on mobile
-      if (
-        (typeof node.props.text === 'string' &&
-          (node.props.text.includes('•') ||
-            node.props.text.includes('|') ||
-            node.props.text.includes('▾'))) ||
-        ((node.parentId?.includes('header') ||
-          node.parentId?.includes('sec_') ||
-          node.id?.includes('nav')) &&
-          (node.type === 'paragraph' || node.id?.includes('nav') || node.category === 'navigation'))
-      ) {
-        css.display = 'none';
-      }
     }
 
     return css;
@@ -1598,7 +1529,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                 activePage.name.trim() === trimmed ||
                 (trimmed === 'الرئيسية' && activePage.slug === 'home');
               return (
-                <React.Fragment key={index}>
+                <Fragment key={index}>
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1610,7 +1541,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                     {trimmed}
                   </span>
                   {index < items.length - 1 && <span className="opacity-40 select-none">•</span>}
-                </React.Fragment>
+                </Fragment>
               );
             })}
           </p>
@@ -1744,8 +1675,9 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
 
     // ------------------------------------------------------------------ image
     case 'image': {
+      const imageStyles = getComputedStyles();
       return (
-        <div id={node.id} style={getComputedStyles()} className="overflow-hidden transition-all">
+        <div id={node.id} style={imageStyles} className="overflow-hidden transition-all">
           <img
             src={
               node.props.src ||
@@ -1753,6 +1685,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
             }
             alt={node.props.alt || 'صورة المكون'}
             className="w-full h-full object-cover"
+            style={{ objectFit: imageStyles.objectFit }}
             loading="lazy"
           />
         </div>

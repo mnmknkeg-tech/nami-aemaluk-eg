@@ -9,7 +9,7 @@ export const config = {
      * - _next (Next.js internals)
      * - static files (images, favicon, etc.)
      */
-    '/((?!api/|_next/|_static/|_vercel|[\\w-]+\\.\\w+).*)',
+    '/((?!api/|_next/|_static/|_vercel|.*\\.[^/]+$).*)',
   ],
 };
 

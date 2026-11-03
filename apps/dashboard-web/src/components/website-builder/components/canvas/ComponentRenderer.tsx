@@ -1,5 +1,5 @@
 import React from 'react';
-import { mergeResponsiveStyles } from '@ray-eg/shared/builder';
+import { mergeResponsiveStyles, stylePropertiesToCss } from '@ray-eg/shared/builder';
 import { useBuilder } from '../../context/BuilderContext';
 import { StyleProperties, ViewportBreakpoint } from '../../types/builder';
 import { BaseRendererProps } from './renderers/types';
@@ -121,65 +121,9 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
     const merged: StyleProperties = mergeResponsiveStyles(node.styles, currentViewport);
 
     const css: React.CSSProperties = {
-      display: merged.display,
-      flexDirection: merged.flexDirection,
-      justifyContent: merged.justifyContent,
-      alignItems: merged.alignItems,
-      flexWrap: merged.flexWrap,
-      gridTemplateColumns: merged.gridColumns,
-      gap: merged.gap,
-
-      width: merged.width,
-      minWidth: merged.minWidth,
-      maxWidth: merged.maxWidth,
-      height: merged.height,
-      minHeight: merged.minHeight,
-      maxHeight: merged.maxHeight,
-
-      paddingTop: merged.paddingTop,
-      paddingRight: merged.paddingRight,
-      paddingBottom: merged.paddingBottom,
-      paddingLeft: merged.paddingLeft,
-
-      marginTop: merged.marginTop,
-      marginRight: merged.marginRight,
-      marginBottom: merged.marginBottom,
-      marginLeft: merged.marginLeft,
-
-      fontFamily: merged.fontFamily || website.theme?.typography?.fontBody || 'Cairo, sans-serif',
-      fontSize: merged.fontSize,
-      fontWeight: merged.fontWeight as any,
-      lineHeight: merged.lineHeight,
-      letterSpacing: merged.letterSpacing,
-      textAlign: merged.textAlign,
-      color: merged.textColor,
-      textTransform: merged.textTransform,
-
-      backgroundColor: merged.backgroundColor,
-      backgroundImage: merged.backgroundImage,
-      backgroundSize: merged.backgroundSize,
-      backgroundPosition: merged.backgroundPosition,
-
-      borderWidth: merged.borderWidth,
-      borderStyle: merged.borderStyle,
-      borderColor: merged.borderColor,
-      borderRadius: merged.borderRadius,
-
-      boxShadow: merged.boxShadow,
-      opacity: merged.opacity,
-      backdropFilter: merged.backdropBlur ? `blur(${merged.backdropBlur})` : undefined,
-      WebkitBackdropFilter: merged.backdropBlur ? `blur(${merged.backdropBlur})` : undefined,
-      overflow: merged.overflow,
-      textOverflow: merged.textOverflow,
-      flexShrink: merged.flexShrink as any,
+      ...stylePropertiesToCss(merged, website.theme?.typography?.fontBody || 'Cairo, sans-serif'),
       wordBreak: 'normal',
       overflowWrap: 'break-word',
-      position: merged.position,
-      top: merged.top,
-      right: merged.right,
-      bottom: merged.bottom,
-      left: merged.left,
-      zIndex: merged.zIndex,
     };
 
     // Keep page-level layout nodes bounded by the current viewport on every

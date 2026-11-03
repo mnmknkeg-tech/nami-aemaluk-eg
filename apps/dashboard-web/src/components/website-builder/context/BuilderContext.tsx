@@ -37,7 +37,7 @@ import { useBuilderPublishing } from './hooks/useBuilderPublishing';
 import { useBuilderAI } from './hooks/useBuilderAI';
 
 // Utilities
-import { getInitialBuilderState, normalizeWebsite } from './builderUtils';
+import { getHomePageId, getInitialBuilderState, normalizeWebsite } from './builderUtils';
 
 // Types
 import { BuilderContextType } from './types';
@@ -337,15 +337,17 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         // the initialization gate. GET currently returns BuilderConfig only and
         // does not expose draftVersion; the first PUT therefore starts at 0.
         if (shop.builderConfig?.website?.pages?.length && shop.builderConfig?.website?.components) {
-          setWebsite(normalizeWebsite(shop.builderConfig.website as Website));
-          setActivePageId(shop.builderConfig.website.pages[0]?.id || 'page_home');
+          const normalized = normalizeWebsite(shop.builderConfig.website as Website);
+          setWebsite(normalized);
+          setActivePageId(getHomePageId(normalized) || 'page_home');
           return;
         }
 
         const config = await apiRequest(`/builder/${shopId}/config`).catch(() => null);
         if (!cancelled && config?.website?.pages?.length && config?.website?.components) {
-          setWebsite(normalizeWebsite(config.website as Website));
-          setActivePageId(config.website.pages[0]?.id || 'page_home');
+          const normalized = normalizeWebsite(config.website as Website);
+          setWebsite(normalized);
+          setActivePageId(getHomePageId(normalized) || 'page_home');
         }
       } catch {
         // Only restore the explicitly local draft. Never scan arbitrary shop keys:

@@ -8,6 +8,7 @@ import {
   PublicSiteRenderer,
   SiteCartDrawer,
   SiteSkeleton,
+  useResponsiveViewport,
 } from '@ray-eg/shared/builder';
 import type {
   SiteProduct,
@@ -44,6 +45,7 @@ export function SiteCartBridge({
 }: SiteCartBridgeProps) {
   const router = useRouter();
   const safeWebsite = useMemo(() => normalizeWebsiteTree(website), [website]);
+  const viewport = useResponsiveViewport();
   const { items, totalItems, addItem, updateQuantity, removeItem } = useSiteCart();
   const [isCartOpen, setCartOpen] = useState(false);
   const [ready, setReady] = useState(false);
@@ -67,6 +69,7 @@ export function SiteCartBridge({
     return (
       <SiteSkeleton
         website={safeWebsite}
+        viewport={viewport}
         backgroundColor={safeWebsite.theme?.colors?.background || '#ffffff'}
       />
     );

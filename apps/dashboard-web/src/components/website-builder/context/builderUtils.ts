@@ -174,6 +174,12 @@ export const normalizeWebsite = (site: Website): Website => {
   } as Website);
 };
 
+export const getHomePageId = (site: Website): string | undefined =>
+  site.pages.find((page) => page.metadata?.isHomePage)?.id ||
+  site.pages.find((page) => page.id === 'page_home')?.id ||
+  site.pages.find((page) => page.slug === '')?.id ||
+  site.pages[0]?.id;
+
 export const getInitialBuilderState = (): {
   website: Website;
   templateId: string;
@@ -204,7 +210,7 @@ export const getInitialBuilderState = (): {
           return {
             website: site,
             templateId: chosenTemplate,
-            pageId: site.pages[0]?.id || 'page_home',
+            pageId: getHomePageId(site) || 'page_home',
           };
         }
         if (sampleWebsites[chosenTemplate]) {
@@ -212,7 +218,7 @@ export const getInitialBuilderState = (): {
           return {
             website: site,
             templateId: chosenTemplate,
-            pageId: site.pages[0]?.id || 'page_home',
+            pageId: getHomePageId(site) || 'page_home',
           };
         }
       }
@@ -225,7 +231,7 @@ export const getInitialBuilderState = (): {
           return {
             website: site,
             templateId: site.id || 'custom',
-            pageId: site.pages[0]?.id || 'page_home',
+            pageId: getHomePageId(site) || 'page_home',
           };
         }
       }

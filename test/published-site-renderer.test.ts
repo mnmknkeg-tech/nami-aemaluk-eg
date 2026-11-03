@@ -84,6 +84,20 @@ function renderNodeAtViewport(viewport: 'desktop' | 'tablet' | 'mobile') {
   return renderToStaticMarkup(React.createElement(NodeView, { nodeId: 'root', ctx: context }));
 }
 
+function renderWebsiteNodeAtViewport(website: any, viewport: 'desktop' | 'tablet' | 'mobile') {
+  const context = {
+    website,
+    viewport,
+    activePage: website.pages[0],
+    theme: resolveTheme({}),
+    shop: { id: 'shop_test', name: 'Shop', slug: 'shop-test' },
+    realProducts: [],
+    onNavigatePage: () => undefined,
+    waLink: () => null,
+  } as any;
+  return renderToStaticMarkup(React.createElement(NodeView, { nodeId: 'root', ctx: context }));
+}
+
 describe('published /site renderer product tree', () => {
   it('renders the same responsive safety rules at mobile and tablet breakpoints', () => {
     const mobileMarkup = renderNodeAtViewport('mobile');
@@ -91,6 +105,24 @@ describe('published /site renderer product tree', () => {
     expect(mobileMarkup).toContain('width:100%');
     expect(mobileMarkup).toContain('grid-template-columns:repeat(1, minmax(0, 1fr))');
     expect(tabletMarkup).toContain('grid-template-columns:repeat(2, minmax(0, 1fr))');
+  });
+
+  it('keeps ordinary mobile text containing separators and dropdown symbols visible', () => {
+    const website = makeWebsite(['section'], {
+      section: makeNode('section', 'container', 'root', ['copy']),
+      copy: makeNode(
+        'copy',
+        'paragraph',
+        'section',
+        [],
+        { text: 'توصيل•تركيب|خدمة متاحة ▾' },
+        'content'
+      ),
+    });
+
+    const markup = renderWebsiteNodeAtViewport(website, 'mobile');
+    expect(markup).toContain('توصيل•تركيب|خدمة متاحة ▾');
+    expect(markup).not.toContain('display:none');
   });
 
   it('renders one Products section only at its valid page-root position and tracks its builder node', () => {

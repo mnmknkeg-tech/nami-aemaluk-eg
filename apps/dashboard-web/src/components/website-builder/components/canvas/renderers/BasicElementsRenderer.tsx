@@ -595,10 +595,11 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
     }
 
     case 'image': {
+      const imageStyles = getComputedStyles();
       return (
         <div
           id={node.id}
-          style={getComputedStyles()}
+          style={imageStyles}
           onClick={handleClick}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
@@ -611,6 +612,7 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
             }
             alt={node.props.alt || 'صورة المكون'}
             className="w-full h-full object-cover"
+            style={{ objectFit: imageStyles.objectFit }}
           />
         </div>
       );
