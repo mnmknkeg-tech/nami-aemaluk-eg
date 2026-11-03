@@ -39,7 +39,6 @@ export const CodeWorkspace: React.FC = () => {
     setIsCodeWorkspaceOpen,
     selectedNode,
     updateNodeCustomCode,
-    updateNodeProps,
     insertNode,
     deleteNode,
     activePage,
@@ -102,7 +101,6 @@ export const CodeWorkspace: React.FC = () => {
     if (!selectedNode) return;
     if (activeFile === 'component.tsx') {
       updateNodeCustomCode(selectedNode.id, { tsxSnippet: value, enabled: true });
-      updateNodeProps(selectedNode.id, { html: value });
       return;
     }
     if (activeFile === 'styles.css') {

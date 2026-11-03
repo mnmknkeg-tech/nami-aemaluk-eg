@@ -8,7 +8,16 @@ import { FloatingCartButton } from '../cart/FloatingCartButton';
 import { CartDrawer } from '../cart/CartDrawer';
 
 export const CanvasArea: React.FC = () => {
-  const { website, activePage, viewport, zoom, selectNode, isRtl, isThemeLoading } = useBuilder();
+  const {
+    website,
+    activePage,
+    viewport,
+    zoom,
+    selectNode,
+    isRtl,
+    isThemeLoading,
+    isCodeWorkspaceOpen,
+  } = useBuilder();
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   // Compute Viewport Frame Width
@@ -37,7 +46,7 @@ export const CanvasArea: React.FC = () => {
     <main
       ref={canvasContainerRef}
       id="canvas_main_container"
-      className="flex-1 h-[calc(100vh-3.5rem)] bg-slate-100/80 overflow-y-auto overflow-x-hidden sm:overflow-x-auto relative flex flex-col items-center min-h-0 transition-all"
+      className={`flex-1 h-[calc(100vh-3.5rem)] bg-slate-100/80 overflow-y-auto overflow-x-hidden sm:overflow-x-auto relative flex flex-col items-center min-h-0 transition-all ${isCodeWorkspaceOpen ? 'pb-[26rem]' : ''}`}
       onClick={handleCanvasClick}
       style={{
         backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',

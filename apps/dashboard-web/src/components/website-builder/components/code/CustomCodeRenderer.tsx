@@ -70,7 +70,10 @@ export const CustomCodeRenderer: React.FC<CustomCodeRendererProps> = ({
         title={`custom-code-${node.id}`}
         sandbox="allow-scripts"
         className="w-full border-0 bg-transparent"
-        style={{ height: iframeHeight }}
+        // In editor mode the iframe is a visual preview only. Let clicks pass
+        // to ComponentRenderer's wrapper so the node can be selected, edited,
+        // or deleted. Published/interactive preview keeps normal interaction.
+        style={{ height: iframeHeight, pointerEvents: isInteractivePreview ? 'auto' : 'none' }}
         srcDoc={`<!DOCTYPE html>
 <html dir="rtl">
 <head>

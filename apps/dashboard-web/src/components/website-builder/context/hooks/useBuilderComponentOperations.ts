@@ -252,12 +252,13 @@ export const useBuilderComponentOperations = ({
       recordHistory(`إدراج نموذج قسم (${tmpl.nameAr})`, newWebsite);
       setSelectedNodeId(newRootSectionId);
 
-      // Live smooth scroll to the newly inserted section
+      // Keep the newly inserted section visible without jumping it underneath
+      // the fixed code workspace. The user can still scroll to it manually.
       if (typeof document !== 'undefined') {
         setTimeout(() => {
           const el = document.getElementById(newRootSectionId);
           if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
         }, 120);
       }
