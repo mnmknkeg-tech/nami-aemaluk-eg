@@ -34,7 +34,6 @@ function starterMarkup(node: {
 export const CodeWorkspace: React.FC = () => {
   const {
     isCodeWorkspaceOpen,
-    saveDraft,
     runPublishPipeline,
     autosaveStatus,
     setIsCodeWorkspaceOpen,
@@ -142,7 +141,6 @@ export const CodeWorkspace: React.FC = () => {
         <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={async () => {
-              await saveDraft(true);
               await runPublishPipeline();
               flash('تم حفظ التعديلات ونشرها على الموقع.');
             }}
