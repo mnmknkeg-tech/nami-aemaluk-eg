@@ -60,6 +60,12 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 			if strings.EqualFold(actorRole, "MERCHANT") || strings.EqualFold(actorRole, "ADMIN") {
 				source = "pos"
 			}
+		} else if raw == "website" {
+			// Authenticated Builder preview checkouts are real website orders,
+			// not POS sales. Guests are still forced to "guest" below.
+			if strings.EqualFold(actorRole, "MERCHANT") || strings.EqualFold(actorRole, "ADMIN") {
+				source = "website"
+			}
 		}
 	}
 
@@ -184,11 +190,10 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 		_ = i
 	}
 
-	// The total is always computed server-side from DB product prices. The
-	// client-supplied total is honored only for POS orders created by the
-	// shop's own merchant/admin (the cashier app prices addons/discounts
-	// client-side); public and customer flows can never set it.
-	if trustedActor && source == "pos" && req.Total != nil && *req.Total > 0 {
+	// The total is always computed server-side for public/customer flows. A
+	// trusted merchant/admin may provide the final total for POS and Builder
+	// website checkouts because those UIs can apply local discounts/tax rules.
+	if trustedActor && (source == "pos" || source == "website") && req.Total != nil && *req.Total > 0 {
 		order.Total = *req.Total
 	} else {
 		order.Total = total

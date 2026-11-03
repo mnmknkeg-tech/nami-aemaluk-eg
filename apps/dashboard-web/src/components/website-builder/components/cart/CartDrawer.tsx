@@ -5,18 +5,16 @@ import {
   Trash2,
   Plus,
   Minus,
-  ArrowRight,
-  Sparkles,
   ShieldCheck,
   CheckCircle2,
   Tag,
   CreditCard,
-  Building2,
   Globe2,
   Store,
   Layers,
 } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
+import { apiRequest } from '../../../../lib/api/client';
 
 export interface CartDrawerProps {
   contained?: boolean;
@@ -50,6 +48,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ contained = false }) => 
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [placedOrderNumber, setPlacedOrderNumber] = useState('');
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   if (!isCartOpen) return null;
 
@@ -77,49 +76,53 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ contained = false }) => 
   const vatAmount = subtotalAfterDiscount * 0.15;
   const finalTotal = subtotalAfterDiscount + vatAmount;
 
-  const handleCheckoutSubmit = () => {
+  const handleCheckoutSubmit = async () => {
+    if (cartItems.length === 0 || isCheckingOut) return;
     setIsCheckingOut(true);
-    const orderNumber = '#' + Math.floor(100000 + Math.random() * 900000);
-    setPlacedOrderNumber(orderNumber);
-
-    const newOrder = {
-      id: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
-      orderNumber,
-      source: 'website',
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      tenantId: currentTenant.id,
-      shopName: currentTenant.businessInfo?.brandName || website.name,
-      items: [...cartItems],
-      total: Math.round(finalTotal),
-      subtotal: cartTotal,
-      discount: discountAmount,
-      tax: vatAmount,
-      paymentMethod: 'cash_on_delivery',
-      customer: {
-        name: customerName || 'عميل المتجر الإلكتروني',
-        phone: customerPhone || currentTenant.businessInfo?.phone || '',
-        address: customerAddress || 'استلام / توصيل سريع',
-      },
-    };
-
-    // Save to merchant's local orders list
+    setCheckoutError(null);
     try {
-      const storageKey = `ray_merchant_orders_${currentTenant.id}`;
-      const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      existing.unshift(newOrder);
-      localStorage.setItem(storageKey, JSON.stringify(existing));
-
-      // Trigger order event for order bell in dashboard
-      window.dispatchEvent(new CustomEvent('ray_new_website_order', { detail: newOrder }));
-    } catch (e) {
-      console.warn('Failed to save website order locally', e);
-    }
-
-    setTimeout(() => {
+      // The Builder preview used to create a fake localStorage order here.
+      // Resolve the authenticated merchant's real shop and use the same
+      // orders contract as the published storefront/POS.
+      const shop = await apiRequest<any>('/shops/me');
+      const shopId = shop?.id || shop?.data?.id;
+      if (!shopId) throw new Error('لا يوجد متجر مرتبط بحساب التاجر');
+      const phone = customerPhone.trim() || currentTenant.businessInfo?.phone || '';
+      const created = await apiRequest<any>('/orders', {
+        method: 'POST',
+        body: JSON.stringify({
+          shopId,
+          items: cartItems.map((item) => ({
+            productId: item.id,
+            quantity: item.quantity,
+          })),
+          customer: {
+            name: customerName.trim() || 'عميل الموقع',
+            phone,
+            address: customerAddress.trim() || 'استلام / توصيل سريع',
+          },
+          customerPhone: phone || undefined,
+          deliveryAddressManual: customerAddress.trim() || 'استلام / توصيل سريع',
+          paymentMethod: 'COD',
+          source: 'website',
+          total: Math.round(finalTotal),
+        }),
+      });
+      const orderId = created?.id || created?.orderNumber;
+      setPlacedOrderNumber(
+        `#${String(orderId || '')
+          .slice(0, 8)
+          .toUpperCase()}`
+      );
+      // This is only a local UI event; the persisted order and notification
+      // are created by the backend above.
+      window.dispatchEvent(new CustomEvent('ray_new_website_order', { detail: created }));
       setIsCheckingOut(false);
       setCheckoutCompleted(true);
-    }, 1000);
+    } catch (e: any) {
+      setIsCheckingOut(false);
+      setCheckoutError(e?.message || 'تعذر إنشاء الطلب، حاول مرة أخرى');
+    }
   };
 
   const resetAndClose = () => {
@@ -131,27 +134,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ contained = false }) => 
       setCustomerName('');
       setCustomerPhone('');
       setCustomerAddress('');
+      setCheckoutError(null);
     }
     setIsCartOpen(false);
   };
-
-  const merchantWaPhone = (
-    currentTenant.businessInfo?.whatsappNumber ||
-    currentTenant.businessInfo?.phone ||
-    ''
-  ).replace(/\D/g, '');
-  const waOrderLink = merchantWaPhone
-    ? `https://wa.me/${merchantWaPhone.startsWith('20') ? merchantWaPhone : '20' + merchantWaPhone}?text=${encodeURIComponent(
-        `مرحباً، تم تأكيد الطلب رقم ${placedOrderNumber} بقيمة ${Math.round(finalTotal)} ج.م من موقع ${currentTenant.businessInfo?.brandName}:\n` +
-          cartItems
-            .map(
-              (i) =>
-                `• ${i.title || (i as any).name} (الكمية: ${i.quantity}) - ${i.price * i.quantity} ج.م`
-            )
-            .join('\n') +
-          `\nالاسم: ${customerName || 'عميل الموقع'}\nالهاتف: ${customerPhone || 'غير محدد'}\nالعنوان: ${customerAddress || 'غير محدد'}`
-      )}`
-    : null;
 
   return (
     <div
@@ -268,10 +254,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ contained = false }) => 
             </div>
             <h4 className="text-xl font-black text-slate-900">تم تأكيد طلب الحجز والدفع بنجاح!</h4>
             <p className="text-xs text-slate-600 max-w-xs leading-relaxed">
-              رقم المرجع: <strong>#{Math.floor(100000 + Math.random() * 900000)}</strong>
+              رقم المرجع: <strong>{placedOrderNumber || 'تم التسجيل'}</strong>
               <br />
-              تم إرسال إشعار فوري إلى لوحة تحكم التاجر وتفاصيل الفاتورة الإلكترونية عبر الواتساب
-              والبريد.
+              تم حفظ الطلب وإرساله إلى لوحة تحكم التاجر بنجاح.
             </p>
             <button
               onClick={resetAndClose}
@@ -399,6 +384,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ contained = false }) => 
               </p>
             )}
             {couponError && <p className="text-[11px] text-red-500 font-medium">{couponError}</p>}
+            {checkoutError && (
+              <p className="text-[11px] text-red-600 font-bold bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                {checkoutError}
+              </p>
+            )}
 
             {/* Calculations Breakdown */}
             <div className="space-y-1.5 text-xs pt-1 border-t border-slate-200/80">
