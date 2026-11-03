@@ -3,6 +3,7 @@ import { Website } from '../../types/builder';
 import { EditingModeId } from '../types';
 import { apiRequest } from '../../../../lib/api/client';
 import type { WebsiteReducer } from './useBuilderComponentOperations';
+import { inspectWebsiteTree, normalizeWebsiteTree } from '@ray-eg/shared/builder';
 
 type WebsiteUpdate = Website | WebsiteReducer;
 type AutosaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
@@ -143,6 +144,17 @@ export const useBuilderHistory = (
   const enqueueSave = useCallback(
     (websiteSnapshot: Website, manual: boolean, revision: number): Promise<boolean> => {
       const requestId = ++saveRequestIdRef.current;
+      const treeReport = inspectWebsiteTree(websiteSnapshot);
+      const safeSnapshot = normalizeWebsiteTree(websiteSnapshot);
+      const hasTreeDiagnostics = Object.entries(treeReport).some(
+        ([key, value]) => key !== 'rootNodesCount' && Array.isArray(value) && value.length > 0
+      );
+      if (hasTreeDiagnostics) {
+        console.warn('[WebsiteBuilder] normalized tree before draft save', {
+          websiteId: websiteSnapshot.id,
+          ...treeReport,
+        });
+      }
       setAutosaveStatus('saving');
       const perform = async (): Promise<boolean> => {
         // A queued snapshot can become obsolete while a prior request is in flight.
@@ -156,7 +168,7 @@ export const useBuilderHistory = (
             const response = await apiRequest<any>(`/builder/${builderShopId}/config`, {
               method: 'PUT',
               body: JSON.stringify({
-                config: { activityType: websiteSnapshot.activity, website: websiteSnapshot },
+                config: { activityType: safeSnapshot.activity, website: safeSnapshot },
                 mode: editingModeRef.current,
                 clientVersion: draftVersionRef.current,
               }),
@@ -165,7 +177,7 @@ export const useBuilderHistory = (
               draftVersionRef.current = response.draftVersion;
             }
           }
-          writeLocalDraft(builderShopId, websiteRef.current);
+          writeLocalDraft(builderShopId, normalizeWebsiteTree(websiteRef.current));
           if (
             isCurrentWebsiteRevision(revision, websiteRevisionRef.current) &&
             requestId === saveRequestIdRef.current
@@ -186,8 +198,8 @@ export const useBuilderHistory = (
           return false;
         } catch (error) {
           const status = (error as Error & { status?: number })?.status;
-          // Preserve the freshest local draft, never the stale request snapshot.
-          writeLocalDraft(builderShopId, websiteRef.current);
+          // Preserve the freshest local draft, but keep its tree render-safe.
+          writeLocalDraft(builderShopId, normalizeWebsiteTree(websiteRef.current));
           if (requestId === saveRequestIdRef.current) {
             setAutosaveStatus('error');
             if (status === 409) {

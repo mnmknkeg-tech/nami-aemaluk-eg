@@ -1,9 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSiteCart } from '@/lib/site-cart';
-import { PublicSiteRenderer, SiteCartDrawer, SiteSkeleton } from '@ray-eg/shared/builder';
+import {
+  normalizeWebsiteTree,
+  PublicSiteRenderer,
+  SiteCartDrawer,
+  SiteSkeleton,
+} from '@ray-eg/shared/builder';
 import type {
   SiteProduct,
   SiteShopContext,
@@ -38,6 +43,7 @@ export function SiteCartBridge({
   subscriptionPlans = [],
 }: SiteCartBridgeProps) {
   const router = useRouter();
+  const safeWebsite = useMemo(() => normalizeWebsiteTree(website), [website]);
   const { items, totalItems, addItem, updateQuantity, removeItem } = useSiteCart();
   const [isCartOpen, setCartOpen] = useState(false);
   const [ready, setReady] = useState(false);
@@ -60,8 +66,8 @@ export function SiteCartBridge({
   if (!ready) {
     return (
       <SiteSkeleton
-        website={website}
-        backgroundColor={website.theme?.colors?.background || '#ffffff'}
+        website={safeWebsite}
+        backgroundColor={safeWebsite.theme?.colors?.background || '#ffffff'}
       />
     );
   }
@@ -69,7 +75,7 @@ export function SiteCartBridge({
   return (
     <div>
       <PublicSiteRenderer
-        website={website}
+        website={safeWebsite}
         shop={shop}
         products={products}
         subscriptionPlans={subscriptionPlans}
@@ -85,7 +91,7 @@ export function SiteCartBridge({
         onClose={() => setCartOpen(false)}
         items={cartItems}
         shop={shop}
-        website={website}
+        website={safeWebsite}
         onUpdateQuantity={(id, delta) => {
           updateQuantity(id, delta);
         }}

@@ -5,13 +5,14 @@ import type {
   SiteProduct,
   SiteShopContext,
   SiteSubscriptionPlan,
-  ViewportBreakpoint,
   Website,
 } from './types';
 import { resolveTheme, buildWhatsAppLink } from './theme';
 import { NodeView } from './NodeView';
 import { SiteSubscriptionModal } from './SiteSubscriptionModal';
 import { SiteCartDrawer, type SiteCartItem } from './SiteCartDrawer';
+import { useResponsiveViewport } from './responsiveViewport';
+import { inspectWebsiteTree, normalizeWebsiteTree } from './websiteTree';
 
 export interface PublicSiteRendererProps {
   website: Website;
@@ -36,7 +37,23 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
 }) => {
   const [subModalPlan, setSubModalPlan] = useState<any | null>(null);
 
-  const pages = website.pages || [];
+  // Normalize only in memory at the public boundary. Invalid edges are detached
+  // before NodeView recurses; no database writes are performed by the renderer.
+  const safeWebsite = useMemo(() => normalizeWebsiteTree(website), [website]);
+  const treeReport = useMemo(() => inspectWebsiteTree(website), [website]);
+  useEffect(() => {
+    const hasDiagnostics = Object.entries(treeReport).some(
+      ([key, value]) => key !== 'rootNodesCount' && Array.isArray(value) && value.length > 0
+    );
+    if (hasDiagnostics) {
+      console.warn('[PublicSiteRenderer] builder tree diagnostics', {
+        websiteId: website.id,
+        ...treeReport,
+      });
+    }
+  }, [treeReport, website.id]);
+
+  const pages = safeWebsite.pages || [];
 
   const homePage = useMemo(
     () =>
@@ -46,12 +63,13 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
     [pages]
   );
 
-  const [viewport, setViewport] = useState<ViewportBreakpoint>('desktop');
+  const [activePageId, setActivePageId] = useState<string | undefined>(homePage?.id);
+  const viewport = useResponsiveViewport();
 
-  const cartSettings = website.settings?.cart;
-  const floating = website.settings?.floatingActions;
+  const cartSettings = safeWebsite.settings?.cart;
+  const floating = safeWebsite.settings?.floatingActions;
 
-  const usesHostCart = Boolean(onAddToCart);
+  const usesHostCart = Boolean(onAddToCart && onOpenCart);
 
   const isOrdersFlow = (cartSettings?.businessType || 'orders') === 'orders';
 
@@ -116,18 +134,21 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
   };
 
   const activePage = useMemo(
-    () => pages.find((p) => p.id === homePage?.id) || homePage,
-    [pages, homePage]
+    () => pages.find((p) => p.id === activePageId) || homePage,
+    [pages, activePageId, homePage]
   );
+  useEffect(() => {
+    if (!pages.some((page) => page.id === activePageId)) setActivePageId(homePage?.id);
+  }, [pages, activePageId, homePage]);
   const rootNodeId = activePage?.rootNodeId;
-  const hasContent = Boolean(rootNodeId && website.components[rootNodeId]);
+  const hasContent = Boolean(rootNodeId && safeWebsite.components[rootNodeId]);
 
-  const theme = useMemo(() => resolveTheme(website.theme), [website.theme]);
+  const theme = useMemo(() => resolveTheme(safeWebsite.theme), [safeWebsite.theme]);
 
   const handleNavigatePage = (pageId: string) => {
+    if (pages.some((page) => page.id === pageId)) setActivePageId(pageId);
     if (onNavigatePage) {
       onNavigatePage(pageId);
-      return;
     }
   };
 
@@ -264,14 +285,14 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
           backgroundColor: theme.colors.background,
           color: theme.colors.textPrimary,
           fontFamily: theme.typography.fontBody,
-          direction: website.defaultDirection === 'rtl' ? 'rtl' : 'ltr',
+          direction: safeWebsite.defaultDirection === 'rtl' ? 'rtl' : 'ltr',
         }}
       >
         {hasContent && rootNodeId ? (
           <NodeView
             nodeId={rootNodeId}
             ctx={{
-              website,
+              website: safeWebsite,
               viewport,
               activePage: activePage!,
               theme,
@@ -280,8 +301,8 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
               realSubscriptionPlans: subscriptionPlans,
               onNavigatePage: handleNavigatePage,
               waLink,
-              onAddToCart,
-              onOpenCart,
+              onAddToCart: handleAddToCart,
+              onOpenCart: handleOpenCart,
               cartCount: effectiveCartCount,
             }}
           />
@@ -299,6 +320,24 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
           shop={shop}
           availablePlans={subscriptionPlans}
         />
+        {!usesHostCart && (
+          <SiteCartDrawer
+            isOpen={isSiteCartOpen}
+            onClose={() => setIsSiteCartOpen(false)}
+            items={standaloneItems}
+            shop={shop}
+            website={safeWebsite}
+            onUpdateQuantity={(id, delta) => {
+              setStandaloneItems((prev) =>
+                prev
+                  .map((item) => (item.id === id ? { ...item, quantity: item.quantity + delta } : item))
+                  .filter((item) => item.quantity > 0)
+              );
+            }}
+            onRemoveItem={(id) => setStandaloneItems((prev) => prev.filter((item) => item.id !== id))}
+            onProceedToCheckout={() => window.location.assign(`/site/${shop.slug}/checkout`)}
+          />
+        )}
       </div>
     </div>
   );

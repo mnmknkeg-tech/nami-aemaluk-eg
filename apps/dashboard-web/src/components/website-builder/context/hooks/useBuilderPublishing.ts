@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { PublishingPipelineStatus, VersionHistoryItem, Website } from '../../types/builder';
 import { apiRequest } from '../../../../lib/api/client';
 import { validateWebsiteForPublishing } from './publishValidation';
+import { inspectWebsiteTree, normalizeWebsiteTree } from '@ray-eg/shared/builder';
 
 function findInvalidLinks(website: Website): string[] {
   const invalid: string[] = [];
@@ -110,6 +111,17 @@ export const useBuilderPublishing = (
   const runPublishPipeline = useCallback(async () => {
     const builderShopId = builderShopIdRef.current;
     const website = websiteRef.current;
+    const treeReport = inspectWebsiteTree(website);
+    const publishWebsite = normalizeWebsiteTree(website);
+    const hasTreeDiagnostics = Object.entries(treeReport).some(
+      ([key, value]) => key !== 'rootNodesCount' && Array.isArray(value) && value.length > 0
+    );
+    if (hasTreeDiagnostics) {
+      console.warn('[WebsiteBuilder] normalized tree before publish', {
+        websiteId: website.id,
+        ...treeReport,
+      });
+    }
 
     setPublishingStatus({
       status: 'validating',
@@ -131,7 +143,7 @@ export const useBuilderPublishing = (
       }
 
       // Validate the complete component tree and custom code before saving.
-      const validationErrors = validateWebsiteForPublishing(website);
+      const validationErrors = validateWebsiteForPublishing(publishWebsite);
       if (validationErrors.length > 0) {
         setPublishingStatus({
           status: 'failed',
@@ -143,7 +155,7 @@ export const useBuilderPublishing = (
         return;
       }
 
-      const invalidLinks = findInvalidLinks(website);
+      const invalidLinks = findInvalidLinks(publishWebsite);
       if (invalidLinks.length > 0) {
         setPublishingStatus({
           status: 'failed',
@@ -155,7 +167,7 @@ export const useBuilderPublishing = (
         return;
       }
 
-      const saved = await saveDraft(website, false);
+      const saved = await saveDraft(publishWebsite, false);
       if (!saved) {
         throw new Error('تعذّر حفظ أحدث تعديلات المحرر قبل النشر');
       }

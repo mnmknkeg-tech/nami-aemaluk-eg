@@ -5,7 +5,6 @@ import type {
   SiteProduct,
   SiteShopContext,
   SiteSubscriptionPlan,
-  ViewportBreakpoint,
   Website,
 } from './types';
 import { MessageCircle, ShoppingBag, ShoppingCart, Store, Package, CreditCard } from 'lucide-react';
@@ -13,6 +12,7 @@ import { buildWhatsAppLink, resolveTheme } from './theme';
 import { NodeView, NodeViewContext } from './NodeView';
 import { SiteSubscriptionModal } from './SiteSubscriptionModal';
 import { SiteCartDrawer, type SiteCartItem } from './SiteCartDrawer';
+import { useResponsiveViewport } from './responsiveViewport';
 
 interface SiteRendererProps {
   website: Website;
@@ -116,21 +116,13 @@ export const SiteRenderer: React.FC<SiteRendererProps> = ({
   );
 
   const [activePageId, setActivePageId] = useState<string>(homePage?.id || pages[0]?.id);
-  // SSR renders desktop; after hydration match the visitor's device width.
-  const [viewport, setViewport] = useState<ViewportBreakpoint>('desktop');
+  const viewport = useResponsiveViewport();
   // Prevent flash of unstyled content during hydration.
   const [hydrated, setHydrated] = useState(false);
   const [pageChanging, setPageChanging] = useState(false);
 
   useEffect(() => {
     setHydrated(true);
-    const compute = () => {
-      const w = window.innerWidth;
-      setViewport(w < 640 ? 'mobile' : w < 1024 ? 'tablet' : 'desktop');
-    };
-    compute();
-    window.addEventListener('resize', compute);
-    return () => window.removeEventListener('resize', compute);
   }, []);
 
   const theme = useMemo(() => resolveTheme(website.theme), [website.theme]);

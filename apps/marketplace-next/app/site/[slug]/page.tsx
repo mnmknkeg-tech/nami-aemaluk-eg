@@ -11,6 +11,7 @@ import {
   type SiteProduct,
   type SiteSubscriptionPlan,
   type Website,
+  normalizeWebsiteTree,
 } from '@ray-eg/shared/builder';
 import { SiteCartBridge } from '@/components/SiteCartBridge';
 import { serializeJsonLd } from '@/lib/jsonld';
@@ -130,7 +131,10 @@ export default async function PublishedSitePage({ params }: Props) {
   if (!site) notFound();
 
   const c = site.config || {};
-  const website: Website | undefined = c.website;
+  const rawWebsite: Website | undefined = c.website;
+  // Protect the skeleton and renderer from malformed published edges without
+  // writing repaired data back to storage.
+  const website = rawWebsite ? normalizeWebsiteTree(rawWebsite) : undefined;
 
   // Fetch products + subscription plans in parallel for best performance
   const [products, subscriptionPlans] = await Promise.all([

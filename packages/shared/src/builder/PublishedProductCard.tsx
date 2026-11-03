@@ -124,9 +124,10 @@ export const CardActions: React.FC<{
 export const PublishedProductCard: React.FC<{
   item: any;
   index: number;
+  builderNodeId?: string;
   sectionProps: Record<string, any>;
   ctx: PublishedCardCtx;
-}> = ({ item, index, sectionProps, ctx }) => {
+}> = ({ item, index, builderNodeId, sectionProps, ctx }) => {
   const { theme } = ctx;
   const options = resolveProductCardOptions(sectionProps);
   // نفس مواصفة العرض الموحدة في المحرر (resolveCardDisplay) — فوق الكتالوج الحقيقي.
@@ -234,7 +235,7 @@ export const PublishedProductCard: React.FC<{
             : 'bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group';
   if (options.shape === 'overlay') {
     return (
-      <div className={wrapClass}>
+      <div className={wrapClass} data-builder-node-id={builderNodeId}>
         {imageBlock && (
           <div className="absolute inset-0">
             {imageBlock}
@@ -261,7 +262,7 @@ export const PublishedProductCard: React.FC<{
   }
   if (options.shape === 'horizontal') {
     return (
-      <div className={wrapClass}>
+      <div className={wrapClass} data-builder-node-id={builderNodeId}>
         <div className="relative">
           {imageBlock}
           {badgeEl}
@@ -277,7 +278,7 @@ export const PublishedProductCard: React.FC<{
     );
   }
   return (
-    <div className={wrapClass}>
+    <div className={wrapClass} data-builder-node-id={builderNodeId}>
       <div className="relative">
         {imageBlock}
         {badgeEl}

@@ -6,6 +6,7 @@ import {
 } from '../data/defaultTheme';
 import { allActivityWebsites } from '../data/allActivityTemplates';
 import { sampleWebsites } from '../data/initialWebsites';
+import { normalizeWebsiteTree } from '@ray-eg/shared/builder';
 
 /**
  * Section-library entries are authored as desktop-first compositions. Store a
@@ -146,79 +147,31 @@ export const BLANK_WEBSITE: Website = {
 
 export const normalizeWebsite = (site: Website): Website => {
   if (!site || typeof site !== 'object') return BLANK_WEBSITE;
-  // Preserve merchant data verbatim while repairing the minimum tree shape needed
-  // by the canvas. Older drafts may omit props, styles, parentId, or valid children.
   const rawComponents =
     site.components && typeof site.components === 'object'
       ? site.components
       : BLANK_WEBSITE.components;
-  const componentIds = new Set(Object.keys(rawComponents));
+  // Keep the record key as the canonical node ID: child links and page roots
+  // are keyed by this value, even when an old payload contains a mismatched id.
   const components = Object.fromEntries(
-    Object.entries(rawComponents).map(([id, rawNode]) => {
-      const node = rawNode as ComponentNode;
-      const childrenIds = Array.isArray(node.childrenIds)
-        ? [
-            ...new Set(
-              node.childrenIds.filter(
-                (childId) => componentIds.has(childId) && childId !== id
-              )
-            ),
-          ]
-        : [];
-      return [
-        id,
-        {
-          ...node,
-          id: node.id || id,
-          parentId: node.parentId && componentIds.has(node.parentId) ? node.parentId : null,
-          childrenIds,
-          props: node.props && typeof node.props === 'object' ? node.props : {},
-          styles: node.styles && typeof node.styles === 'object' ? node.styles : {},
-        },
-      ];
-    })
+    Object.entries(rawComponents)
+      .filter(([, node]) => Boolean(node) && typeof node === 'object')
+      .map(([id, node]) => [id, { ...(node as ComponentNode), id }])
   ) as Record<string, ComponentNode>;
-
-  const fallbackRootId = Object.values(components).find((node) => node.type === 'container')?.id;
-  const pages = (Array.isArray(site.pages) ? site.pages : BLANK_WEBSITE.pages).map((page) => ({
+  const componentIds = new Set(Object.keys(components));
+  const fallbackRootId = Object.entries(components).find(([, node]) => node.type === 'container')?.[0];
+  const incomingPages = Array.isArray(site.pages) && site.pages.length ? site.pages : BLANK_WEBSITE.pages;
+  const pages = incomingPages.map((page) => ({
     ...page,
     rootNodeId: componentIds.has(page.rootNodeId) ? page.rootNodeId : fallbackRootId || 'page_root',
   }));
-
-  // Older drafts can contain conflicting parentId/childrenIds after a section
-  // was duplicated or moved. Rebuild reachable parent links from each page
-  // root and keep the first occurrence of a child to prevent double rendering.
-  const claimedParent = new Map<string, string>();
-  const visit = (parentId: string, childId: string, trail: Set<string>) => {
-    const child = components[childId];
-    if (!child || trail.has(childId)) return;
-    if (claimedParent.has(childId) && claimedParent.get(childId) !== parentId) return;
-    claimedParent.set(childId, parentId);
-    child.parentId = parentId;
-    child.childrenIds = child.childrenIds.filter((id) => id !== childId);
-    const nextTrail = new Set(trail);
-    nextTrail.add(childId);
-    child.childrenIds.forEach((id) => visit(childId, id, nextTrail));
-  };
-  pages.forEach((page) => {
-    const root = components[page.rootNodeId];
-    if (!root) return;
-    root.parentId = null;
-    root.childrenIds.forEach((childId) => visit(root.id, childId, new Set([root.id])));
-  });
-  Object.values(components).forEach((node) => {
-    node.childrenIds = node.childrenIds.filter(
-      (childId) => !claimedParent.has(childId) || claimedParent.get(childId) === node.id
-    );
-  });
-
-  return {
+  return normalizeWebsiteTree({
     ...BLANK_WEBSITE,
     ...site,
     pages,
     components,
     theme: normalizeThemeTokens(site.theme),
-  };
+  } as Website);
 };
 
 export const getInitialBuilderState = (): {

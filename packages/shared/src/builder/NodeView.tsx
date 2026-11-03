@@ -655,7 +655,13 @@ const AuthSectionView: React.FC<{
 
 export const NodeView: React.FC<{ nodeId: string; ctx: NodeViewContext }> = ({ nodeId, ctx }) => {
   const node = ctx.website.components[nodeId];
-  if (!node || node.isHidden || node.props?.hidden) return null;
+  if (
+    !node ||
+    node.isHidden ||
+    node.props?.hidden ||
+    (ctx.viewport === 'mobile' && node.props?.mobileHidden === true)
+  )
+    return null;
   return <NodeViewInner node={node} ctx={ctx} />;
 };
 
@@ -671,9 +677,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
   const [isMobileMenuDrawerOpen, setIsMobileMenuDrawerOpen] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
 
-  const isMobile =
-    viewport === 'mobile' ||
-    (typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
+  const isMobile = viewport === 'mobile';
 
   // Compute responsive styles merged by current breakpoint (faithful port).
   const getComputedStyles = (): React.CSSProperties => {
@@ -744,11 +748,28 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
       zIndex: merged.zIndex,
     };
 
+    // Keep page-level layout nodes bounded by the current viewport on every
+    // breakpoint; authored desktop widths should not be clipped on small laptops.
+    if (node.type === 'header' || node.category === 'section' || node.type === 'container') {
+      css.maxWidth = '100%';
+    }
+
     // Responsive Tablet Safeguards:
     if (viewport === 'tablet') {
       css.boxSizing = 'border-box';
       if (node.type === 'header' || node.category === 'section' || node.type === 'container') {
         css.maxWidth = '100%';
+        if (css.width && typeof css.width === 'string' && /px$/.test(css.width) && parseInt(css.width) > 640) {
+          css.width = '100%';
+        }
+        if (
+          css.minWidth &&
+          typeof css.minWidth === 'string' &&
+          /px$/.test(css.minWidth) &&
+          parseInt(css.minWidth) > 640
+        ) {
+          css.minWidth = '0px';
+        }
         if (!t.paddingLeft && d.paddingLeft && parseInt(d.paddingLeft) > 32) {
           css.paddingLeft = '20px';
         }
@@ -1909,6 +1930,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
       return (
         <section
           id={node.id}
+          data-builder-node-id={node.id}
           data-section="products"
           style={getComputedStyles()}
           className="transition-all"
@@ -1947,6 +1969,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                     key={prod.id || idx}
                     item={prod}
                     index={idx}
+                    builderNodeId={node.id}
                     sectionProps={node.props as any}
                     ctx={cardCtx}
                   />
@@ -1960,6 +1983,8 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
               </div>
             )}
 
+            {/* Visual children are allowed inside Products; tree normalization
+                detaches nested Products nodes so catalog cards cannot repeat. */}
             {renderChildren()}
           </div>
         </section>

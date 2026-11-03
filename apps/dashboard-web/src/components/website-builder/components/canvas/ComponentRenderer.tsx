@@ -182,11 +182,28 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
       zIndex: merged.zIndex,
     };
 
+    // Keep page-level layout nodes bounded by the current viewport on every
+    // breakpoint; authored desktop widths should not be clipped on small laptops.
+    if (node.type === 'header' || node.category === 'section' || node.type === 'container') {
+      css.maxWidth = '100%';
+    }
+
     // Responsive Tablet Safeguards:
     if (currentViewport === 'tablet') {
       css.boxSizing = 'border-box';
       if (node.type === 'header' || node.category === 'section' || node.type === 'container') {
         css.maxWidth = '100%';
+        if (css.width && typeof css.width === 'string' && /px$/.test(css.width) && parseInt(css.width) > 640) {
+          css.width = '100%';
+        }
+        if (
+          css.minWidth &&
+          typeof css.minWidth === 'string' &&
+          /px$/.test(css.minWidth) &&
+          parseInt(css.minWidth) > 640
+        ) {
+          css.minWidth = '0px';
+        }
         if (!t.paddingLeft && d.paddingLeft && parseInt(d.paddingLeft) > 32) {
           css.paddingLeft = '20px';
         }
