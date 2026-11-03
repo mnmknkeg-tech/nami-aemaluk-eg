@@ -2,9 +2,8 @@ import { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { MapPin, Phone, Star, Store, Globe, MessageCircle, ArrowLeft } from 'lucide-react';
+import { MapPin, Phone, Star, Store, MessageCircle, ArrowLeft } from 'lucide-react';
 import { getShopBySlug, getProducts, getShops, type Shop } from '@/lib/services';
-import { ProductCard } from '@/components/ProductCard';
 import { ShopProducts } from '@/components/ShopProducts';
 import ShareButton from '@/components/ShareButton';
 import { FollowButton } from '@/components/FollowButton';
@@ -33,13 +32,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const shop = await getShopBySlug(slug);
   if (!shop) return { title: 'متجر غير موجود' };
 
-  const title = `${shop.name} | ${siteConfig.name}`;
-  const description = shop.bio || `${shop.name} - متجر على منصة ${siteConfig.name}`;
+  // Merchant storefronts must feel like the merchant's own site. Do not put
+  // the marketplace brand in the browser title or fallback description.
+  const title = shop.name;
+  const description = shop.bio || `${shop.name} - المتجر الرسمي`;
   const image = shop.coverImage || shop.banner || shop.logo || siteConfig.ogImage;
 
   return {
     title,
     description,
+    icons: shop.logo ? { icon: shop.logo, shortcut: shop.logo, apple: shop.logo } : undefined,
     alternates: { canonical: `/shop/${shop.slug}` },
     openGraph: {
       title,
@@ -70,17 +72,11 @@ export default async function ShopPage({ params }: Props) {
   const design = shop.pageDesign || {};
   const primaryColor = design.primaryColor || '#00E5FF';
   const bgColor = design.pageBackgroundColor || design.backgroundColor || '#FFFFFF';
-  const headerBg = design.headerBackgroundColor || '#FFFFFF';
-  const headerText = design.headerTextColor || '#0F172A';
-  const bannerUrl = design.bannerUrl || shop.coverImage || shop.banner;
-  const bannerIsVideo = design.bannerIsVideo || false;
-  const logoUrl = design.logoUrl || shop.logo;
-
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Store',
     name: shop.name,
-    description: shop.bio || `${shop.name} - متجر على منصة ${siteConfig.name}`,
+    description: shop.bio || `${shop.name} - المتجر الرسمي`,
     url: `${siteConfig.url}/shop/${shop.slug}`,
     image: shop.coverImage || shop.banner || shop.logo,
     logo: shop.logo,
