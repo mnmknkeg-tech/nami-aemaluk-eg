@@ -74,7 +74,10 @@ export const useBuilderHistory = (
             body: JSON.stringify({
               config: { activityType: website.activity, website },
               mode: editingModeRef.current,
-              clientVersion: draftVersionRef.current,
+              // The editor is the source of truth for the latest complete tree.
+              // Sending 0 lets the API append a fresh version instead of rejecting
+              // a save after an autosave or another editor action advanced it.
+              clientVersion: 0,
             }),
           });
           if (res && typeof res.draftVersion === 'number') {
@@ -100,7 +103,10 @@ export const useBuilderHistory = (
             body: JSON.stringify({
               config: { activityType: website.activity, website },
               mode: editingModeRef.current,
-              clientVersion: draftVersionRef.current,
+              // The editor is the source of truth for the latest complete tree.
+              // Sending 0 lets the API append a fresh version instead of rejecting
+              // a save after an autosave or another editor action advanced it.
+              clientVersion: 0,
             }),
           });
           if (res && typeof res.draftVersion === 'number') {
@@ -122,6 +128,7 @@ export const useBuilderHistory = (
             ...prev,
           ]);
         }
+        return true;
       } catch {
         if (typeof window !== 'undefined') {
           try {
@@ -138,6 +145,7 @@ export const useBuilderHistory = (
             ...prev,
           ]);
         }
+        return false;
       }
     },
     [builderShopId, editingModeRef, draftVersionRef]

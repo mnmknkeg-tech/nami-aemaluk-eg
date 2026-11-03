@@ -25,7 +25,7 @@ export const useBuilderPublishing = (
   builderShopIdRef: { current: string },
   builderShopSlugRef: { current: string },
   liveWebsiteUrl: string,
-  saveDraft: (website: Website, manual?: boolean) => Promise<void>,
+  saveDraft: (website: Website, manual?: boolean) => Promise<boolean>,
   setHistoryLog: React.Dispatch<React.SetStateAction<string[]>>,
   recordHistory: (actionDesc: string, newWebsite: Website) => void,
   draftVersionRef: { current: number }
@@ -156,7 +156,10 @@ export const useBuilderPublishing = (
         return;
       }
 
-      await saveDraft(website, false);
+      const saved = await saveDraft(website, false);
+      if (!saved) {
+        throw new Error('تعذّر حفظ أحدث تعديلات المحرر قبل النشر');
+      }
       setPublishingStatus({
         status: 'building_nextjs',
         currentStep: 2,
@@ -165,7 +168,9 @@ export const useBuilderPublishing = (
       });
       await apiRequest(`/builder/${builderShopId}/publish`, {
         method: 'POST',
-        body: JSON.stringify({ clientVersion: draftVersionRef.current }),
+            // Publish the draft just saved by this editor session. The API will
+            // assign the next version and must not reject a stale client counter.
+            body: JSON.stringify({ clientVersion: 0 }),
       });
 
       setPublishingStatus({
