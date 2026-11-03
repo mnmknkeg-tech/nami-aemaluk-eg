@@ -3,14 +3,9 @@ import { BaseRendererProps } from './types';
 import { CustomCodeRenderer } from '../../code/CustomCodeRenderer';
 import {
   Sparkles,
-  ShieldCheck,
-  Truck,
   CreditCard,
   MessageCircle,
-  Star,
   ChevronDown,
-  ChevronUp,
-  CheckCircle,
   Phone,
   Mail,
   MapPin,
@@ -18,8 +13,6 @@ import {
   ShoppingCart,
   Package,
   Store,
-  Tag,
-  Zap,
   User,
 } from 'lucide-react';
 
@@ -50,7 +43,6 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
   setIsCartOpen,
   addToCart,
 }) => {
-  const [isFaqOpen, setIsFaqOpen] = useState(true);
   const [openDropdown, setOpenDropdown] = useState<boolean>(false);
   const activePage = website.pages.find((p) => p.id === activePageId) || website.pages[0];
 
@@ -408,6 +400,7 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
 
     case 'button': {
       const isHeaderCta =
+        node.props?.headerCta === true ||
         node.id === 'header_cta_btn' ||
         node.id === 'gen_header_cta' ||
         node.id.endsWith('_cta') ||
@@ -419,12 +412,19 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
       const cartPos = website.settings?.cart?.position;
       const cartShowsInHeader = !cartPos || cartPos === 'header' || cartPos === 'both';
 
-      const headerComp =
-        (node.parentId && website.components[node.parentId]?.type === 'header'
-          ? website.components[node.parentId]
-          : Object.values(website.components).find((c) => c.type === 'header')) ||
-        website.components['comp_header'] ||
-        website.components['gen_header'];
+      let headerComp: (typeof node) | undefined;
+      let ancestorId = node.parentId;
+      const visitedAncestors = new Set<string>();
+      while (ancestorId && !visitedAncestors.has(ancestorId)) {
+        visitedAncestors.add(ancestorId);
+        const ancestor = website.components[ancestorId];
+        if (!ancestor) break;
+        if (ancestor.type === 'header' || ancestor.id.toLowerCase().includes('header')) {
+          headerComp = ancestor;
+          break;
+        }
+        ancestorId = ancestor.parentId;
+      }
 
       const isCartHidden = Boolean(
         headerComp?.props?.hideCart || (website.theme as any)?.hideCart || node.props?.hideCart
@@ -468,10 +468,7 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
         <div className="inline-flex items-center gap-2">
           {showCart &&
             (() => {
-              const headerCartIcon =
-                website.components['comp_header']?.props?.cartIcon ||
-                node.props.cartIcon ||
-                'ShoppingBag';
+              const headerCartIcon = headerComp?.props?.cartIcon || node.props.cartIcon || 'ShoppingBag';
               return (
                 <button
                   type="button"

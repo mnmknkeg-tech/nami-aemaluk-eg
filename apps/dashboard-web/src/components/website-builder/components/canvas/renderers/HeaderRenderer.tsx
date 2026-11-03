@@ -177,30 +177,35 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
     return anchors;
   })();
 
-  const headerCtaComp = Object.values(website.components).find(
-    (c) =>
-      c.type === 'button' &&
-      !c.isHidden &&
-      !c.props?.hidden &&
-      (c.id === 'header_cta_btn' ||
-        c.id === 'gen_header_cta' ||
-        c.id.endsWith('_cta') ||
-        c.id.includes('cta') ||
-        c.id.includes('action') ||
-        Boolean(c.parentId?.includes('header'))) &&
-      Boolean(c.props.label || c.props.text)
+  const headerDescendants: Array<typeof node> = [];
+  const collectHeaderDescendants = (nodeId: string, visited = new Set<string>()) => {
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+    for (const childId of website.components[nodeId]?.childrenIds || []) {
+      const child = website.components[childId];
+      if (!child) continue;
+      headerDescendants.push(child);
+      collectHeaderDescendants(childId, visited);
+    }
+  };
+  collectHeaderDescendants(node.id);
+  const isHeaderAction = (component: (typeof headerDescendants)[number]) =>
+    component.type === 'button' &&
+    (component.props?.headerCta === true ||
+      component.id === 'header_cta_btn' ||
+      component.id === 'gen_header_cta' ||
+      component.id.endsWith('_cta') ||
+      component.id.toLowerCase().includes('cta') ||
+      component.id.toLowerCase().includes('action') ||
+      Boolean(component.parentId?.toLowerCase().includes('header')));
+  const headerCtaComp = headerDescendants.find(
+    (component) =>
+      isHeaderAction(component) &&
+      !component.isHidden &&
+      !component.props?.hidden &&
+      Boolean(component.props?.label || component.props?.text)
   );
-
-  const hasInlineHeaderActions = Object.values(website.components).some(
-    (c) =>
-      c.type === 'button' &&
-      (c.id === 'header_cta_btn' ||
-        c.id === 'gen_header_cta' ||
-        c.id.endsWith('_cta') ||
-        c.id.includes('cta') ||
-        c.id.includes('action') ||
-        Boolean(c.parentId?.includes('header')))
-  );
+  const hasInlineHeaderActions = headerDescendants.some(isHeaderAction);
 
   const handleLoginClick = (e: React.MouseEvent) => {
     if (!isInteractivePreview) return;

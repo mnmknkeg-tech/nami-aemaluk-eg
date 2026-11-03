@@ -149,9 +149,10 @@ describe('addPage', () => {
       pages: [{ id: 'home', name: 'Home', slug: '', rootNodeId: 'home_root' }],
       components: {
         home_root: node('home_root', ['comp_header', 'home_content', 'comp_footer']),
-        comp_header: { ...node('comp_header', ['header_nav']), type: 'header' },
+        comp_header: { ...node('comp_header', ['header_nav', 'header_cta_btn']), type: 'header' },
         header_nav: { ...node('header_nav', ['nav_home']), category: 'navigation' },
         nav_home: { ...node('nav_home', [], { text: 'Home', pageId: 'home' }), type: 'button' },
+        header_cta_btn: { ...node('header_cta_btn', [], { text: 'Book now' }), type: 'button' },
         comp_footer: { ...node('comp_footer'), type: 'footer' },
         home_content: node('home_content'),
       },
@@ -194,6 +195,20 @@ describe('addPage', () => {
     expect(nextWebsite.components[newHeaderId].type).toBe('header');
     expect(nextWebsite.components[newFooterId].type).toBe('footer');
     expect(nextWebsite.components[newHeaderId].parentId).toBe(newPage.rootNodeId);
+    const clonedCtaId = nextWebsite.components[newHeaderId].childrenIds
+      .map((id: string) => nextWebsite.components[id])
+      .find((component: any) => component.type === 'button')?.id;
+    expect(clonedCtaId).not.toBe('header_cta_btn');
+    expect(nextWebsite.components[clonedCtaId].props.headerCta).toBe(true);
+    expect(
+      findHeaderCtaForActivePage(
+        nextWebsite,
+        newPage.rootNodeId,
+        nextWebsite.components[newHeaderId],
+        nextWebsite.components[newHeaderId],
+        true
+      )?.id
+    ).toBe(clonedCtaId);
     expect(setActivePageId).toHaveBeenCalledWith(newPage.id);
     expect(setSelectedNodeId).toHaveBeenCalledWith(newPage.rootNodeId);
     expect(navContainers).toHaveLength(2);

@@ -65,7 +65,8 @@ export const findHeaderCtaForActivePage = (
         (candidate): candidate is ComponentNode =>
           Boolean(candidate) &&
           candidate.type === 'button' &&
-          (candidate.id === 'header_cta_btn' ||
+          (candidate.props?.headerCta === true ||
+            candidate.id === 'header_cta_btn' ||
             candidate.id === 'gen_header_cta' ||
             candidate.id.endsWith('_cta') ||
             candidate.id.toLowerCase().includes('cta') ||

@@ -160,7 +160,25 @@ export const useBuilderPageOperations = ({
         const clonedId = createUniqueBuilderId('page_component', usedIds);
         const nextPath = new Set(path).add(sourceId);
         const clonedChildren: string[] = [];
-        newComponents[clonedId] = { ...source, id: clonedId, parentId, childrenIds: clonedChildren };
+        const clonedProps = { ...(source.props || {}) };
+        if (
+          source.type === 'button' &&
+          (source.id === 'header_cta_btn' ||
+            source.id === 'gen_header_cta' ||
+            source.id.endsWith('_cta') ||
+            source.id.toLowerCase().includes('cta') ||
+            source.id.toLowerCase().includes('action') ||
+            Boolean(source.parentId?.toLowerCase().includes('header')))
+        ) {
+          clonedProps.headerCta = true;
+        }
+        newComponents[clonedId] = {
+          ...source,
+          id: clonedId,
+          parentId,
+          childrenIds: clonedChildren,
+          props: clonedProps,
+        };
         for (const childId of source.childrenIds || []) {
           const childCloneId = cloneSubtree(childId, clonedId, nextPath);
           if (childCloneId) clonedChildren.push(childCloneId);
