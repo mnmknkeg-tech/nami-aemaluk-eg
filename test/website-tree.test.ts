@@ -73,6 +73,59 @@ describe('shared website tree normalization and diagnostics', () => {
     expect(normalized.components.shared.parentId).toBe('first');
   });
 
+  it('clones shared Header/Footer component trees for independent pages during normalization', () => {
+    const input = {
+      id: 'multi_page',
+      pages: [
+        { id: 'page_one', name: 'One', slug: '', rootNodeId: 'root_one' },
+        { id: 'page_two', name: 'Two', slug: 'two', rootNodeId: 'root_two' },
+      ],
+      components: {
+        root_one: node('root_one', 'container', null, ['comp_header', 'section_one']),
+        root_two: node('root_two', 'container', null, ['comp_header', 'section_two']),
+        comp_header: node('comp_header', 'header', null, ['header_inner']),
+        header_inner: node('header_inner', 'container', 'comp_header', ['header_cta_btn']),
+        header_cta_btn: node('header_cta_btn', 'button', 'header_inner'),
+        section_one: node('section_one', 'hero', 'root_one'),
+        section_two: node('section_two', 'hero', 'root_two'),
+      },
+    } as any;
+
+    const normalized = normalizeWebsiteTree(input);
+    const firstHeaderId = normalized.components.root_one.childrenIds[0];
+    const secondHeaderId = normalized.components.root_two.childrenIds[0];
+
+    expect(firstHeaderId).toBe('comp_header');
+    expect(secondHeaderId).not.toBe(firstHeaderId);
+    expect(normalized.components[secondHeaderId].type).toBe('header');
+    const clonedInnerId = normalized.components[secondHeaderId].childrenIds[0];
+    const clonedCtaId = normalized.components[clonedInnerId].childrenIds[0];
+    expect(clonedCtaId).not.toBe('header_cta_btn');
+    expect(normalized.components[clonedCtaId].type).toBe('button');
+    expect(normalized.pages[1].rootNodeId).toBe('root_two');
+  });
+
+  it('recovers duplicate page root ownership with a cloned independent root', () => {
+    const input = {
+      id: 'duplicate_roots',
+      pages: [
+        { id: 'page_one', name: 'One', slug: '', rootNodeId: 'root' },
+        { id: 'page_two', name: 'Two', slug: 'two', rootNodeId: 'root' },
+      ],
+      components: {
+        root: node('root', 'container', null, ['hero']),
+        hero: node('hero', 'hero', 'root'),
+      },
+    } as any;
+
+    const normalized = normalizeWebsiteTree(input);
+
+    expect(normalized.pages[0].rootNodeId).toBe('root');
+    expect(normalized.pages[1].rootNodeId).not.toBe('root');
+    expect(normalized.components[normalized.pages[1].rootNodeId].childrenIds).toHaveLength(1);
+    expect(normalized.components[normalized.pages[1].rootNodeId].childrenIds[0]).not.toBe('hero');
+  });
+
   it('renders only one valid Products section and detaches Products from Hero', () => {
     const input = website({
       root: node('root', 'container', null, ['hero', 'products_one', 'products_two']),

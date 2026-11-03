@@ -737,6 +737,9 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
             id={nodeId}
             style={getComputedStyles()}
             dir="rtl"
+            onClick={handleClick}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           >
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
               <div className="max-w-xl text-slate-400">
@@ -753,6 +756,9 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
         <div
           id={nodeId}
           style={getComputedStyles()}
+          onClick={handleClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
           {node.childrenIds.map((childId) => (
             <ComponentRenderer

@@ -261,8 +261,8 @@ function dedupeRecords<T>(items: T[], key: (item: T) => string): T[] {
 /**
  * Return a copy of the website whose trees are safe to render. The existing
  * component map is retained so merchant data is not deleted; malformed and
- * unreachable nodes are detached (parent=null, children=[]). Only first valid
- * occurrence of a node is kept, ordered by page order and child order.
+ * unreachable nodes are detached (parent=null, children=[]). Shared ordinary
+ * component instances are cloned across pages so each page has a valid tree.
  */
 export function normalizeWebsiteTree<T extends Website>(website: T): T {
   if (!isRecord(website) || !isRecord(website.components)) return website;
@@ -289,16 +289,53 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
     );
   }
 
-  const pages = Array.isArray(website.pages) ? website.pages : [];
+  const pages = Array.isArray(website.pages) ? website.pages.map((page) => ({ ...page })) : [];
   const pageRootIds = new Set(
     pages.map((page) => page?.rootNodeId).filter((id): id is string => typeof id === 'string')
   );
   const claimed = new Set<string>();
   const visitedRoots = new Set<string>();
+  const claimedByPage = new Map<string, string>();
+
+  const cloneSubtreeForPage = (sourceRootId: string, pageId: string): string | null => {
+    const safePageId = pageId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const localClaimed = new Set<string>();
+    const clone = (sourceId: string, parentId: string | null, trail: Set<string>): string | null => {
+      const source = components[sourceId];
+      if (!source || trail.has(sourceId) || localClaimed.has(sourceId)) return null;
+      localClaimed.add(sourceId);
+      const baseId = `${sourceId}__page_${safePageId}`;
+      let clonedId = baseId;
+      let suffix = 1;
+      while (components[clonedId]) clonedId = `${baseId}_${suffix++}`;
+      const clonedNode: ComponentNode = {
+        ...source,
+        id: clonedId,
+        parentId,
+        childrenIds: [],
+        props: { ...source.props },
+        styles: { ...source.styles },
+      };
+      components[clonedId] = clonedNode;
+      claimed.add(clonedId);
+      claimedByPage.set(clonedId, pageId);
+      const nextTrail = new Set(trail).add(sourceId);
+      const childSeen = new Set<string>();
+      for (const childId of originalChildren.get(sourceId) || []) {
+        if (childSeen.has(childId) || pageRootIds.has(childId) || nextTrail.has(childId) || !components[childId]) continue;
+        childSeen.add(childId);
+        const clonedChildId = clone(childId, clonedId, nextTrail);
+        if (clonedChildId) clonedNode.childrenIds.push(clonedChildId);
+      }
+      return clonedId;
+    };
+    return clone(sourceRootId, null, new Set());
+  };
 
   const normalizeChildren = (
     parentId: string,
     pageRootId: string,
+    pageId: string,
     trail: Set<string>,
     productSectionSeen: { value: boolean }
   ): string[] => {
@@ -313,32 +350,62 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
       localSeen.add(childId);
       // A page root cannot also be nested in another page's component tree.
       if (pageRootIds.has(childId)) continue;
-      // The first page/parent path claims a component. Later references are isolated.
-      if (claimed.has(childId)) continue;
+      // A repeated parent within one page is invalid. A shared ordinary node
+      // across pages is cloned so both page trees remain independently editable.
+      if (claimed.has(childId)) {
+        const ownerPageId = claimedByPage.get(childId);
+        if (ownerPageId && ownerPageId !== pageId) {
+          const clonedChildId = cloneSubtreeForPage(childId, pageId);
+          if (clonedChildId) {
+            components[clonedChildId].parentId = parentId;
+            result.push(clonedChildId);
+          }
+        }
+        continue;
+      }
       if (child.type === 'products') {
         if (!isAllowedProductsParent(parent, pageRootId) || productSectionSeen.value) continue;
         productSectionSeen.value = true;
       }
 
       claimed.add(childId);
+      claimedByPage.set(childId, pageId);
       child.parentId = parentId;
       const nextTrail = new Set(trail);
       nextTrail.add(childId);
-      child.childrenIds = normalizeChildren(childId, pageRootId, nextTrail, productSectionSeen);
+      child.childrenIds = normalizeChildren(childId, pageRootId, pageId, nextTrail, productSectionSeen);
       result.push(childId);
     }
     return result;
   };
 
   for (const page of pages) {
-    const rootId = page?.rootNodeId;
-    if (typeof rootId !== 'string' || !components[rootId] || visitedRoots.has(rootId)) continue;
+    let rootId = page?.rootNodeId;
+    if (typeof rootId !== 'string' || !components[rootId]) continue;
+    let clonedRoot = false;
+    if (visitedRoots.has(rootId)) {
+      const clonedRootId = cloneSubtreeForPage(rootId, String(page.id || '(unknown-page)'));
+      if (!clonedRootId) continue;
+      rootId = clonedRootId;
+      page.rootNodeId = rootId;
+      pageRootIds.add(rootId);
+      clonedRoot = true;
+    }
     visitedRoots.add(rootId);
     claimed.add(rootId);
+    claimedByPage.set(rootId, String(page.id || '(unknown-page)'));
     const root = components[rootId];
     root.parentId = null;
     const productSectionSeen = { value: false };
-    root.childrenIds = normalizeChildren(rootId, rootId, new Set([rootId]), productSectionSeen);
+    if (!clonedRoot) {
+      root.childrenIds = normalizeChildren(
+        rootId,
+        rootId,
+        String(page.id || '(unknown-page)'),
+        new Set([rootId]),
+        productSectionSeen
+      );
+    }
   }
 
   // Keep detached node records for merchant recovery, but never let unreachable
@@ -350,5 +417,5 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
     }
   }
 
-  return { ...website, components };
+  return { ...website, pages, components };
 }

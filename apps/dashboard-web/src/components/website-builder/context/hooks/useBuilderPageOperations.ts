@@ -7,6 +7,7 @@ import {
   PagePlacementMode,
   Website,
 } from '../../types/builder';
+import { createUniqueBuilderId } from '../builderUtils';
 
 export interface UseBuilderPageOperationsProps {
   website: Website;
@@ -16,6 +17,52 @@ export interface UseBuilderPageOperationsProps {
   setSelectedNodeId: (id: string | null) => void;
   recordHistory: (actionDesc: string, newWebsite: Website) => void;
 }
+
+const collectReachableIds = (website: Website, roots: string[]): Set<string> => {
+  const reachable = new Set<string>();
+  const visit = (id: string) => {
+    if (reachable.has(id) || !website.components[id]) return;
+    reachable.add(id);
+    website.components[id].childrenIds?.forEach(visit);
+  };
+  roots.forEach(visit);
+  return reachable;
+};
+
+export const removePageAndOrphans = (currentWebsite: Website, pageId: string): Website => {
+  const deletedPage = currentWebsite.pages.find((page) => page.id === pageId);
+  if (!deletedPage || currentWebsite.pages.length <= 1) return currentWebsite;
+  const newPages = currentWebsite.pages.filter((page) => page.id !== pageId);
+  const removedPageReachable = collectReachableIds(currentWebsite, [deletedPage.rootNodeId]);
+  const components = { ...currentWebsite.components };
+  for (const [id, node] of Object.entries(components)) {
+    const childrenIds = (node.childrenIds || []).filter((childId) => {
+      const child = components[childId];
+      return !(child?.props?.pageId === pageId || child?.props?.url === `/${deletedPage.slug}`);
+    });
+    const dropdownItems = Array.isArray(node.props?.dropdownItems)
+      ? node.props.dropdownItems.filter(
+          (item: DropdownSubItem) => item.pageId !== pageId && item.url !== `/${deletedPage.slug}`
+        )
+      : undefined;
+    if (
+      childrenIds.length !== (node.childrenIds || []).length ||
+      dropdownItems?.length !== node.props?.dropdownItems?.length
+    ) {
+      components[id] = {
+        ...node,
+        childrenIds,
+        props: dropdownItems ? { ...node.props, dropdownItems } : node.props,
+      };
+    }
+  }
+  const newWebsite: Website = { ...currentWebsite, pages: newPages, components };
+  const remainingReachable = collectReachableIds(newWebsite, newPages.map((page) => page.rootNodeId));
+  for (const id of removedPageReachable) {
+    if (!remainingReachable.has(id)) delete newWebsite.components[id];
+  }
+  return newWebsite;
+};
 
 export const useBuilderPageOperations = ({
   website,
@@ -102,14 +149,28 @@ export const useBuilderPageOperations = ({
         pageTemplate = 'blank',
       } = options;
 
-      const newPageId = `page_${Date.now().toString(36)}`;
-      const rootId = `root_${newPageId}`;
+      const usedIds = new Set([...currentWebsite.pages.map((page) => page.id), ...Object.keys(currentWebsite.components)]);
+      const newPageId = createUniqueBuilderId('page', usedIds);
+      const rootId = createUniqueBuilderId('root', usedIds);
       const cleanSlug = (slug || name).toLowerCase().replace(/\s+/g, '-');
       const newComponents = { ...currentWebsite.components };
+      const cloneSubtree = (sourceId: string, parentId: string | null, path = new Set<string>()): string | null => {
+        const source = currentWebsite.components[sourceId];
+        if (!source || path.has(sourceId)) return null;
+        const clonedId = createUniqueBuilderId('page_component', usedIds);
+        const nextPath = new Set(path).add(sourceId);
+        const clonedChildren: string[] = [];
+        newComponents[clonedId] = { ...source, id: clonedId, parentId, childrenIds: clonedChildren };
+        for (const childId of source.childrenIds || []) {
+          const childCloneId = cloneSubtree(childId, clonedId, nextPath);
+          if (childCloneId) clonedChildren.push(childCloneId);
+        }
+        return clonedId;
+      };
 
       // Build template sections
       const pageSectionIds: string[] = [];
-      const heroId = `hero_${newPageId}`;
+      const heroId = createUniqueBuilderId('hero', usedIds);
       pageSectionIds.push(heroId);
 
       // Default Hero for the new page
@@ -142,8 +203,8 @@ export const useBuilderPageOperations = ({
 
       // If catalog grid template selected
       if (pageTemplate === 'catalog_grid') {
-        const filterId = `filter_${newPageId}`;
-        const gridId = `grid_${newPageId}`;
+        const filterId = createUniqueBuilderId('filter', usedIds);
+        const gridId = createUniqueBuilderId('grid', usedIds);
         pageSectionIds.push(filterId, gridId);
 
         newComponents[filterId] = {
@@ -206,8 +267,8 @@ export const useBuilderPageOperations = ({
 
       // If product page template selected
       if (pageTemplate === 'product_page') {
-        const productShowcaseId = `pdetail_${newPageId}`;
-        const specsId = `pspecs_${newPageId}`;
+        const productShowcaseId = createUniqueBuilderId('pdetail', usedIds);
+        const specsId = createUniqueBuilderId('pspecs', usedIds);
         pageSectionIds.push(productShowcaseId, specsId);
 
         newComponents[productShowcaseId] = {
@@ -277,7 +338,7 @@ export const useBuilderPageOperations = ({
 
       // If login page template selected
       if (pageTemplate === 'login_page') {
-        const authSectionId = `auth_sec_${newPageId}`;
+        const authSectionId = createUniqueBuilderId('auth_section', usedIds);
         pageSectionIds.length = 0; // Replace default hero with dedicated login section
         pageSectionIds.push(authSectionId);
 
@@ -315,7 +376,7 @@ export const useBuilderPageOperations = ({
 
       // If register page template selected
       if (pageTemplate === 'register_page') {
-        const authSectionId = `auth_sec_${newPageId}`;
+        const authSectionId = createUniqueBuilderId('auth_section', usedIds);
         pageSectionIds.length = 0; // Replace default hero with dedicated register section
         pageSectionIds.push(authSectionId);
 
@@ -354,11 +415,13 @@ export const useBuilderPageOperations = ({
       // Root children
       const rootChildrenIds: string[] = [];
       if (includeHeaderFooter && newComponents['comp_header']) {
-        rootChildrenIds.push('comp_header');
+        const headerId = cloneSubtree('comp_header', rootId);
+        if (headerId) rootChildrenIds.push(headerId);
       }
       rootChildrenIds.push(...pageSectionIds);
       if (includeHeaderFooter && newComponents['comp_footer']) {
-        rootChildrenIds.push('comp_footer');
+        const footerId = cloneSubtree('comp_footer', rootId);
+        if (footerId) rootChildrenIds.push(footerId);
       }
 
       newComponents[rootId] = {
@@ -384,9 +447,28 @@ export const useBuilderPageOperations = ({
       // Apply Navigation Placement
       const navText = headerTitle || name;
       if (placement === 'header_direct' || placement === 'header_and_footer') {
-        const navLinkId = `nav_link_${newPageId}`;
-        const headerNav = newComponents['header_nav'];
-        if (headerNav) {
+        const navContainerIds = new Set<string>();
+        const visitForNavigation = (id: string, seen = new Set<string>()) => {
+          if (seen.has(id)) return;
+          seen.add(id);
+          const candidate = newComponents[id];
+          if (!candidate) return;
+          if (
+            Array.isArray(candidate.childrenIds) &&
+            (id === 'header_nav' || id.toLowerCase().includes('nav') || candidate.category === 'navigation')
+          ) {
+            navContainerIds.add(id);
+          }
+          candidate.childrenIds?.forEach((childId: string) => visitForNavigation(childId, seen));
+        };
+        [...currentWebsite.pages.map((page) => page.rootNodeId), rootId].forEach((root) =>
+          visitForNavigation(root)
+        );
+        if (navContainerIds.size === 0 && newComponents['header_nav']) navContainerIds.add('header_nav');
+        for (const navContainerId of navContainerIds) {
+          const navLinkId = createUniqueBuilderId('nav_link', usedIds);
+          const headerNav = newComponents[navContainerId];
+          if (!headerNav) continue;
           newComponents[navLinkId] = {
             id: navLinkId,
             name: `رابط ${navText}`,
@@ -407,7 +489,7 @@ export const useBuilderPageOperations = ({
               },
             },
           };
-          newComponents['header_nav'] = {
+          newComponents[navContainerId] = {
             ...headerNav,
             childrenIds: [...headerNav.childrenIds, navLinkId],
           };
@@ -418,7 +500,7 @@ export const useBuilderPageOperations = ({
         if (targetNavNode) {
           const existingDropdownItems: DropdownSubItem[] = targetNavNode.props.dropdownItems || [];
           const newDropdownItem: DropdownSubItem = {
-            id: `sub_${newPageId}`,
+            id: createUniqueBuilderId('sub', usedIds),
             title: navText,
             description: dropdownDescription || `تصفح تفاصيل ومحتوى ${name}`,
             url: `/${cleanSlug}`,
@@ -472,8 +554,9 @@ export const useBuilderPageOperations = ({
 
       recordHistory(`إضافة صفحة جديدة (${name}) - [${placementLabel}]`, newWebsite);
       setActivePageId(newPageId);
+      setSelectedNodeId(rootId);
     },
-    [website, websiteRef, recordHistory, setActivePageId]
+    [website, websiteRef, recordHistory, setActivePageId, setSelectedNodeId]
   );
 
   const updatePagePlacement = useCallback(
@@ -616,19 +699,16 @@ export const useBuilderPageOperations = ({
   const deletePage = useCallback(
     (pageId: string) => {
       const currentWebsite = websiteRef?.current ?? website;
-      if (currentWebsite.pages.length <= 1) return; // Prevent deleting only page
-      const newPages = currentWebsite.pages.filter((p) => p.id !== pageId);
-      const newWebsite: Website = {
-        ...currentWebsite,
-        pages: newPages,
-      };
+      const newWebsite = removePageAndOrphans(currentWebsite, pageId);
+      if (newWebsite === currentWebsite) return;
 
       recordHistory(`حذف صفحة (${pageId})`, newWebsite);
       if (activePageId === pageId) {
-        setActivePageId(newPages[0].id);
+        setActivePageId(newWebsite.pages[0].id);
+        setSelectedNodeId(newWebsite.pages[0].rootNodeId);
       }
     },
-    [website, websiteRef, activePageId, recordHistory, setActivePageId]
+    [website, websiteRef, activePageId, recordHistory, setActivePageId, setSelectedNodeId]
   );
 
   const updatePageMetadata = useCallback(

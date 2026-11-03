@@ -8,6 +8,23 @@ import { allActivityWebsites } from '../data/allActivityTemplates';
 import { sampleWebsites } from '../data/initialWebsites';
 import { normalizeWebsiteTree } from '@ray-eg/shared/builder';
 
+export const createUniqueBuilderId = (
+  prefix: string,
+  usedIds: Set<string>,
+  generateRandomId: () => string = () =>
+    typeof globalThis.crypto?.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`
+): string => {
+  const randomId = generateRandomId();
+  const baseId = `${prefix}_${randomId}`;
+  let id = baseId;
+  let suffix = 1;
+  while (usedIds.has(id)) id = `${baseId}_${suffix++}`;
+  usedIds.add(id);
+  return id;
+};
+
 /**
  * Section-library entries are authored as desktop-first compositions. Store a
  * sensible mobile override at insertion time so every ready-made section is
@@ -158,13 +175,33 @@ export const normalizeWebsite = (site: Website): Website => {
       .filter(([, node]) => Boolean(node) && typeof node === 'object')
       .map(([id, node]) => [id, { ...(node as ComponentNode), id }])
   ) as Record<string, ComponentNode>;
-  const componentIds = new Set(Object.keys(components));
-  const fallbackRootId = Object.entries(components).find(([, node]) => node.type === 'container')?.[0];
+  const claimedRootIds = new Set<string>();
   const incomingPages = Array.isArray(site.pages) && site.pages.length ? site.pages : BLANK_WEBSITE.pages;
-  const pages = incomingPages.map((page) => ({
-    ...page,
-    rootNodeId: componentIds.has(page.rootNodeId) ? page.rootNodeId : fallbackRootId || 'page_root',
-  }));
+  const pages = incomingPages.map((page) => {
+    const existingRootId = page.rootNodeId;
+    if (existingRootId && components[existingRootId] && !claimedRootIds.has(existingRootId)) {
+      claimedRootIds.add(existingRootId);
+      return { ...page };
+    }
+
+    const safePageId = String(page.id || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const baseRootId = `recovered_root_${safePageId}`;
+    let rootId = baseRootId;
+    let suffix = 1;
+    while (components[rootId] || claimedRootIds.has(rootId)) rootId = `${baseRootId}_${suffix++}`;
+    components[rootId] = {
+      id: rootId,
+      name: `Recovered page root (${page.name || page.id || 'page'})`,
+      type: 'container',
+      category: 'layout',
+      parentId: null,
+      childrenIds: [],
+      props: {},
+      styles: { desktop: { display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100vh' } },
+    } as ComponentNode;
+    claimedRootIds.add(rootId);
+    return { ...page, rootNodeId: rootId };
+  });
   return normalizeWebsiteTree({
     ...BLANK_WEBSITE,
     ...site,

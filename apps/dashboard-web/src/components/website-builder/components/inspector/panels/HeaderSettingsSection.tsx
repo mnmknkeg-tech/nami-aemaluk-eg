@@ -12,13 +12,67 @@ import {
   MessageCircle,
   Phone,
   Pin,
-  Eye,
-  EyeOff,
   Zap,
 } from 'lucide-react';
 import { useBuilder } from '../../../context/BuilderContext';
 import type { InspectorPanelProps } from './types';
-import type { ComponentNode } from '../../../types/builder';
+import type { ComponentNode, Website } from '../../../types/builder';
+
+export const findHeaderCtaForActivePage = (
+  website: Website,
+  activePageRootId: string,
+  node: ComponentNode,
+  parentSection: ComponentNode,
+  isHeader: boolean
+): ComponentNode | null => {
+  const activePageNodeIds = new Set<string>();
+  const visitPage = (id: string) => {
+    if (activePageNodeIds.has(id) || !website.components[id]) return;
+    activePageNodeIds.add(id);
+    website.components[id].childrenIds?.forEach(visitPage);
+  };
+  visitPage(activePageRootId);
+
+  const headerNodeIds = new Set<string>();
+  let ancestor: ComponentNode | undefined = node;
+  const visited = new Set<string>();
+  while (ancestor && activePageNodeIds.has(ancestor.id) && !visited.has(ancestor.id)) {
+    visited.add(ancestor.id);
+    if (ancestor.type === 'header' || ancestor.id.toLowerCase().includes('header')) {
+      const visitHeader = (id: string) => {
+        if (headerNodeIds.has(id) || !activePageNodeIds.has(id)) return;
+        headerNodeIds.add(id);
+        website.components[id]?.childrenIds?.forEach(visitHeader);
+      };
+      visitHeader(ancestor.id);
+      break;
+    }
+    ancestor = ancestor.parentId ? website.components[ancestor.parentId] : undefined;
+  }
+  if (headerNodeIds.size === 0 && isHeader && activePageNodeIds.has(parentSection.id)) {
+    const visitHeader = (id: string) => {
+      if (headerNodeIds.has(id) || !activePageNodeIds.has(id)) return;
+      headerNodeIds.add(id);
+      website.components[id]?.childrenIds?.forEach(visitHeader);
+    };
+    visitHeader(parentSection.id);
+  }
+
+  return (
+    [...headerNodeIds]
+      .map((id) => website.components[id])
+      .find(
+        (candidate): candidate is ComponentNode =>
+          Boolean(candidate) &&
+          candidate.type === 'button' &&
+          (candidate.id === 'header_cta_btn' ||
+            candidate.id === 'gen_header_cta' ||
+            candidate.id.endsWith('_cta') ||
+            candidate.id.toLowerCase().includes('cta') ||
+            candidate.id.toLowerCase().includes('action'))
+      ) || null
+  );
+};
 
 type HeaderSettingsSectionProps = Pick<
   InspectorPanelProps,
@@ -38,18 +92,10 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
   toggleAccordion,
   handlePropChange,
 }) => {
-  const { website } = useBuilder();
-
-  const ctaNode = (Object.values(website.components) as any[]).find(
-    (c: any) =>
-      c.type === 'button' &&
-      (c.id === 'header_cta_btn' ||
-        c.id === 'gen_header_cta' ||
-        c.id.endsWith('_cta') ||
-        c.id.includes('cta') ||
-        c.id.includes('action') ||
-        Boolean(c.parentId?.includes('header')))
-  ) as any;
+  const { website, activePage } = useBuilder();
+  const ctaNode = activePage
+    ? findHeaderCtaForActivePage(website, activePage.rootNodeId, node, parentSection, isHeader)
+    : null;
 
   const hideCart = Boolean(parentSection.props?.hideCart ?? node.props?.hideCart);
   const showLogin = parentSection.props?.showLogin !== false && node.props?.showLogin !== false;
@@ -336,7 +382,7 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
           </div>
 
           {/* 6. Primary CTA / Booking Button Control */}
-          {ctaNode && (
+          {ctaNode ? (
             <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
                 <div>
@@ -404,6 +450,10 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
                   </div>
                 </div>
               )}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-slate-300 p-2.5 text-[10px] text-slate-500">
+              لا يوجد زر إجراء مؤهل داخل الهيدر الحالي لهذه الصفحة.
             </div>
           )}
 

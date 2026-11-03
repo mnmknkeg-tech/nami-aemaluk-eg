@@ -8,7 +8,7 @@ import {
   Website,
 } from '../../types/builder';
 import { sectionTemplates } from '../../data/sectionLibrary';
-import { createTemplateMobileStyles } from '../builderUtils';
+import { createTemplateMobileStyles, createUniqueBuilderId } from '../builderUtils';
 
 export type WebsiteReducer = (website: Website) => Website;
 export type RecordWebsiteHistory = (
@@ -67,6 +67,24 @@ const replaceNode = (
   return { ...website, components: { ...website.components, [id]: update(target) } };
 };
 
+export const getPageReachableNodeIds = (website: Website, rootId: string): Set<string> => {
+  const ids = new Set<string>();
+  const visit = (id: string) => {
+    if (ids.has(id) || !website.components[id]) return;
+    ids.add(id);
+    website.components[id].childrenIds?.forEach(visit);
+  };
+  visit(rootId);
+  return ids;
+};
+
+export const resolvePageScopedSelection = (
+  website: Website,
+  rootId: string,
+  selectedId: string | null
+): string | null =>
+  selectedId && getPageReachableNodeIds(website, rootId).has(selectedId) ? selectedId : null;
+
 export const useBuilderComponentOperations = ({
   website,
   websiteRef,
@@ -79,27 +97,47 @@ export const useBuilderComponentOperations = ({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(initialSelectedNodeId);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
+  const activePageNodeIds = useMemo(
+    () => getPageReachableNodeIds(website, activePage.rootNodeId),
+    [activePage.rootNodeId, website]
+  );
+  const resolvedSelectedNodeId = resolvePageScopedSelection(
+    website,
+    activePage.rootNodeId,
+    selectedNodeId
+  );
+
   const selectedNode = useMemo(
-    () => (selectedNodeId ? website.components[selectedNodeId] || null : null),
-    [website.components, selectedNodeId]
+    () => (resolvedSelectedNodeId ? website.components[resolvedSelectedNodeId] || null : null),
+    [website.components, resolvedSelectedNodeId]
   );
   const selectionBreadcrumbs = useMemo(() => {
-    if (!selectedNodeId) return [];
+    if (!resolvedSelectedNodeId) return [];
     const crumbs: ComponentNode[] = [];
-    let curr: ComponentNode | undefined = website.components[selectedNodeId];
+    let curr: ComponentNode | undefined = website.components[resolvedSelectedNodeId];
+    const visited = new Set<string>();
     while (curr) {
+      if (visited.has(curr.id)) break;
+      visited.add(curr.id);
       crumbs.unshift(curr);
       curr = curr.parentId ? website.components[curr.parentId] : undefined;
     }
     return crumbs;
-  }, [website.components, selectedNodeId]);
+  }, [website.components, resolvedSelectedNodeId]);
+
+  useEffect(() => {
+    if (selectedNodeId && !activePageNodeIds.has(selectedNodeId)) {
+      setSelectedNodeId(website.components[activePage.rootNodeId] ? activePage.rootNodeId : null);
+    }
+  }, [activePage.rootNodeId, activePageNodeIds, selectedNodeId, website.components]);
 
   const selectNode = useCallback(
     (id: string | null) => {
-      setSelectedNodeId(id);
-      if (id) setIsMobileInspectorOpen(true);
+      const validId = id && activePageNodeIds.has(id) ? id : null;
+      setSelectedNodeId(validId);
+      if (validId) setIsMobileInspectorOpen(true);
     },
-    [setIsMobileInspectorOpen]
+    [activePageNodeIds, setIsMobileInspectorOpen]
   );
   const setHoveredNode = useCallback((id: string | null) => setHoveredNodeId(id), []);
 
@@ -135,7 +173,7 @@ export const useBuilderComponentOperations = ({
 
   const insertNode = useCallback(
     (node: ComponentNode, parentId: string, index?: number) => {
-      if (!websiteRef.current.components[parentId]) return;
+      if (!websiteRef.current.components[parentId] || websiteRef.current.components[node.id]) return;
       recordHistory(`إضافة عنصر (${node.name})`, (current) => {
         const parent = current.components[parentId];
         if (!parent) return current;
@@ -165,9 +203,9 @@ export const useBuilderComponentOperations = ({
       const current = websiteRef.current;
       if (!current.components[rootId]) return;
       const idMap: Record<string, string> = {};
-      const timestamp = Date.now().toString(36);
+      const usedIds = new Set(Object.keys(current.components));
       Object.keys(tmpl.nodes).forEach((origId) => {
-        idMap[origId] = `comp_${tmpl.category}_${timestamp}_${Math.random().toString(36).slice(2, 6)}`;
+        idMap[origId] = createUniqueBuilderId(`comp_${tmpl.category}`, usedIds);
       });
       const clonedNodes: Record<string, ComponentNode> = {};
       Object.values(tmpl.nodes).forEach((node) => {
@@ -255,9 +293,12 @@ export const useBuilderComponentOperations = ({
       const target = current.components[id];
       if (!target?.parentId) return;
       const idMap: Record<string, string> = {};
-      const timestamp = Date.now().toString(36);
+      const usedIds = new Set(Object.keys(current.components));
+      const visited = new Set<string>();
       const collect = (nodeId: string) => {
-        idMap[nodeId] = `dup_${timestamp}_${Math.random().toString(36).slice(2, 6)}`;
+        if (visited.has(nodeId) || !current.components[nodeId]) return;
+        visited.add(nodeId);
+        idMap[nodeId] = createUniqueBuilderId('dup', usedIds);
         current.components[nodeId]?.childrenIds.forEach(collect);
       };
       collect(id);
@@ -459,7 +500,7 @@ export const useBuilderComponentOperations = ({
   );
 
   return {
-    selectedNodeId,
+    selectedNodeId: resolvedSelectedNodeId,
     selectedNode,
     selectionBreadcrumbs,
     hoveredNodeId,
