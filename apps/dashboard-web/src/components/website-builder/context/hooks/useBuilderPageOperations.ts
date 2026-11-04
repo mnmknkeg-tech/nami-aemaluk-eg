@@ -57,7 +57,10 @@ export const removePageAndOrphans = (currentWebsite: Website, pageId: string): W
     }
   }
   const newWebsite: Website = { ...currentWebsite, pages: newPages, components };
-  const remainingReachable = collectReachableIds(newWebsite, newPages.map((page) => page.rootNodeId));
+  const remainingReachable = collectReachableIds(
+    newWebsite,
+    newPages.map((page) => page.rootNodeId)
+  );
   for (const id of removedPageReachable) {
     if (!remainingReachable.has(id)) delete newWebsite.components[id];
   }
@@ -149,12 +152,19 @@ export const useBuilderPageOperations = ({
         pageTemplate = 'blank',
       } = options;
 
-      const usedIds = new Set([...currentWebsite.pages.map((page) => page.id), ...Object.keys(currentWebsite.components)]);
+      const usedIds = new Set([
+        ...currentWebsite.pages.map((page) => page.id),
+        ...Object.keys(currentWebsite.components),
+      ]);
       const newPageId = createUniqueBuilderId('page', usedIds);
       const rootId = createUniqueBuilderId('root', usedIds);
       const cleanSlug = (slug || name).toLowerCase().replace(/\s+/g, '-');
       const newComponents = { ...currentWebsite.components };
-      const cloneSubtree = (sourceId: string, parentId: string | null, path = new Set<string>()): string | null => {
+      const cloneSubtree = (
+        sourceId: string,
+        parentId: string | null,
+        path = new Set<string>()
+      ): string | null => {
         const source = currentWebsite.components[sourceId];
         if (!source || path.has(sourceId)) return null;
         const clonedId = createUniqueBuilderId('page_component', usedIds);
@@ -186,38 +196,40 @@ export const useBuilderPageOperations = ({
         return clonedId;
       };
 
-      // Build template sections
+      // A blank page must contain no content sections. Non-blank templates opt
+      // into their initial sections below.
       const pageSectionIds: string[] = [];
-      const heroId = createUniqueBuilderId('hero', usedIds);
-      pageSectionIds.push(heroId);
+      if (pageTemplate !== 'blank') {
+        const heroId = createUniqueBuilderId('hero', usedIds);
+        pageSectionIds.push(heroId);
 
-      // Default Hero for the new page
-      newComponents[heroId] = {
-        id: heroId,
-        name: `قسم ${name} الترحيبي`,
-        type: 'hero',
-        category: 'section',
-        parentId: rootId,
-        childrenIds: [],
-        props: {
-          badge: dropdownBadge || 'قسم جديد',
-          title: name,
-          subtitle:
-            dropdownDescription ||
-            `مرحباً بك في صفحة ${name}. تم إعداد الصفحة وجاهزة للتخصيص الكامل وإضافة المكونات.`,
-        },
-        styles: {
-          desktop: {
-            display: 'block',
-            width: '100%',
-            backgroundColor: '#f8fafc',
-            paddingTop: '70px',
-            paddingBottom: '70px',
-            borderBottomWidth: '1px',
-            borderColor: '#e2e8f0',
+        newComponents[heroId] = {
+          id: heroId,
+          name: `قسم ${name} الترحيبي`,
+          type: 'hero',
+          category: 'section',
+          parentId: rootId,
+          childrenIds: [],
+          props: {
+            badge: dropdownBadge || 'قسم جديد',
+            title: name,
+            subtitle:
+              dropdownDescription ||
+              `مرحباً بك في صفحة ${name}. تم إعداد الصفحة وجاهزة للتخصيص الكامل وإضافة المكونات.`,
           },
-        },
-      };
+          styles: {
+            desktop: {
+              display: 'block',
+              width: '100%',
+              backgroundColor: '#f8fafc',
+              paddingTop: '70px',
+              paddingBottom: '70px',
+              borderBottomWidth: '1px',
+              borderColor: '#e2e8f0',
+            },
+          },
+        };
+      }
 
       // If catalog grid template selected
       if (pageTemplate === 'catalog_grid') {
@@ -473,7 +485,9 @@ export const useBuilderPageOperations = ({
           if (!candidate) return;
           if (
             Array.isArray(candidate.childrenIds) &&
-            (id === 'header_nav' || id.toLowerCase().includes('nav') || candidate.category === 'navigation')
+            (id === 'header_nav' ||
+              id.toLowerCase().includes('nav') ||
+              candidate.category === 'navigation')
           ) {
             navContainerIds.add(id);
           }
@@ -482,7 +496,8 @@ export const useBuilderPageOperations = ({
         [...currentWebsite.pages.map((page) => page.rootNodeId), rootId].forEach((root) =>
           visitForNavigation(root)
         );
-        if (navContainerIds.size === 0 && newComponents['header_nav']) navContainerIds.add('header_nav');
+        if (navContainerIds.size === 0 && newComponents['header_nav'])
+          navContainerIds.add('header_nav');
         for (const navContainerId of navContainerIds) {
           const navLinkId = createUniqueBuilderId('nav_link', usedIds);
           const headerNav = newComponents[navContainerId];

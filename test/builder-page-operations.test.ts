@@ -183,6 +183,47 @@ describe('active page selection scope', () => {
 });
 
 describe('addPage', () => {
+  it('keeps an explicitly blank page free of generated content sections', () => {
+    const website = {
+      id: 'site',
+      name: 'Store',
+      pages: [{ id: 'home', name: 'Home', slug: '', rootNodeId: 'home_root' }],
+      components: { home_root: node('home_root') },
+    } as any;
+    let nextWebsite: any;
+    let operations: ReturnType<typeof useBuilderPageOperations> | undefined;
+    const Probe = () => {
+      operations = useBuilderPageOperations({
+        website,
+        websiteRef: { current: website },
+        activePageId: 'home',
+        setActivePageId: jest.fn(),
+        setSelectedNodeId: jest.fn(),
+        recordHistory: jest.fn((_label: string, result: any) => {
+          nextWebsite = result;
+        }),
+      });
+      return null;
+    };
+
+    renderToString(React.createElement(Probe));
+    operations!.addPage({
+      name: 'Empty',
+      slug: 'empty',
+      includeHeaderFooter: false,
+      pageTemplate: 'blank',
+    });
+
+    const blankPage = nextWebsite.pages[1];
+    const blankRoot = nextWebsite.components[blankPage.rootNodeId];
+    expect(blankRoot.childrenIds).toEqual([]);
+    expect(
+      Object.values(nextWebsite.components).some(
+        (component: any) => component.parentId === blankPage.rootNodeId && component.type === 'hero'
+      )
+    ).toBe(false);
+  });
+
   it('creates independent Header/Footer trees and selects the new page root', () => {
     const website = {
       id: 'site',
