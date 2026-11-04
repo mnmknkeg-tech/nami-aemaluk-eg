@@ -1,5 +1,5 @@
 import React from 'react';
-import { computeResponsiveNodeStyles } from '@ray-eg/shared/builder';
+import { computeResponsiveNodeStyles, resolveThemeFontFamily } from '@ray-eg/shared/builder';
 import { useBuilder } from '../../context/BuilderContext';
 import { StyleProperties, ViewportBreakpoint } from '../../types/builder';
 import { BaseRendererProps } from './renderers/types';
@@ -118,7 +118,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
     computeResponsiveNodeStyles(
       node,
       currentViewport,
-      website.theme?.typography?.fontBody || 'Cairo, sans-serif'
+      resolveThemeFontFamily(node, website.theme?.typography || {})
     );
 
   // Smart Navigation and Action handler for preview mode

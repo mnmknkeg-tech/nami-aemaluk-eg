@@ -142,6 +142,17 @@ export function validateWebsiteForPublishing(website: unknown): string[] {
     if (node.id !== id) {
       errors.push(`المكون ${id}: معرّف المكون لا يطابق مفتاحه في شجرة الموقع.`);
     }
+    const hasTemporaryImageReference = (value: unknown, visited = new Set<object>()): boolean => {
+      if (typeof value === 'string') return /(?:^|[('\"]?)blob:/i.test(value);
+      if (!value || typeof value !== 'object' || visited.has(value as object)) return false;
+      visited.add(value as object);
+      return Object.values(value as Record<string, unknown>).some((child) =>
+        hasTemporaryImageReference(child, visited)
+      );
+    };
+    if (hasTemporaryImageReference(node.props) || hasTemporaryImageReference(node.styles)) {
+      errors.push(`المكون ${id}: يحتوي على صورة مؤقتة (blob:)؛ ارفع الصورة إلى التخزين الدائم قبل النشر.`);
+    }
     const children = Array.isArray(node.childrenIds) ? node.childrenIds : [];
     childrenByParent.set(
       id,

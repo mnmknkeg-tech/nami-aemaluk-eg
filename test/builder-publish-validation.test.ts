@@ -86,12 +86,30 @@ describe('validateWebsiteForPublishing', () => {
     const website = makeWebsite({
       components: {
         root: { ...makeWebsite().components.root, styles: { desktop: { minHeight: '100vh' } } },
-        section: { ...makeWebsite().components.section, styles: { desktop: { height: '999999px' } } },
+        section: {
+          ...makeWebsite().components.section,
+          styles: { desktop: { height: '999999px' } },
+        },
       },
     });
     expect(validateWebsiteForPublishing(website).join(' ')).toMatch(/height في نمط desktop/);
   });
 
+  it('rejects temporary blob image references without changing the saved draft', () => {
+    const website = makeWebsite({
+      components: {
+        ...makeWebsite().components,
+        section: {
+          ...makeWebsite().components.section,
+          props: { imageUrl: 'blob:https://local/temporary' },
+        },
+      },
+    });
+    expect(validateWebsiteForPublishing(website).join(' ')).toMatch(
+      /المكون section.*صورة مؤقتة.*blob/
+    );
+    expect(website.components.section.props.imageUrl).toMatch(/^blob:/);
+  });
   it('rejects dangerous markup, blocked JavaScript and over-limit custom code', () => {
     const website = makeWebsite({
       components: {

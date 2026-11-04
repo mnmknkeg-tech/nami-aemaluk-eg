@@ -13,11 +13,12 @@ import {
 import { useBuilder } from '../../context/BuilderContext';
 
 export const AssetsPanel: React.FC = () => {
-  const { assets, uploadMockAsset, selectedNodeId, updateNodeProps } = useBuilder();
+  const { assets, uploadMockAsset, selectedNodeId, updateNodeProps, website } = useBuilder();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const stockPresets = [
     {
@@ -64,16 +65,30 @@ export const AssetsPanel: React.FC = () => {
 
   const allAssets = [...assets, ...stockPresets];
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      uploadMockAsset(file);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    setUploadError(null);
+    try {
+      await uploadMockAsset(file);
+    } catch (error) {
+      setUploadError(
+        error instanceof Error ? error.message : 'فشل رفع الصورة؛ لم نضفها إلى المكتبة.'
+      );
+    } finally {
+      input.value = '';
     }
   };
 
   const applyToSelectedNode = (url: string, alt: string) => {
     if (selectedNodeId) {
-      updateNodeProps(selectedNodeId, { src: url, image: url, alt });
+      const selectedNode = website.components[selectedNodeId];
+      if (selectedNode?.type === 'hero') {
+        updateNodeProps(selectedNodeId, { imageUrl: url });
+      } else {
+        updateNodeProps(selectedNodeId, { src: url, image: url, alt });
+      }
       setSelectedAsset(url);
     }
   };
@@ -102,6 +117,14 @@ export const AssetsPanel: React.FC = () => {
 
   return (
     <div className="p-3 space-y-3.5">
+      {uploadError && (
+        <div
+          role="alert"
+          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800"
+        >
+          {uploadError}
+        </div>
+      )}
       {/* Title & Upload Button */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-1.5">

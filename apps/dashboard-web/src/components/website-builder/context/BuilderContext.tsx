@@ -26,6 +26,8 @@ import { mockTenants, mockAssets } from '../data/mockTenants';
 import { allActivityWebsites, activityTemplatesMeta } from '../data/allActivityTemplates';
 import { sampleWebsites } from '../data/initialWebsites';
 import { apiRequest } from '../../../lib/api/client';
+import { uploadMediaFile } from '../../../lib/api/upload';
+import { validateImageFile } from '../../../lib/image-utils';
 
 // Sub-hooks
 import { useBuilderCart } from './hooks/useBuilderCart';
@@ -476,14 +478,21 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   );
 
   const uploadMockAsset = useCallback(
-    (file: File) => {
+    async (file: File) => {
+      const validation = validateImageFile(file);
+      if (!validation.valid) throw new Error(validation.error || 'نوع أو حجم الصورة غير مقبول.');
+      if (!currentTenant.id) throw new Error('تعذر تحديد المتجر لرفع الصورة.');
+      const url = await uploadMediaFile(file, currentTenant.id, 'website_image');
+      if (!url || !/^https:\/\//i.test(url) || /^blob:/i.test(url)) {
+        throw new Error('لم يُرجع التخزين رابط صورة دائمًا وآمنًا.');
+      }
       const newAsset: AssetDto = {
         id: `asset_${Date.now()}`,
         tenantId: currentTenant.id,
         fileName: file.name,
-        fileType: file.type.startsWith('image/') ? 'image' : 'document',
-        url: URL.createObjectURL(file),
-        thumbnailUrl: URL.createObjectURL(file),
+        fileType: 'image',
+        url,
+        thumbnailUrl: url,
         sizeBytes: file.size,
         altText: file.name,
         category: 'Uploads',
@@ -495,7 +504,6 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     },
     [currentTenant.id]
   );
-
   // ── Context value ────────────────────────────────────────────────────────
 
   return (

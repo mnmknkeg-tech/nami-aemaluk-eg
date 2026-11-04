@@ -55,6 +55,7 @@ export const MediaSection: React.FC<MediaSectionProps> = ({
         {/* CURRENT IMAGE PREVIEW & QUICK REPLACE */}
         {((isHero && heroImageNode) ||
           node.type === 'image' ||
+          node.props.imageUrl ||
           node.props.image ||
           node.props.src ||
           currentStyles.backgroundImage) && (
@@ -70,6 +71,7 @@ export const MediaSection: React.FC<MediaSectionProps> = ({
               <img
                 src={
                   (isHero && heroImageNode?.props?.src) ||
+                  (isHero && node.props.imageUrl) ||
                   node.props.src ||
                   node.props.image ||
                   currentStyles.backgroundImage?.replace(/url\(['"](.*?)['"]\)/, '$1') ||
@@ -116,7 +118,11 @@ export const MediaSection: React.FC<MediaSectionProps> = ({
               <input
                 type="text"
                 value={
-                  (isHero && heroImageNode?.props?.src) || node.props.src || node.props.image || ''
+                  (isHero && heroImageNode?.props?.src) ||
+                  (isHero && node.props.imageUrl) ||
+                  node.props.src ||
+                  node.props.image ||
+                  ''
                 }
                 onChange={(e) => {
                   const val = e.target.value;

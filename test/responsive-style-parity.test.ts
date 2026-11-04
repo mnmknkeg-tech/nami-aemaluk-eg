@@ -1,5 +1,6 @@
 import {
   computeResponsiveNodeStyles,
+  resolveThemeFontFamily,
   mergeResponsiveStyles,
   stylePropertiesToCss,
 } from '../packages/shared/src/builder/responsiveStyles';
@@ -137,5 +138,54 @@ describe('shared responsive style merge used by dashboard, shared public, and ma
     expect(computeResponsiveNodeStyles(overriddenGrid, 'mobile').gridTemplateColumns).toBe(
       'repeat(2, minmax(0, 1fr))'
     );
+  });
+});
+
+describe('shared style conversion for theme backgrounds and typography', () => {
+  it('keeps solid background colors as colors', () => {
+    expect(stylePropertiesToCss({ backgroundColor: '#123456' } as any)).toMatchObject({
+      backgroundColor: '#123456',
+    });
+  });
+  it('renders legacy gradients saved in backgroundColor as background images', () => {
+    const css = stylePropertiesToCss({
+      backgroundColor: 'linear-gradient(135deg, #000 0%, #fff 100%)',
+    } as any);
+    expect(css.backgroundColor).toBeUndefined();
+    expect(css.backgroundImage).toMatch(/^linear-gradient/);
+  });
+  it('does not promote arbitrary non-gradient values to background images', () => {
+    const css = stylePropertiesToCss({ backgroundColor: 'var(--merchant-color)' } as any);
+    expect(css.backgroundColor).toBe('var(--merchant-color)');
+    expect(css.backgroundImage).toBeUndefined();
+  });
+  it('retains an explicit gradient style when a solid background is also present', () => {
+    expect(
+      stylePropertiesToCss({
+        backgroundColor: '#123456',
+        backgroundGradient: 'radial-gradient(circle, #fff, #000)',
+      } as any)
+    ).toMatchObject({
+      backgroundColor: '#123456',
+      backgroundImage: 'radial-gradient(circle, #fff, #000)',
+    });
+  });
+});
+
+describe('theme typography font selection', () => {
+  const typography = { fontHeading: 'Tajawal, sans-serif', fontBody: 'Cairo, sans-serif' };
+  it.each(['heading', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'])(
+    'uses the configured heading font for %s nodes',
+    (type) => {
+      expect(resolveThemeFontFamily({ type }, typography)).toBe(typography.fontHeading);
+    }
+  );
+  it('uses the configured body font for paragraph nodes', () => {
+    expect(resolveThemeFontFamily({ type: 'paragraph', category: 'typography' }, typography)).toBe(
+      typography.fontBody
+    );
+  });
+  it('uses a safe default when typography settings are missing', () => {
+    expect(resolveThemeFontFamily({ type: 'heading' }, {})).toBe('Cairo, sans-serif');
   });
 });

@@ -52,7 +52,8 @@ import {
 } from './productCard';
 import { CustomCodeFrame } from './CustomCodeFrame';
 import { PublishedProductCard } from './PublishedProductCard';
-import { computeResponsiveNodeStyles } from './responsiveStyles';
+import { computeResponsiveNodeStyles, resolveThemeFontFamily } from './responsiveStyles';
+import { resolveHeroContent } from './heroCompatibility';
 import { CartIcon } from './CartIcon';
 import { isCartVisible, resolveCartIconType } from './cartPolicy';
 
@@ -683,7 +684,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
 
   // Compute responsive styles merged by current breakpoint (faithful port).
   const getComputedStyles = (): React.CSSProperties =>
-    computeResponsiveNodeStyles(node, viewport, theme.typography.fontBody || 'Cairo, sans-serif');
+    computeResponsiveNodeStyles(node, viewport, resolveThemeFontFamily(node, theme.typography));
 
   const interactiveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1950,7 +1951,8 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
 
     // ------------------------------------------------------------------- hero
     case 'hero': {
-      const heroStats = node.props.stats || [];
+      const heroContent = resolveHeroContent(node, website.components);
+      const heroStats = heroContent.stats;
       const primaryColor = theme.colors.primary;
 
       return (
@@ -1958,33 +1960,35 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-16">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-center">
               <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-right">
-                {node.props.badge && (
+                {heroContent.badge && !heroContent.childContent.badge && (
                   <span
                     style={{ backgroundColor: withAlpha(primaryColor, '15'), color: primaryColor }}
                     className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>{node.props.badge}</span>
+                    <span>{heroContent.badge}</span>
                   </span>
                 )}
 
-                <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 leading-tight break-words">
-                  {node.props.title}
-                  {node.props.highlightTitle && (
-                    <span style={{ color: primaryColor }} className="block sm:inline sm:mr-2">
-                      {node.props.highlightTitle}
-                    </span>
-                  )}
-                </h1>
+                {!heroContent.childContent.title && (
+                  <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 leading-tight break-words">
+                    {heroContent.title}
+                    {heroContent.highlightTitle && (
+                      <span style={{ color: primaryColor }} className="block sm:inline sm:mr-2">
+                        {heroContent.highlightTitle}
+                      </span>
+                    )}
+                  </h1>
+                )}
 
-                {node.props.description && (
+                {heroContent.description && !heroContent.childContent.description && (
                   <p className="text-xs sm:text-base text-slate-600 leading-relaxed max-w-2xl break-words">
-                    {node.props.description}
+                    {heroContent.description}
                   </p>
                 )}
 
                 <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-4 pt-2">
-                  {node.props.primaryCtaText && (
+                  {heroContent.primaryCtaText && !heroContent.childContent.primaryCta && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1992,7 +1996,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                           e,
                           {
                             ...node,
-                            props: { ...node.props, url: node.props.primaryCtaLink || '#items' },
+                            props: { ...node.props, url: heroContent.primaryCtaLink || '#items' },
                           },
                           ctx
                         );
@@ -2003,12 +2007,12 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                       }}
                       className="w-full sm:w-auto px-5 sm:px-7 py-3 text-white font-bold text-xs sm:text-sm shadow-md hover:opacity-95 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0 text-center"
                     >
-                      <span>{node.props.primaryCtaText}</span>
+                      <span>{heroContent.primaryCtaText}</span>
                       <ArrowRight className="w-4 h-4 rtl:rotate-180" />
                     </button>
                   )}
 
-                  {node.props.secondaryCtaText && (
+                  {heroContent.secondaryCtaText && !heroContent.childContent.secondaryCta && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -2018,7 +2022,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                             ...node,
                             props: {
                               ...node.props,
-                              url: node.props.secondaryCtaLink || '#contact',
+                              url: heroContent.secondaryCtaLink || '#contact',
                               pageId: 'page_contact',
                             },
                           },
@@ -2027,12 +2031,12 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                       }}
                       className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all cursor-pointer shrink-0 text-center justify-center flex items-center"
                     >
-                      <span>{node.props.secondaryCtaText}</span>
+                      <span>{heroContent.secondaryCtaText}</span>
                     </button>
                   )}
                 </div>
 
-                {heroStats.length > 0 && (
+                {heroStats.length > 0 && !heroContent.childContent.stats && (
                   <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-6 border-t border-slate-200/80 text-center sm:text-right">
                     {heroStats.map((stat: any, sIdx: number) => (
                       <div key={sIdx} className="space-y-0.5 min-w-0">
@@ -2051,12 +2055,12 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                 )}
               </div>
 
-              {node.props.imageUrl && (
+              {heroContent.imageUrl && !heroContent.childContent.image && (
                 <div className="lg:col-span-5 w-full">
                   <div className="relative rounded-2xl overflow-hidden shadow-xl border border-slate-100 bg-slate-100 aspect-16/10 sm:aspect-square max-h-[340px] sm:max-h-none">
                     <img
-                      src={node.props.imageUrl}
-                      alt={node.props.title || 'صورة الواجهة'}
+                      src={heroContent.imageUrl}
+                      alt={heroContent.title || 'صورة الواجهة'}
                       className="w-full h-full object-cover"
                       loading="lazy"
                     />

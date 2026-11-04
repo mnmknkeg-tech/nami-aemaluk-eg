@@ -1,6 +1,7 @@
 import React from 'react';
 import { BaseRendererProps } from './types';
 import { Sparkles, ArrowRight } from 'lucide-react';
+import { resolveHeroContent } from '@ray-eg/shared/builder/heroCompatibility';
 import {
   sectionBadgeStyle,
   sectionHeaderWrapClass,
@@ -23,7 +24,8 @@ export const HeroRenderer: React.FC<BaseRendererProps> = ({
   currentViewport,
 }) => {
   const isMobile = currentViewport === 'mobile';
-  const heroStats = node.props.stats || [];
+  const content = resolveHeroContent(node, website.components);
+  const heroStats = content.stats;
   const primaryColor = website.theme?.colors?.primary || '#2563eb';
 
   return (
@@ -47,33 +49,35 @@ export const HeroRenderer: React.FC<BaseRendererProps> = ({
           <div
             className={`${isMobile ? 'w-full' : 'lg:col-span-7'} space-y-3 sm:space-y-6 text-right`}
           >
-            {node.props.badge && (
+            {content.badge && !content.childContent.badge && (
               <span
                 style={sectionBadgeStyle(website.theme)}
                 className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>{node.props.badge}</span>
+                <span>{content.badge}</span>
               </span>
             )}
 
-            <h1
-              className={`${isMobile ? 'text-2xl' : 'text-2xl sm:text-4xl lg:text-5xl'} font-black text-slate-900 leading-tight break-words`}
-            >
-              {node.props.title}
-              {node.props.highlightTitle && (
-                <span
-                  style={{ color: primaryColor }}
-                  className={isMobile ? 'block mt-0.5' : 'block sm:inline sm:mr-2'}
-                >
-                  {node.props.highlightTitle}
-                </span>
-              )}
-            </h1>
+            {!content.childContent.title && (
+              <h1
+                className={`${isMobile ? 'text-2xl' : 'text-2xl sm:text-4xl lg:text-5xl'} font-black text-slate-900 leading-tight break-words`}
+              >
+                {content.title}
+                {content.highlightTitle && (
+                  <span
+                    style={{ color: primaryColor }}
+                    className={isMobile ? 'block mt-0.5' : 'block sm:inline sm:mr-2'}
+                  >
+                    {content.highlightTitle}
+                  </span>
+                )}
+              </h1>
+            )}
 
-            {node.props.description && (
+            {content.description && !content.childContent.description && (
               <p className={`${sectionSubtitleClass} text-slate-600 max-w-2xl`}>
-                {node.props.description}
+                {content.description}
               </p>
             )}
 
@@ -81,16 +85,16 @@ export const HeroRenderer: React.FC<BaseRendererProps> = ({
             <div
               className={`flex ${isMobile ? 'flex-col' : 'flex-col sm:flex-row'} flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-4 pt-1`}
             >
-              {node.props.primaryCtaText && (
+              {content.primaryCtaText && !content.childContent.primaryCta && (
                 <button
                   onClick={(e) => {
                     if (isInteractivePreview) {
                       e.stopPropagation();
                       handleInteraction(
                         e,
-                        node.props.primaryCtaLink || '#items',
+                        content.primaryCtaLink || '#items',
                         undefined,
-                        node.props.primaryCtaText
+                        content.primaryCtaText
                       );
                     }
                   }}
@@ -100,33 +104,33 @@ export const HeroRenderer: React.FC<BaseRendererProps> = ({
                   }}
                   className="w-full sm:w-auto px-5 sm:px-7 py-3 text-white font-bold text-xs sm:text-sm shadow-md hover:opacity-95 active:scale-98 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0 text-center"
                 >
-                  <span>{node.props.primaryCtaText}</span>
+                  <span>{content.primaryCtaText}</span>
                   <ArrowRight className="w-4 h-4 rtl:rotate-180" />
                 </button>
               )}
 
-              {node.props.secondaryCtaText && (
+              {content.secondaryCtaText && !content.childContent.secondaryCta && (
                 <button
                   onClick={(e) => {
                     if (isInteractivePreview) {
                       e.stopPropagation();
                       handleInteraction(
                         e,
-                        node.props.secondaryCtaLink || '#contact',
+                        content.secondaryCtaLink || '#contact',
                         'page_contact',
-                        node.props.secondaryCtaText
+                        content.secondaryCtaText
                       );
                     }
                   }}
                   className="w-full sm:w-auto px-4 sm:px-6 py-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all cursor-pointer shrink-0 text-center justify-center flex items-center"
                 >
-                  <span>{node.props.secondaryCtaText}</span>
+                  <span>{content.secondaryCtaText}</span>
                 </button>
               )}
             </div>
 
             {/* Stats Bar */}
-            {heroStats.length > 0 && (
+            {heroStats.length > 0 && !content.childContent.stats && (
               <div
                 className={`grid grid-cols-3 gap-2 sm:gap-4 pt-4 border-t border-slate-200/80 text-center`}
               >
@@ -148,14 +152,14 @@ export const HeroRenderer: React.FC<BaseRendererProps> = ({
           </div>
 
           {/* Image Column */}
-          {node.props.imageUrl && (
+          {content.imageUrl && !content.childContent.image && (
             <div className={isMobile ? 'w-full' : 'lg:col-span-5 w-full'}>
               <div
                 className={`relative rounded-2xl overflow-hidden shadow-xl border border-slate-100 bg-slate-100 ${isMobile ? 'aspect-video max-h-[200px]' : 'aspect-16/10 sm:aspect-square max-h-[340px] sm:max-h-none'}`}
               >
                 <img
-                  src={node.props.imageUrl}
-                  alt={node.props.title || 'صورة الواجهة'}
+                  src={content.imageUrl}
+                  alt={content.title || 'صورة الواجهة'}
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />

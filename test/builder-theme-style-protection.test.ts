@@ -16,6 +16,31 @@ const baseWebsite = (components: Record<string, any>) =>
   }) as unknown as Website;
 
 describe('builder theme style protection', () => {
+  it('keeps mobile overrides intact while applying theme-derived desktop values', () => {
+    const website = baseWebsite({
+      comp_hero: {
+        id: 'comp_hero',
+        name: 'Hero',
+        type: 'hero',
+        category: 'section',
+        parentId: null,
+        childrenIds: [],
+        props: {},
+        styles: {
+          desktop: { backgroundColor: '#f8fafc' },
+          mobile: { backgroundColor: '#f8fafc', paddingTop: '17px' },
+        },
+      },
+    });
+    const recordHistory = jest.fn();
+    useBuilderTheme(website, recordHistory).applyThemePreset('luxuryGold');
+    const result = recordHistory.mock.calls[0][1] as Website;
+    expect(result.components.comp_hero.styles.desktop.backgroundColor).toBe('#090d16');
+    expect(result.components.comp_hero.styles.mobile).toEqual({
+      backgroundColor: '#f8fafc',
+      paddingTop: '17px',
+    });
+  });
   it('preserves manual preset overrides and updates only styles inferred from the previous theme', () => {
     const website = baseWebsite({
       manualPrimary: {

@@ -20,6 +20,15 @@ export function mergeResponsiveStyles<T extends object>(
   return { ...desktop, ...tablet, ...mobile } as T;
 }
 
+export function resolveThemeFontFamily(
+  node: { type: string; category?: string; props?: Record<string, any> },
+  typography: { fontHeading?: string; fontBody?: string }
+): string {
+  const tagName = String(node.props?.tagName || node.props?.tag || '').toLowerCase();
+  const isHeading =
+    node.type === 'heading' || /^h[1-6]$/.test(node.type.toLowerCase()) || /^h[1-6]$/.test(tagName);
+  return (isHeading ? typography.fontHeading : typography.fontBody) || 'Cairo, sans-serif';
+}
 export interface ResponsiveNodeStyleInput {
   id: string;
   type: string;
@@ -282,6 +291,13 @@ export function computeResponsiveNodeStyles(
  * property. This is shared by preview, published renderers, /shop and skeletons
  * so saved designs do not lose shorthand, media, typography or border settings.
  */
+function isCssGradient(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    /^(?:repeating-)?(?:linear|radial|conic)-gradient\s*\(/i.test(value.trim())
+  );
+}
+
 export function stylePropertiesToCss(
   styles: StyleProperties,
   fallbackFontFamily?: string
@@ -326,8 +342,11 @@ export function stylePropertiesToCss(
     whiteSpace: styles.whiteSpace,
 
     objectFit: styles.objectFit,
-    backgroundColor: styles.backgroundColor,
-    backgroundImage: styles.backgroundGradient || styles.backgroundImage,
+    backgroundColor: isCssGradient(styles.backgroundColor) ? undefined : styles.backgroundColor,
+    backgroundImage:
+      styles.backgroundGradient ||
+      styles.backgroundImage ||
+      (isCssGradient(styles.backgroundColor) ? styles.backgroundColor : undefined),
     backgroundSize: styles.backgroundSize,
     backgroundPosition: styles.backgroundPosition,
 

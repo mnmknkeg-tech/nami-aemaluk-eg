@@ -140,7 +140,7 @@ export interface BuilderContextType {
 
   // Assets Library
   assets: AssetDto[];
-  uploadMockAsset: (file: File) => void;
+  uploadMockAsset: (file: File) => Promise<void>;
 
   // History & Autosave
   canUndo: boolean;

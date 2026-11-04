@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Sparkles, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
+import { uploadMediaFile } from '@/lib/api/upload';
+import { validateImageFile } from '@/lib/image-utils';
 import { ComponentNode, StyleProperties } from '../../types/builder';
 import type { ThemePreset } from '../../data/themes/types';
 import { themePresets } from '../../data/themes/presets';
@@ -19,6 +21,7 @@ import {
 export const IntegratedSectionEditor: React.FC = () => {
   const {
     website,
+    currentTenant,
     selectedNodeId,
     selectNode,
     updateNodeProps,
@@ -42,6 +45,7 @@ export const IntegratedSectionEditor: React.FC = () => {
 
   const [showPresetGallery, setShowPresetGallery] = useState<boolean>(false);
   const [activeGalleryTarget, setActiveGalleryTarget] = useState<string>('node');
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   if (!selectedNodeId) return null;
   const node = website.components[selectedNodeId];
@@ -86,6 +90,26 @@ export const IntegratedSectionEditor: React.FC = () => {
   };
 
   const handlePropChange = (targetNodeId: string, key: string, value: any) => {
+    const flatHeroBindings: Record<string, Record<string, string>> = {
+      ':hero-badge': { text: 'badge' },
+      ':hero-title': { text: 'title' },
+      ':hero-description': { text: 'description' },
+      ':hero-primary': { text: 'primaryCtaText', url: 'primaryCtaLink', href: 'primaryCtaLink' },
+      ':hero-secondary': {
+        text: 'secondaryCtaText',
+        url: 'secondaryCtaLink',
+        href: 'secondaryCtaLink',
+      },
+      ':hero-image': { src: 'imageUrl', image: 'imageUrl' },
+    };
+    const binding = Object.entries(flatHeroBindings).find(
+      ([suffix]) => targetNodeId === `${parentSection.id}${suffix}`
+    );
+    const flatKey = binding?.[1][key];
+    if (isHero && flatKey) {
+      updateNodeProps(parentSection.id, { [flatKey]: value });
+      return;
+    }
     updateNodeProps(targetNodeId, { [key]: value });
   };
 
@@ -93,25 +117,49 @@ export const IntegratedSectionEditor: React.FC = () => {
     updateNodeStyle(targetNodeId, { [key]: value }, viewport);
   };
 
-  const handleFileUpload = (
+  const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     targetNodeId: string,
     isBackground = false
   ) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setUploadError(validation.error || 'نوع أو حجم الصورة غير مقبول.');
+      input.value = '';
+      return;
+    }
+    if (!currentTenant.id) {
+      setUploadError('تعذر تحديد المتجر لرفع الصورة.');
+      input.value = '';
+      return;
+    }
+    setUploadError(null);
+    try {
+      const url = await uploadMediaFile(file, currentTenant.id, 'website_image');
+      if (!url || !/^https:\/\//i.test(url) || /^blob:/i.test(url)) {
+        throw new Error('لم يُرجع التخزين رابط صورة دائمًا وآمنًا.');
+      }
       if (isBackground) {
-        handleStyleChange(targetNodeId, 'backgroundImage', `url(${url})`);
+        handleStyleChange(targetNodeId, 'backgroundImage', `url("${url}")`);
         handleStyleChange(targetNodeId, 'backgroundSize', 'cover');
         handleStyleChange(targetNodeId, 'backgroundPosition', 'center');
+      } else if (targetNodeId === `${parentSection.id}:hero-image`) {
+        handlePropChange(parentSection.id, 'imageUrl', url);
       } else {
         handlePropChange(targetNodeId, 'src', url);
         handlePropChange(targetNodeId, 'image', url);
       }
+    } catch (error) {
+      setUploadError(
+        error instanceof Error ? error.message : 'فشل رفع الصورة؛ احتفظنا بالصورة الحالية.'
+      );
+    } finally {
+      input.value = '';
     }
   };
-
   const findChildByKeyword = (startNode: ComponentNode, keyword: string): ComponentNode | null => {
     if (startNode.id.includes(keyword) || startNode.name.includes(keyword)) return startNode;
     if (startNode.childrenIds) {
@@ -167,19 +215,56 @@ export const IntegratedSectionEditor: React.FC = () => {
 
   // ── Extracted child nodes ─────────────────────────────────────────────────
 
-  const heroBadgeNode = isHero ? findChildByKeyword(parentSection, 'badge') : null;
-  const heroTitleNode = isHero ? findChildByKeyword(parentSection, 'title') : null;
-  const heroSubtitleNode = isHero ? findChildByKeyword(parentSection, 'subtitle') : null;
+  const flatHeroNode = (suffix: string, props: Record<string, any>) =>
+    ({ ...parentSection, id: `${parentSection.id}${suffix}`, props }) as ComponentNode;
+  const heroBadgeNode = isHero
+    ? findChildByKeyword(parentSection, 'badge') ||
+      (parentSection.props?.badge !== undefined
+        ? flatHeroNode(':hero-badge', { text: parentSection.props.badge })
+        : null)
+    : null;
+  const heroTitleNode = isHero
+    ? findChildByKeyword(parentSection, 'title') ||
+      (parentSection.props?.title !== undefined
+        ? flatHeroNode(':hero-title', { text: parentSection.props.title })
+        : null)
+    : null;
+  const heroSubtitleNode = isHero
+    ? findChildByKeyword(parentSection, 'subtitle') ||
+      (parentSection.props?.description !== undefined || parentSection.props?.subtitle !== undefined
+        ? flatHeroNode(':hero-description', {
+            text: parentSection.props.description ?? parentSection.props.subtitle,
+          })
+        : null)
+    : null;
   const heroPrimaryBtnNode = isHero
     ? website.components['hero_btn_primary'] ||
       findChildByKeyword(parentSection, 'primary') ||
-      findChildByKeyword(parentSection, 'btn')
+      findChildByKeyword(parentSection, 'btn') ||
+      (parentSection.props?.primaryCtaText !== undefined
+        ? flatHeroNode(':hero-primary', {
+            text: parentSection.props.primaryCtaText,
+            url: parentSection.props.primaryCtaLink,
+          })
+        : null)
     : null;
   const heroSecondaryBtnNode = isHero
-    ? website.components['hero_btn_secondary'] || findChildByKeyword(parentSection, 'secondary')
+    ? website.components['hero_btn_secondary'] ||
+      findChildByKeyword(parentSection, 'secondary') ||
+      (parentSection.props?.secondaryCtaText !== undefined
+        ? flatHeroNode(':hero-secondary', {
+            text: parentSection.props.secondaryCtaText,
+            url: parentSection.props.secondaryCtaLink,
+          })
+        : null)
     : null;
   const heroImageNode = isHero
-    ? website.components['hero_main_image'] || findChildByKeyword(parentSection, 'image')
+    ? website.components['hero_main_image'] ||
+      findChildByKeyword(parentSection, 'image') ||
+      flatHeroNode(':hero-image', {
+        ...parentSection.props,
+        src: parentSection.props?.imageUrl || '',
+      })
     : null;
   const heroStatsNode = isHero
     ? website.components['hero_stats_row'] || findChildByKeyword(parentSection, 'stats')
@@ -262,6 +347,14 @@ export const IntegratedSectionEditor: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 select-none">
+      {uploadError && (
+        <div
+          role="alert"
+          className="mx-3 mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800"
+        >
+          {uploadError}
+        </div>
+      )}
       {/* SECTION BREADCRUMB & CONTEXT BANNER */}
       <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50/60 border-b border-blue-100/80 flex items-center justify-between">
         <div className="flex items-center gap-2">
