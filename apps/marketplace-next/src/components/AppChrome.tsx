@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { MobileFooter } from '@/components/MobileFooter';
+import { CartDrawer } from '@/components/CartDrawer';
 
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -13,6 +14,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
   const isMerchantCheckout = !!pathname && /^\/(shop|site)\/[^/]+\/checkout\/?$/.test(pathname);
   const isMerchantSite =
     !!pathname && (pathname.startsWith('/shop/') || pathname.startsWith('/site/'));
+  const isLegacyShop = !!pathname && pathname.startsWith('/shop/');
 
   if (isMerchantCheckout || pathname === '/checkout') {
     return <main className="min-h-screen">{children}</main>;
@@ -22,6 +24,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     return (
       <>
         <main className="min-h-screen">{children}</main>
+        {isLegacyShop && <CartDrawer />}
       </>
     );
   }

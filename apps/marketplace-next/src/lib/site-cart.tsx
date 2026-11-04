@@ -22,23 +22,57 @@ interface SiteCartContextValue {
 
 const SiteCartContext = createContext<SiteCartContextValue | null>(null);
 
+export function isValidSiteCartEntry(value: unknown, shopId: string): value is SiteCartEntry {
+  if (!value || typeof value !== 'object') return false;
+  const entry = value as Partial<SiteCartEntry>;
+  const product = entry.product;
+  return !!(
+    product &&
+    typeof product === 'object' &&
+    typeof product.id === 'string' &&
+    typeof product.title === 'string' &&
+    Number.isFinite(Number(product.price)) &&
+    Number(product.price) >= 0 &&
+    typeof entry.quantity === 'number' &&
+    Number.isInteger(entry.quantity) &&
+    entry.quantity > 0 &&
+    entry.shop &&
+    entry.shop.id === shopId &&
+    (!product.shopId || product.shopId === shopId) &&
+    product.isActive !== false &&
+    product.isAvailable !== false
+  );
+}
+
+export function loadSiteCart(raw: string | null, shopId: string): SiteCartEntry[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry) => isValidSiteCartEntry(entry, shopId));
+  } catch {
+    return [];
+  }
+}
+
 export function SiteCartProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const merchant = pathname?.match(/^\/(site|shop)\/([^/]+)/);
+  const merchantSlug = merchant?.[2] ?? null;
   const storageKey = merchant ? `merchant-site-cart:${merchant[1]}:${merchant[2]}` : null;
   const [items, setItems] = useState<SiteCartEntry[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setHydrated(false);
-    if (!storageKey) {
+    if (!storageKey || !merchantSlug) {
       setItems([]);
       setHydrated(true);
       return;
     }
     try {
       const saved = window.sessionStorage.getItem(storageKey);
-      setItems(saved ? (JSON.parse(saved) as SiteCartEntry[]) : []);
+      setItems(loadSiteCart(saved, merchantSlug));
     } catch {
       setItems([]);
     }
@@ -64,7 +98,14 @@ export function SiteCartProvider({ children }: { children: React.ReactNode }) {
       items,
       totalItems,
       totalPrice,
-      addItem: (product, shop) =>
+      addItem: (product, shop) => {
+        if (
+          product.isActive === false ||
+          product.isAvailable === false ||
+          (product.shopId && product.shopId !== shop.id)
+        ) {
+          return;
+        }
         setItems((current) => {
           const existing = current.find((item) => item.product.id === product.id);
           if (existing) {
@@ -73,7 +114,8 @@ export function SiteCartProvider({ children }: { children: React.ReactNode }) {
             );
           }
           return [...current, { product, quantity: 1, shop }];
-        }),
+        });
+      },
       updateQuantity: (productId, delta) =>
         setItems((current) =>
           current

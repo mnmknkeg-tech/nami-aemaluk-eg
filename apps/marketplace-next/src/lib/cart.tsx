@@ -43,6 +43,34 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 const STORAGE_KEY = 'mnmknk_cart';
 
+function finiteNonNegativeNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+export function isValidCartItem(value: unknown): value is CartItem {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as Partial<CartItem>;
+  return (
+    typeof item.id === 'string' &&
+    typeof item.productId === 'string' &&
+    typeof item.shopId === 'string' &&
+    typeof item.shopName === 'string' &&
+    typeof item.shopSlug === 'string' &&
+    typeof item.name === 'string' &&
+    finiteNonNegativeNumber(item.price) &&
+    typeof item.image === 'string' &&
+    typeof item.quantity === 'number' &&
+    Number.isInteger(item.quantity) &&
+    item.quantity > 0 &&
+    (item.maxQuantity == null || (Number.isInteger(item.maxQuantity) && item.maxQuantity > 0))
+  );
+}
+
+export function sanitizeCartItems(value: unknown): CartItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isValidCartItem).map((item) => ({ ...item }));
+}
+
 function storageKeyForPath(pathname: string | null): string {
   const merchant = pathname?.match(/^\/(site|shop)\/([^/]+)/);
   return merchant ? `${STORAGE_KEY}:${merchant[1]}:${merchant[2]}` : STORAGE_KEY;
@@ -53,8 +81,7 @@ function loadFromStorage(storageKey: string): CartItem[] {
   try {
     const raw = localStorage.getItem(storageKey);
     if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return sanitizeCartItems(JSON.parse(raw));
   } catch {
     return [];
   }
@@ -86,6 +113,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, hydrated, storageKey]);
 
   const addItem = useCallback((product: Product, quantity = 1, openDrawer = true) => {
+    if (product.isAvailable === false || !Number.isInteger(quantity) || quantity < 1) return;
     setItems((prev) => {
       const existing = prev.find((i) => i.productId === product.id);
       if (existing) {
@@ -104,7 +132,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         oldPrice: product.oldPrice,
         image: product.imageUrl || product.images?.[0] || '/placeholder-product.png',
         quantity,
-        maxQuantity: product.isAvailable === false ? 0 : undefined,
+        maxQuantity: undefined,
       };
       return [...prev, newItem];
     });

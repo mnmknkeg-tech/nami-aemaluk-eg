@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, ShoppingBag, ShoppingCart, Trash2, Plus, Minus, ArrowRight, Tag } from 'lucide-react';
+import React from 'react';
+import { X, ShoppingBag, ShoppingCart, Trash2, Plus, Minus, ArrowRight } from 'lucide-react';
 import type { SiteShopContext, Website } from './types';
 import { formatPrice } from './theme';
 
@@ -38,36 +38,12 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
   onRemoveItem,
   onProceedToCheckout,
 }) => {
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
-  const [couponError, setCouponError] = useState<string | null>(null);
-  const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
-
   if (!isOpen) return null;
 
   const rawSubtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const discountAmount = rawSubtotal * appliedDiscount;
-  const subtotalAfterDiscount = rawSubtotal - discountAmount;
-  const finalTotal = subtotalAfterDiscount;
-
-  const handleApplyCoupon = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCouponError(null);
-    setCouponSuccess(null);
-
-    const code = couponCode.trim().toUpperCase();
-    if (!code) return;
-
-    if (code === 'ALMAJD10' || code === 'VIP10' || code === 'SALE10' || code === 'WELCOME10') {
-      setAppliedDiscount(0.1);
-      setCouponSuccess('تم تفعيل كود الخصم (10%) بنجاح!');
-    } else if (code === 'VIP20' || code === 'SAVE20') {
-      setAppliedDiscount(0.2);
-      setCouponSuccess('تم تفعيل كود الخصم الحصري (20%) بنجاح!');
-    } else {
-      setCouponError('كود الخصم غير صحيح أو منتهي الصلاحية');
-    }
-  };
+  // Discounts are deliberately not calculated in this presentation-only cart.
+  // Checkout/backend remain the authority until a validated coupon endpoint is wired.
+  const finalTotal = rawSubtotal;
 
   return (
     <div
@@ -179,38 +155,7 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
                 ))}
               </div>
 
-              {/* Promo Code Input */}
-              <form onSubmit={handleApplyCoupon} className="space-y-1.5 pt-1">
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Tag className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                      placeholder="كود الخصم (مثل SALE10)"
-                      className="w-full pl-3 pr-8 py-2 rounded-xl border border-slate-200 bg-white text-xs focus:outline-hidden focus:border-emerald-500 transition-colors uppercase font-mono"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
-                  >
-                    تطبيق
-                  </button>
-                </div>
-                {couponSuccess && (
-                  <p className="text-[10px] text-emerald-600 font-bold">{couponSuccess}</p>
-                )}
-                {couponError && <p className="text-[10px] text-red-500 font-bold">{couponError}</p>}
-              </form>
-
               {/* Delivery details are collected on the full merchant checkout page. */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-                <p className="text-xs font-bold text-slate-700">
-                  أكمل بيانات الاسم والهاتف والعنوان والخريطة في صفحة الطلب التالية.
-                </p>
-              </div>
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
                 <p className="text-xs font-bold text-slate-700">
                   أكمل بيانات الاسم والهاتف والعنوان والخريطة في صفحة الطلب التالية.
@@ -229,12 +174,6 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
                 <span>المجموع الفرعي</span>
                 <span className="font-semibold">{formatPrice(rawSubtotal)}</span>
               </div>
-              {appliedDiscount > 0 && (
-                <div className="flex justify-between text-emerald-600 font-bold">
-                  <span>خصم الكوبون ({appliedDiscount * 100}%)</span>
-                  <span>- {formatPrice(discountAmount)}</span>
-                </div>
-              )}
               <div className="flex justify-between text-slate-900 font-extrabold text-sm pt-2 border-t border-slate-100">
                 <span>الإجمالي النهائي</span>
                 <span className="text-emerald-600 text-base font-black">
