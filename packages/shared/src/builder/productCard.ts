@@ -237,3 +237,11 @@ export function resolveCardDisplay(
     hideBuyBtn: Boolean(src.hideBuyBtn),
   };
 }
+
+/** Preserves the existing Marketplace heuristic for saved standalone product cards. */
+export function isLegacyProductCardNode(node: {
+  type: string;
+  props?: Record<string, any>;
+}): boolean {
+  return node.type === 'card' && (Boolean(node.props?.image) || node.props?.price !== undefined);
+}

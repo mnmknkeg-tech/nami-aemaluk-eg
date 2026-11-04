@@ -190,18 +190,22 @@ describe('addPage', () => {
       pages: [{ id: 'home', name: 'Home', slug: '', rootNodeId: 'home_root' }],
       components: { home_root: node('home_root') },
     } as any;
+    const originalWebsite = JSON.stringify(website);
     let nextWebsite: any;
     let operations: ReturnType<typeof useBuilderPageOperations> | undefined;
+    const setActivePageId = jest.fn();
+    const setSelectedNodeId = jest.fn();
+    const recordHistory = jest.fn((_label: string, result: any) => {
+      nextWebsite = result;
+    });
     const Probe = () => {
       operations = useBuilderPageOperations({
         website,
         websiteRef: { current: website },
         activePageId: 'home',
-        setActivePageId: jest.fn(),
-        setSelectedNodeId: jest.fn(),
-        recordHistory: jest.fn((_label: string, result: any) => {
-          nextWebsite = result;
-        }),
+        setActivePageId,
+        setSelectedNodeId,
+        recordHistory,
       });
       return null;
     };
@@ -222,6 +226,10 @@ describe('addPage', () => {
         (component: any) => component.parentId === blankPage.rootNodeId && component.type === 'hero'
       )
     ).toBe(false);
+    expect(JSON.stringify(website)).toBe(originalWebsite);
+    expect(recordHistory).toHaveBeenCalledTimes(1);
+    expect(setActivePageId).toHaveBeenCalledWith(blankPage.id);
+    expect(setSelectedNodeId).toHaveBeenCalledWith(blankPage.rootNodeId);
   });
 
   it('creates independent Header/Footer trees and selects the new page root', () => {

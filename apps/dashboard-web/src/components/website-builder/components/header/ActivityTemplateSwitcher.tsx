@@ -4,19 +4,6 @@ import {
   ChevronDown,
   Search,
   Check,
-  Building2,
-  Utensils,
-  Dumbbell,
-  Stethoscope,
-  Scissors,
-  Gem,
-  Car,
-  ShoppingBag,
-  ShoppingCart,
-  Wrench,
-  Plane,
-  Scale,
-  Zap,
   CheckCircle2,
   X,
   Layers,
@@ -25,21 +12,7 @@ import {
 import { useBuilder } from '../../context/BuilderContext';
 import { ActivityTemplateMeta } from '../../data/allActivityTemplates';
 
-// Icon mapping for activities
-const activityIconMap: Record<string, React.ReactNode> = {
-  automotive: <Car className="w-4 h-4 text-amber-600" />,
-  restaurant: <Utensils className="w-4 h-4 text-orange-600" />,
-  gym_fitness: <Dumbbell className="w-4 h-4 text-emerald-600" />,
-  clinic_health: <Stethoscope className="w-4 h-4 text-cyan-600" />,
-  beauty_salon: <Scissors className="w-4 h-4 text-rose-600" />,
-  jewelry_luxury: <Gem className="w-4 h-4 text-amber-500" />,
-  real_estate: <Building2 className="w-4 h-4 text-teal-600" />,
-  fashion_boutique: <ShoppingBag className="w-4 h-4 text-pink-600" />,
-  grocery_supermarket: <ShoppingCart className="w-4 h-4 text-green-600" />,
-  home_services: <Wrench className="w-4 h-4 text-sky-600" />,
-  travel_tourism: <Plane className="w-4 h-4 text-indigo-600" />,
-  law_firm: <Scale className="w-4 h-4 text-slate-700" />,
-};
+export const isTemplateSwitcherActivationKey = (key: string) => key === 'Enter' || key === ' ';
 
 export const ActivityTemplateSwitcher: React.FC = () => {
   const { activeTemplateId, allTemplatesList, switchWebsite, website } = useBuilder();
@@ -49,6 +22,7 @@ export const ActivityTemplateSwitcher: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [justSwitchedId, setJustSwitchedId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   // Close on outside click
   useEffect(() => {
@@ -143,10 +117,15 @@ export const ActivityTemplateSwitcher: React.FC = () => {
     });
   }, [allTemplatesList, searchQuery, selectedCategory]);
 
+  const closeDropdown = (restoreFocus = false) => {
+    setIsOpen(false);
+    if (restoreFocus) queueMicrotask(() => triggerRef.current?.focus());
+  };
+
   const handleSelectTemplate = (template: ActivityTemplateMeta) => {
     switchWebsite(template.id);
     setJustSwitchedId(template.id);
-    setIsOpen(false);
+    closeDropdown(true);
 
     setTimeout(() => {
       setJustSwitchedId(null);
@@ -158,7 +137,12 @@ export const ActivityTemplateSwitcher: React.FC = () => {
       {/* Trigger Button in TopBar */}
       <button
         id="activity_template_switcher_btn"
-        onClick={() => setIsOpen(!isOpen)}
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? 'activity_templates_dropdown' : undefined}
+        onClick={() => (isOpen ? closeDropdown(true) : setIsOpen(true))}
         title="تبديل قالب النشاط بالكامل (المطاعم، الجيم، العيادات، العقارات، الأزياء، المحاماة، إلخ)"
         className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer select-none shadow-2xs ${
           isOpen
@@ -184,10 +168,26 @@ export const ActivityTemplateSwitcher: React.FC = () => {
         />
       </button>
 
+      <span className="sr-only" role="status" aria-live="polite">
+        {justSwitchedId
+          ? `تم تطبيق قالب ${allTemplatesList.find((item) => item.id === justSwitchedId)?.name || ''}`
+          : ''}
+      </span>
       {/* Full Activities Dropdown Popover */}
       {isOpen && (
         <div
           id="activity_templates_dropdown"
+          role="dialog"
+          aria-labelledby="activity_templates_title"
+          aria-describedby="activity_templates_warning"
+          aria-modal="false"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              event.stopPropagation();
+              closeDropdown(true);
+            }
+          }}
           className="absolute top-full mt-2 right-0 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 w-[340px] sm:w-[580px] md:w-[680px] max-h-[85vh] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50 flex flex-col animate-in fade-in zoom-in-95 duration-150"
         >
           {/* Header */}
@@ -198,18 +198,23 @@ export const ActivityTemplateSwitcher: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-sm font-black flex items-center gap-2">
-                  <span>اختر نشاط وقالب موقعك</span>
+                  <span id="activity_templates_title">اختر نشاط وقالب موقعك</span>
                   <span className="text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-bold">
                     {allTemplatesList.length} نشاط جاهز
                   </span>
                 </h3>
-                <p className="text-[11px] text-slate-300 font-medium">
+                <p
+                  id="activity_templates_warning"
+                  className="text-[11px] text-slate-300 font-medium"
+                >
                   يتم استبدال كامل الهيكل، الصفحات، النماذج، الحجوزات، والمنيو فوراً
                 </p>
               </div>
             </div>
             <button
-              onClick={() => setIsOpen(false)}
+              type="button"
+              aria-label="إغلاق اختيار القالب"
+              onClick={() => closeDropdown(true)}
               className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/60 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -222,7 +227,8 @@ export const ActivityTemplateSwitcher: React.FC = () => {
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
-                type="text"
+                type="search"
+                aria-label="ابحث عن قالب نشاط"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="ابحث عن النشاط (مطعم، جيم، عيادة، عقارات، أزياء، محاماة، سياحة)..."
@@ -231,6 +237,8 @@ export const ActivityTemplateSwitcher: React.FC = () => {
               />
               {searchQuery && (
                 <button
+                  type="button"
+                  aria-label="مسح البحث"
                   onClick={() => setSearchQuery('')}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
                 >
@@ -242,6 +250,8 @@ export const ActivityTemplateSwitcher: React.FC = () => {
             {/* Filter Tabs */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
               <button
+                type="button"
+                aria-pressed={selectedCategory === 'all'}
                 onClick={() => setSelectedCategory('all')}
                 className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer shrink-0 ${
                   selectedCategory === 'all'
@@ -252,6 +262,8 @@ export const ActivityTemplateSwitcher: React.FC = () => {
                 كافة الأنشطة ({allTemplatesList.length})
               </button>
               <button
+                type="button"
+                aria-pressed={selectedCategory === 'realestate'}
                 onClick={() => setSelectedCategory('realestate')}
                 className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer shrink-0 ${
                   selectedCategory === 'realestate'
@@ -262,6 +274,8 @@ export const ActivityTemplateSwitcher: React.FC = () => {
                 🏢 العقارات والمقاولات والديكور
               </button>
               <button
+                type="button"
+                aria-pressed={selectedCategory === 'automotive'}
                 onClick={() => setSelectedCategory('automotive')}
                 className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer shrink-0 ${
                   selectedCategory === 'automotive'
@@ -272,6 +286,8 @@ export const ActivityTemplateSwitcher: React.FC = () => {
                 🚗 السيارات والنقل
               </button>
               <button
+                type="button"
+                aria-pressed={selectedCategory === 'retail'}
                 onClick={() => setSelectedCategory('retail')}
                 className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer shrink-0 ${
                   selectedCategory === 'retail'
@@ -282,6 +298,8 @@ export const ActivityTemplateSwitcher: React.FC = () => {
                 🛍️ التجزئة والمجوهرات
               </button>
               <button
+                type="button"
+                aria-pressed={selectedCategory === 'hospitality'}
                 onClick={() => setSelectedCategory('hospitality')}
                 className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer shrink-0 ${
                   selectedCategory === 'hospitality'
@@ -292,6 +310,8 @@ export const ActivityTemplateSwitcher: React.FC = () => {
                 🍽️ المطاعم والضيافة
               </button>
               <button
+                type="button"
+                aria-pressed={selectedCategory === 'health'}
                 onClick={() => setSelectedCategory('health')}
                 className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer shrink-0 ${
                   selectedCategory === 'health'
@@ -302,6 +322,8 @@ export const ActivityTemplateSwitcher: React.FC = () => {
                 🏥 الصحة والجمال والرياضة
               </button>
               <button
+                type="button"
+                aria-pressed={selectedCategory === 'corporate'}
                 onClick={() => setSelectedCategory('corporate')}
                 className={`px-3 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer shrink-0 ${
                   selectedCategory === 'corporate'
@@ -321,6 +343,7 @@ export const ActivityTemplateSwitcher: React.FC = () => {
                 <Search className="w-8 h-8 text-slate-300 mx-auto" />
                 <p className="text-xs font-bold">لم يتم العثور على نشاط يطابق بحثك</p>
                 <button
+                  type="button"
                   onClick={() => {
                     setSearchQuery('');
                     setSelectedCategory('all');
@@ -338,6 +361,17 @@ export const ActivityTemplateSwitcher: React.FC = () => {
                 return (
                   <div
                     key={template.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isCurrent}
+                    aria-current={isCurrent ? 'true' : undefined}
+                    aria-label={`${template.name}${isCurrent ? '، القالب النشط' : '، تطبيق القالب'}`}
+                    onKeyDown={(event) => {
+                      if (isTemplateSwitcherActivationKey(event.key)) {
+                        event.preventDefault();
+                        handleSelectTemplate(template);
+                      }
+                    }}
                     onClick={() => handleSelectTemplate(template)}
                     className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between gap-2.5 cursor-pointer relative group ${
                       isCurrent
@@ -378,7 +412,7 @@ export const ActivityTemplateSwitcher: React.FC = () => {
                           <span>النشط الآن</span>
                         </span>
                       ) : (
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <span className="opacity-100 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                           تطبيق القالب
                         </span>
                       )}
@@ -427,7 +461,8 @@ export const ActivityTemplateSwitcher: React.FC = () => {
               <span>جميع القوالب تدعم الحجز، النماذج، والتعديل الفوري عبر السحب والإفلات</span>
             </div>
             <button
-              onClick={() => setIsOpen(false)}
+              type="button"
+              onClick={() => closeDropdown(true)}
               className="text-xs font-bold text-slate-700 hover:text-slate-900 cursor-pointer"
             >
               إغلاق

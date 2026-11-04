@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Star,
   CheckCircle,
@@ -26,6 +26,7 @@ import type { Shop, Product } from '@/lib/services';
 import {
   computeResponsiveNodeStyles,
   normalizeWebsiteTree,
+  isLegacyProductCardNode,
   productGridClass,
   PublishedProductCard,
   resolveTheme,
@@ -804,7 +805,7 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
     // Product cards are first-class builder nodes too. Keep this branch before
     // the generic card variants so a card placed inside a hero/grid survives
     // publishing with the same renderer and options as the editor preview.
-    if (node.props.image || node.props.price !== undefined) {
+    if (isLegacyProductCardNode(node)) {
       const waNumber = String(ctxShop?.whatsapp || ctxShop?.phone || '').replace(/\D/g, '');
       const waLink = (text: string) =>
         waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}` : null;

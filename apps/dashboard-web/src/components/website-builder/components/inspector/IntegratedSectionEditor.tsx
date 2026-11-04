@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
+import { DEFAULT_INSPECTOR_EXPANDED_SECTIONS } from './inspectorDefaults';
 import { uploadMediaFile } from '@/lib/api/upload';
 import { validateImageFile } from '@/lib/image-utils';
 import { ComponentNode, StyleProperties } from '../../types/builder';
@@ -31,17 +32,9 @@ export const IntegratedSectionEditor: React.FC = () => {
     selectionBreadcrumbs,
   } = useBuilder();
 
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    content: true,
-    media: true,
-    headerSettings: true,
-    productCard: true,
-    colors: true,
-    theme: true,
-    actions: true,
-    subitems: true,
-    advanced: false,
-  });
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(
+    DEFAULT_INSPECTOR_EXPANDED_SECTIONS
+  );
 
   const [showPresetGallery, setShowPresetGallery] = useState<boolean>(false);
   const [activeGalleryTarget, setActiveGalleryTarget] = useState<string>('node');

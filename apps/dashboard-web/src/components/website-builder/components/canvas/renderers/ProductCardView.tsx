@@ -5,7 +5,8 @@ import { normalizeThemeTokens } from '../../../data/defaultTheme';
 import {
   type ProductCardOptions,
   type NormalizedSize,
-  normalizeProductSizes,
+  parsePriceValue,
+  resolveCardDisplay,
 } from '@ray-eg/shared/builder';
 
 /** البيانات المطلوبة لعرض بطاقة منتج واحدة. */
@@ -51,16 +52,8 @@ const BuyIcon: React.FC<{ name: string; className?: string }> = ({ name, classNa
   return <Icon className={className} />;
 };
 
-/** يحسب السعر الخام والمنسق لعرض/الإضافة للسلة. */
-export function parseCardPrice(price: number | string | undefined, fallback = 100) {
-  const raw =
-    typeof price === 'number'
-      ? price
-      : parseInt(String(price ?? '').replace(/[^0-9]/g, '')) || fallback;
-  const formatted =
-    typeof price === 'string' && price.trim() ? price : `${raw.toLocaleString()} ج.م`;
-  return { raw, formatted };
-}
+/** Backwards-compatible export backed by the shared published-card price parser. */
+export const parseCardPrice = parsePriceValue;
 
 /** شارة المخزون — متوفر/نفد المخزون. */
 const StockBadge: React.FC<{ stock?: number; compact?: boolean }> = ({ stock, compact }) => {
@@ -168,19 +161,18 @@ export const ProductCardView: React.FC<ProductCardViewProps> = ({
 }) => {
   const safeTheme = normalizeThemeTokens(theme);
   const isCompact = compact || options.shape === 'compact';
-  const { formatted } = parseCardPrice(item.price);
-  const productSizes = normalizeProductSizes((item as any).sizes);
-  const title = item.title || `منتج ${index + 1}`;
+  const display = resolveCardDisplay(item as any, index, options);
+  const { rawPrice: raw, formattedPrice: formatted, productSizes } = display;
+  const title = display.title;
   const img =
-    item.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80';
-  const badge = item.badge || (options.badgeText as string);
+    display.img || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80';
+  const badge = display.badge;
   const handleBuy = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onBuy) {
       onBuy(e);
       return;
     }
-    const { raw } = parseCardPrice(item.price);
     addToCart({ id: item.id ?? index, title, price: raw, image: img });
   };
   const handleDetails = (e: React.MouseEvent) => {
@@ -214,7 +206,9 @@ export const ProductCardView: React.FC<ProductCardViewProps> = ({
         {badge}
       </span>
     ) : null;
-  const stockEl = options.showStock ? <StockBadge stock={item.stock} compact={isCompact} /> : null;
+  const stockEl = options.showStock ? (
+    <StockBadge stock={display.stock} compact={isCompact} />
+  ) : null;
   const sizesEl = options.showSizes ? (
     <SizeChips
       productSizes={productSizes}
@@ -234,9 +228,9 @@ export const ProductCardView: React.FC<ProductCardViewProps> = ({
   ) : null;
 
   const specsEl =
-    options.showSpecs && item.specs && item.specs.length > 0 ? (
+    options.showSpecs && display.specs.length > 0 ? (
       <ul className="space-y-0.5">
-        {item.specs.slice(0, 3).map((s, i) => (
+        {display.specs.slice(0, 3).map((s, i) => (
           <li key={i} className="text-[11px] flex items-center gap-1" style={mutedStyle}>
             <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" />
             <span className="truncate">{s}</span>
@@ -245,9 +239,9 @@ export const ProductCardView: React.FC<ProductCardViewProps> = ({
       </ul>
     ) : null;
   const descEl =
-    options.showDescription && item.description ? (
+    options.showDescription && display.description ? (
       <p className="text-[11px] leading-relaxed line-clamp-2" style={mutedStyle}>
-        {item.description}
+        {display.description}
       </p>
     ) : null;
   const actionsEl =
