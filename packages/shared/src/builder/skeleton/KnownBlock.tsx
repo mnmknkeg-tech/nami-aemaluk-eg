@@ -1,6 +1,6 @@
 import React from 'react';
 import { Bar, SK, rightText, type Align } from './parts';
-import type { StyleProperties } from '../types';
+import type { StyleProperties, ViewportBreakpoint } from '../types';
 
 /** عدد الكروت لكل قسم متكرر — يحدد شكل الشبكة. */
 const CARD_GRID: Record<string, number> = {
@@ -17,13 +17,13 @@ const CARD_GRID: Record<string, number> = {
   'bento-grid': 3,
 };
 
-function CardGrid({ count }: { count: number }) {
+function CardGrid({ count, viewport }: { count: number; viewport: ViewportBreakpoint }) {
   return (
     <div
       style={{
         display: 'grid',
         gap: 16,
-        gridTemplateColumns: `repeat(${Math.min(count, 4)}, minmax(0,1fr))`,
+        gridTemplateColumns: `repeat(${viewport === 'mobile' ? 1 : viewport === 'tablet' ? Math.min(count, 2) : Math.min(count, 4)}, minmax(0,1fr))`,
       }}
     >
       {Array.from({ length: count }).map((_, i) => (
@@ -73,8 +73,14 @@ const SectionTitle = ({ w = '45%', align }: { w?: string; align?: Align }) => (
 );
 
 /** بطاقات إحصائية — قسم الأرقام. */
-const StatsBlock = () => (
-  <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(4, minmax(0,1fr))' }}>
+const StatsBlock = ({ viewport }: { viewport: ViewportBreakpoint }) => (
+  <div
+    style={{
+      display: 'grid',
+      gap: 16,
+      gridTemplateColumns: `repeat(${viewport === 'mobile' ? 1 : viewport === 'tablet' ? 2 : 4}, minmax(0,1fr))`,
+    }}
+  >
     {Array.from({ length: 4 }).map((_, i) => (
       <div
         key={i}
@@ -95,7 +101,15 @@ const StatsBlock = () => (
 );
 
 /** الهيرو — نص + أزرار، وصورة لو القسم مقسوم نصين. */
-const HeroBlock = ({ styles, align }: { styles: StyleProperties; align?: Align }) => {
+const HeroBlock = ({
+  styles,
+  align,
+  viewport,
+}: {
+  styles: StyleProperties;
+  align?: Align;
+  viewport: ViewportBreakpoint;
+}) => {
   const text = rightText(align);
   const split = String(styles.gridColumns || '')
     .trim()
@@ -105,7 +119,7 @@ const HeroBlock = ({ styles, align }: { styles: StyleProperties; align?: Align }
       style={{
         display: 'grid',
         gap: 32,
-        gridTemplateColumns: split ? '1fr 1fr' : '1fr',
+        gridTemplateColumns: split && viewport !== 'mobile' ? '1fr 1fr' : '1fr',
         alignItems: 'center',
       }}
     >
@@ -139,8 +153,14 @@ const NavBlock = () => (
 );
 
 /** الفوتر — 4 أعمدة روابط. */
-const FooterBlock = () => (
-  <div style={{ display: 'grid', gap: 24, gridTemplateColumns: 'repeat(4, minmax(0,1fr))' }}>
+const FooterBlock = ({ viewport }: { viewport: ViewportBreakpoint }) => (
+  <div
+    style={{
+      display: 'grid',
+      gap: 24,
+      gridTemplateColumns: `repeat(${viewport === 'mobile' ? 1 : viewport === 'tablet' ? 2 : 4}, minmax(0,1fr))`,
+    }}
+  >
     {Array.from({ length: 4 }).map((_, i) => (
       <div key={i} style={{ display: 'grid', gap: 10 }}>
         <Bar w="110px" h={16} color={SK.base} />
@@ -175,10 +195,16 @@ const CtaBlock = ({ align }: { align?: Align }) => {
 };
 
 /** قسم التواصل — بيانات + فورم. */
-const ContactBlock = ({ align }: { align?: Align }) => {
+const ContactBlock = ({ align, viewport }: { align?: Align; viewport: ViewportBreakpoint }) => {
   const text = rightText(align);
   return (
-    <div style={{ display: 'grid', gap: 24, gridTemplateColumns: '1fr 1fr' }}>
+    <div
+      style={{
+        display: 'grid',
+        gap: 24,
+        gridTemplateColumns: viewport === 'mobile' ? '1fr' : '1fr 1fr',
+      }}
+    >
       <div style={{ display: 'grid', gap: 12 }}>
         <Bar w="60%" h={22} color={SK.dark} style={text} />
         {Array.from({ length: 4 }).map((_, i) => (
@@ -212,10 +238,12 @@ export function KnownBlock({
   type,
   styles,
   align,
+  viewport = 'desktop',
 }: {
   type: string;
   styles: StyleProperties;
   align?: Align;
+  viewport?: ViewportBreakpoint;
 }) {
   const text = rightText(align);
   const cards = CARD_GRID[type];
@@ -224,29 +252,29 @@ export function KnownBlock({
     return (
       <SectionWrap align={align} width={styles.width}>
         <SectionTitle w="220px" align={align} />
-        <CardGrid count={cards} />
+        <CardGrid count={cards} viewport={viewport} />
       </SectionWrap>
     );
   }
 
   switch (type) {
     case 'stats':
-      return <StatsBlock />;
+      return <StatsBlock viewport={viewport} />;
     case 'faq':
       return <FaqBlock align={align} />;
     case 'hero':
-      return <HeroBlock styles={styles} align={align} />;
+      return <HeroBlock styles={styles} align={align} viewport={viewport} />;
     case 'header':
     case 'navigation':
       return <NavBlock />;
     case 'footer':
     case 'mobile_footer':
-      return <FooterBlock />;
+      return <FooterBlock viewport={viewport} />;
     case 'cta':
       return <CtaBlock align={align} />;
     case 'contact':
     case 'contact-section':
-      return <ContactBlock align={align} />;
+      return <ContactBlock align={align} viewport={viewport} />;
     default:
       return (
         <SectionWrap align={align} width={styles.width}>

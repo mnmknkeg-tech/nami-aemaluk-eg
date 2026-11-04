@@ -26,10 +26,10 @@ import (
 type EditingMode string
 
 const (
-	ModeVisual    EditingMode = "visual"
-	ModeHTMLOnly  EditingMode = "html_only"
-	ModeCSSOnly   EditingMode = "css_only"
-	ModeFullCode  EditingMode = "full_code"
+	ModeVisual   EditingMode = "visual"
+	ModeHTMLOnly EditingMode = "html_only"
+	ModeCSSOnly  EditingMode = "css_only"
+	ModeFullCode EditingMode = "full_code"
 )
 
 // CapabilityPolicy defines what each mode is allowed to send to the backend.
@@ -50,48 +50,48 @@ type CapabilityPolicy struct {
 func ModePolicies() map[EditingMode]*CapabilityPolicy {
 	return map[EditingMode]*CapabilityPolicy{
 		ModeVisual: {
-			AllowCustomJS:   false,
-			AllowCustomCSS:  true,
-			AllowRawHTML:    false,
-			AllowIframe:     false,
+			AllowCustomJS:    false,
+			AllowCustomCSS:   true,
+			AllowRawHTML:     false,
+			AllowIframe:      false,
 			AllowExternalURL: true,
-			AllowDataURI:    false,
-			MaxHTMLSize:     0,
-			MaxCSSSize:      0,
-			MaxJSSize:       0,
+			AllowDataURI:     false,
+			MaxHTMLSize:      0,
+			MaxCSSSize:       0,
+			MaxJSSize:        0,
 		},
 		ModeHTMLOnly: {
-			AllowCustomJS:   false,
-			AllowCustomCSS:  false,
-			AllowRawHTML:    true,
-			AllowIframe:     false,
+			AllowCustomJS:    false,
+			AllowCustomCSS:   false,
+			AllowRawHTML:     true,
+			AllowIframe:      false,
 			AllowExternalURL: true,
-			AllowDataURI:    false,
-			MaxHTMLSize:     64 * 1024,
-			MaxCSSSize:      0,
-			MaxJSSize:       0,
+			AllowDataURI:     false,
+			MaxHTMLSize:      64 * 1024,
+			MaxCSSSize:       0,
+			MaxJSSize:        0,
 		},
 		ModeCSSOnly: {
-			AllowCustomJS:   false,
-			AllowCustomCSS:  true,
-			AllowRawHTML:    false,
-			AllowIframe:     false,
+			AllowCustomJS:    false,
+			AllowCustomCSS:   true,
+			AllowRawHTML:     false,
+			AllowIframe:      false,
 			AllowExternalURL: false,
-			AllowDataURI:    false,
-			MaxHTMLSize:     0,
-			MaxCSSSize:      64 * 1024,
-			MaxJSSize:       0,
+			AllowDataURI:     false,
+			MaxHTMLSize:      0,
+			MaxCSSSize:       64 * 1024,
+			MaxJSSize:        0,
 		},
 		ModeFullCode: {
-			AllowCustomJS:   true,
-			AllowCustomCSS:  true,
-			AllowRawHTML:    true,
-			AllowIframe:     true,
+			AllowCustomJS:    true,
+			AllowCustomCSS:   true,
+			AllowRawHTML:     true,
+			AllowIframe:      true,
 			AllowExternalURL: true,
-			AllowDataURI:    true,
-			MaxHTMLSize:     256 * 1024,
-			MaxCSSSize:      64 * 1024,
-			MaxJSSize:       64 * 1024,
+			AllowDataURI:     true,
+			MaxHTMLSize:      256 * 1024,
+			MaxCSSSize:       64 * 1024,
+			MaxJSSize:        64 * 1024,
 		},
 	}
 }
@@ -203,6 +203,12 @@ func configChecksum(config []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// draftVersionMatches intentionally requires exact equality, including zero;
+// missing/legacy client tokens must not bypass stale-write protection.
+func draftVersionMatches(serverVersion, clientVersion int64) bool {
+	return serverVersion == clientVersion
+}
+
 func (s *BuilderService) SaveDraftVersion(
 	ctx context.Context,
 	shopID string,
@@ -210,13 +216,18 @@ func (s *BuilderService) SaveDraftVersion(
 	config *BuilderConfig,
 	clientVersion int64,
 ) (*BuilderConfig, int64, string, error) {
-	var exists bool
-	err := s.repo.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM shops WHERE id = $1)", shopID).Scan(&exists)
+	tx, err := s.repo.pool.Begin(ctx)
 	if err != nil {
 		return nil, 0, "", err
 	}
-	if !exists {
+	defer tx.Rollback(ctx)
+	var lockedShopID string
+	err = tx.QueryRow(ctx, `SELECT id FROM shops WHERE id = $1 FOR UPDATE`, shopID).Scan(&lockedShopID)
+	if err == pgx.ErrNoRows {
 		return nil, 0, "", errors.NotFound("shop_not_found", "المتجر غير موجود")
+	}
+	if err != nil {
+		return nil, 0, "", err
 	}
 	if config.Website != nil {
 		if err := validateWebsiteTreeByMode(config.Website, mode); err != nil {
@@ -229,43 +240,33 @@ func (s *BuilderService) SaveDraftVersion(
 	}
 	checksum := configChecksum(configJSON)
 	var currentVersion int64
-	err = s.repo.pool.QueryRow(ctx,
-		// Use MAX across all version_kinds: draft + published share the same
-		// UNIQUE (shop_id, version_number) constraint, so we must compute a
-		// globally monotonic sequence to avoid unique-key collisions.
-		`SELECT COALESCE(MAX(version_number), 0) FROM builder_versions
-		 WHERE shop_id = $1`, shopID).Scan(&currentVersion)
+	err = tx.QueryRow(ctx, `SELECT COALESCE(MAX(version_number), 0) FROM builder_versions WHERE shop_id = $1`, shopID).Scan(&currentVersion)
 	if err != nil {
 		return nil, 0, "", err
 	}
-	if clientVersion > 0 && currentVersion != clientVersion {
+	if !draftVersionMatches(currentVersion, clientVersion) {
 		return nil, currentVersion, checksum, errors.Conflict("version_conflict",
-			fmt.Sprintf("현재 초안 버전(%d)과 클라이언트 버전(%d)이 일치하지 않습니다.", currentVersion, clientVersion))
+			fmt.Sprintf("المسودة الحالية إصدارها (%d)، بينما يستند التعديل إلى الإصدار (%d).", currentVersion, clientVersion))
 	}
 	newVersion := currentVersion + 1
 	versionID := uuid.New()
-	_, err = s.repo.pool.Exec(ctx,
-		`INSERT INTO builder_versions
-			(id, shop_id, version_number, version_kind, label, description,
-			 author_id, author_role, config, checksum, created_at)
-		 VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, $8, $9, NOW())`,
-		versionID, shopID, newVersion, "자동 저장", "편집기 자동 저장 초안",
-		nil, nil, configJSON, checksum)
+	_, err = tx.Exec(ctx, `INSERT INTO builder_versions
+		(id, shop_id, version_number, version_kind, label, description, author_id, author_role, config, checksum, created_at)
+		VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, $8, $9, NOW())`,
+		versionID, shopID, newVersion, "حفظ تلقائي", "مسودة محفوظة من المحرر", nil, nil, configJSON, checksum)
 	if err != nil {
 		s.logger.Error("Failed to insert builder draft version", zap.Error(err), zap.String("shopId", shopID))
 		return nil, 0, "", errors.Internal("version_insert_failed", err)
 	}
 	var updatedAt time.Time
-	err = s.repo.pool.QueryRow(ctx,
-		`UPDATE shops
-			SET builder_config = $1, updated_at = NOW()
-			WHERE id = $2
-			RETURNING updated_at`,
-		configJSON, shopID).Scan(&updatedAt)
+	err = tx.QueryRow(ctx, `UPDATE shops SET builder_config = $1, updated_at = NOW() WHERE id = $2 RETURNING updated_at`, configJSON, shopID).Scan(&updatedAt)
 	if err != nil {
 		return nil, 0, "", err
 	}
 	config.UpdatedAt = updatedAt
+	if err := tx.Commit(ctx); err != nil {
+		return nil, 0, "", err
+	}
 	return config, newVersion, checksum, nil
 }
 
@@ -274,36 +275,30 @@ func (s *BuilderService) PublishDraft(
 	shopID string,
 	clientVersion int64,
 ) (*PublishResult, error) {
-	var exists bool
-	err := s.repo.pool.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM shops WHERE id = $1 AND builder_config IS NOT NULL)`,
-		shopID).Scan(&exists)
+	tx, err := s.repo.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
-		return nil, errors.NotFound("config_not_found", "게시할 구성이 없습니다")
-	}
-	var currentVersion int64
-	err = s.repo.pool.QueryRow(ctx,
-		// Same global MAX so the published version number never collides with
-		// a previously written draft row.
-		`SELECT COALESCE(MAX(version_number), 0) FROM builder_versions
-		 WHERE shop_id = $1`, shopID).Scan(&currentVersion)
-	if err != nil {
-		return nil, err
-	}
-	if clientVersion > 0 && currentVersion != clientVersion {
-		return nil, errors.Conflict("version_conflict",
-			fmt.Sprintf("현재 초안 버전(%d)과 클라이언트 버전(%d)이 일치하지 않습니다.", currentVersion, clientVersion))
-	}
+	defer tx.Rollback(ctx)
 	var configJSON []byte
 	var updatedAt time.Time
-	err = s.repo.pool.QueryRow(ctx,
-		`SELECT builder_config, updated_at FROM shops WHERE id = $1`,
-		shopID).Scan(&configJSON, &updatedAt)
+	err = tx.QueryRow(ctx, `SELECT builder_config, updated_at FROM shops WHERE id = $1 FOR UPDATE`, shopID).Scan(&configJSON, &updatedAt)
+	if err == pgx.ErrNoRows {
+		return nil, errors.NotFound("config_not_found", "المتجر غير موجود")
+	}
 	if err != nil {
 		return nil, err
+	}
+	if len(configJSON) == 0 {
+		return nil, errors.NotFound("config_not_found", "لا توجد مسودة لنشرها")
+	}
+	var currentVersion int64
+	err = tx.QueryRow(ctx, `SELECT COALESCE(MAX(version_number), 0) FROM builder_versions WHERE shop_id = $1`, shopID).Scan(&currentVersion)
+	if err != nil {
+		return nil, err
+	}
+	if !draftVersionMatches(currentVersion, clientVersion) {
+		return nil, errors.Conflict("version_conflict", fmt.Sprintf("المسودة الحالية إصدارها (%d)، بينما طلب النشر يستند إلى الإصدار (%d).", currentVersion, clientVersion))
 	}
 	var config BuilderConfig
 	if err := json.Unmarshal(configJSON, &config); err != nil {
@@ -312,34 +307,30 @@ func (s *BuilderService) PublishDraft(
 	newVersion := currentVersion + 1
 	versionID := uuid.New()
 	checksum := configChecksum(configJSON)
-	_, err = s.repo.pool.Exec(ctx,
-		`INSERT INTO builder_versions
-			(id, shop_id, version_number, version_kind, label, description,
-			 author_id, author_role, config, checksum, created_at)
-		 VALUES ($1, $2, $3, 'published', $4, $5, $6, $7, $8, $9, NOW())`,
-		versionID, shopID, newVersion, "게시", "사용자 게시",
-		nil, nil, configJSON, checksum)
+	_, err = tx.Exec(ctx, `INSERT INTO builder_versions
+		(id, shop_id, version_number, version_kind, label, description, author_id, author_role, config, checksum, created_at)
+		VALUES ($1, $2, $3, 'published', $4, $5, $6, $7, $8, $9, NOW())`,
+		versionID, shopID, newVersion, "نشر", "نسخة منشورة", nil, nil, configJSON, checksum)
 	if err != nil {
 		s.logger.Error("Failed to insert builder published version", zap.Error(err), zap.String("shopId", shopID))
 		return nil, errors.Internal("publish_version_failed", err)
 	}
-	_, err = s.repo.pool.Exec(ctx,
-		`UPDATE shops
-			SET builder_published_config = builder_config,
-				builder_published_at = NOW(),
-				builder_published_version_id = $1,
-				updated_at = NOW()
-			WHERE id = $2 AND builder_config IS NOT NULL`,
-		versionID, shopID)
+	var publishedAt time.Time
+	tag, err := tx.Exec(ctx, `UPDATE shops SET builder_published_config = $1, builder_published_at = NOW(), builder_published_version_id = $2, updated_at = NOW() WHERE id = $3`, configJSON, versionID, shopID)
 	if err != nil {
 		return nil, err
 	}
-	return &PublishResult{
-		VersionID:     versionID.String(),
-		VersionNumber: newVersion,
-		Checksum:      checksum,
-		PublishedAt:   time.Now(),
-	}, nil
+	if tag.RowsAffected() != 1 {
+		return nil, errors.Conflict("publish_conflict", "تغير المتجر أثناء النشر")
+	}
+	err = tx.QueryRow(ctx, `SELECT builder_published_at FROM shops WHERE id = $1`, shopID).Scan(&publishedAt)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return &PublishResult{VersionID: versionID.String(), VersionNumber: newVersion, Checksum: checksum, PublishedAt: publishedAt}, nil
 }
 
 func (s *BuilderService) RollbackToVersion(
@@ -366,24 +357,18 @@ func (s *BuilderService) RollbackToVersion(
 	if err := json.Unmarshal(configJSON, &config); err != nil {
 		return nil, errors.Internal("invalid_config", err)
 	}
-	_, newVersion, _, err := s.SaveDraftVersion(ctx, shopID, ModeVisual, &config, 0)
-	if err != nil {
-		return nil, err
-	}
-	_ = newVersion
-	var updatedAt time.Time
-	configJSON, _ = json.Marshal(config)
+	var currentVersion int64
 	err = s.repo.pool.QueryRow(ctx,
-		`UPDATE shops
-			SET builder_config = $1, updated_at = NOW()
-			WHERE id = $2
-			RETURNING updated_at`,
-		configJSON, shopID).Scan(&updatedAt)
+		`SELECT COALESCE(MAX(version_number), 0) FROM builder_versions WHERE shop_id = $1`, shopID,
+	).Scan(&currentVersion)
 	if err != nil {
 		return nil, err
 	}
-	config.UpdatedAt = updatedAt
-	return &config, nil
+	savedConfig, _, _, err := s.SaveDraftVersion(ctx, shopID, ModeVisual, &config, currentVersion)
+	if err != nil {
+		return nil, err
+	}
+	return savedConfig, nil
 }
 
 func (s *BuilderService) ListVersions(

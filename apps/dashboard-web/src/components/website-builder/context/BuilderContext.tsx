@@ -30,9 +30,12 @@ import { apiRequest } from '../../../lib/api/client';
 // Sub-hooks
 import { useBuilderCart } from './hooks/useBuilderCart';
 import { useBuilderPageOperations } from './hooks/useBuilderPageOperations';
-import { useBuilderComponentOperations, type WebsiteReducer } from './hooks/useBuilderComponentOperations';
+import {
+  useBuilderComponentOperations,
+  type WebsiteReducer,
+} from './hooks/useBuilderComponentOperations';
 import { useBuilderTheme } from './hooks/useBuilderTheme';
-import { useBuilderHistory } from './hooks/useBuilderHistory';
+import { mergeWebsiteSettings, useBuilderHistory } from './hooks/useBuilderHistory';
 import { useBuilderPublishing } from './hooks/useBuilderPublishing';
 import { useBuilderAI } from './hooks/useBuilderAI';
 
@@ -287,7 +290,12 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
 
   // Sync local storage on every website change
   useEffect(() => {
-    if (!isInitializing && typeof window !== 'undefined' && website?.components && website?.pages?.length) {
+    if (
+      !isInitializing &&
+      typeof window !== 'undefined' &&
+      website?.components &&
+      website?.pages?.length
+    ) {
       try {
         localStorage.setItem('ray_builder_last_active_site', JSON.stringify(website));
       } catch {}
@@ -311,6 +319,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
 
         const shopId = shop.id;
         setBuilderShopId(shopId);
+        builderShopIdRef.current = shopId;
         if (shop.slug) setBuilderShopSlug(shop.slug);
         if (shop.name) {
           setBuilderShopName(shop.name);
@@ -333,30 +342,74 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
           })
           .catch(() => undefined);
 
-        // If the shop/config overrides the initial state, load it before leaving
-        // the initialization gate. GET currently returns BuilderConfig only and
-        // does not expose draftVersion; the first PUT therefore starts at 0.
-        if (shop.builderConfig?.website?.pages?.length && shop.builderConfig?.website?.components) {
-          const normalized = normalizeWebsite(shop.builderConfig.website as Website);
-          setWebsite(normalized);
-          setActivePageId(getHomePageId(normalized) || 'page_home');
-          return;
-        }
-
         const config = await apiRequest(`/builder/${shopId}/config`).catch(() => null);
         if (!cancelled && config?.website?.pages?.length && config?.website?.components) {
-          const normalized = normalizeWebsite(config.website as Website);
-          setWebsite(normalized);
-          setActivePageId(getHomePageId(normalized) || 'page_home');
+          draftVersionRef.current = Number.isSafeInteger(config.draftVersion)
+            ? config.draftVersion
+            : 0;
+          let loadedWebsite = normalizeWebsite(config.website as Website);
+          try {
+            const rawBackup = localStorage.getItem(`ray_builder_site_${shopId}`);
+            const backup = rawBackup ? JSON.parse(rawBackup) : null;
+            if (
+              backup &&
+              Array.isArray(backup.pages) &&
+              backup.pages.length > 0 &&
+              backup.components &&
+              typeof backup.components === 'object'
+            ) {
+              const localWebsite = normalizeWebsite(backup as Website);
+              if (
+                JSON.stringify(localWebsite) !== JSON.stringify(loadedWebsite) &&
+                window.confirm(
+                  'تم العثور على تغييرات محلية غير مطابقة لمسودة الخادم لهذا المتجر. استعادة التغييرات المحلية؟ اختر إلغاء لاستخدام نسخة الخادم.'
+                )
+              ) {
+                loadedWebsite = localWebsite;
+                setAutosaveStatus('unsaved');
+              }
+            }
+          } catch {
+            // Invalid or inaccessible local backups are ignored, never trusted.
+          }
+          setWebsite(loadedWebsite);
+          setActivePageId(getHomePageId(loadedWebsite) || 'page_home');
+        } else if (!cancelled) {
+          try {
+            const parsed = JSON.parse(localStorage.getItem(`ray_builder_site_${shopId}`) || '');
+            if (
+              Array.isArray(parsed?.pages) &&
+              parsed.pages.length &&
+              parsed?.components &&
+              window.confirm(
+                'تعذر تحميل مسودة الخادم. هل تريد فتح النسخة المحلية المحفوظة لهذا المتجر؟'
+              )
+            ) {
+              const recovered = normalizeWebsite(parsed);
+              setWebsite(recovered);
+              setActivePageId(getHomePageId(recovered) || 'page_home');
+              setAutosaveStatus('unsaved');
+            }
+          } catch {}
         }
       } catch {
-        // Only restore the explicitly local draft. Never scan arbitrary shop keys:
-        // that could load another shop's website into the current editor.
+        // Recover only this shop's backup; never scan arbitrary merchant keys.
         if (typeof window !== 'undefined' && !cancelled) {
           try {
-            const parsed = JSON.parse(localStorage.getItem('ray_builder_site_local') || '');
-            if (parsed?.pages?.length && parsed?.components) {
+            const key = builderShopIdRef.current
+              ? `ray_builder_site_${builderShopIdRef.current}`
+              : 'ray_builder_site_local';
+            const parsed = JSON.parse(localStorage.getItem(key) || '');
+            if (
+              Array.isArray(parsed?.pages) &&
+              parsed.pages.length &&
+              parsed?.components &&
+              window.confirm(
+                'تعذر تحميل مسودة الخادم. هل تريد فتح النسخة المحلية المحفوظة لهذا المتجر؟'
+              )
+            ) {
               setWebsite(normalizeWebsite(parsed));
+              setAutosaveStatus('unsaved');
             }
           } catch {}
         }
@@ -374,30 +427,9 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
 
   const updateWebsiteSettings = useCallback(
     (settingsPatch: Partial<WebsiteSettings>) => {
-      setWebsite((prev) => {
-        const current = prev.settings || {};
-        return {
-          ...prev,
-          settings: {
-            ...current,
-            ...settingsPatch,
-            auth: settingsPatch.auth ? { ...current.auth, ...settingsPatch.auth } : current.auth,
-            announcement: settingsPatch.announcement
-              ? { ...current.announcement, ...settingsPatch.announcement }
-              : current.announcement,
-            floatingActions: settingsPatch.floatingActions
-              ? { ...current.floatingActions, ...settingsPatch.floatingActions }
-              : current.floatingActions,
-            seo: settingsPatch.seo ? { ...current.seo, ...settingsPatch.seo } : current.seo,
-            branding: settingsPatch.branding
-              ? { ...current.branding, ...settingsPatch.branding }
-              : current.branding,
-          } as WebsiteSettings,
-        };
-      });
-      setAutosaveStatus('unsaved');
+      recordHistory('تحديث إعدادات الموقع', (prev) => mergeWebsiteSettings(prev, settingsPatch));
     },
-    [setAutosaveStatus]
+    [recordHistory]
   );
 
   // Switchers (full template / tenant replacement)

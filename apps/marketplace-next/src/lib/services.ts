@@ -32,6 +32,30 @@ export interface Shop {
   isActive?: boolean;
 }
 
+export interface PublishedWebsite {
+  published: boolean;
+  publishedAt?: string;
+  shop: {
+    id: string;
+    name: string;
+    slug: string;
+    logoUrl?: string;
+    phone?: string;
+    address?: string;
+  };
+  config: Record<string, any>;
+}
+
+/** Never promote a draft into public renderer input, even if supplied by mistake. */
+export function getPublicBuilderConfig(
+  website: PublishedWebsite | null | undefined
+): Record<string, any> | undefined {
+  if (!website?.published || !website.config || typeof website.config !== 'object') {
+    return undefined;
+  }
+  return website.config;
+}
+
 export interface Product {
   id: string;
   shopId: string;
@@ -81,11 +105,29 @@ export async function getShops(take = 100, fresh = false): Promise<Shop[]> {
   }
 }
 
-export async function getShopBySlug(slug: string): Promise<Shop | null> {
+export async function getShopBySlug(slug: string, fresh = false): Promise<Shop | null> {
   try {
-    const data = await api.get<any>(`/shops/${slug}`, { revalidate: 300, tags: [`shop:${slug}`] });
+    const data = await api.get<any>(`/shops/${slug}`, {
+      revalidate: fresh ? 0 : 300,
+      tags: [`shop:${slug}`],
+    });
     return data?.data ?? data;
   } catch {
+    return null;
+  }
+}
+
+/** Public content endpoint deliberately returns only builder_published_config. */
+export async function getPublishedWebsiteBySlug(slug: string): Promise<PublishedWebsite | null> {
+  try {
+    const data = await api.get<any>(`/shops/${slug}/website`, {
+      revalidate: 0,
+      tags: [`site:${slug}`],
+    });
+    const website = data?.data?.shop ? data.data : data;
+    return website?.shop ? (website as PublishedWebsite) : null;
+  } catch {
+    // A shop may have no published Builder snapshot; callers use legacy pageDesign.
     return null;
   }
 }

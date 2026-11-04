@@ -52,7 +52,9 @@ import {
 } from './productCard';
 import { CustomCodeFrame } from './CustomCodeFrame';
 import { PublishedProductCard } from './PublishedProductCard';
-import { mergeResponsiveStyles, stylePropertiesToCss } from './responsiveStyles';
+import { computeResponsiveNodeStyles } from './responsiveStyles';
+import { CartIcon } from './CartIcon';
+import { isCartVisible, resolveCartIconType } from './cartPolicy';
 
 export interface NodeViewContext {
   website: Website;
@@ -680,228 +682,8 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
   const isMobile = viewport === 'mobile';
 
   // Compute responsive styles merged by current breakpoint (faithful port).
-  const getComputedStyles = (): React.CSSProperties => {
-    const d = node.styles.desktop || {};
-    const t = node.styles.tablet || {};
-    const m = node.styles.mobile || {};
-    const merged: StyleProperties = mergeResponsiveStyles(node.styles, viewport);
-
-    const css: React.CSSProperties = {
-      ...stylePropertiesToCss(merged, theme.typography.fontBody || 'Cairo, sans-serif'),
-      wordBreak: 'normal',
-      overflowWrap: 'break-word',
-    };
-
-    // Keep page-level layout nodes bounded by the current viewport on every
-    // breakpoint; authored desktop widths should not be clipped on small laptops.
-    if (node.type === 'header' || node.category === 'section' || node.type === 'container') {
-      css.maxWidth = '100%';
-    }
-
-    // Responsive Tablet Safeguards:
-    if (viewport === 'tablet') {
-      css.boxSizing = 'border-box';
-      if (node.type === 'header' || node.category === 'section' || node.type === 'container') {
-        css.maxWidth = '100%';
-        if (css.width && typeof css.width === 'string' && /px$/.test(css.width) && parseInt(css.width) > 640) {
-          css.width = '100%';
-        }
-        if (
-          css.minWidth &&
-          typeof css.minWidth === 'string' &&
-          /px$/.test(css.minWidth) &&
-          parseInt(css.minWidth) > 640
-        ) {
-          css.minWidth = '0px';
-        }
-        if (!t.paddingLeft && d.paddingLeft && parseInt(d.paddingLeft) > 32) {
-          css.paddingLeft = '20px';
-        }
-        if (!t.paddingRight && d.paddingRight && parseInt(d.paddingRight) > 32) {
-          css.paddingRight = '20px';
-        }
-        if (!t.paddingTop && d.paddingTop && parseInt(d.paddingTop) > 60) {
-          css.paddingTop = '48px';
-        }
-        if (!t.paddingBottom && d.paddingBottom && parseInt(d.paddingBottom) > 60) {
-          css.paddingBottom = '48px';
-        }
-      }
-      if (node.type === 'heading') {
-        css.wordBreak = 'normal';
-        css.overflowWrap = 'break-word';
-        if (!t.fontSize && d.fontSize && parseInt(d.fontSize) > 28) {
-          css.fontSize = `${Math.max(20, Math.round(parseInt(d.fontSize) * 0.78))}px`;
-        }
-      }
-      // Tablet multi-column grid collapsing (collapse 4+ cols to 2 cols)
-      if (!t.gridColumns && css.gridTemplateColumns) {
-        const colsStr = String(css.gridTemplateColumns);
-        if (/(repeat\s*\(\s*[3-9]|1fr\s+1fr\s+1fr)/.test(colsStr)) {
-          css.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
-          css.gap = t.gap || '16px';
-        }
-      }
-    }
-
-    // Responsive Mobile Safeguards for All Themes:
-    if (viewport === 'mobile') {
-      css.boxSizing = 'border-box';
-
-      // Width & Min-Width Safety Clamping
-      css.maxWidth = '100%';
-      if (css.width && typeof css.width === 'string' && /px$/.test(css.width)) {
-        const px = parseInt(css.width);
-        if (px > 340) {
-          css.width = '100%';
-        }
-      }
-      if (css.minWidth && typeof css.minWidth === 'string' && /px$/.test(css.minWidth)) {
-        const px = parseInt(css.minWidth);
-        if (px > 280) {
-          css.minWidth = '0px';
-        }
-      }
-
-      // Grid Collapsing: Any multi-column desktop grid collapses to 1 column on mobile
-      if (!m.gridColumns && css.gridTemplateColumns) {
-        const colsStr = String(css.gridTemplateColumns);
-        if (/(repeat\s*\(\s*[2-9]|1fr\s+1fr)/.test(colsStr)) {
-          css.gridTemplateColumns = 'repeat(1, minmax(0, 1fr))';
-        }
-      }
-      if (css.gap && typeof css.gap === 'string' && parseInt(css.gap) > 20) {
-        css.gap = '16px';
-      }
-
-      // Section and Container Spacing
-      if (
-        node.type === 'header' ||
-        node.category === 'section' ||
-        node.type === 'container' ||
-        node.type === 'hero' ||
-        node.type === 'features' ||
-        node.type === 'pricing' ||
-        node.type === 'products' ||
-        node.type === 'footer'
-      ) {
-        css.maxWidth = '100%';
-        css.overflowX = 'clip';
-
-        // Clamp excessive desktop top/bottom padding
-        if (!m.paddingTop && d.paddingTop && parseInt(d.paddingTop) > 36) {
-          css.paddingTop = `${Math.min(36, Math.max(20, Math.round(parseInt(d.paddingTop) * 0.38)))}px`;
-        }
-        if (!m.paddingBottom && d.paddingBottom && parseInt(d.paddingBottom) > 36) {
-          css.paddingBottom = `${Math.min(36, Math.max(20, Math.round(parseInt(d.paddingBottom) * 0.38)))}px`;
-        }
-        // Clamp excessive desktop horizontal padding
-        if (!m.paddingLeft && d.paddingLeft && parseInt(d.paddingLeft) > 16) {
-          css.paddingLeft = '14px';
-        }
-        if (!m.paddingRight && d.paddingRight && parseInt(d.paddingRight) > 16) {
-          css.paddingRight = '14px';
-        }
-      }
-
-      // Flex Layout Switching (Row -> Column on mobile for split heroes, feature splits, containers)
-      if (
-        merged.display === 'flex' &&
-        (merged.flexDirection === 'row' || !merged.flexDirection) &&
-        !m.flexDirection
-      ) {
-        const isHeaderBar =
-          node.parentId?.includes('header') ||
-          node.type === 'header' ||
-          node.id?.includes('brand') ||
-          node.id?.includes('toolbar') ||
-          node.id?.includes('actions');
-        const isInlineBadgeOrTag =
-          node.id?.includes('badge') ||
-          node.id?.includes('tag') ||
-          node.id?.includes('star') ||
-          node.id?.includes('rating') ||
-          node.id?.includes('icon');
-        if (!isHeaderBar && !isInlineBadgeOrTag) {
-          css.flexDirection = 'column';
-          if (!m.alignItems) {
-            css.alignItems = 'stretch';
-          }
-        } else {
-          css.flexWrap = 'wrap';
-        }
-        if (css.gap && typeof css.gap === 'string' && parseInt(css.gap) > 16) {
-          css.gap = '12px';
-        }
-      }
-
-      // Button Safeguards
-      if (node.type === 'button') {
-        css.whiteSpace = 'nowrap';
-        css.flexShrink = 0;
-        css.wordBreak = 'normal';
-        if (!m.fontSize && (!d.fontSize || parseInt(d.fontSize) > 13)) {
-          css.fontSize = '12px';
-        }
-        if (!m.paddingLeft && (!d.paddingLeft || parseInt(d.paddingLeft) > 12)) {
-          css.paddingLeft = '12px';
-        }
-        if (!m.paddingRight && (!d.paddingRight || parseInt(d.paddingRight) > 12)) {
-          css.paddingRight = '12px';
-        }
-        if (!m.paddingTop && (!d.paddingTop || parseInt(d.paddingTop) > 8)) {
-          css.paddingTop = '6px';
-        }
-        if (!m.paddingBottom && (!d.paddingBottom || parseInt(d.paddingBottom) > 8)) {
-          css.paddingBottom = '6px';
-        }
-      }
-
-      // Heading Typography Safeguards
-      if (node.type === 'heading') {
-        css.wordBreak = 'normal';
-        css.overflowWrap = 'break-word';
-        if (!m.fontSize && d.fontSize) {
-          const size = parseInt(d.fontSize);
-          if (size >= 36) {
-            css.fontSize = '22px';
-            css.lineHeight = '1.3';
-          } else if (size >= 28) {
-            css.fontSize = '19px';
-            css.lineHeight = '1.35';
-          } else if (size >= 22) {
-            css.fontSize = '16px';
-            css.lineHeight = '1.4';
-          }
-        }
-        if (d.lineHeight && parseInt(d.lineHeight) > 36) {
-          css.lineHeight = '1.35';
-        }
-        if (
-          node.parentId?.includes('header') ||
-          node.id?.includes('brand') ||
-          node.id?.includes('logo')
-        ) {
-          css.whiteSpace = 'nowrap';
-          css.fontSize = m.fontSize || '14px';
-          css.flexShrink = 0;
-        }
-      }
-
-      // Paragraph Typography Safeguards
-      if (node.type === 'paragraph') {
-        css.wordBreak = 'normal';
-        css.overflowWrap = 'break-word';
-        if (!m.fontSize && d.fontSize && parseInt(d.fontSize) > 15) {
-          css.fontSize = '13.5px';
-          css.lineHeight = '1.55';
-        }
-      }
-
-    }
-
-    return css;
-  };
+  const getComputedStyles = (): React.CSSProperties =>
+    computeResponsiveNodeStyles(node, viewport, theme.typography.fontBody || 'Cairo, sans-serif');
 
   const interactiveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -942,16 +724,43 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
   switch (node.type) {
     // ------------------------------------------------------------------ header
     case 'header': {
+      let mobileBrandNode: ComponentNode | undefined;
+      for (const childId of node.childrenIds || []) {
+        const child = website.components[childId];
+        if (!child) continue;
+        if (
+          child.id.toLowerCase().includes('brand') ||
+          child.id.toLowerCase().includes('logo') ||
+          child.name?.includes('شعار') ||
+          child.name?.includes('هوية')
+        ) {
+          mobileBrandNode = child;
+          break;
+        }
+        for (const nestedId of child.childrenIds || []) {
+          const nested = website.components[nestedId];
+          if (
+            nested &&
+            (nested.id.toLowerCase().includes('brand') ||
+              nested.id.toLowerCase().includes('logo') ||
+              nested.name?.includes('شعار') ||
+              nested.name?.includes('هوية'))
+          ) {
+            mobileBrandNode = nested;
+            break;
+          }
+        }
+        if (mobileBrandNode) break;
+      }
+
       const cartSettings = website.settings?.cart;
-      const isOrders = (cartSettings?.businessType || 'orders') === 'orders';
-      const showCart =
-        isOrders &&
-        cartSettings?.showCartIcon !== false &&
-        (cartSettings?.position === 'header' ||
-          cartSettings?.position === 'both' ||
-          !cartSettings?.position) &&
-        !Boolean(node.props.hideCart || (website.theme as any)?.hideCart);
-      const iconType = cartSettings?.iconType || (node.props.cartIcon as string) || 'ShoppingBag';
+      const showCart = isCartVisible({
+        settings: cartSettings,
+        placement: 'header',
+        headerProps: node.props,
+        themeHideCart: Boolean((website.theme as any)?.hideCart),
+      });
+      const iconType = resolveCartIconType(cartSettings?.iconType, node.props.cartIcon);
 
       const showLogin =
         node.props.showLogin !== false && website.settings?.auth?.headerButton?.show !== false;
@@ -990,7 +799,9 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
           {isMobile ? (
             <div className="w-full flex items-center justify-between gap-3 px-3 py-2.5">
               <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-                {shop.logoUrl ? (
+                {mobileBrandNode ? (
+                  <NodeView nodeId={mobileBrandNode.id} ctx={ctx} />
+                ) : shop.logoUrl ? (
                   <img
                     src={shop.logoUrl}
                     alt={shop.name || 'شعار المتجر'}
@@ -1004,9 +815,11 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                     {(shop.name || website.name || 'م')[0]}
                   </div>
                 )}
-                <span className="min-w-0 truncate text-sm font-black text-slate-900">
-                  {shop.name || node.props.title || website.name || 'المتجر الإلكتروني'}
-                </span>
+                {!mobileBrandNode && (
+                  <span className="min-w-0 truncate text-sm font-black text-slate-900">
+                    {node.props.title || website.name || shop.name || 'المتجر الإلكتروني'}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
@@ -1034,17 +847,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                     title="سلة التسوق"
                     className="relative p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center justify-center active:scale-95 cursor-pointer"
                   >
-                    {iconType === 'ShoppingCart' ? (
-                      <ShoppingCart className="w-4 h-4 text-emerald-600" />
-                    ) : iconType === 'Package' ? (
-                      <Package className="w-4 h-4 text-emerald-600" />
-                    ) : iconType === 'Store' ? (
-                      <Store className="w-4 h-4 text-emerald-600" />
-                    ) : iconType === 'CreditCard' ? (
-                      <CreditCard className="w-4 h-4 text-emerald-600" />
-                    ) : (
-                      <ShoppingBag className="w-4 h-4 text-emerald-600" />
-                    )}
+                    <CartIcon iconType={iconType} className="w-4 h-4 text-emerald-600" />
                     {(ctx.cartCount || 0) > 0 && (
                       <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-xs">
                         {ctx.cartCount! > 99 ? '99+' : ctx.cartCount}
@@ -1190,38 +993,32 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                       )}
 
                       {/* Cart Option in Mobile Drawer */}
-                      {(() => {
-                        const cartSettings = website.settings?.cart;
-                        const isOrders = (cartSettings?.businessType || 'orders') === 'orders';
-                        const showCart = isOrders && cartSettings?.showCartIcon !== false;
-                        if (!showCart) return null;
-                        return (
-                          <div className="pt-2 pb-1 border-t border-slate-100">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                ctx.onOpenCart?.();
-                                setIsMobileMenuDrawerOpen(false);
-                              }}
-                              className="w-full flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 text-emerald-900 text-xs font-bold transition-all text-right cursor-pointer"
-                            >
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-                                  <ShoppingBag className="w-3.5 h-3.5" />
-                                </div>
-                                <span>سلة مشتريات المتجر</span>
+                      {showCart && (
+                        <div className="pt-2 pb-1 border-t border-slate-100">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              ctx.onOpenCart?.();
+                              setIsMobileMenuDrawerOpen(false);
+                            }}
+                            className="w-full flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 text-emerald-900 text-xs font-bold transition-all text-right cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                                <CartIcon iconType={iconType} className="w-3.5 h-3.5" />
                               </div>
-                              {(ctx.cartCount || 0) > 0 ? (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white">
-                                  {ctx.cartCount}
-                                </span>
-                              ) : (
-                                <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180 text-emerald-600" />
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })()}
+                              <span>سلة مشتريات المتجر</span>
+                            </div>
+                            {(ctx.cartCount || 0) > 0 ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white">
+                                {ctx.cartCount}
+                              </span>
+                            ) : (
+                              <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180 text-emerald-600" />
+                            )}
+                          </button>
+                        </div>
+                      )}
 
                       <div className="pt-4 border-t border-slate-100 space-y-2">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
@@ -1301,17 +1098,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                       title="سلة التسوق"
                       className="relative p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors flex items-center justify-center active:scale-95 cursor-pointer"
                     >
-                      {iconType === 'ShoppingCart' ? (
-                        <ShoppingCart className="w-4 h-4 text-emerald-600" />
-                      ) : iconType === 'Package' ? (
-                        <Package className="w-4 h-4 text-emerald-600" />
-                      ) : iconType === 'Store' ? (
-                        <Store className="w-4 h-4 text-emerald-600" />
-                      ) : iconType === 'CreditCard' ? (
-                        <CreditCard className="w-4 h-4 text-emerald-600" />
-                      ) : (
-                        <ShoppingBag className="w-4 h-4 text-emerald-600" />
-                      )}
+                      <CartIcon iconType={iconType} className="w-4 h-4 text-emerald-600" />
                       {(ctx.cartCount || 0) > 0 && (
                         <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-xs">
                           {ctx.cartCount! > 99 ? '99+' : ctx.cartCount}
@@ -3195,6 +2982,11 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
         : ['home', 'products', 'cart', 'whatsapp'];
       const barBg = node.props.bgColor || '#0f172a';
       const activeColor = node.props.accentColor || theme.colors.primary || '#22d3ee';
+      const showFooterCart = isCartVisible({
+        settings: website.settings?.cart,
+        placement: 'floating',
+      });
+      const footerCartIcon = resolveCartIconType(website.settings?.cart?.iconType);
 
       const scrollToProducts = () => {
         const el =
@@ -3231,6 +3023,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
               </button>
             );
           case 'cart':
+            if (!showFooterCart) return null;
             return (
               <button
                 key={key}
@@ -3238,10 +3031,10 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                 onClick={() => ctx.onOpenCart?.()}
                 className="relative flex flex-col items-center justify-center gap-0.5 flex-1 py-1 text-white/80 hover:text-white transition-colors"
               >
-                <ShoppingCart className="w-5 h-5" />
+                <CartIcon iconType={footerCartIcon} className="w-5 h-5" />
                 <span className="text-[9px] font-bold">السلة</span>
                 {(ctx.cartCount || 0) > 0 && (
-                  <span className="absolute top-0 left-1/2 translate-x-2 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
+                  <span className="absolute top-0 left-1/2 ltr:translate-x-2 rtl:-translate-x-2 min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
                     {ctx.cartCount! > 9 ? '9+' : ctx.cartCount}
                   </span>
                 )}

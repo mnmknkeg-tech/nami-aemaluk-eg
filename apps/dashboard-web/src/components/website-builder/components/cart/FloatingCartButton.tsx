@@ -1,6 +1,6 @@
 import React from 'react';
-import { ShoppingBag, ShoppingCart, Store, Package, CreditCard } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
+import { CartIcon, isCartVisible } from '@ray-eg/shared/builder';
 
 export interface FloatingCartButtonProps {
   contained?: boolean;
@@ -17,33 +17,7 @@ export const FloatingCartButton: React.FC<FloatingCartButtonProps> = ({ containe
   const { website, cartCount, setIsCartOpen } = useBuilder();
   const cartSettings = website.settings?.cart;
 
-  const businessType = cartSettings?.businessType || 'orders';
-  const showCartIcon = cartSettings?.showCartIcon !== false;
-  const position = cartSettings?.position || 'both';
-  const iconType = cartSettings?.iconType || 'ShoppingBag';
-
-  const isCartEnabled = cartSettings?.enabled !== false;
-
-  // Only show when enabled AND business = orders AND icon enabled AND placement includes floating
-  if (
-    !isCartEnabled ||
-    businessType !== 'orders' ||
-    !showCartIcon ||
-    (position !== 'floating' && position !== 'both')
-  ) {
-    return null;
-  }
-
-  const IconComponent =
-    iconType === 'ShoppingCart'
-      ? ShoppingCart
-      : iconType === 'Package'
-        ? Package
-        : iconType === 'Store'
-          ? Store
-          : iconType === 'CreditCard'
-            ? CreditCard
-            : ShoppingBag;
+  if (!isCartVisible({ settings: cartSettings, placement: 'floating' })) return null;
 
   return (
     <button
@@ -55,8 +29,8 @@ export const FloatingCartButton: React.FC<FloatingCartButtonProps> = ({ containe
       title="سلة التسوق"
       className={`${
         contained
-          ? 'absolute bottom-6 left-6 z-30 pointer-events-auto'
-          : 'fixed bottom-24 left-4 z-[9990]'
+          ? 'absolute bottom-6 ltr:left-6 rtl:right-6 z-30 pointer-events-auto'
+          : 'fixed bottom-24 ltr:left-4 rtl:right-4 z-[9990]'
       } flex items-center justify-center w-14 h-14 rounded-full shadow-2xl cursor-pointer transition-all duration-300 active:scale-95 hover:scale-105 group`}
       style={{
         backgroundColor: website.theme?.colors?.primary || '#2563eb',
@@ -71,11 +45,11 @@ export const FloatingCartButton: React.FC<FloatingCartButtonProps> = ({ containe
         />
       )}
 
-      <IconComponent className="w-6 h-6 relative z-10" />
+      <CartIcon iconType={cartSettings?.iconType} className="w-6 h-6 relative z-10" />
 
       {/* Item count badge */}
       {cartCount > 0 && (
-        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-md z-10">
+        <span className="absolute -top-1 ltr:-right-1 rtl:-left-1 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-md z-10">
           {cartCount > 99 ? '99+' : cartCount}
         </span>
       )}

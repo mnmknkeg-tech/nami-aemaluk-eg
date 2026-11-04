@@ -12,6 +12,7 @@ import {
   CreditCard as SubCard,
 } from 'lucide-react';
 import { useBuilder } from '../../../context/BuilderContext';
+import { resolveCartIconType } from '@ray-eg/shared/builder';
 import type { WebsiteSettings, WebsiteCartSettings } from '../../../types/builder';
 
 interface CartSettingsSectionProps {
@@ -25,7 +26,7 @@ export const CartSettingsSection: React.FC<CartSettingsSectionProps> = ({
   onToggle,
   settings,
 }) => {
-  const { updateWebsiteSettings } = useBuilder();
+  const { website, activePage, updateWebsiteSettings } = useBuilder();
   const cart: WebsiteCartSettings = settings.cart || {
     enabled: true,
     businessType: 'orders',
@@ -36,8 +37,29 @@ export const CartSettingsSection: React.FC<CartSettingsSectionProps> = ({
   };
 
   const businessType = cart.businessType || 'orders';
+  const cartEnabled = cart.enabled !== false;
   const showCartIcon = cart.showCartIcon !== false;
-  const iconType = cart.iconType || 'ShoppingBag';
+  const cartIsVisible = cartEnabled && businessType === 'orders' && showCartIcon;
+  const legacyHeaderIcon = (() => {
+    if (!activePage?.rootNodeId) return undefined;
+    const visited = new Set<string>();
+    const find = (id: string): string | undefined => {
+      if (visited.has(id)) return undefined;
+      visited.add(id);
+      const node = website.components[id];
+      if (!node) return undefined;
+      if (node.type === 'header' && typeof node.props?.cartIcon === 'string') {
+        return node.props.cartIcon;
+      }
+      for (const childId of node.childrenIds || []) {
+        const icon = find(childId);
+        if (icon) return icon;
+      }
+      return undefined;
+    };
+    return find(activePage.rootNodeId);
+  })();
+  const iconType = resolveCartIconType(cart.iconType, legacyHeaderIcon);
   const position = cart.position || 'both';
 
   const updateCart = (patch: Partial<WebsiteCartSettings>) => {
@@ -65,7 +87,7 @@ export const CartSettingsSection: React.FC<CartSettingsSectionProps> = ({
               <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
                 إعدادات السلة ونوع النشاط
               </h4>
-              {showCartIcon && (
+              {cartIsVisible && (
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-700">
                   مفعلة
                 </span>
@@ -160,6 +182,36 @@ export const CartSettingsSection: React.FC<CartSettingsSectionProps> = ({
             </div>
           </div>
 
+          <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2 shadow-2xs">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">تفعيل سلة المنتجات</span>
+                <span className="text-[10px] text-slate-500">
+                  {cartEnabled
+                    ? 'السلة متاحة حسب نوع النشاط وإعداد ظهور الأيقونة'
+                    : 'السلة معطلة في جميع مواضع العرض'}
+                </span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={cartEnabled}
+                aria-label="تفعيل سلة المنتجات"
+                onClick={() => updateCart({ enabled: !cartEnabled })}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                  cartEnabled ? 'bg-emerald-600' : 'bg-slate-300'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    cartEnabled
+                      ? 'translate-x-0 rtl:-translate-x-5'
+                      : '-translate-x-5 rtl:translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
           {/* 2. زر سلة التسوق (Show / Hide Cart Toggle) */}
           <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2 shadow-2xs">
             <div className="flex items-center justify-between">
@@ -168,9 +220,9 @@ export const CartSettingsSection: React.FC<CartSettingsSectionProps> = ({
                   إظهار أيقونة السلة في الموقع (Cart Button)
                 </span>
                 <span className="text-[10px] text-slate-500">
-                  {showCartIcon
+                  {cartIsVisible
                     ? 'الأيقونة ظاهرة لزوار الموقع لتصفح وإتمام الطلبات'
-                    : 'الأيقونة مخفية حالياً (استعراض وتواصل مباشر فقط)'}
+                    : 'الأيقونة مخفية أو غير متاحة لنوع النشاط الحالي'}
                 </span>
               </div>
               <button

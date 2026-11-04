@@ -88,6 +88,45 @@ func (s *BuilderService) GetBuilderConfig(ctx context.Context, shopID string) (*
 	return &config, nil
 }
 
+// GetBuilderConfigWithVersion returns the saved draft and its authoritative
+// version token without persisting version metadata inside the configuration.
+func (s *BuilderService) GetBuilderConfigWithVersion(ctx context.Context, shopID string) (*BuilderConfig, int64, error) {
+	tx, err := s.repo.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
+	if err != nil {
+		return nil, 0, err
+	}
+	defer tx.Rollback(ctx)
+	var configJSON []byte
+	var updatedAt time.Time
+	err = tx.QueryRow(ctx, `SELECT builder_config, updated_at FROM shops WHERE id = $1`, shopID).Scan(&configJSON, &updatedAt)
+	if err == pgx.ErrNoRows {
+		return nil, 0, errors.NotFound("shop_not_found", "المتجر غير موجود")
+	}
+	if err != nil {
+		return nil, 0, err
+	}
+	var version int64
+	err = tx.QueryRow(ctx,
+		`SELECT COALESCE(MAX(version_number), 0) FROM builder_versions WHERE shop_id = $1`,
+		shopID).Scan(&version)
+	if err != nil {
+		return nil, 0, err
+	}
+	var config BuilderConfig
+	if len(configJSON) > 0 {
+		if err := json.Unmarshal(configJSON, &config); err != nil {
+			return nil, 0, errors.Internal("invalid_config", err)
+		}
+	} else {
+		config = s.getDefaultConfig()
+	}
+	config.UpdatedAt = updatedAt
+	if err := tx.Commit(ctx); err != nil {
+		return nil, 0, err
+	}
+	return &config, version, nil
+}
+
 // UpdateBuilderConfig updates the builder configuration for a shop.
 func (s *BuilderService) UpdateBuilderConfig(ctx context.Context, shopID string, config *BuilderConfig) (*BuilderConfig, error) {
 	// Validate shop exists
@@ -245,12 +284,12 @@ type PublicWebsite struct {
 
 // PublicShopInfo is the minimal shop info exposed publicly.
 type PublicShopInfo struct {
-	ID       string  `json:"id"`
-	Name     string  `json:"name"`
-	Slug     string  `json:"slug"`
-	LogoURL  *string `json:"logoUrl,omitempty"`
-	Phone    *string `json:"phone,omitempty"`
-	Address  *string `json:"address,omitempty"`
+	ID      string  `json:"id"`
+	Name    string  `json:"name"`
+	Slug    string  `json:"slug"`
+	LogoURL *string `json:"logoUrl,omitempty"`
+	Phone   *string `json:"phone,omitempty"`
+	Address *string `json:"address,omitempty"`
 }
 
 // GetPublicWebsiteBySlug returns the published website config for a shop by

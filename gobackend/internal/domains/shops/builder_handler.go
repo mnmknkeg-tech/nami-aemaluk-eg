@@ -97,12 +97,20 @@ func (h *BuilderHandler) GetBuilderConfig(c *fiber.Ctx) error {
 		return err
 	}
 
-	config, err := h.service.GetBuilderConfig(c.UserContext(), req.ShopID)
+	config, version, err := h.service.GetBuilderConfigWithVersion(c.UserContext(), req.ShopID)
 	if err != nil {
 		return err
 	}
-
-	return c.JSON(config)
+	encoded, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
+	var response map[string]any
+	if err := json.Unmarshal(encoded, &response); err != nil {
+		return err
+	}
+	response["draftVersion"] = version
+	return c.JSON(response)
 }
 
 // UpdateBuilderConfig handles PATCH/PUT /builder/:shopId/config
@@ -174,10 +182,10 @@ func (h *BuilderHandler) PublishBuilderConfig(c *fiber.Ctx) error {
 
 // saveConfigRequest is the request body for versioned draft save.
 type saveConfigRequest struct {
-	ShopID       string `json:"-"`
-	Config       BuilderConfig `json:"config" validate:"required"`
-	Mode         string        `json:"mode"` // editing mode for capability policy
-	ClientVersion int64        `json:"clientVersion"` // optimistic concurrency version
+	ShopID        string        `json:"-"`
+	Config        BuilderConfig `json:"config" validate:"required"`
+	Mode          string        `json:"mode"`          // editing mode for capability policy
+	ClientVersion int64         `json:"clientVersion"` // optimistic concurrency version
 }
 
 // SaveDraftConfig handles PUT/PATCH /builder/:shopId/config with mode-aware
@@ -217,10 +225,10 @@ func (h *BuilderHandler) SaveDraftConfig(c *fiber.Ctx) error {
 	c.Set("ETag", checksum)
 	c.Set("X-Draft-Version", strconv.FormatInt(version, 10))
 	return c.JSON(fiber.Map{
-		"success":          true,
-		"draftVersion":     version,
-		"checksum":         checksum,
-		"savedAt":          config.UpdatedAt,
+		"success":      true,
+		"draftVersion": version,
+		"checksum":     checksum,
+		"savedAt":      config.UpdatedAt,
 	})
 }
 
@@ -327,8 +335,8 @@ func (h *BuilderHandler) RollbackVersion(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{
 		"success": true,
-		"message":   "تم التراجع إلى النسخة المحددة",
-		"data":      config,
+		"message": "تم التراجع إلى النسخة المحددة",
+		"data":    config,
 	})
 }
 

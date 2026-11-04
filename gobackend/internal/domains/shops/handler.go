@@ -178,7 +178,26 @@ func (h *Handler) GetBySlug(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(fiber.Map{"success": true, "data": shop})
+	return c.JSON(fiber.Map{"success": true, "data": publicShopView(shop)})
+}
+
+// publicShopView removes draft-only builder data from the unauthenticated shop
+// response. Public builder content is served only by the published website API.
+func publicShopView(shop *Shop) *Shop {
+	if shop == nil {
+		return nil
+	}
+	public := *shop
+	public.BuilderConfig = nil
+	return &public
+}
+
+func publicShopViews(shops []Shop) []Shop {
+	public := make([]Shop, len(shops))
+	for i := range shops {
+		public[i] = *publicShopView(&shops[i])
+	}
+	return public
 }
 
 func (h *Handler) ListPublic(c *fiber.Ctx) error {
@@ -187,7 +206,7 @@ func (h *Handler) ListPublic(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(fiber.Map{"success": true, "data": shops})
+	return c.JSON(fiber.Map{"success": true, "data": publicShopViews(shops)})
 }
 
 func (h *Handler) ListByStatus(c *fiber.Ctx) error {

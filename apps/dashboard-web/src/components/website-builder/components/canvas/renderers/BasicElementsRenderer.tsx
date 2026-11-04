@@ -1,22 +1,10 @@
 import React, { useState } from 'react';
 import { BaseRendererProps } from './types';
 import { CustomCodeRenderer } from '../../code/CustomCodeRenderer';
-import {
-  Sparkles,
-  CreditCard,
-  MessageCircle,
-  ChevronDown,
-  Phone,
-  Mail,
-  MapPin,
-  ShoppingBag,
-  ShoppingCart,
-  Package,
-  Store,
-  User,
-} from 'lucide-react';
+import { Sparkles, MessageCircle, ChevronDown, Phone, Mail, MapPin, User } from 'lucide-react';
 
 import { CardGridRenderer } from './CardGridRenderer';
+import { CartIcon, isCartVisible, resolveCartIconType } from '@ray-eg/shared/builder';
 
 export interface BasicElementsRendererProps extends BaseRendererProps {
   cartCount: number;
@@ -407,12 +395,7 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
         node.id.includes('cta') ||
         node.id.includes('action') ||
         Boolean(node.parentId?.includes('header'));
-      const showInlineCartAndAuth = isHeaderCta && currentViewport !== 'mobile';
-      const isCartEnabled = website.settings?.cart?.enabled !== false;
-      const cartPos = website.settings?.cart?.position;
-      const cartShowsInHeader = !cartPos || cartPos === 'header' || cartPos === 'both';
-
-      let headerComp: (typeof node) | undefined;
+      let headerComp: typeof node | undefined;
       let ancestorId = node.parentId;
       const visitedAncestors = new Set<string>();
       while (ancestorId && !visitedAncestors.has(ancestorId)) {
@@ -426,17 +409,42 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
         ancestorId = ancestor.parentId;
       }
 
-      const isCartHidden = Boolean(
-        headerComp?.props?.hideCart || (website.theme as any)?.hideCart || node.props?.hideCart
-      );
-
+      const headerIsOnActivePage = (() => {
+        if (!headerComp || !activePage?.rootNodeId) return false;
+        const visited = new Set<string>();
+        const visit = (id: string): boolean => {
+          if (id === headerComp?.id) return true;
+          if (visited.has(id)) return false;
+          visited.add(id);
+          return Boolean(website.components[id]?.childrenIds?.some(visit));
+        };
+        return visit(activePage.rootNodeId);
+      })();
+      const isHidden = Boolean(node.props?.hidden || node.isHidden);
+      const showInlineCartAndAuth =
+        isHeaderCta &&
+        headerIsOnActivePage &&
+        !isHidden &&
+        !node.props?.disabled &&
+        !(currentViewport === 'mobile' && node.props?.mobileHidden) &&
+        node.styles?.[currentViewport]?.display !== 'none' &&
+        !headerComp?.isHidden &&
+        !headerComp?.props?.hidden &&
+        currentViewport !== 'mobile';
+      const headerVisibilityOverride =
+        headerComp?.props?.cartVisibilityOverride ?? node.props?.cartVisibilityOverride;
+      const legacyHeaderHide = Boolean(headerComp?.props?.hideCart || node.props?.hideCart);
       const showCart =
         showInlineCartAndAuth &&
-        isCartEnabled &&
-        cartShowsInHeader &&
-        website.settings?.cart?.businessType !== 'bookings' &&
-        website.settings?.cart?.showCartIcon !== false &&
-        !isCartHidden;
+        isCartVisible({
+          settings: website.settings?.cart,
+          placement: 'header',
+          headerProps: {
+            cartVisibilityOverride: headerVisibilityOverride,
+            hideCart: legacyHeaderHide,
+          },
+          themeHideCart: Boolean((website.theme as any)?.hideCart),
+        });
 
       const isAuthEnabled = Boolean(website.settings?.auth?.enabled);
       const isAuthHidden = Boolean(
@@ -446,8 +454,6 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
       );
 
       const showAuth = showInlineCartAndAuth && isAuthEnabled && !isAuthHidden;
-
-      const isHidden = Boolean(node.props?.hidden || node.isHidden);
 
       // If button is hidden and no cart/auth to show, render nothing
       if (isHidden && !showCart && !showAuth) {
@@ -468,7 +474,11 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
         <div className="inline-flex items-center gap-2">
           {showCart &&
             (() => {
-              const headerCartIcon = headerComp?.props?.cartIcon || node.props.cartIcon || 'ShoppingBag';
+              const headerCartIcon = resolveCartIconType(
+                website.settings?.cart?.iconType,
+                headerComp?.props?.cartIcon,
+                node.props.cartIcon
+              );
               return (
                 <button
                   type="button"
@@ -481,17 +491,7 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
                   title="سلة المشتريات والحجوزات"
                   className="relative p-2.5 rounded-xl border border-slate-200/80 bg-white/80 hover:bg-white text-slate-700 hover:text-blue-600 shadow-xs transition-all flex items-center justify-center cursor-pointer active:scale-95"
                 >
-                  {headerCartIcon === 'ShoppingCart' ? (
-                    <ShoppingCart className="w-4 h-4" />
-                  ) : headerCartIcon === 'Package' ? (
-                    <Package className="w-4 h-4" />
-                  ) : headerCartIcon === 'Store' ? (
-                    <Store className="w-4 h-4" />
-                  ) : headerCartIcon === 'CreditCard' ? (
-                    <CreditCard className="w-4 h-4" />
-                  ) : (
-                    <ShoppingBag className="w-4 h-4" />
-                  )}
+                  <CartIcon iconType={headerCartIcon} className="w-4 h-4" />
                   {cartCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-600 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
                       {cartCount}

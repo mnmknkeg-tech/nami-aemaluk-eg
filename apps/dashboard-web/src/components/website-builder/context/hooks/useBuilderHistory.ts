@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Website } from '../../types/builder';
+import { Website, WebsiteSettings } from '../../types/builder';
 import { EditingModeId } from '../types';
 import { apiRequest } from '../../../../lib/api/client';
 import type { WebsiteReducer } from './useBuilderComponentOperations';
@@ -7,6 +7,30 @@ import { inspectWebsiteTree, normalizeWebsiteTree } from '@ray-eg/shared/builder
 
 type WebsiteUpdate = Website | WebsiteReducer;
 type AutosaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
+
+/** Merge settings without mutating snapshots, preserving nested settings groups. */
+export const mergeWebsiteSettings = (
+  website: Website,
+  patch: Partial<WebsiteSettings>
+): Website => {
+  const current = website.settings || {};
+  return {
+    ...website,
+    settings: {
+      ...current,
+      ...patch,
+      auth: patch.auth ? { ...current.auth, ...patch.auth } : current.auth,
+      announcement: patch.announcement
+        ? { ...current.announcement, ...patch.announcement }
+        : current.announcement,
+      floatingActions: patch.floatingActions
+        ? { ...current.floatingActions, ...patch.floatingActions }
+        : current.floatingActions,
+      seo: patch.seo ? { ...current.seo, ...patch.seo } : current.seo,
+      branding: patch.branding ? { ...current.branding, ...patch.branding } : current.branding,
+    } as WebsiteSettings,
+  };
+};
 
 export interface HistoryRestoreInput {
   direction: 'undo' | 'redo';
@@ -203,10 +227,49 @@ export const useBuilderHistory = (
           if (requestId === saveRequestIdRef.current) {
             setAutosaveStatus('error');
             if (status === 409) {
-              setHistoryLog((prev) => [
-                'تعارض في نسخة المسودة (409): لم تُستبدل النسخة الأحدث على الخادم، واحتُفظ بأحدث تغييراتك محليًا. حدّث النسخة وادمج التغييرات قبل الحفظ مجددًا.',
-                ...prev,
-              ]);
+              try {
+                const latest = await apiRequest<any>(`/builder/${builderShopId}/config`);
+                const latestVersion = latest?.draftVersion;
+                const keepLocal =
+                  Number.isSafeInteger(latestVersion) &&
+                  typeof window !== 'undefined' &&
+                  window.confirm(
+                    `توجد نسخة أحدث على الخادم (الإصدار ${latestVersion}). تغييراتك المحلية محفوظة. هل تريد اعتماد تغييراتك المحلية فوق نسخة الخادم؟ اختر إلغاء للاحتفاظ بنسخة الخادم وإبقاء نسختك المحلية للاستعادة لاحقًا.`
+                  );
+                if (keepLocal) {
+                  const resolved = await apiRequest<any>(`/builder/${builderShopId}/config`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                      config: { activityType: safeSnapshot.activity, website: safeSnapshot },
+                      mode: editingModeRef.current,
+                      clientVersion: latestVersion,
+                    }),
+                  });
+                  if (typeof resolved?.draftVersion === 'number') {
+                    draftVersionRef.current = resolved.draftVersion;
+                  }
+                  writeLocalDraft(builderShopId, normalizeWebsiteTree(websiteRef.current));
+                  const stillCurrent = isCurrentWebsiteRevision(
+                    revision,
+                    websiteRevisionRef.current
+                  );
+                  setAutosaveStatus(stillCurrent ? 'saved' : 'unsaved');
+                  setHistoryLog((prev) => [
+                    'تم حل تعارض المسودة باختيار تغييراتك المحلية وحفظها على الخادم',
+                    ...prev,
+                  ]);
+                  return stillCurrent;
+                }
+                setHistoryLog((prev) => [
+                  'تعارض المسودة: اخترت الاحتفاظ بنسخة الخادم؛ تغييراتك المحلية ما زالت محفوظة في النسخة الاحتياطية.',
+                  ...prev,
+                ]);
+              } catch {
+                setHistoryLog((prev) => [
+                  'تعذّر جلب أحدث نسخة لحل التعارض؛ بقيت تغييراتك محفوظة محليًا ولم يُستبدل إصدار الخادم.',
+                  ...prev,
+                ]);
+              }
             } else if (manual) {
               setHistoryLog((prev) => [
                 'تعذّر الحفظ على السيرفر — حُفظ أحدث تعديل محليًا، أعد المحاولة',

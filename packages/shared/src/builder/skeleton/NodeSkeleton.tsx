@@ -2,21 +2,16 @@
 
 import React from 'react';
 import type { ComponentNode, StyleProperties, ViewportBreakpoint, Website } from '../types';
-import { stylePropertiesToCss } from '../responsiveStyles';
+import { computeResponsiveNodeStyles, mergeResponsiveStyles } from '../responsiveStyles';
 import { Bar, SK, fontSizePx, px, rightText, type Align } from './parts';
 import { KnownBlock } from './KnownBlock';
 
-function resolveStyles(node: ComponentNode, viewport: ViewportBreakpoint): StyleProperties {
-  const d = node.styles?.desktop || {};
-  const t = node.styles?.tablet || {};
-  const m = node.styles?.mobile || {};
-  if (viewport === 'tablet') return { ...d, ...t };
-  if (viewport === 'mobile') return { ...d, ...t, ...m };
-  return { ...d };
-}
-
 /** العنصر بدون أبناء: ارسم له placeholder حسب نوعه. */
-function leafPlaceholder(node: ComponentNode, s: StyleProperties): React.ReactNode {
+function leafPlaceholder(
+  node: ComponentNode,
+  s: StyleProperties,
+  viewport: ViewportBreakpoint
+): React.ReactNode {
   const fs = fontSizePx(s);
   const align = s.textAlign;
   const text = rightText(align);
@@ -71,7 +66,7 @@ function leafPlaceholder(node: ComponentNode, s: StyleProperties): React.ReactNo
       return <span style={{ display: 'block', height: px(s.height, '24px') }} />;
 
     default:
-      return <KnownBlock type={node.type} styles={s} align={align as Align} />;
+      return <KnownBlock type={node.type} styles={s} align={align as Align} viewport={viewport} />;
   }
 }
 
@@ -87,7 +82,7 @@ export function NodeSkeleton({
   viewport?: ViewportBreakpoint;
   ancestors?: Set<string>;
 }) {
-  const s = resolveStyles(node, viewport);
+  const s: StyleProperties = mergeResponsiveStyles(node.styles, viewport);
   if (
     ancestors.has(node.id) ||
     node.isHidden ||
@@ -104,12 +99,12 @@ export function NodeSkeleton({
 
   // Use the same saved-style mapper as the live renderer to reduce load shifts.
   const box: React.CSSProperties = {
-    ...stylePropertiesToCss(s),
+    ...computeResponsiveNodeStyles(node, viewport, website.theme?.typography?.fontBody),
     display: s.display || 'block',
   };
 
   if (childIds.length === 0) {
-    return <div style={box}>{leafPlaceholder(node, s)}</div>;
+    return <div style={box}>{leafPlaceholder(node, s, viewport)}</div>;
   }
 
   return (

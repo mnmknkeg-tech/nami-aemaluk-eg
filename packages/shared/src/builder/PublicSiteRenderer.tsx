@@ -1,18 +1,15 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import type {
-  SiteProduct,
-  SiteShopContext,
-  SiteSubscriptionPlan,
-  Website,
-} from './types';
+import type { SiteProduct, SiteShopContext, SiteSubscriptionPlan, Website } from './types';
 import { resolveTheme, buildWhatsAppLink } from './theme';
 import { NodeView } from './NodeView';
 import { SiteSubscriptionModal } from './SiteSubscriptionModal';
 import { SiteCartDrawer, type SiteCartItem } from './SiteCartDrawer';
 import { useResponsiveViewport } from './responsiveViewport';
 import { inspectWebsiteTree, normalizeWebsiteTree } from './websiteTree';
+import { CartIcon } from './CartIcon';
+import { isCartVisible } from './cartPolicy';
 
 export interface PublicSiteRendererProps {
   website: Website;
@@ -71,13 +68,7 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
 
   const usesHostCart = Boolean(onAddToCart && onOpenCart);
 
-  const isOrdersFlow = (cartSettings?.businessType || 'orders') === 'orders';
-
-  const showCartIcon = isOrdersFlow && cartSettings?.showCartIcon !== false;
-
-  const cartPosition = cartSettings?.position || 'both';
-
-  const cartIconType = cartSettings?.iconType || 'ShoppingBag';
+  const showFloatingCart = isCartVisible({ settings: cartSettings, placement: 'floating' });
 
   const [standaloneItems, setStandaloneItems] = useState<SiteCartItem[]>(() => {
     if (typeof window === 'undefined') return [];
@@ -159,12 +150,12 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
   const waLink = (text: string) => buildWhatsAppLink(shop.phone || shop.whatsapp, text);
   return (
     <div className="min-h-screen bg-white text-slate-900 antialiased">
-      {showCartIcon && (cartPosition === 'floating' || cartPosition === 'both') && (
+      {showFloatingCart && (
         <button
           type="button"
           onClick={handleOpenCart}
           title="سلة المشتريات"
-          className="fixed bottom-24 left-6 z-40 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group cursor-pointer"
+          className="fixed bottom-24 ltr:left-6 rtl:right-6 z-40 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group cursor-pointer"
           style={{
             backgroundColor: theme.colors.primary || '#059669',
             color: '#ffffff',
@@ -176,79 +167,12 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
               style={{ backgroundColor: theme.colors.primary || '#059669' }}
             />
           )}
-          {cartIconType === 'ShoppingCart' ? (
-            <svg
-              className="w-6 h-6 relative z-10 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm-8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"
-              />
-            </svg>
-          ) : cartIconType === 'Package' ? (
-            <svg
-              className="w-6 h-6 relative z-10 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm-8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"
-              />
-            </svg>
-          ) : cartIconType === 'Store' ? (
-            <svg
-              className="w-6 h-6 relative z-10 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm-8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"
-              />
-            </svg>
-          ) : cartIconType === 'CreditCard' ? (
-            <svg
-              className="w-6 h-6 relative z-10 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm-8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"
-              />
-            </svg>
-          ) : (
-            <svg
-              className="w-6 h-6 relative z-10 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-8 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm-8 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"
-              />
-            </svg>
-          )}
+          <CartIcon
+            iconType={cartSettings?.iconType}
+            className="w-6 h-6 relative z-10 text-white"
+          />
           {effectiveCartCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-md z-10">
+            <span className="absolute -top-1 ltr:-right-1 rtl:-left-1 min-w-[20px] h-5 px-1 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-md z-10">
               {effectiveCartCount > 99 ? '99+' : effectiveCartCount}
             </span>
           )}
@@ -330,11 +254,15 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
             onUpdateQuantity={(id, delta) => {
               setStandaloneItems((prev) =>
                 prev
-                  .map((item) => (item.id === id ? { ...item, quantity: item.quantity + delta } : item))
+                  .map((item) =>
+                    item.id === id ? { ...item, quantity: item.quantity + delta } : item
+                  )
                   .filter((item) => item.quantity > 0)
               );
             }}
-            onRemoveItem={(id) => setStandaloneItems((prev) => prev.filter((item) => item.id !== id))}
+            onRemoveItem={(id) =>
+              setStandaloneItems((prev) => prev.filter((item) => item.id !== id))
+            }
             onProceedToCheckout={() => window.location.assign(`/site/${shop.slug}/checkout`)}
           />
         )}

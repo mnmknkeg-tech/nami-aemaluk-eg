@@ -35,8 +35,14 @@ describe('removePageAndOrphans', () => {
             { id: 'sub_home', title: 'Home', url: '/', pageId: 'home' },
           ],
         }),
-        about_link: { ...node('about_link', [], { text: 'About', url: '/about', pageId: 'about' }), type: 'button' },
-        home_link: { ...node('home_link', [], { text: 'Home', url: '/', pageId: 'home' }), type: 'button' },
+        about_link: {
+          ...node('about_link', [], { text: 'About', url: '/about', pageId: 'about' }),
+          type: 'button',
+        },
+        home_link: {
+          ...node('home_link', [], { text: 'Home', url: '/', pageId: 'home' }),
+          type: 'button',
+        },
         home_only: node('home_only'),
         about_only: node('about_only'),
         preexisting_detached: node('preexisting_detached'),
@@ -139,6 +145,41 @@ describe('active page selection scope', () => {
     expect(aboutCta?.id).toBe('about_header_cta');
     expect(noCta).toBeNull();
   });
+
+  it('ignores hidden or unavailable CTA descendants and selects the first eligible Header CTA', () => {
+    const website = {
+      pages: [{ id: 'home', rootNodeId: 'root' }],
+      components: {
+        root: node('root', ['header']),
+        header: {
+          ...node('header', ['hidden_cta', 'disabled_cta', 'visible_cta']),
+          type: 'header',
+        },
+        hidden_cta: {
+          ...node('hidden_cta', [], { label: 'Hidden', headerCta: true, hidden: true }),
+          type: 'button',
+        },
+        disabled_cta: {
+          ...node('disabled_cta', [], { label: 'Unavailable', headerCta: true, disabled: true }),
+          type: 'button',
+        },
+        visible_cta: {
+          ...node('visible_cta', [], { label: 'Available', headerCta: true }),
+          type: 'button',
+        },
+      },
+    } as any;
+
+    expect(
+      findHeaderCtaForActivePage(
+        website,
+        'root',
+        website.components.header,
+        website.components.header,
+        true
+      )?.id
+    ).toBe('visible_cta');
+  });
 });
 
 describe('addPage', () => {
@@ -212,6 +253,12 @@ describe('addPage', () => {
     expect(setActivePageId).toHaveBeenCalledWith(newPage.id);
     expect(setSelectedNodeId).toHaveBeenCalledWith(newPage.rootNodeId);
     expect(navContainers).toHaveLength(2);
-    expect(navContainers.every((nav) => nav.childrenIds.some((id: string) => nextWebsite.components[id]?.props?.pageId === newPage.id))).toBe(true);
+    expect(
+      navContainers.every((nav) =>
+        nav.childrenIds.some(
+          (id: string) => nextWebsite.components[id]?.props?.pageId === newPage.id
+        )
+      )
+    ).toBe(true);
   });
 });

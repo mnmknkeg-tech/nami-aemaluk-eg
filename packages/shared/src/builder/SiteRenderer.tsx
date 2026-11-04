@@ -1,18 +1,15 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import type {
-  SiteProduct,
-  SiteShopContext,
-  SiteSubscriptionPlan,
-  Website,
-} from './types';
-import { MessageCircle, ShoppingBag, ShoppingCart, Store, Package, CreditCard } from 'lucide-react';
+import type { SiteProduct, SiteShopContext, SiteSubscriptionPlan, Website } from './types';
+import { MessageCircle } from 'lucide-react';
 import { buildWhatsAppLink, resolveTheme } from './theme';
 import { NodeView, NodeViewContext } from './NodeView';
 import { SiteSubscriptionModal } from './SiteSubscriptionModal';
 import { SiteCartDrawer, type SiteCartItem } from './SiteCartDrawer';
 import { useResponsiveViewport } from './responsiveViewport';
+import { CartIcon } from './CartIcon';
+import { isCartVisible } from './cartPolicy';
 
 interface SiteRendererProps {
   website: Website;
@@ -45,10 +42,7 @@ export const SiteRenderer: React.FC<SiteRendererProps> = ({
   // ── Merchant Website Standalone Cart System ──────────────────────────────
   const cartSettings = website.settings?.cart;
   const usesHostCart = Boolean(onAddToCart);
-  const isOrdersFlow = (cartSettings?.businessType || 'orders') === 'orders';
-  const showCartIcon = isOrdersFlow && cartSettings?.showCartIcon !== false;
-  const cartPosition = cartSettings?.position || 'both';
-  const cartIconType = cartSettings?.iconType || 'ShoppingBag';
+  const showFloatingCart = isCartVisible({ settings: cartSettings, placement: 'floating' });
 
   const [standaloneItems, setStandaloneItems] = useState<SiteCartItem[]>(() => {
     if (typeof window === 'undefined') return [];
@@ -239,12 +233,12 @@ export const SiteRenderer: React.FC<SiteRendererProps> = ({
       <NodeView nodeId={activePage.rootNodeId} ctx={ctx} />
 
       {/* 2. Floating Cart Button for Published Site */}
-      {showCartIcon && (cartPosition === 'floating' || cartPosition === 'both') && (
+      {showFloatingCart && (
         <button
           type="button"
           onClick={handleOpenCart}
           title="سلة المشتريات"
-          className="fixed bottom-24 left-6 z-40 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group cursor-pointer"
+          className="fixed bottom-24 ltr:left-6 rtl:right-6 z-40 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group cursor-pointer"
           style={{
             backgroundColor: theme.colors.primary || '#059669',
             color: '#ffffff',
@@ -256,19 +250,12 @@ export const SiteRenderer: React.FC<SiteRendererProps> = ({
               style={{ backgroundColor: theme.colors.primary || '#059669' }}
             />
           )}
-          {cartIconType === 'ShoppingCart' ? (
-            <ShoppingCart className="w-6 h-6 relative z-10" />
-          ) : cartIconType === 'Package' ? (
-            <Package className="w-6 h-6 relative z-10" />
-          ) : cartIconType === 'Store' ? (
-            <Store className="w-6 h-6 relative z-10" />
-          ) : cartIconType === 'CreditCard' ? (
-            <CreditCard className="w-6 h-6 relative z-10" />
-          ) : (
-            <ShoppingBag className="w-6 h-6 relative z-10" />
-          )}
+          <CartIcon
+            iconType={cartSettings?.iconType}
+            className="w-6 h-6 relative z-10 text-white"
+          />
           {effectiveCartCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-md z-10">
+            <span className="absolute -top-1 ltr:-right-1 rtl:-left-1 min-w-[20px] h-5 px-1 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-md z-10">
               {effectiveCartCount > 99 ? '99+' : effectiveCartCount}
             </span>
           )}

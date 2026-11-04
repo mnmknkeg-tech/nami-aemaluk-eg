@@ -495,11 +495,14 @@ export interface WebsiteBrandingSettings {
   customCss?: string;
 }
 
+export type CartIconType = 'ShoppingBag' | 'ShoppingCart' | 'Store' | 'Package' | 'CreditCard';
+export type HeaderCartVisibilityOverride = 'inherit' | 'show' | 'hide';
+
 export interface WebsiteCartSettings {
   enabled?: boolean;
   businessType?: 'orders' | 'bookings' | 'subscriptions';
   showCartIcon?: boolean;
-  iconType?: 'ShoppingBag' | 'ShoppingCart' | 'Store' | 'Package' | 'CreditCard';
+  iconType?: CartIconType;
   position?: 'header' | 'floating' | 'both';
   mode?: 'standalone' | 'unified';
   allowDirectCheckout?: boolean;

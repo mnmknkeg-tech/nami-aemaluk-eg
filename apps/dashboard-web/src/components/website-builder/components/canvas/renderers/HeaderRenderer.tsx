@@ -1,19 +1,8 @@
 import React, { useState } from 'react';
 import { BaseRendererProps } from './types';
-import {
-  Menu,
-  X,
-  ShoppingCart,
-  Package,
-  Store,
-  CreditCard,
-  ShoppingBag,
-  User,
-  ArrowRight,
-  MessageCircle,
-  Phone,
-} from 'lucide-react';
+import { Menu, X, ShoppingBag, User, ArrowRight, MessageCircle, Phone } from 'lucide-react';
 import { ComponentRenderer } from '../ComponentRenderer';
+import { CartIcon, isCartVisible, resolveCartIconType } from '@ray-eg/shared/builder';
 
 export interface HeaderRendererProps extends BaseRendererProps {
   cartCount: number;
@@ -42,17 +31,13 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
 
   // Cart visibility
   const cartSettings = website.settings?.cart;
-  const isCartEnabled = cartSettings?.enabled !== false;
-  const cartBusinessType = cartSettings?.businessType || 'orders';
-  const cartIconType = cartSettings?.iconType || (node.props.cartIcon as string) || 'ShoppingBag';
-  const showCartInHeader =
-    isCartEnabled &&
-    cartBusinessType === 'orders' &&
-    cartSettings?.showCartIcon !== false &&
-    (cartSettings?.position === 'header' ||
-      cartSettings?.position === 'both' ||
-      !cartSettings?.position) &&
-    !Boolean(node.props.hideCart || (website.theme as any)?.hideCart);
+  const cartIconType = resolveCartIconType(cartSettings?.iconType, node.props.cartIcon);
+  const showCartInHeader = isCartVisible({
+    settings: cartSettings,
+    placement: 'header',
+    headerProps: node.props,
+    themeHideCart: Boolean((website.theme as any)?.hideCart),
+  });
   const hideCart = !showCartInHeader;
 
   // Account / Login visibility: only visible when auth is actually enabled and not hidden
@@ -198,14 +183,18 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
       component.id.toLowerCase().includes('cta') ||
       component.id.toLowerCase().includes('action') ||
       Boolean(component.parentId?.toLowerCase().includes('header')));
+  const isVisibleHeaderAction = (component: (typeof headerDescendants)[number]) =>
+    isHeaderAction(component) &&
+    !component.isHidden &&
+    !component.props?.hidden &&
+    !component.props?.disabled &&
+    !(isMobile && component.props?.mobileHidden) &&
+    component.styles?.[currentViewport]?.display !== 'none';
   const headerCtaComp = headerDescendants.find(
     (component) =>
-      isHeaderAction(component) &&
-      !component.isHidden &&
-      !component.props?.hidden &&
-      Boolean(component.props?.label || component.props?.text)
+      isVisibleHeaderAction(component) && Boolean(component.props?.label || component.props?.text)
   );
-  const hasInlineHeaderActions = headerDescendants.some(isHeaderAction);
+  const hasInlineHeaderActions = headerDescendants.some(isVisibleHeaderAction);
 
   const handleLoginClick = (e: React.MouseEvent) => {
     if (!isInteractivePreview) return;
@@ -322,17 +311,7 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
                 title="سلة التسوق"
                 className="relative p-2 rounded-xl bg-slate-100/90 hover:bg-slate-200 text-slate-800 transition-colors flex items-center justify-center cursor-pointer active:scale-95"
               >
-                {cartIconType === 'ShoppingCart' ? (
-                  <ShoppingCart className="w-4 h-4 text-blue-600" />
-                ) : cartIconType === 'Package' ? (
-                  <Package className="w-4 h-4 text-blue-600" />
-                ) : cartIconType === 'Store' ? (
-                  <Store className="w-4 h-4 text-blue-600" />
-                ) : cartIconType === 'CreditCard' ? (
-                  <CreditCard className="w-4 h-4 text-blue-600" />
-                ) : (
-                  <ShoppingBag className="w-4 h-4 text-blue-600" />
-                )}
+                <CartIcon iconType={cartIconType} className="w-4 h-4 text-blue-600" />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-xs">
                     {cartCount}
@@ -611,7 +590,7 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
                       >
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-                            <ShoppingBag className="w-3.5 h-3.5" />
+                            <CartIcon iconType={cartIconType} className="w-3.5 h-3.5" />
                           </div>
                           <span>سلة المشتريات</span>
                         </div>
@@ -710,17 +689,7 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
                     title="سلة التسوق"
                     className="relative p-2 rounded-xl bg-slate-100/90 hover:bg-slate-200 text-slate-800 transition-colors flex items-center justify-center cursor-pointer active:scale-95"
                   >
-                    {cartIconType === 'ShoppingCart' ? (
-                      <ShoppingCart className="w-4 h-4 text-blue-600" />
-                    ) : cartIconType === 'Package' ? (
-                      <Package className="w-4 h-4 text-blue-600" />
-                    ) : cartIconType === 'Store' ? (
-                      <Store className="w-4 h-4 text-blue-600" />
-                    ) : cartIconType === 'CreditCard' ? (
-                      <CreditCard className="w-4 h-4 text-blue-600" />
-                    ) : (
-                      <ShoppingBag className="w-4 h-4 text-blue-600" />
-                    )}
+                    <CartIcon iconType={cartIconType} className="w-4 h-4 text-blue-600" />
                     {cartCount > 0 && (
                       <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-xs">
                         {cartCount}

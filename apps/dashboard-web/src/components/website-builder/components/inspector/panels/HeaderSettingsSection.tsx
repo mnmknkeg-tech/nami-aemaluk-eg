@@ -15,6 +15,8 @@ import {
   Zap,
 } from 'lucide-react';
 import { useBuilder } from '../../../context/BuilderContext';
+import { resolveCartIconType } from '@ray-eg/shared/builder';
+import type { HeaderCartVisibilityOverride } from '@ray-eg/shared/builder';
 import type { InspectorPanelProps } from './types';
 import type { ComponentNode, Website } from '../../../types/builder';
 
@@ -65,6 +67,9 @@ export const findHeaderCtaForActivePage = (
         (candidate): candidate is ComponentNode =>
           Boolean(candidate) &&
           candidate.type === 'button' &&
+          !candidate.isHidden &&
+          candidate.props?.hidden !== true &&
+          candidate.props?.disabled !== true &&
           (candidate.props?.headerCta === true ||
             candidate.id === 'header_cta_btn' ||
             candidate.id === 'gen_header_cta' ||
@@ -93,12 +98,21 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
   toggleAccordion,
   handlePropChange,
 }) => {
-  const { website, activePage } = useBuilder();
+  const { website, activePage, updateWebsiteSettings } = useBuilder();
   const ctaNode = activePage
     ? findHeaderCtaForActivePage(website, activePage.rootNodeId, node, parentSection, isHeader)
     : null;
 
-  const hideCart = Boolean(parentSection.props?.hideCart ?? node.props?.hideCart);
+  const cartVisibilityOverride = (parentSection.props?.cartVisibilityOverride ??
+    node.props?.cartVisibilityOverride) as HeaderCartVisibilityOverride | undefined;
+  const legacyHideCart = Boolean(parentSection.props?.hideCart ?? node.props?.hideCart);
+  const effectiveCartVisibility = cartVisibilityOverride || (legacyHideCart ? 'hide' : 'inherit');
+  const hideCart = effectiveCartVisibility === 'hide';
+  const cartIconType = resolveCartIconType(
+    website.settings?.cart?.iconType,
+    parentSection.props?.cartIcon,
+    node.props?.cartIcon
+  );
   const showLogin = parentSection.props?.showLogin !== false && node.props?.showLogin !== false;
   const loginText = (parentSection.props?.loginText || node.props?.loginText || 'حسابي') as string;
   const showLoginText = Boolean(parentSection.props?.showLoginText ?? node.props?.showLoginText);
@@ -202,26 +216,43 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
                   <span>زر سلة التسوق (Cart Button)</span>
                 </span>
                 <span className="text-[10px] text-slate-500">
-                  {hideCart
-                    ? 'السلة مخفية حالياً (استفسارات فقط)'
-                    : 'السلة مفعلة وجاهزة لاستقبال الطلبات'}
+                  {effectiveCartVisibility === 'inherit'
+                    ? 'يتبع ظهورها الإعدادات العامة للسلة'
+                    : hideCart
+                      ? 'السلة مخفية في هذا الهيدر فقط'
+                      : 'السلة ظاهرة في هذا الهيدر عند تفعيلها عاماً'}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => updateProp('hideCart', !hideCart)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                  !hideCart ? 'bg-blue-600' : 'bg-slate-300'
-                }`}
+              <div
+                className="flex items-center gap-1"
+                role="group"
+                aria-label="ظهور السلة في هذا الهيدر"
               >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                    !hideCart
-                      ? 'translate-x-0 rtl:-translate-x-5'
-                      : '-translate-x-5 rtl:translate-x-0'
-                  }`}
-                />
-              </button>
+                {[
+                  { id: 'inherit', label: 'عام' },
+                  { id: 'show', label: 'إظهار' },
+                  { id: 'hide', label: 'إخفاء' },
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-pressed={effectiveCartVisibility === option.id}
+                    onClick={() =>
+                      updateProp(
+                        'cartVisibilityOverride',
+                        option.id as HeaderCartVisibilityOverride
+                      )
+                    }
+                    className={`px-2 py-1 rounded-lg border text-[10px] font-semibold transition-colors ${
+                      effectiveCartVisibility === option.id
+                        ? 'border-blue-600 bg-blue-600 text-white'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Cart Icon Picker */}
@@ -238,14 +269,19 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
                     { id: 'Package', label: 'طرد مشتريات', Icon: Package },
                     { id: 'CreditCard', label: 'دفع فوري', Icon: CreditCard },
                   ].map((item) => {
-                    const currentIcon =
-                      parentSection.props?.cartIcon || node.props?.cartIcon || 'ShoppingBag';
-                    const isSelected = currentIcon === item.id;
+                    const isSelected = cartIconType === item.id;
                     return (
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => updateProp('cartIcon', item.id)}
+                        onClick={() =>
+                          updateWebsiteSettings({
+                            cart: {
+                              ...(website.settings?.cart || {}),
+                              iconType: item.id as any,
+                            },
+                          })
+                        }
                         className={`p-1.5 rounded-lg border text-center flex flex-col items-center gap-1 transition-all cursor-pointer ${
                           isSelected
                             ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-bold'
@@ -469,18 +505,20 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
                 { id: 'bookings', label: '📅 حجوزات' },
                 { id: 'subscriptions', label: '💳 اشتراكات' },
               ].map((m) => {
-                const currentMode =
-                  parentSection.props?.businessType || node.props?.businessType || 'orders';
+                const currentMode = website.settings?.cart?.businessType || 'orders';
                 const isSelected = currentMode === m.id;
                 return (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => {
-                      updateProp('businessType', m.id);
-                      if (m.id === 'orders') {
-                        updateProp('hideCart', false);
-                      }
+                      updateWebsiteSettings({
+                        cart: {
+                          ...(website.settings?.cart || {}),
+                          businessType: m.id as 'orders' | 'bookings' | 'subscriptions',
+                          ...(m.id === 'orders' ? { showCartIcon: true } : {}),
+                        },
+                      });
                     }}
                     className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border text-center ${
                       isSelected

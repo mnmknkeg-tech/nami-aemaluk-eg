@@ -3,7 +3,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { MapPin, Phone, Star, Store, MessageCircle, ArrowLeft } from 'lucide-react';
-import { getShopBySlug, getProducts, getShops, type Shop } from '@/lib/services';
+import {
+  getShopBySlug,
+  getPublishedWebsiteBySlug,
+  getPublicBuilderConfig,
+  getProducts,
+  getShops,
+  type Shop,
+} from '@/lib/services';
 import { ShopProducts } from '@/components/ShopProducts';
 import ShareButton from '@/components/ShareButton';
 import { FollowButton } from '@/components/FollowButton';
@@ -12,7 +19,8 @@ import { siteConfig } from '@/lib/config';
 import ShopRenderer from '@/components/ShopRenderer';
 import { serializeJsonLd } from '@/lib/jsonld';
 
-export const revalidate = 300;
+// Builder publication must be visible immediately; render this route per request.
+export const revalidate = 0;
 
 export async function generateStaticParams() {
   try {
@@ -29,7 +37,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const shop = await getShopBySlug(slug);
+  const shop = await getShopBySlug(slug, true);
   if (!shop) return { title: 'متجر غير موجود' };
 
   // Merchant storefronts must feel like the merchant's own site. Do not put
@@ -60,8 +68,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ShopPage({ params }: Props) {
   const { slug } = await params;
-  const shop = await getShopBySlug(slug);
+  const shop = await getShopBySlug(slug, true);
   if (!shop) notFound();
+
+  const publishedWebsite = await getPublishedWebsiteBySlug(slug);
+  const publishedConfig = getPublicBuilderConfig(publishedWebsite);
 
   // Only products the merchant kept VISIBLE from the dashboard products page
   // appear on the storefront (same rule as published /site/ pages).
@@ -124,11 +135,10 @@ export default async function ShopPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbLd) }}
       />
 
-      {/* If the shop has a builder config, render with the unified builder layout
-          (same as the live preview in dashboard-web). Otherwise fall back to the
-          legacy hardcoded layout below. */}
-      {shop.builderConfig ? (
-        <ShopRenderer shop={shop} products={products} />
+      {/* Only the published snapshot is public. Unpublished/legacy shops keep
+          their established pageDesign layout; draft builderConfig is never used. */}
+      {publishedConfig ? (
+        <ShopRenderer shop={{ ...shop, builderConfig: publishedConfig }} products={products} />
       ) : (
         <LegacyShopLayout
           shop={shop}
