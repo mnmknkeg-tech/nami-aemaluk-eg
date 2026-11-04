@@ -5,6 +5,7 @@ import { Sparkles, MessageCircle, ChevronDown, Phone, Mail, MapPin, User } from 
 
 import { CardGridRenderer } from './CardGridRenderer';
 import { CartIcon, isCartVisible, resolveCartIconType } from '@ray-eg/shared/builder';
+import { runPreviewOnlyInteraction } from '../previewInteraction';
 
 export interface BasicElementsRendererProps extends BaseRendererProps {
   cartCount: number;
@@ -353,8 +354,9 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
                 <React.Fragment key={index}>
                   <span
                     onClick={(e) => {
-                      e.stopPropagation();
-                      handleInteraction(e, undefined, undefined, trimmed);
+                      runPreviewOnlyInteraction(e, isInteractivePreview, () =>
+                        handleInteraction(e, undefined, undefined, trimmed)
+                      );
                     }}
                     className={`transition-colors hover:text-blue-600 cursor-pointer ${
                       isItemActive ? 'font-bold text-blue-600' : ''

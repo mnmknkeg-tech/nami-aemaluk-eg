@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BaseRendererProps } from './types';
 import { Menu, X, ShoppingBag, User, ArrowRight, MessageCircle, Phone } from 'lucide-react';
 import { ComponentRenderer } from '../ComponentRenderer';
+import { runPreviewOnlyInteraction } from '../previewInteraction';
 import { CartIcon, isCartVisible, resolveCartIconType } from '@ray-eg/shared/builder';
 
 export interface HeaderRendererProps extends BaseRendererProps {
@@ -336,8 +337,9 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
             <button
               type="button"
               onClick={(e) => {
-                e.stopPropagation();
-                setIsMobileMenuDrawerOpen(true);
+                runPreviewOnlyInteraction(e, isInteractivePreview, () =>
+                  setIsMobileMenuDrawerOpen(true)
+                );
               }}
               title="القائمة الرئيسية"
               className="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors flex items-center justify-center cursor-pointer active:scale-95"

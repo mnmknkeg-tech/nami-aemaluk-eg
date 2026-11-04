@@ -8,6 +8,7 @@ import {
   parsePriceValue,
   resolveCardDisplay,
 } from '@ray-eg/shared/builder';
+import { runPreviewOnlyInteraction } from '../previewInteraction';
 
 /** البيانات المطلوبة لعرض بطاقة منتج واحدة. */
 export interface ProductCardData {
@@ -79,8 +80,9 @@ const StockBadge: React.FC<{ stock?: number; compact?: boolean }> = ({ stock, co
 export const SizeChips: React.FC<{
   productSizes: NormalizedSize[];
   fallbackSizes: NormalizedSize[];
+  isInteractivePreview: boolean;
   compact?: boolean;
-}> = ({ productSizes, fallbackSizes, compact }) => {
+}> = ({ productSizes, fallbackSizes, isInteractivePreview, compact }) => {
   const [selected, setSelected] = useState<string | null>(null);
   const sizes = productSizes.length > 0 ? productSizes : fallbackSizes;
   if (sizes.length === 0) return null;
@@ -93,8 +95,9 @@ export const SizeChips: React.FC<{
             key={`${s.label}_${i}`}
             type="button"
             onClick={(e) => {
-              e.stopPropagation();
-              setSelected(isActive ? null : s.label);
+              runPreviewOnlyInteraction(e, isInteractivePreview, () =>
+                setSelected(isActive ? null : s.label)
+              );
             }}
             className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
               isActive
@@ -168,16 +171,16 @@ export const ProductCardView: React.FC<ProductCardViewProps> = ({
     display.img || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&q=80';
   const badge = display.badge;
   const handleBuy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onBuy) {
-      onBuy(e);
-      return;
-    }
-    addToCart({ id: item.id ?? index, title, price: raw, image: img });
+    runPreviewOnlyInteraction(e, isInteractivePreview, () => {
+      if (onBuy) {
+        onBuy(e);
+        return;
+      }
+      addToCart({ id: item.id ?? index, title, price: raw, image: img });
+    });
   };
   const handleDetails = (e: React.MouseEvent) => {
-    if (!isInteractivePreview) e.stopPropagation();
-    if (onDetails) onDetails(e);
+    runPreviewOnlyInteraction(e, isInteractivePreview, () => onDetails?.(e));
   };
   const cardBase: React.CSSProperties = {
     background: safeTheme.colors.surface,
@@ -213,6 +216,7 @@ export const ProductCardView: React.FC<ProductCardViewProps> = ({
     <SizeChips
       productSizes={productSizes}
       fallbackSizes={options.defaultSizes}
+      isInteractivePreview={isInteractivePreview}
       compact={isCompact}
     />
   ) : null;

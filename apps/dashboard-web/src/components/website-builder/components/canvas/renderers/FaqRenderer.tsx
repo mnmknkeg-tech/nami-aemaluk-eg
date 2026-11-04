@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BaseRendererProps } from './types';
+import { runPreviewOnlyInteraction } from '../previewInteraction';
 import { ChevronDown } from 'lucide-react';
 import {
   sectionShellClass,
@@ -12,6 +13,7 @@ import {
 export const FaqRenderer: React.FC<BaseRendererProps> = ({
   node,
   website,
+  isInteractivePreview,
   outlineClass,
   getComputedStyles,
   handleClick,
@@ -65,8 +67,9 @@ export const FaqRenderer: React.FC<BaseRendererProps> = ({
                   aria-expanded={isOpen}
                   className="w-full flex items-center justify-between p-4 cursor-pointer text-right transition-colors hover:opacity-80"
                   onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenFaqItems((previous) => ({ ...previous, [itemKey]: !isOpen }));
+                    runPreviewOnlyInteraction(e, isInteractivePreview, () =>
+                      setOpenFaqItems((previous) => ({ ...previous, [itemKey]: !isOpen }))
+                    );
                   }}
                 >
                   <ChevronDown

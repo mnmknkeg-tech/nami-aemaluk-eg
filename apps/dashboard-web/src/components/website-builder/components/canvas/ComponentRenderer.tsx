@@ -16,6 +16,7 @@ import { FaqRenderer } from './renderers/FaqRenderer';
 import { ContactRenderer } from './renderers/ContactRenderer';
 import { UtilityRenderers } from './renderers/UtilityRenderers';
 import { BasicElementsRenderer } from './renderers/BasicElementsRenderer';
+import { handleCanvasNodeClick } from './canvasSelection';
 
 export interface ComponentRendererProps {
   nodeId: string;
@@ -425,12 +426,12 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    if (isInteractivePreview) {
-      handleInteraction(e);
-      return;
-    }
-    e.stopPropagation();
-    selectNode(node.id);
+    handleCanvasNodeClick(e, {
+      nodeId: node.id,
+      isInteractivePreview,
+      selectNode,
+      handleInteraction,
+    });
   };
 
   const handleMouseEnter = (e: React.MouseEvent) => {
