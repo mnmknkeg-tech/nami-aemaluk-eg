@@ -20,7 +20,7 @@ export const RightInspector: React.FC = () => {
     setIsMobileInspectorOpen,
   } = useBuilder();
 
-  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(true);
   const [inspectorMode, setInspectorMode] = useState<'integrated' | 'style'>('integrated');
 
   // Auto-open desktop inspector when an element is clicked

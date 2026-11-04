@@ -27,14 +27,14 @@ const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = fal
       </div>
 
       {/* Main Studio 3-Column Layout */}
-      <div className="flex flex-1 overflow-hidden relative">
-        {/* Left Sidebar: Pages, Layers, Section Library, Design System, Assets, Data, SEO */}
+      <div className="flex flex-1 overflow-hidden relative" dir="rtl">
+        {/* Right Panel: Website structure, pages, sections, appearance, and settings */}
         <LeftSidebar />
 
-        {/* Center Visual Canvas Area */}
+        {/* Center Panel: Website canvas */}
         <CanvasArea />
 
-        {/* Right Inspector Panel: Design, Content Props, Responsive Overrides */}
+        {/* Left Panel: Contextual Inspector for the selected element */}
         <RightInspector />
       </div>
 
