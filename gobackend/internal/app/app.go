@@ -18,6 +18,7 @@ import (
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/auth"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/bookings"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/cartevent"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/coupons"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/chat"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/customers"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/dashboard"
@@ -88,6 +89,7 @@ type App struct {
 	ordersHandler         *orders.Handler
 	mediaHandler          *media.Handler
 	offersHandler         *offers.Handler
+	couponsHandler        *coupons.Handler
 	notificationHandler   *notification.Handler
 	analyticsHandler      *analytics.Handler
 	hrHandler             *hr.Handler
@@ -190,6 +192,7 @@ func New(cfg *config.Config) (*App, error) {
 		ordersHandler         *orders.Handler
 		mediaHandler          *media.Handler
 		offersHandler         *offers.Handler
+		couponsHandler        *coupons.Handler
 		notificationHandler   *notification.Handler
 		analyticsHandler      *analytics.Handler
 		hrHandler             *hr.Handler
@@ -294,6 +297,8 @@ subscriptionsHandler    *subscriptions.Handler
 
 		ordersRepo := orders.NewRepository(pool)
 		ordersSvc := orders.NewService(cfg, ordersRepo, notificationSvc)
+		couponRepo := coupons.NewRepository(pool)
+		ordersSvc.SetCouponRepository(couponRepo)
 		ordersHandler = orders.NewHandler(ordersSvc, cfg)
 
 		builderSvc := shops.NewBuilderService(shopsRepo, log)
@@ -306,6 +311,7 @@ subscriptionsHandler    *subscriptions.Handler
 		offersRepo := offers.NewRepository(pool)
 		offersSvc := offers.NewService(offersRepo, hotReadCache)
 		offersHandler = offers.NewHandler(offersSvc, cfg)
+		couponsHandler = coupons.NewHandler(couponRepo, cfg)
 
 		// Initialize analytics service
 		analyticsRepo := analytics.NewRepository(pool)
@@ -490,6 +496,7 @@ subscriptionsHandler    *subscriptions.Handler
 		ordersHandler:         ordersHandler,
 		mediaHandler:          mediaHandler,
 		offersHandler:         offersHandler,
+		couponsHandler:        couponsHandler,
 		notificationHandler:   notificationHandler,
 		analyticsHandler:      analyticsHandler,
 		hrHandler:             hrHandler,
@@ -645,6 +652,9 @@ func (a *App) registerRoutes() {
 		a.offersHandler.RegisterRoutes(api)
 	}
 
+	if a.couponsHandler != nil {
+		a.couponsHandler.RegisterRoutes(api)
+	}
 	// Notification domain routes.
 	if a.notificationHandler != nil {
 		a.notificationHandler.RegisterRoutes(api)

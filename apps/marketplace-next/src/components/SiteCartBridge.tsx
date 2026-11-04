@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSiteCart } from '@/lib/site-cart';
+import { jsonRequest } from '@/lib/api';
 import {
   normalizeWebsiteTree,
   PublicSiteRenderer,
@@ -95,6 +96,21 @@ export function SiteCartBridge({
         items={cartItems}
         shop={shop}
         website={safeWebsite}
+        onValidateCoupon={async (code, subtotal) => {
+          const response = await jsonRequest<any>('/coupons/validate', {
+            method: 'POST',
+            body: JSON.stringify({ shopId: shop.id, code, subtotal }),
+          });
+          const result = response?.data || response;
+          if (!result || typeof result.discountAmount !== 'number') {
+            throw new Error('الكوبون غير صالح أو منتهي');
+          }
+          window.sessionStorage.setItem(
+            `merchant-site-coupon:site:${shop.slug}`,
+            JSON.stringify({ code, discountAmount: result.discountAmount })
+          );
+          return result;
+        }}
         onUpdateQuantity={(id, delta) => {
           updateQuantity(id, delta);
         }}

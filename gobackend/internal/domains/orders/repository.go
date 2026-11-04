@@ -190,6 +190,7 @@ func (r *Repository) CountByCourier(ctx context.Context, courierID string) (int6
 func (r *Repository) CountByUserID(ctx context.Context, userID string) (int64, error) {
 	return r.countOrders(ctx, "o.user_id = $1", []any{userID})
 }
+
 // FindOpenShiftID returns the id of the currently open POS shift of a shop.
 func (r *Repository) FindOpenShiftID(ctx context.Context, shopID string) (string, error) {
 	var id string
@@ -244,20 +245,20 @@ func (r *Repository) CreateOrder(ctx context.Context, order *Order, decrementSto
 	// Insert order.
 	orderQuery := `
 		INSERT INTO orders (
-			id, total, status, payment_method, payment_status, notes, customer_phone,
+			id, total, discount, coupon_code, status, payment_method, payment_status, notes, customer_phone,
 			delivery_address_manual, delivery_lat, delivery_lng, delivery_note, customer_note,
 			user_id, shop_id, customer_id, courier_id, source, pos_shift_id, created_at, updated_at
 		) VALUES (
-			gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NULL, NULL, $14, $15, NOW(), NOW()
+			gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NULL, NULL, $15, $16, NOW(), NOW()
 		) RETURNING ` + orderColumnsNoAlias
 	var createdCustomerID sql.NullString
 	err = tx.QueryRow(ctx, orderQuery,
-		order.Total, order.Status, order.PaymentMethod, order.PaymentStatus, order.Notes,
+		order.Total, order.Discount, order.CouponCode, order.Status, order.PaymentMethod, order.PaymentStatus, order.Notes,
 		order.CustomerPhone, order.DeliveryAddressManual, order.DeliveryLat, order.DeliveryLng,
 		order.DeliveryNote, order.CustomerNote, order.UserID, order.ShopID, order.Source,
 		order.PosShiftID,
 	).Scan(
-		&order.ID, &order.Total, &order.Status, &order.PaymentMethod, &order.PaymentStatus,
+		&order.ID, &order.Total, &order.Discount, &order.CouponCode, &order.Status, &order.PaymentMethod, &order.PaymentStatus,
 		&order.Notes, &order.CustomerPhone, &order.DeliveryAddressManual, &order.DeliveryLat,
 		&order.DeliveryLng, &order.DeliveryNote, &order.CustomerNote, &order.UserID, &order.ShopID,
 		&createdCustomerID, &order.CourierID, &order.HandedToCourierAt, &order.CodCollectedAt, &order.DeliveredAt,
@@ -426,7 +427,7 @@ func (r *Repository) IsUserCourier(ctx context.Context, userID string) (bool, er
 }
 
 const orderColumns = `
-	o.id, o.total, o.status, o.payment_method, o.payment_status, o.notes, o.customer_phone,
+	o.id, o.total, o.discount, o.coupon_code, o.status, o.payment_method, o.payment_status, o.notes, o.customer_phone,
 	o.delivery_address_manual, o.delivery_lat, o.delivery_lng, o.delivery_note, o.customer_note,
 	o.user_id, o.shop_id, o.customer_id, o.courier_id, o.handed_to_courier_at, o.cod_collected_at, o.delivered_at,
 	o.source, o.created_at, o.updated_at
@@ -436,7 +437,7 @@ const orderColumns = `
 // target table has no alias (Postgres would fail with "missing FROM-clause
 // entry for table o" if the aliased columns were used there).
 const orderColumnsNoAlias = `
-	id, total, status, payment_method, payment_status, notes, customer_phone,
+	id, total, discount, coupon_code, status, payment_method, payment_status, notes, customer_phone,
 	delivery_address_manual, delivery_lat, delivery_lng, delivery_note, customer_note,
 	user_id, shop_id, customer_id, courier_id, handed_to_courier_at, cod_collected_at, delivered_at,
 	source, created_at, updated_at
@@ -446,12 +447,13 @@ const selectOrder = "SELECT " + orderColumns + " FROM orders o"
 
 func scanOrder(row pgx.Row) (*Order, error) {
 	var o Order
-	var paymentMethod, paymentStatus, notes, customerPhone, deliveryAddressManual, deliveryNote, customerNote, customerID, courierID, source sql.NullString
+	var couponCode, paymentMethod, paymentStatus, notes, customerPhone, deliveryAddressManual, deliveryNote, customerNote, customerID, courierID, source sql.NullString
+	var discount sql.NullFloat64
 	var deliveryLat, deliveryLng sql.NullFloat64
 	var handedAt, codAt, deliveredAt sql.NullTime
 
 	err := row.Scan(
-		&o.ID, &o.Total, &o.Status, &paymentMethod, &paymentStatus, &notes, &customerPhone,
+		&o.ID, &o.Total, &discount, &couponCode, &o.Status, &paymentMethod, &paymentStatus, &notes, &customerPhone,
 		&deliveryAddressManual, &deliveryLat, &deliveryLng, &deliveryNote, &customerNote,
 		&o.UserID, &o.ShopID, &customerID, &courierID, &handedAt, &codAt, &deliveredAt, &source,
 		&o.CreatedAt, &o.UpdatedAt,
@@ -464,6 +466,8 @@ func scanOrder(row pgx.Row) (*Order, error) {
 	}
 
 	o.PaymentMethod = nullStringPtr(paymentMethod)
+	o.Discount = discount.Float64
+	o.CouponCode = nullStringPtr(couponCode)
 	o.PaymentStatus = nullStringPtr(paymentStatus)
 	o.Notes = nullStringPtr(notes)
 	o.CustomerPhone = nullStringPtr(customerPhone)

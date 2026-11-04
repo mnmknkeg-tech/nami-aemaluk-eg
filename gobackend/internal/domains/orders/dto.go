@@ -29,6 +29,8 @@ func isValidOrderStatus(s OrderStatus) bool {
 type Order struct {
 	ID                    string      `json:"id"`
 	Total                 float64     `json:"total"`
+	Discount              float64     `json:"discount"`
+	CouponCode            *string     `json:"couponCode,omitempty"`
 	Status                OrderStatus `json:"status"`
 	PaymentMethod         *string     `json:"paymentMethod,omitempty"`
 	PaymentStatus         *string     `json:"paymentStatus,omitempty"`
@@ -90,6 +92,7 @@ type CreateOrderRequest struct {
 	ShopID                string            `json:"shopId" validate:"required"`
 	Items                 []CreateOrderItem `json:"items" validate:"required,min=1,dive"`
 	Total                 *float64          `json:"total,omitempty"`
+	CouponCode            *string           `json:"couponCode,omitempty"`
 	PaymentMethod         *string           `json:"paymentMethod,omitempty"`
 	PaymentStatus         *string           `json:"paymentStatus,omitempty"`
 	Notes                 *string           `json:"notes,omitempty"`
@@ -104,7 +107,7 @@ type CreateOrderRequest struct {
 	Status                *string           `json:"status,omitempty"`
 	// PosShiftID links this order to a POS shift. Sent by the cashier desktop
 	// syncer so refreshMetrics can use a direct join instead of time-window.
-	PosShiftID            *string           `json:"posShiftId,omitempty"`
+	PosShiftID *string `json:"posShiftId,omitempty"`
 }
 
 // UpdateOrderRequest updates order status and metadata.

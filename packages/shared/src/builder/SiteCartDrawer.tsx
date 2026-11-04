@@ -26,6 +26,10 @@ interface SiteCartDrawerProps {
   onUpdateQuantity: (id: string, delta: number) => void;
   onRemoveItem: (id: string) => void;
   onProceedToCheckout: () => void;
+  onValidateCoupon?: (
+    code: string,
+    subtotal: number
+  ) => Promise<{ discountAmount: number; finalTotal: number }>;
 }
 
 export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
@@ -37,13 +41,32 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
   onUpdateQuantity,
   onRemoveItem,
   onProceedToCheckout,
+  onValidateCoupon,
 }) => {
+  const [couponCode, setCouponCode] = React.useState('');
+  const [appliedDiscount, setAppliedDiscount] = React.useState(0);
+  const [couponError, setCouponError] = React.useState<string | null>(null);
+  const [couponBusy, setCouponBusy] = React.useState(false);
   if (!isOpen) return null;
 
   const rawSubtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  // Discounts are deliberately not calculated in this presentation-only cart.
-  // Checkout/backend remain the authority until a validated coupon endpoint is wired.
-  const finalTotal = rawSubtotal;
+  const finalTotal = Math.max(0, rawSubtotal - appliedDiscount);
+
+  const handleApplyCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCouponError(null);
+    if (!onValidateCoupon || !couponCode.trim()) return;
+    setCouponBusy(true);
+    try {
+      const result = await onValidateCoupon(couponCode.trim(), rawSubtotal);
+      setAppliedDiscount(result.discountAmount);
+    } catch (error: any) {
+      setAppliedDiscount(0);
+      setCouponError(error?.message || 'الكوبون غير صالح أو منتهي');
+    } finally {
+      setCouponBusy(false);
+    }
+  };
 
   return (
     <div
@@ -155,6 +178,33 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
                 ))}
               </div>
 
+              {onValidateCoupon && (
+                <form onSubmit={handleApplyCoupon} className="space-y-1.5 pt-1">
+                  <div className="flex gap-2">
+                    <input
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="كود الخصم"
+                      className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono"
+                    />
+                    <button
+                      type="submit"
+                      disabled={couponBusy}
+                      className="px-3 rounded-xl bg-slate-900 text-white text-xs font-bold disabled:opacity-50"
+                    >
+                      {couponBusy ? '...' : 'تطبيق'}
+                    </button>
+                  </div>
+                  {appliedDiscount > 0 && (
+                    <p className="text-[10px] text-emerald-600 font-bold">
+                      تم تطبيق الخصم: {formatPrice(appliedDiscount)}
+                    </p>
+                  )}
+                  {couponError && (
+                    <p className="text-[10px] text-red-500 font-bold">{couponError}</p>
+                  )}
+                </form>
+              )}
               {/* Delivery details are collected on the full merchant checkout page. */}
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
                 <p className="text-xs font-bold text-slate-700">
@@ -174,6 +224,12 @@ export const SiteCartDrawer: React.FC<SiteCartDrawerProps> = ({
                 <span>المجموع الفرعي</span>
                 <span className="font-semibold">{formatPrice(rawSubtotal)}</span>
               </div>
+              {appliedDiscount > 0 && (
+                <div className="flex justify-between text-emerald-600 font-bold">
+                  <span>الخصم</span>
+                  <span>- {formatPrice(appliedDiscount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-slate-900 font-extrabold text-sm pt-2 border-t border-slate-100">
                 <span>الإجمالي النهائي</span>
                 <span className="text-emerald-600 text-base font-black">

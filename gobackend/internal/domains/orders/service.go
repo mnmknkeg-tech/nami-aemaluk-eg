@@ -1,8 +1,9 @@
 package orders
 
 import (
-	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/customers"
 	"context"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/coupons"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/customers"
 	"strconv"
 	"strings"
 	"time"
@@ -17,9 +18,10 @@ import (
 
 // Service implements the Orders domain business logic.
 type Service struct {
-	cfg   *config.Config
-	repo  *Repository
-	notif *notification.Service
+	cfg        *config.Config
+	repo       *Repository
+	notif      *notification.Service
+	couponRepo *coupons.Repository
 }
 
 // NewService creates a new orders service. notifSvc is optional and used to
@@ -27,6 +29,9 @@ type Service struct {
 func NewService(cfg *config.Config, repo *Repository, notifSvc *notification.Service) *Service {
 	return &Service{cfg: cfg, repo: repo, notif: notifSvc}
 }
+
+// SetCouponRepository wires coupon validation without changing existing constructors.
+func (s *Service) SetCouponRepository(repo *coupons.Repository) { s.couponRepo = repo }
 
 // CreateOrder creates an order from a cart payload (authenticated users).
 func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest, userID, actorRole, actorShopID string) (*Order, error) {
@@ -198,11 +203,34 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 	} else {
 		order.Total = total
 	}
+	var appliedCouponID string
+	if req.CouponCode != nil && strings.TrimSpace(*req.CouponCode) != "" {
+		if s.couponRepo == nil {
+			return nil, errors.Validation("coupon_unavailable", "نظام الكوبونات غير متاح")
+		}
+		coupon, err := s.couponRepo.Find(ctx, shopID, *req.CouponCode)
+		if err != nil {
+			return nil, errors.Validation("coupon_invalid", "الكوبون غير صالح أو منتهي")
+		}
+		appliedCouponID = coupon.ID
+		discount, err := coupons.Validate(*coupon, total, time.Now())
+		if err != nil {
+			return nil, err
+		}
+		order.Discount = discount
+		order.CouponCode = req.CouponCode
+		order.Total = total - discount
+	}
 
 	created, err := s.repo.CreateOrder(ctx, order, decrementStock)
 	if err != nil {
 		logger.Global().Error("create order failed", zap.Error(err))
 		return nil, errors.Internal("create_order_failed", err)
+	}
+	if appliedCouponID != "" {
+		if err := s.couponRepo.Consume(ctx, appliedCouponID); err != nil {
+			logger.Global().Warn("failed to record coupon usage", zap.Error(err))
+		}
 	}
 
 	// العميل الموحد: اربط الطلب بالعميل المركزي (بحث بالهاتف → إنشاء لو جديد →

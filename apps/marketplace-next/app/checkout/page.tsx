@@ -43,6 +43,9 @@ export default function CheckoutPage() {
     : marketCart.items;
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const payableTotal = Math.max(0, totalPrice - couponDiscount);
   const shopGroups = isMerchantCheckout
     ? { [siteCart.items[0]?.shop.id || 'merchant-site']: items }
     : marketCart.itemsByShop();
@@ -129,6 +132,32 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!isMerchantCheckout || !siteCart.items[0]) return;
+    const key = `merchant-site-coupon:site:${siteCart.items[0].shop.slug}`;
+    try {
+      const saved = JSON.parse(window.sessionStorage.getItem(key) || 'null');
+      if (!saved?.code) return;
+      setCouponCode(String(saved.code));
+      jsonRequest<any>('/coupons/validate', {
+        method: 'POST',
+        body: JSON.stringify({
+          shopId: siteCart.items[0].shop.id,
+          code: saved.code,
+          subtotal: totalPrice,
+        }),
+      })
+        .then((response) => {
+          const result = response?.data || response;
+          setCouponDiscount(typeof result?.discountAmount === 'number' ? result.discountAmount : 0);
+        })
+        .catch(() => setCouponDiscount(0));
+    } catch {
+      setCouponCode('');
+      setCouponDiscount(0);
+    }
+  }, [isMerchantCheckout, siteCart.items, totalPrice]);
+
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return;
@@ -163,7 +192,8 @@ export default function CheckoutPage() {
               lat: coords?.lat,
               lng: coords?.lng,
             },
-            customerPhone: phone || undefined,
+            customerNote: notes || undefined,
+            couponCode: isMerchantCheckout && couponCode ? couponCode : undefined,
             deliveryAddressManual:
               [city, district, address].filter(Boolean).join('، ') || undefined,
             deliveryLat: coords?.lat,
@@ -508,7 +538,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between text-lg font-black pt-2 border-t border-slate-100 dark:border-slate-800">
                   <span>الإجمالي</span>
-                  <span className="text-brand-cyan">{formatPrice(totalPrice)}</span>
+                  <span className="text-brand-cyan">{formatPrice(payableTotal)}</span>
                 </div>
               </div>
 
@@ -550,7 +580,7 @@ export default function CheckoutPage() {
           <div className="flex flex-col min-w-0">
             <span className="text-[11px] font-bold text-slate-500">الإجمالي</span>
             <span className="text-base font-black text-brand-cyan leading-tight">
-              {formatPrice(totalPrice)}
+              {formatPrice(payableTotal)}
             </span>
           </div>
           <button
