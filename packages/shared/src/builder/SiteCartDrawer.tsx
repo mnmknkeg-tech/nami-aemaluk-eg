@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import * as React from 'react';
 import { X, ShoppingBag, ShoppingCart, Trash2, Plus, Minus, ArrowRight } from 'lucide-react';
 import type { SiteShopContext, Website } from './types';
 import { formatPrice } from './theme';
