@@ -190,10 +190,10 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 		_ = i
 	}
 
-	// The total is always computed server-side for public/customer flows. A
-	// trusted merchant/admin may provide the final total for POS and Builder
-	// website checkouts because those UIs can apply local discounts/tax rules.
-	if trustedActor && (source == "pos" || source == "website") && req.Total != nil && *req.Total > 0 {
+	// The total is always computed server-side for customer and website flows.
+	// Only POS may provide a final total because it is an authenticated cashier
+	// flow with its own permission-checked discount rules.
+	if trustedActor && source == "pos" && req.Total != nil && *req.Total > 0 {
 		order.Total = *req.Total
 	} else {
 		order.Total = total
