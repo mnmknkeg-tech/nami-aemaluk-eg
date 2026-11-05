@@ -460,56 +460,12 @@ export const PropsInspector: React.FC = () => {
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
           <Sliders className="w-3.5 h-3.5 text-blue-600" />
-          <span>محتوى وخصائص المكون ({selectedNode.name})</span>
+          <span>إعدادات إضافية للمكون ({selectedNode.name})</span>
         </span>
         <span className="text-[10px] font-mono text-slate-400">Props</span>
       </div>
 
-      {/* Heading / Paragraph Text */}
-      {selectedNode.props.text !== undefined && (
-        <div>
-          <label className="text-[10px] font-bold text-slate-600 block mb-1">
-            نص المحتوى (Text Content)
-          </label>
-          <textarea
-            rows={3}
-            value={selectedNode.props.text}
-            onChange={(e) => handlePropChange('text', e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs outline-hidden focus:border-blue-500"
-          />
-        </div>
-      )}
-
-      {/* Title */}
-      {selectedNode.props.title !== undefined && (
-        <div>
-          <label className="text-[10px] font-bold text-slate-600 block mb-1">
-            العنوان الرئيسي (Title)
-          </label>
-          <input
-            type="text"
-            value={selectedNode.props.title}
-            onChange={(e) => handlePropChange('title', e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs outline-hidden focus:border-blue-500 font-semibold"
-          />
-        </div>
-      )}
-
-      {/* Subtitle / Description */}
-      {selectedNode.props.subtitle !== undefined && (
-        <div>
-          <label className="text-[10px] font-bold text-slate-600 block mb-1">
-            العنوان الفرعي (Subtitle)
-          </label>
-          <textarea
-            rows={2}
-            value={selectedNode.props.subtitle}
-            onChange={(e) => handlePropChange('subtitle', e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs outline-hidden focus:border-blue-500 leading-relaxed"
-          />
-        </div>
-      )}
-
+      {/* text/title/subtitle/price are owned by ContentSection in the integrated inspector. */}
       {/* Link / URL / Action Target (For Buttons, Links, and Cards) */}
       {(selectedNode.type === 'button' ||
         selectedNode.props.href !== undefined ||
@@ -542,19 +498,6 @@ export const PropsInspector: React.FC = () => {
             value={selectedNode.props.src}
             onChange={(e) => handlePropChange('src', e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono text-[11px] outline-hidden focus:border-blue-500"
-          />
-        </div>
-      )}
-
-      {/* Price */}
-      {selectedNode.props.price !== undefined && (
-        <div>
-          <label className="text-[10px] font-bold text-slate-600 block mb-1">السعر (Price)</label>
-          <input
-            type="text"
-            value={selectedNode.props.price}
-            onChange={(e) => handlePropChange('price', e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-blue-700 outline-hidden focus:border-blue-500"
           />
         </div>
       )}
