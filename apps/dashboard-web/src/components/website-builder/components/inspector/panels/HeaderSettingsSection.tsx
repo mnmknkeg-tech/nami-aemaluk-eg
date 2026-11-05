@@ -1,10 +1,6 @@
 import React from 'react';
 import {
   ShoppingBag,
-  ShoppingCart,
-  Store,
-  Package,
-  CreditCard,
   Smartphone,
   ChevronDown,
   ChevronUp,
@@ -15,7 +11,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { useBuilder } from '../../../context/BuilderContext';
-import { resolveCartIconType } from '@ray-eg/shared/builder';
 import type { HeaderCartVisibilityOverride } from '@ray-eg/shared/builder';
 import type { InspectorPanelProps } from './types';
 import type { ComponentNode, Website } from '../../../types/builder';
@@ -98,7 +93,7 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
   toggleAccordion,
   handlePropChange,
 }) => {
-  const { website, activePage, updateWebsiteSettings } = useBuilder();
+  const { website, activePage } = useBuilder();
   const ctaNode = activePage
     ? findHeaderCtaForActivePage(website, activePage.rootNodeId, node, parentSection, isHeader)
     : null;
@@ -108,11 +103,6 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
   const legacyHideCart = Boolean(parentSection.props?.hideCart ?? node.props?.hideCart);
   const effectiveCartVisibility = cartVisibilityOverride || (legacyHideCart ? 'hide' : 'inherit');
   const hideCart = effectiveCartVisibility === 'hide';
-  const cartIconType = resolveCartIconType(
-    website.settings?.cart?.iconType,
-    parentSection.props?.cartIcon,
-    node.props?.cartIcon
-  );
   const showLogin = parentSection.props?.showLogin !== false && node.props?.showLogin !== false;
   const loginText = (parentSection.props?.loginText || node.props?.loginText || 'حسابي') as string;
   const showLoginText = Boolean(parentSection.props?.showLoginText ?? node.props?.showLoginText);
@@ -254,48 +244,9 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
                 ))}
               </div>
             </div>
-
-            {/* Cart Icon Picker */}
-            {!hideCart && (
-              <div className="pt-2 border-t border-slate-200/80 space-y-2">
-                <span className="text-[10px] font-bold text-slate-700 block">
-                  شكل أيقونة السلة (Cart Icon):
-                </span>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {[
-                    { id: 'ShoppingBag', label: 'حقيبة فاخرة', Icon: ShoppingBag },
-                    { id: 'ShoppingCart', label: 'عربة تسوق', Icon: ShoppingCart },
-                    { id: 'Store', label: 'متجر مباشر', Icon: Store },
-                    { id: 'Package', label: 'طرد مشتريات', Icon: Package },
-                    { id: 'CreditCard', label: 'دفع فوري', Icon: CreditCard },
-                  ].map((item) => {
-                    const isSelected = cartIconType === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() =>
-                          updateWebsiteSettings({
-                            cart: {
-                              ...(website.settings?.cart || {}),
-                              iconType: item.id as any,
-                            },
-                          })
-                        }
-                        className={`p-1.5 rounded-lg border text-center flex flex-col items-center gap-1 transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-2xs font-bold'
-                            : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
-                        }`}
-                      >
-                        <item.Icon className="w-4 h-4" />
-                        <span className="text-[9px] truncate">{item.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            <p className="text-[10px] text-slate-500">
+              شكل الأيقونة ونوع العمليات يُعدّلان من إعدادات الموقع ← السلة.
+            </p>
           </div>
 
           {/* 3. Quick WhatsApp Action Button in Header */}
@@ -494,44 +445,7 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
             </div>
           )}
 
-          {/* 7. Business Flow / Operation Type */}
-          <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-            <span className="text-[10px] font-bold text-slate-700 block">
-              نوع العمليات ونشاط السلة (Operation Mode):
-            </span>
-            <div className="grid grid-cols-3 gap-1">
-              {[
-                { id: 'orders', label: '🛍️ طلبات' },
-                { id: 'bookings', label: '📅 حجوزات' },
-                { id: 'subscriptions', label: '💳 اشتراكات' },
-              ].map((m) => {
-                const currentMode = website.settings?.cart?.businessType || 'orders';
-                const isSelected = currentMode === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => {
-                      updateWebsiteSettings({
-                        cart: {
-                          ...(website.settings?.cart || {}),
-                          businessType: m.id as 'orders' | 'bookings' | 'subscriptions',
-                          ...(m.id === 'orders' ? { showCartIcon: true } : {}),
-                        },
-                      });
-                    }}
-                    className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer border text-center ${
-                      isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* Global cart.businessType is edited in SiteSettingsPanel/CartSettingsSection. */}
 
           {/* Mobile Drawer Info Banner */}
           <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50/70 border border-blue-200/80 rounded-xl space-y-1.5">

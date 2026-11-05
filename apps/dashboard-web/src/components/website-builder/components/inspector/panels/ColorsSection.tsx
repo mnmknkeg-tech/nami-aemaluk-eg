@@ -17,26 +17,22 @@ const BRAND_PALETTES = [
 
 type ColorsSectionProps = Pick<
   InspectorPanelProps,
-  | 'node'
   | 'parentSection'
   | 'isHero'
   | 'heroPrimaryBtnNode'
   | 'heroTitleNode'
   | 'heroSubtitleNode'
-  | 'currentStyles'
   | 'expandedSections'
   | 'toggleAccordion'
   | 'handleStyleChange'
 >;
 
 export const ColorsSection: React.FC<ColorsSectionProps> = ({
-  node,
   parentSection,
   isHero,
   heroPrimaryBtnNode,
   heroTitleNode,
   heroSubtitleNode,
-  currentStyles,
   expandedSections,
   toggleAccordion,
   handleStyleChange,
@@ -88,49 +84,6 @@ export const ColorsSection: React.FC<ColorsSectionProps> = ({
                 <span className="text-[10px] font-bold text-slate-700 truncate">{pal.name}</span>
               </button>
             ))}
-          </div>
-        </div>
-
-        {/* INDIVIDUAL COLOR PICKERS */}
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 block mb-1">
-              لون خلفية العنصر
-            </label>
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg p-1.5">
-              <input
-                type="color"
-                value={
-                  currentStyles.backgroundColor?.startsWith('#')
-                    ? currentStyles.backgroundColor
-                    : '#ffffff'
-                }
-                onChange={(e) => handleStyleChange(node.id, 'backgroundColor', e.target.value)}
-                className="w-5 h-5 rounded cursor-pointer border-0 p-0"
-              />
-              <span className="text-[10px] font-mono text-slate-600 truncate">
-                {currentStyles.backgroundColor || 'Default'}
-              </span>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 block mb-1">
-              لون النص (Text Color)
-            </label>
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg p-1.5">
-              <input
-                type="color"
-                value={
-                  currentStyles.textColor?.startsWith('#') ? currentStyles.textColor : '#0f172a'
-                }
-                onChange={(e) => handleStyleChange(node.id, 'textColor', e.target.value)}
-                className="w-5 h-5 rounded cursor-pointer border-0 p-0"
-              />
-              <span className="text-[10px] font-mono text-slate-600 truncate">
-                {currentStyles.textColor || '#0f172a'}
-              </span>
-            </div>
           </div>
         </div>
 
