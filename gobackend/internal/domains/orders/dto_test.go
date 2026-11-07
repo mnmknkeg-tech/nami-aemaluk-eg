@@ -25,3 +25,32 @@ func TestIsValidOrderStatus(t *testing.T) {
 		assert.False(t, isValidOrderStatus(s), "expected %q to be invalid", s)
 	}
 }
+
+func TestProductAvailabilityUsesSalesChannel(t *testing.T) {
+	product := OrderProduct{IsActive: false, AppActive: true}
+	marketplace := "marketplace"
+	website := "website"
+
+	assert.True(t, productAvailableOnChannel(product, &marketplace))
+	assert.False(t, productAvailableOnChannel(product, &website))
+	assert.False(t, productAvailableOnChannel(product, nil))
+}
+
+func TestNormalizePaymentMethod(t *testing.T) {
+	method, err := normalizePaymentMethod(pointer("cod"), true)
+	assert.NoError(t, err)
+	assert.Equal(t, "COD", *method)
+
+	defaultMethod, err := normalizePaymentMethod(nil, true)
+	assert.NoError(t, err)
+	assert.Equal(t, "COD", *defaultMethod)
+
+	method, err = normalizePaymentMethod(pointer("split"), false)
+	assert.NoError(t, err)
+	assert.Equal(t, "SPLIT", *method)
+
+	_, err = normalizePaymentMethod(pointer("paid"), false)
+	assert.Error(t, err)
+}
+
+func pointer(value string) *string { return &value }

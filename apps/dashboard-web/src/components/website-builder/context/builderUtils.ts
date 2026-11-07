@@ -4,9 +4,17 @@ import {
   getMergedThemeTokens,
   normalizeThemeTokens,
 } from '../data/defaultTheme';
-import { allActivityWebsites } from '../data/allActivityTemplates';
-import { sampleWebsites } from '../data/initialWebsites';
-import { normalizeWebsiteTree } from '@ray-eg/shared/builder';
+import {
+  loadFullWebsiteTemplate,
+  loadThemePreset,
+  validateTemplateEntry,
+  type FullWebsiteTemplateEntry,
+} from '../data/registry';
+import {
+  adaptTemplateLinkDestinations,
+  getInvalidPageDestinations,
+  normalizeWebsiteTree,
+} from '@ray-eg/shared/builder';
 
 export const createUniqueBuilderId = (
   prefix: string,
@@ -176,7 +184,8 @@ export const normalizeWebsite = (site: Website): Website => {
       .map(([id, node]) => [id, { ...(node as ComponentNode), id }])
   ) as Record<string, ComponentNode>;
   const claimedRootIds = new Set<string>();
-  const incomingPages = Array.isArray(site.pages) && site.pages.length ? site.pages : BLANK_WEBSITE.pages;
+  const incomingPages =
+    Array.isArray(site.pages) && site.pages.length ? site.pages : BLANK_WEBSITE.pages;
   const pages = incomingPages.map((page) => {
     const existingRootId = page.rootNodeId;
     if (existingRootId && components[existingRootId] && !claimedRootIds.has(existingRootId)) {
@@ -197,7 +206,9 @@ export const normalizeWebsite = (site: Website): Website => {
       parentId: null,
       childrenIds: [],
       props: {},
-      styles: { desktop: { display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100vh' } },
+      styles: {
+        desktop: { display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100vh' },
+      },
     } as ComponentNode;
     claimedRootIds.add(rootId);
     return { ...page, rootNodeId: rootId };
@@ -217,68 +228,204 @@ export const getHomePageId = (site: Website): string | undefined =>
   site.pages.find((page) => page.slug === '')?.id ||
   site.pages[0]?.id;
 
-export const getInitialBuilderState = (): {
+export interface WebsiteMerchantIdentity {
+  shopId: string;
+  shopSlug: string;
+  preserveExistingIdentity: boolean;
+}
+
+export const createFullWebsiteTemplateCandidate = (
+  currentWebsite: Website,
+  entry: FullWebsiteTemplateEntry,
+  identity: WebsiteMerchantIdentity,
+  theme?: Website['theme']
+): Website => {
+  const sourceValidation = validateTemplateEntry(entry);
+  if (!sourceValidation.valid) {
+    throw new Error(
+      `Template "${entry.id}" cannot be applied:\n${sourceValidation.errors
+        .map((error) => `${error.code}: ${error.message}`)
+        .join('\n')}`
+    );
+  }
+
+  const templateWebsite = entry.website;
+  const candidate = adaptTemplateLinkDestinations(
+    normalizeWebsite({
+      ...templateWebsite,
+      id: identity.preserveExistingIdentity ? currentWebsite.id : identity.shopId,
+      tenantId: identity.shopId,
+      name: identity.preserveExistingIdentity ? currentWebsite.name : templateWebsite.name,
+      domain: identity.preserveExistingIdentity
+        ? currentWebsite.domain
+        : `${identity.shopSlug || 'shop'}.mnmknk.com`,
+      subdomain: identity.preserveExistingIdentity
+        ? currentWebsite.subdomain
+        : identity.shopSlug || 'shop',
+      theme: theme || templateWebsite.theme,
+    })
+  );
+  const validation = validateTemplateEntry({ ...entry, website: candidate });
+  if (!validation.valid) {
+    throw new Error(
+      `Template "${entry.id}" cannot be applied:\n${validation.errors
+        .map((error) => `${error.code}: ${error.message}`)
+        .join('\n')}`
+    );
+  }
+  const invalidDestinations = getInvalidPageDestinations(candidate);
+  if (invalidDestinations.length) {
+    throw new Error(
+      `Template "${entry.id}" has invalid internal destinations: ${invalidDestinations.join(', ')}.`
+    );
+  }
+
+  const pageReferences = new Set(
+    candidate.pages.flatMap((page) => [page.id, page.slug].filter(Boolean))
+  );
+  Object.values(candidate.components).forEach((node) => {
+    const explicitPageId = node.props.pageId || node.props.targetPage || node.props.targetPageId;
+    if (explicitPageId && !pageReferences.has(String(explicitPageId))) {
+      throw new Error(
+        `Template "${entry.id}" component "${node.id}" refers to missing page "${String(explicitPageId)}".`
+      );
+    }
+  });
+
+  if (candidate.globalHeaderId && !candidate.components[candidate.globalHeaderId]) {
+    throw new Error(
+      `Template "${entry.id}" refers to missing global header "${candidate.globalHeaderId}".`
+    );
+  }
+  if (candidate.globalFooterId && !candidate.components[candidate.globalFooterId]) {
+    throw new Error(
+      `Template "${entry.id}" refers to missing global footer "${candidate.globalFooterId}".`
+    );
+  }
+
+  return candidate;
+};
+
+export const hasWebsiteContentToReplace = (website: Website): boolean =>
+  website.pages.length > 1 ||
+  website.pages.some((page) => website.components[page.rootNodeId]?.childrenIds.length > 0) ||
+  Object.values(website.components).some(
+    (node) => node.type !== 'container' && node.type !== 'page'
+  );
+
+export const persistTemplateCandidateBeforeCommit = async (
+  candidate: Website,
+  saveDraft: (website: Website) => Promise<boolean>,
+  commit: (website: Website) => void,
+  canCommit: () => boolean = () => true
+): Promise<boolean> => {
+  if (!(await saveDraft(candidate))) return false;
+  if (!canCommit()) return false;
+  commit(candidate);
+  return true;
+};
+
+export interface InitialBuilderSelection {
+  search?: string;
+  selectedTemplate?: string | null;
+  selectedPreset?: string | null;
+  lastActiveSite?: string | null;
+}
+
+const getBrowserSelection = (): InitialBuilderSelection => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPendingTemplateApplication = urlParams.get('applyTemplate') === '1';
+    return {
+      search: window.location.search,
+      selectedTemplate: isPendingTemplateApplication
+        ? null
+        : urlParams.get('template') || localStorage.getItem('ray_builder_selected_template'),
+      selectedPreset: isPendingTemplateApplication
+        ? null
+        : urlParams.get('preset') || localStorage.getItem('ray_builder_selected_preset'),
+      lastActiveSite: localStorage.getItem('ray_builder_last_active_site'),
+    };
+  } catch (error) {
+    console.error('[WebsiteBuilder] Could not read the initial template selection.', error);
+    return {};
+  }
+};
+
+export const getInitialBuilderState = (
+  selection?: InitialBuilderSelection
+): {
   website: Website;
   templateId: string;
   pageId: string;
+  templateError: string | null;
 } => {
-  if (typeof window !== 'undefined') {
+  const requested = selection || getBrowserSelection();
+  const params = new URLSearchParams(requested.search || '');
+  const isPendingTemplateApplication = params.get('applyTemplate') === '1';
+  const chosenTemplate = isPendingTemplateApplication
+    ? undefined
+    : params.get('template') || requested.selectedTemplate || undefined;
+  const chosenPreset = isPendingTemplateApplication
+    ? undefined
+    : params.get('preset') || requested.selectedPreset || undefined;
+  let templateError: string | null = null;
+
+  if (chosenTemplate && chosenTemplate !== 'blank') {
     try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const chosenTemplate =
-        urlParams.get('template') || localStorage.getItem('ray_builder_selected_template');
-      // Saved preset key from themes gallery — applies colour/typography on top of template layout
-      const savedPreset =
-        urlParams.get('preset') || localStorage.getItem('ray_builder_selected_preset');
-
-      const applyPreset = (site: Website): Website => {
-        if (!savedPreset) return normalizeWebsite(site);
-        try {
-          const mergedTokens = getMergedThemeTokens(savedPreset);
-          return normalizeWebsite({ ...site, theme: mergedTokens as any });
-        } catch {
-          return normalizeWebsite(site);
-        }
+      const entry = loadFullWebsiteTemplate(chosenTemplate);
+      let site = entry.website;
+      if (chosenPreset) {
+        const preset = loadThemePreset(chosenPreset);
+        site = { ...site, theme: getMergedThemeTokens(preset.presetKey) };
+      }
+      const normalized = normalizeWebsite(site);
+      return {
+        website: normalized,
+        templateId: entry.id,
+        pageId: getHomePageId(normalized) || 'page_home',
+        templateError: null,
       };
-
-      if (chosenTemplate) {
-        if (allActivityWebsites[chosenTemplate]) {
-          const site = applyPreset(allActivityWebsites[chosenTemplate]);
-          return {
-            website: site,
-            templateId: chosenTemplate,
-            pageId: getHomePageId(site) || 'page_home',
-          };
-        }
-        if (sampleWebsites[chosenTemplate]) {
-          const site = applyPreset(sampleWebsites[chosenTemplate]);
-          return {
-            website: site,
-            templateId: chosenTemplate,
-            pageId: getHomePageId(site) || 'page_home',
-          };
-        }
-      }
-
-      const lastActiveSiteStr = localStorage.getItem('ray_builder_last_active_site');
-      if (lastActiveSiteStr) {
-        const parsed = JSON.parse(lastActiveSiteStr);
-        if (parsed?.components && parsed?.pages?.length) {
-          const site = normalizeWebsite(parsed);
-          return {
-            website: site,
-            templateId: site.id || 'custom',
-            pageId: getHomePageId(site) || 'page_home',
-          };
-        }
-      }
-    } catch {}
+    } catch (error) {
+      templateError =
+        error instanceof Error
+          ? error.message
+          : `Unable to load website template "${chosenTemplate}".`;
+      console.error('[WebsiteBuilder] Initial template selection failed.', {
+        templateId: chosenTemplate,
+        presetId: chosenPreset,
+        error,
+      });
+    }
   }
 
-  // Neutral blank canvas — never show a hardcoded template for unknown shops
+  if (requested.lastActiveSite) {
+    try {
+      const parsed = JSON.parse(requested.lastActiveSite);
+      if (parsed?.components && Array.isArray(parsed?.pages) && parsed.pages.length > 0) {
+        const site = normalizeWebsite(parsed);
+        return {
+          website: site,
+          templateId: site.id || 'custom',
+          pageId: getHomePageId(site) || 'page_home',
+          templateError,
+        };
+      }
+    } catch (error) {
+      console.error('[WebsiteBuilder] Could not restore the saved website draft.', error);
+      templateError =
+        templateError ||
+        (error instanceof Error ? error.message : 'The saved website draft could not be restored.');
+    }
+  }
+
+  // An explicitly invalid selection is surfaced to the editor; it is never
+  // silently replaced with a different full website template.
   return {
     website: normalizeWebsite(BLANK_WEBSITE),
     templateId: 'blank',
     pageId: 'page_home',
+    templateError,
   };
 };

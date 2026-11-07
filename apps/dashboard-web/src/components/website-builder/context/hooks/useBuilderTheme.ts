@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { DesignTokens, Website } from '../../types/builder';
-import { defaultDesignTokens, themePresets, normalizeThemeTokens } from '../../data/defaultTheme';
+import { defaultDesignTokens, normalizeThemeTokens } from '../../data/defaultTheme';
+import { loadThemePreset } from '../../data/registry';
 
 type ThemeStyleUpdate = {
   property: string;
@@ -59,7 +60,8 @@ const knownPresetHeroValues = (property: 'hero' | 'title' | 'subtitle') =>
 export const useBuilderTheme = (
   website: Website,
   recordHistory: (actionDesc: string, newWebsite: Website) => void,
-  websiteRef?: { current: Website }
+  websiteRef?: { current: Website },
+  setTemplateError: (message: string | null) => void = () => undefined
 ) => {
   const updateThemeToken = useCallback(
     (category: keyof DesignTokens, key: string, value: any) => {
@@ -104,7 +106,11 @@ export const useBuilderTheme = (
             );
           }
           if (id === 'nav_link_1') {
-            updates.push({ property: 'textColor', nextValue: value, previousValues: [previousPrimary] });
+            updates.push({
+              property: 'textColor',
+              nextValue: value,
+              previousValues: [previousPrimary],
+            });
           }
           const result = updateThemeDerivedStyles(comp, updates);
           if (result.changed) {
@@ -165,8 +171,19 @@ export const useBuilderTheme = (
 
   const applyThemePreset = useCallback(
     (presetKey: string) => {
-      const preset = themePresets[presetKey];
-      if (!preset) return;
+      let preset: ReturnType<typeof loadThemePreset>['preset'];
+      try {
+        preset = loadThemePreset(presetKey).preset;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : `Unable to load theme preset "${presetKey}".`;
+        console.error('[WebsiteBuilder] Theme preset application failed.', {
+          presetId: presetKey,
+          error,
+        });
+        setTemplateError(message);
+        return;
+      }
       const currentWebsite = websiteRef?.current ?? website;
       const previousTheme = normalizeThemeTokens(currentWebsite.theme);
       const updatedTheme: DesignTokens = {
@@ -230,7 +247,11 @@ export const useBuilderTheme = (
             id.includes('book'))
         ) {
           updates.push(
-            { property: 'backgroundColor', nextValue: newPrimary, previousValues: [previousPrimary] },
+            {
+              property: 'backgroundColor',
+              nextValue: newPrimary,
+              previousValues: [previousPrimary],
+            },
             {
               property: 'borderRadius',
               nextValue: newRadius,
@@ -271,7 +292,11 @@ export const useBuilderTheme = (
           );
         }
         if (id === 'nav_link_1') {
-          updates.push({ property: 'textColor', nextValue: newPrimary, previousValues: [previousPrimary] });
+          updates.push({
+            property: 'textColor',
+            nextValue: newPrimary,
+            previousValues: [previousPrimary],
+          });
         }
 
         const heroColors = presetHeroColors[presetKey];
@@ -312,8 +337,9 @@ export const useBuilderTheme = (
         components: hasModifiedComponents ? updatedComponents : currentWebsite.components,
       };
       recordHistory(`تطبيق سمة التصميم (${preset.nameAr})`, newWebsite);
+      setTemplateError(null);
     },
-    [website, websiteRef, recordHistory]
+    [website, websiteRef, recordHistory, setTemplateError]
   );
 
   return {

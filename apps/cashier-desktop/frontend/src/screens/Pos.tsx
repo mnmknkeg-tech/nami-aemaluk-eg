@@ -6,20 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search,
   Filter,
-  ShoppingCart,
-  Plus,
-  Minus,
-  Trash2,
-  Tag,
-  Banknote,
-  CreditCard,
-  Wallet,
-  Clock,
-  ChevronDown,
-  ChevronUp,
-  ChevronRight,
   Lock,
-  Loader2,
   Pause,
   Play,
   ScanLine,
@@ -28,14 +15,6 @@ import {
   Cloud,
   Receipt,
   BarChart3,
-  X,
-  Printer,
-  CheckCircle2,
-  Coins,
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  AlertTriangle,
-  Package,
 } from 'lucide-react';
 import {
   api,
@@ -47,14 +26,15 @@ import {
   type OrderItem,
   type ShiftReport,
   type HeldOrder,
-  type CashMovement,
 } from '../lib/api';
 import { generateReceiptHtml, printReceipt } from '../lib/receipt';
+import PosCartPanel from './pos/PosCartPanel';
+import OrderHistoryModals from './pos/OrderHistoryModals';
+import ProductGrid from './pos/ProductGrid';
+import ReceiptModal from './pos/ReceiptModal';
+import ShiftModals from './pos/ShiftModals';
+import { money, type CartItem, type PaymentMethod } from './pos/types';
 
-type CartItem = { productId: string; name: string; price: number; quantity: number };
-type PaymentMethod = 'cash' | 'card' | 'wallet' | 'credit';
-
-const money = (n: number) => (Number.isFinite(n) ? Number(n).toFixed(2) : '0.00');
 const PAGE_SIZE = 60;
 
 export default function Pos({ onLock }: { onLock: () => void }) {
@@ -286,6 +266,11 @@ export default function Pos({ onLock }: { onLock: () => void }) {
     }
   };
 
+  const deleteHeld = async (id: string) => {
+    await api.deleteHeldOrder(id);
+    setHeldOrders(await api.getHeldOrders());
+  };
+
   // ─── checkout ────────────────────────────────────────────────────────────
   const processPayment = async () => {
     if (checkoutBusy || cart.length === 0) return;
@@ -395,285 +380,39 @@ export default function Pos({ onLock }: { onLock: () => void }) {
       ordersCount: activeShift.ordersCount,
       expectedDrawer: money(activeShift.openingAmount + activeShift.totalSales),
     };
-     
   }, [activeShift, tick]);
 
   // ─── render ──────────────────────────────────────────────────────────────
   const cartContent = (
-    <>
-      <div className="p-4 md:p-6 border-b border-slate-100 bg-white sticky top-0">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-[#BD00FF]/10 p-2.5 rounded-xl">
-              <ShoppingCart className="w-6 h-6 text-[#BD00FF]" />
-            </div>
-            <h2 className="text-xl md:text-2xl font-black">السلة</h2>
-          </div>
-          <span className="bg-slate-100 px-4 py-1.5 rounded-full text-xs font-black">
-            {cart.length} صنف
-          </span>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3">
-        {cart.map((item) => (
-          <div
-            key={item.productId}
-            className="bg-white border border-slate-100 p-3 md:p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow group"
-          >
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex-1 text-right">
-                <h4 className="font-black text-slate-900 leading-tight mb-0.5 text-sm md:text-base">
-                  {item.name}
-                </h4>
-                <p className="text-[#BD00FF] font-black text-xs md:text-sm">
-                  ج.م {money(item.price)}
-                </p>
-              </div>
-              <button
-                onClick={() => removeFromCart(item.productId)}
-                className="p-1.5 text-slate-300 hover:text-red-500 transition-colors md:opacity-0 md:group-hover:opacity-100"
-              >
-                <Trash2 size={18} />
-              </button>
-            </div>
-            <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded-xl">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => updateQuantity(item.productId, 1)}
-                  className="w-9 h-9 md:w-10 md:h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center hover:border-[#BD00FF] hover:text-[#BD00FF] transition-all active:scale-90"
-                >
-                  <Plus size={18} />
-                </button>
-                <span className="font-black text-base md:text-lg w-6 text-center">
-                  {item.quantity}
-                </span>
-                <button
-                  onClick={() => updateQuantity(item.productId, -1)}
-                  className="w-9 h-9 md:w-10 md:h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center hover:border-red-500 hover:text-red-500 transition-all active:scale-90"
-                >
-                  <Minus size={18} />
-                </button>
-              </div>
-              <p className="font-black text-slate-900 text-sm md:text-base pl-2">
-                ج.م {money(item.price * item.quantity)}
-              </p>
-            </div>
-          </div>
-        ))}
-        {cart.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-slate-300 py-20">
-            <ShoppingCart size={64} className="mb-4 opacity-20" />
-            <p className="font-black text-lg">السلة فارغة</p>
-          </div>
-        )}
-      </div>
-
-      <div className="p-3 md:p-6 bg-white border-t border-slate-100 space-y-3">
-        {cart.length > 0 && (
-          <>
-            {/* discount */}
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setShowDiscount((v) => !v)}
-                className="w-full flex items-center justify-between text-xs font-black text-slate-500 hover:text-slate-700 transition-colors py-1"
-              >
-                <span className="flex items-center gap-1.5">
-                  <Tag size={14} />
-                  خصم
-                </span>
-                <span className="flex items-center gap-1.5">
-                  {discountAmount > 0 ? (
-                    <span className="text-red-500">- ج.م {money(discountAmount)}</span>
-                  ) : (
-                    <span className="text-slate-300">إضافة</span>
-                  )}
-                  {showDiscount ? (
-                    <ChevronUp size={14} className="text-slate-400" />
-                  ) : (
-                    <ChevronDown size={14} className="text-slate-400" />
-                  )}
-                </span>
-              </button>
-              {showDiscount && (
-                <div className="flex gap-2 pb-2">
-                  <select
-                    value={discountType}
-                    onChange={(e) => setDiscountType(e.target.value as any)}
-                    className="text-xs font-black border rounded-xl px-2 py-2 outline-none bg-slate-50"
-                  >
-                    <option value="none">بدون</option>
-                    <option value="percent">%</option>
-                    <option value="fixed">مبلغ</option>
-                  </select>
-                  {discountType !== 'none' && (
-                    <input
-                      type="number"
-                      value={discountValue || ''}
-                      onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
-                      placeholder={discountType === 'percent' ? '%' : 'مبلغ'}
-                      className="flex-1 text-xs font-black border rounded-xl px-3 py-2 outline-none bg-slate-50 text-center"
-                      min={0}
-                      max={discountType === 'percent' ? 100 : undefined}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* payment method */}
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setShowPaymentMethods((v) => !v)}
-                className="w-full flex items-center justify-between text-xs font-black text-slate-500 hover:text-slate-700 transition-colors py-1"
-              >
-                <span className="flex items-center gap-1.5">
-                  {paymentMethod === 'cash' ? (
-                    <Banknote size={14} />
-                  ) : paymentMethod === 'card' ? (
-                    <CreditCard size={14} />
-                  ) : paymentMethod === 'wallet' ? (
-                    <Wallet size={14} />
-                  ) : (
-                    <Clock size={14} />
-                  )}
-                  طريقة الدفع
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="text-slate-700">
-                    {paymentMethod === 'cash'
-                      ? 'كاش'
-                      : paymentMethod === 'card'
-                        ? 'بطاقة'
-                        : paymentMethod === 'wallet'
-                          ? 'محفظة'
-                          : 'آجل'}
-                  </span>
-                  {showPaymentMethods ? (
-                    <ChevronUp size={14} className="text-slate-400" />
-                  ) : (
-                    <ChevronDown size={14} className="text-slate-400" />
-                  )}
-                </span>
-              </button>
-              {showPaymentMethods && (
-                <div className="grid grid-cols-4 gap-1.5 pb-2">
-                  {(
-                    [
-                      { id: 'cash', label: 'كاش', icon: Banknote },
-                      { id: 'card', label: 'بطاقة', icon: CreditCard },
-                      { id: 'wallet', label: 'محفظة', icon: Wallet },
-                      { id: 'credit', label: 'آجل', icon: Clock },
-                    ] as const
-                  ).map((pm) => {
-                    const Icon = pm.icon;
-                    return (
-                      <button
-                        key={pm.id}
-                        type="button"
-                        onClick={() => {
-                          setPaymentMethod(pm.id);
-                          setShowPaymentMethods(false);
-                        }}
-                        className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-[10px] font-black transition-all ${
-                          paymentMethod === pm.id
-                            ? 'border-[#BD00FF] bg-[#BD00FF]/5 text-[#BD00FF]'
-                            : 'border-slate-100 bg-slate-50 text-slate-500 hover:bg-slate-100'
-                        }`}
-                      >
-                        <Icon size={16} />
-                        {pm.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* customer + notes */}
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => setShowCustomer((v) => !v)}
-                className="w-full flex items-center justify-between text-xs font-black text-slate-500 hover:text-slate-700 transition-colors py-1"
-              >
-                <span className="flex items-center gap-1.5">
-                  <UserRound size={14} />
-                  بيانات العميل
-                </span>
-                {customerName || customerPhone ? (
-                  <span className="text-[#BD00FF]">{customerName || customerPhone}</span>
-                ) : (
-                  <span className="text-slate-300">إضافة</span>
-                )}
-              </button>
-              {showCustomer && (
-                <div className="space-y-2 pb-2">
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="اسم العميل (اختياري)"
-                    className="w-full bg-slate-50 border rounded-xl py-2.5 px-3 outline-none text-xs font-black focus:ring-2 focus:ring-[#BD00FF]"
-                  />
-                  <input
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(e) =>
-                      setCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 15))
-                    }
-                    placeholder="رقم الموبايل (اختياري)"
-                    className="w-full bg-slate-50 border rounded-xl py-2.5 px-3 outline-none text-xs font-black text-right focus:ring-2 focus:ring-[#BD00FF]"
-                  />
-                  <input
-                    type="text"
-                    value={orderNotes}
-                    onChange={(e) => setOrderNotes(e.target.value)}
-                    placeholder="ملاحظات (اختياري)"
-                    className="w-full bg-slate-50 border rounded-xl py-2.5 px-3 outline-none text-xs font-black focus:ring-2 focus:ring-[#BD00FF]"
-                  />
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* totals */}
-        <div className="space-y-1.5 pt-1">
-          <div className="flex justify-between text-xs font-black text-slate-500">
-            <span>الإجمالي الفرعي</span>
-            <span>ج.م {money(subtotal)}</span>
-          </div>
-          {discountAmount > 0 && (
-            <div className="flex justify-between text-xs font-black text-red-500">
-              <span>الخصم</span>
-              <span>- ج.م {money(discountAmount)}</span>
-            </div>
-          )}
-          <div className="flex justify-between text-lg font-black text-slate-900 pt-1 border-t border-slate-100 mt-1">
-            <span>الإجمالي</span>
-            <span className="text-[#BD00FF]">ج.م {money(total)}</span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={processPayment}
-          disabled={cart.length === 0 || checkoutBusy}
-          className="w-full py-4 rounded-2xl bg-gradient-to-l from-[#BD00FF] to-[#8A00C2] text-white font-black text-base shadow-lg shadow-[#BD00FF]/25 hover:from-[#8A00C2] hover:to-[#BD00FF] transition-all flex items-center justify-center gap-2 disabled:opacity-40"
-        >
-          {checkoutBusy ? <Loader2 size={20} className="animate-spin" /> : <Banknote size={20} />}
-          دفع الآن
-        </button>
-        {checkoutError && (
-          <div className="p-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold text-center">
-            {checkoutError}
-          </div>
-        )}
-      </div>
-    </>
+    <PosCartPanel
+      cart={cart}
+      removeFromCart={removeFromCart}
+      updateQuantity={updateQuantity}
+      showDiscount={showDiscount}
+      setShowDiscount={setShowDiscount}
+      discountType={discountType}
+      setDiscountType={setDiscountType}
+      discountValue={discountValue}
+      setDiscountValue={setDiscountValue}
+      paymentMethod={paymentMethod}
+      showPaymentMethods={showPaymentMethods}
+      setShowPaymentMethods={setShowPaymentMethods}
+      setPaymentMethod={setPaymentMethod}
+      customerName={customerName}
+      setCustomerName={setCustomerName}
+      customerPhone={customerPhone}
+      setCustomerPhone={setCustomerPhone}
+      orderNotes={orderNotes}
+      setOrderNotes={setOrderNotes}
+      showCustomer={showCustomer}
+      setShowCustomer={setShowCustomer}
+      subtotal={subtotal}
+      discountAmount={discountAmount}
+      total={total}
+      processPayment={processPayment}
+      checkoutBusy={checkoutBusy}
+      checkoutError={checkoutError}
+    />
   );
 
   return (
@@ -888,107 +627,16 @@ export default function Pos({ onLock }: { onLock: () => void }) {
         )}
 
         {/* product grid */}
-        <div className="flex-1 overflow-y-auto p-3 md:p-6">
-          {pagedProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-300">
-              {products.length === 0 ? (
-                <>
-                  <Package size={48} className="mb-3 opacity-30" />
-                  <p className="font-black text-sm">
-                    مفيش منتجات — افتح التطبيق والنت شغال مرة واحدة لتحميل المنتجات
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Search size={48} className="mb-3 opacity-30" />
-                  <p className="font-black text-sm">لا توجد منتجات مطابقة</p>
-                </>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-4">
-                {pagedProducts.map((p) => {
-                  const isOutOfStock = p.trackStock && p.stock <= 0;
-                  return (
-                    <div
-                      key={p.id}
-                      onClick={() => !isOutOfStock && addToCart(p, 1)}
-                      className={`relative active:scale-[0.97] transition-transform ${
-                        isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                      } aspect-square`}
-                    >
-                      <div className="w-full h-full rounded-lg md:rounded-[1.4rem] bg-white border border-slate-100 shadow-sm hover:shadow-xl hover:border-[#BD00FF] transition-all group overflow-hidden relative">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-[1]" />
-                        <img
-                          src={
-                            p.imageUrl
-                              ? p.imageUrl.startsWith('http')
-                                ? p.imageUrl
-                                : serverUrl + p.imageUrl
-                              : 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
-                          }
-                          alt={p.name}
-                          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 bg-slate-200 ${p.imageUrl ? '' : 'opacity-0'}`}
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.visibility = 'hidden';
-                          }}
-                        />
-                        <div className="absolute bottom-0 left-0 right-0 p-1.5 md:p-3 text-right z-[2]">
-                          <h3 className="text-white font-black text-[9px] md:text-sm line-clamp-2 leading-tight mb-0.5">
-                            {p.name}
-                          </h3>
-                          <div className="flex items-center justify-between flex-row-reverse">
-                            <span className="text-[#00E5FF] font-black text-[9px] md:text-sm">
-                              ج.م {money(p.price)}
-                            </span>
-                            {p.trackStock && (
-                              <span
-                                className={`text-[8px] md:text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
-                                  isOutOfStock
-                                    ? 'bg-red-500/20 text-red-400'
-                                    : 'bg-white/10 text-white/60'
-                                }`}
-                              >
-                                {isOutOfStock ? 'نفذ' : `${p.stock}`}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {totalProductPages > 1 && (
-                <div className="flex items-center justify-center gap-2 mt-4 mb-2">
-                  <button
-                    type="button"
-                    onClick={() => setProductsPage((p) => Math.max(1, p - 1))}
-                    disabled={productsPage <= 1}
-                    className="px-3 py-2 rounded-xl bg-white border border-slate-100 text-xs font-black disabled:opacity-40 hover:bg-slate-50"
-                  >
-                    السابق
-                  </button>
-                  <span className="text-xs font-black text-slate-500 px-3">
-                    {productsPage} / {totalProductPages}{' '}
-                    <span className="text-slate-300">({filteredProducts.length})</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setProductsPage((p) => Math.min(totalProductPages, p + 1))}
-                    disabled={productsPage >= totalProductPages}
-                    className="px-3 py-2 rounded-xl bg-white border border-slate-100 text-xs font-black disabled:opacity-40 hover:bg-slate-50"
-                  >
-                    التالي
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <ProductGrid
+          products={products}
+          pagedProducts={pagedProducts}
+          filteredCount={filteredProducts.length}
+          serverUrl={serverUrl}
+          page={productsPage}
+          totalPages={totalProductPages}
+          setPage={setProductsPage}
+          onAdd={addToCart}
+        />
       </div>
 
       {/* ─── Desktop cart sidebar ─── */}
@@ -1001,373 +649,55 @@ export default function Pos({ onLock }: { onLock: () => void }) {
         </div>
       )}
 
-      {/* ─── receipt modal ─── */}
-      {receipt && (
-        <div className="fixed inset-0 z-[10050] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white rounded-[2rem] border border-slate-100 shadow-2xl p-6 space-y-4 text-center">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 flex items-center justify-center mb-1">
-              <CheckCircle2 size={30} className="text-emerald-500" />
-            </div>
-            <h2 className="text-xl font-black text-slate-900">تمت العملية ✅</h2>
-            <p className="text-xs font-bold text-slate-400">
-              فاتورة #{receipt.order.id.slice(0, 8)} — ج.م {money(receipt.order.total)}
-              {!receipt.order.synced && (
-                <span className="block text-amber-500 mt-1">
-                  (محفوظة محليًا — هتتزامن أول ما النت يرجع)
-                </span>
-              )}
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                printReceipt(
-                  generateReceiptHtml(
-                    receipt.order,
-                    receipt.items,
-                    shopName,
-                    receipt.order.cashierName || ''
-                  )
-                )
-              }
-              className="w-full py-3.5 rounded-2xl bg-slate-900 text-white font-black text-sm flex items-center justify-center gap-2 hover:bg-black transition-all"
-            >
-              <Printer size={18} />
-              طباعة الإيصال
-            </button>
-            <button
-              type="button"
-              onClick={() => setReceipt(null)}
-              className="w-full py-3 rounded-2xl bg-slate-50 border border-slate-100 font-black text-sm text-slate-600 hover:bg-slate-100 transition-all"
-            >
-              بيع جديد
-            </button>
-          </div>
-        </div>
-      )}
+      <ReceiptModal
+        receipt={receipt}
+        onPrint={({ order, items }) =>
+          printReceipt(generateReceiptHtml(order, items, shopName, order.cashierName || ''))
+        }
+        onClose={() => setReceipt(null)}
+      />
 
       {/* ─── close shift modal (Z) ─── */}
-      {showCloseShift && (
-        <div className="fixed inset-0 z-[10050] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white rounded-[2rem] border border-slate-100 shadow-2xl p-6 space-y-4">
-            <div className="text-center">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-red-50 flex items-center justify-center mb-3">
-                <Lock size={26} className="text-red-500" />
-              </div>
-              <h2 className="text-xl font-black text-slate-900">إغلاق الوردية</h2>
-              <p className="text-xs font-bold text-slate-400 mt-1">
-                اكتب الفلوس اللي في الدرج فعليًا
-              </p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-500">الفلوس في الدرج</label>
-              <input
-                type="number"
-                min={0}
-                value={closingAmount || ''}
-                onChange={(e) => setClosingAmount(Number(e.target.value) || 0)}
-                className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-black text-center focus:ring-2 focus:ring-[#BD00FF]"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-500">ملاحظة (اختياري)</label>
-              <input
-                type="text"
-                value={closingNote}
-                onChange={(e) => setClosingNote(e.target.value)}
-                className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-black focus:ring-2 focus:ring-[#BD00FF]"
-              />
-            </div>
-            {activeShift && (
-              <div className="p-3 rounded-xl bg-slate-50 text-[11px] font-black text-slate-500 space-y-1">
-                <div className="flex justify-between">
-                  <span>العهدة الافتتاحية</span>
-                  <span>{money(activeShift.openingAmount)} ج.م</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>مبيعات الوردية</span>
-                  <span>{money(activeShift.totalSales)} ج.م</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>المتوقع في الدرج</span>
-                  <span>{money(activeShift.openingAmount + activeShift.totalSales)} ج.م</span>
-                </div>
-              </div>
-            )}
-            {closingError && (
-              <div className="p-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold text-center">
-                {closingError}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={submitCloseShift}
-                disabled={closingBusy}
-                className="flex-1 py-3.5 rounded-2xl bg-red-500 text-white font-black text-sm hover:bg-red-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {closingBusy ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />}
-                إغلاق
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCloseShift(false)}
-                className="flex-1 py-3.5 rounded-2xl bg-slate-50 border border-slate-100 font-black text-sm text-slate-600 hover:bg-slate-100"
-              >
-                إلغاء
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ShiftModals
+        activeShift={activeShift}
+        showCloseShift={showCloseShift}
+        closingAmount={closingAmount}
+        closingNote={closingNote}
+        closingBusy={closingBusy}
+        closingError={closingError}
+        onClosingAmountChange={setClosingAmount}
+        onClosingNoteChange={setClosingNote}
+        onSubmitCloseShift={submitCloseShift}
+        onCloseCloseShift={() => setShowCloseShift(false)}
+        showReport={showReport}
+        report={report}
+        onCloseReport={() => setShowReport(false)}
+        onOpenCashMove={() => {
+          setCashMoveKind('in');
+          setShowCashMove(true);
+        }}
+        showCashMove={showCashMove}
+        cashMoveKind={cashMoveKind}
+        cashMoveAmount={cashMoveAmount}
+        cashMoveNote={cashMoveNote}
+        cashMoveBusy={cashMoveBusy}
+        onCashMoveKindChange={setCashMoveKind}
+        onCashMoveAmountChange={setCashMoveAmount}
+        onCashMoveNoteChange={setCashMoveNote}
+        onSubmitCashMove={submitCashMove}
+        onCloseCashMove={() => setShowCashMove(false)}
+      />
 
-      {/* ─── X report modal ─── */}
-      {showReport && report && report.shift && (
-        <div className="fixed inset-0 z-[10050] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-[2rem] border border-slate-100 shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black text-slate-900">تقرير الوردية (X)</h2>
-              <button
-                type="button"
-                onClick={() => setShowReport(false)}
-                className="p-2 hover:bg-slate-100 rounded-xl"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: 'العهدة الافتتاحية', value: report.opening },
-                { label: 'مبيعات كاش', value: report.cashSales },
-                { label: 'فلوس داخلية', value: report.cashIn },
-                { label: 'فلوس خارجية', value: report.cashOut },
-                { label: 'الدرج الصافي', value: report.netCash },
-                { label: 'عدد الفواتير', value: report.shift.ordersCount, plain: true },
-              ].map((row) => (
-                <div key={row.label} className="p-3 rounded-2xl bg-slate-50 text-center">
-                  <p className="text-[10px] font-black text-slate-400">{row.label}</p>
-                  <p className="text-sm font-black text-slate-900 mt-1">
-                    {row.plain ? row.value : `${money(Number(row.value))} ج.م`}
-                  </p>
-                </div>
-              ))}
-            </div>
-            {report.pendingSync > 0 && (
-              <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-100 text-amber-700 text-[11px] font-bold flex items-center gap-1.5">
-                <AlertTriangle size={13} />
-                {report.pendingSync} فاتورة لسه هتتزامن مع السيرفر
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <p className="text-xs font-black text-slate-500">آخر حركات الكاش</p>
-              {report.movements.length === 0 && (
-                <p className="text-[11px] font-bold text-slate-300">مفيش حركات</p>
-              )}
-              {report.movements.map((m: CashMovement) => (
-                <div
-                  key={m.id}
-                  className="flex items-center justify-between text-xs font-black bg-slate-50 rounded-xl px-3 py-2"
-                >
-                  <span className="flex items-center gap-1.5">
-                    {m.kind === 'in' ? (
-                      <ArrowDownToLine size={13} className="text-emerald-500" />
-                    ) : (
-                      <ArrowUpFromLine size={13} className="text-red-500" />
-                    )}
-                    {m.kind === 'in' ? 'داخل' : 'خارج'}
-                    {m.note ? ` — ${m.note}` : ''}
-                  </span>
-                  <span>{money(m.amount)} ج.م</span>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCashMoveKind('in');
-                setShowCashMove(true);
-              }}
-              className="w-full py-3 rounded-2xl bg-slate-900 text-white font-black text-sm flex items-center justify-center gap-2"
-            >
-              <Coins size={16} />
-              تسجيل حركة كاش
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ─── cash movement modal ─── */}
-      {showCashMove && (
-        <div className="fixed inset-0 z-[10060] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white rounded-[2rem] border border-slate-100 shadow-2xl p-6 space-y-4">
-            <div className="text-center">
-              <h2 className="text-lg font-black text-slate-900">حركة كاش</h2>
-              <p className="text-xs font-bold text-slate-400 mt-1">
-                فلوس داخلة للدرج أو خارجة منه (مش بيع)
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {(
-                [
-                  { id: 'in', label: 'داخل (إيداع)', icon: ArrowDownToLine },
-                  { id: 'out', label: 'خارج (سحب)', icon: ArrowUpFromLine },
-                ] as const
-              ).map((k) => {
-                const Icon = k.icon;
-                return (
-                  <button
-                    key={k.id}
-                    type="button"
-                    onClick={() => setCashMoveKind(k.id)}
-                    className={`flex flex-col items-center gap-1 py-3 rounded-xl border text-xs font-black transition-all ${
-                      cashMoveKind === k.id
-                        ? 'border-[#BD00FF] bg-[#BD00FF]/5 text-[#BD00FF]'
-                        : 'border-slate-100 bg-slate-50 text-slate-500'
-                    }`}
-                  >
-                    <Icon size={16} />
-                    {k.label}
-                  </button>
-                );
-              })}
-            </div>
-            <input
-              type="number"
-              min={0}
-              value={cashMoveAmount || ''}
-              onChange={(e) => setCashMoveAmount(Number(e.target.value) || 0)}
-              placeholder="المبلغ"
-              className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-black text-center focus:ring-2 focus:ring-[#BD00FF]"
-            />
-            <input
-              type="text"
-              value={cashMoveNote}
-              onChange={(e) => setCashMoveNote(e.target.value)}
-              placeholder="السبب (اختياري)"
-              className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-black focus:ring-2 focus:ring-[#BD00FF]"
-            />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={submitCashMove}
-                disabled={cashMoveBusy}
-                className="flex-1 py-3 rounded-2xl bg-gradient-to-l from-[#BD00FF] to-[#8A00C2] text-white font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {cashMoveBusy ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Coins size={16} />
-                )}
-                تسجيل
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCashMove(false)}
-                className="flex-1 py-3 rounded-2xl bg-slate-50 border border-slate-100 font-black text-sm text-slate-600"
-              >
-                إلغاء
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── held orders / invoices modal ─── */}
-      {showHeld && (
-        <div className="fixed inset-0 z-[10050] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-[2rem] border border-slate-100 shadow-2xl p-6 space-y-3 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black text-slate-900">الطلبات المعلقة</h2>
-              <button
-                type="button"
-                onClick={() => setShowHeld(false)}
-                className="p-2 hover:bg-slate-100 rounded-xl"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            {heldOrders.length === 0 && (
-              <p className="text-xs font-bold text-slate-300 text-center py-6">مفيش طلبات معلقة</p>
-            )}
-            {heldOrders.map((h) => (
-              <div
-                key={h.id}
-                className="flex items-center justify-between bg-slate-50 rounded-2xl px-4 py-3"
-              >
-                <div>
-                  <p className="text-xs font-black text-slate-800">{h.label}</p>
-                  <p className="text-[10px] font-bold text-slate-400">
-                    {new Date(h.createdAt + 'Z').toLocaleString('ar-EG')}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => resumeHeld(h)}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-[11px] font-black hover:bg-emerald-600"
-                  >
-                    استكمال
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await api.deleteHeldOrder(h.id);
-                      setHeldOrders(await api.getHeldOrders());
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-red-50 text-red-500 text-[11px] font-black hover:bg-red-100"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {/* ─── invoices modal ─── */}
-      {showInvoices && (
-        <div className="fixed inset-0 z-[10050] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-[2rem] border border-slate-100 shadow-2xl p-6 space-y-3 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black text-slate-900">فواتير الكاشير</h2>
-              <button
-                type="button"
-                onClick={() => setShowInvoices(false)}
-                className="p-2 hover:bg-slate-100 rounded-xl"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            {invoices.length === 0 && (
-              <p className="text-xs font-bold text-slate-300 text-center py-6">مفيش فواتير</p>
-            )}
-            {invoices.map((o) => (
-              <div
-                key={o.id}
-                className="flex items-center justify-between bg-slate-50 rounded-2xl px-4 py-3"
-              >
-                <div>
-                  <p className="text-xs font-black text-slate-800">
-                    #{o.id.slice(0, 8)} — ج.م {money(o.total)}
-                    {!o.synced && <span className="text-amber-500"> (في انتظار المزامنة)</span>}
-                  </p>
-                  <p className="text-[10px] font-bold text-slate-400">
-                    {o.cashierName || '-'} • {new Date(o.createdAt + 'Z').toLocaleString('ar-EG')}
-                  </p>
-                </div>
-                <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-white border border-slate-100 text-slate-500">
-                  {o.paymentMethod === 'COD'
-                    ? 'كاش'
-                    : o.paymentMethod === 'CARD'
-                      ? 'بطاقة'
-                      : o.paymentMethod === 'WALLET'
-                        ? 'محفظة'
-                        : 'آجل'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <OrderHistoryModals
+        heldOrders={heldOrders}
+        showHeld={showHeld}
+        onCloseHeld={() => setShowHeld(false)}
+        onResumeHeld={resumeHeld}
+        onDeleteHeld={deleteHeld}
+        invoices={invoices}
+        showInvoices={showInvoices}
+        onCloseInvoices={() => setShowInvoices(false)}
+      />
     </div>
   );
 }

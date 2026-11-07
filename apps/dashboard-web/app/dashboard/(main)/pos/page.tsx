@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
-  CheckCircle2,
   UserPlus,
   X,
   Plus,
@@ -117,6 +116,7 @@ import {
   type PosCashier,
 } from '@/lib/posSettings';
 import PosProductToolbar from '@/components/pos/PosProductToolbar';
+import PosCustomerAndHeldModals from '@/components/pos/PosCustomerAndHeldModals';
 
 const MotionDiv = motion.div as any;
 
@@ -137,13 +137,19 @@ interface PendingOrder {
   id: string;
   createdAt: number;
   payload: any;
+  requestKey: string;
+  requestStorageKey?: string;
 }
 
 function readPendingOrders(shopId: string): PendingOrder[] {
   if (!shopId || typeof window === 'undefined') return [];
   try {
     const parsed = JSON.parse(window.localStorage.getItem(`pos_pending_orders_${shopId}`) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed)
+      ? parsed
+          .filter((entry) => entry && typeof entry.id === 'string' && entry.payload)
+          .map((entry) => ({ ...entry, requestKey: entry.requestKey || entry.id }))
+      : [];
   } catch {
     return [];
   }
@@ -156,14 +162,54 @@ function writePendingOrders(shopId: string, list: PendingOrder[]) {
   } catch {}
 }
 
-function enqueuePendingOrder(shopId: string, payload: any): PendingOrder {
+function enqueuePendingOrder(
+  shopId: string,
+  payload: any,
+  requestKey: string,
+  requestStorageKey?: string
+): PendingOrder {
   const entry: PendingOrder = {
     id: `pend_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
     createdAt: Date.now(),
     payload,
+    requestKey,
+    requestStorageKey,
   };
   writePendingOrders(shopId, [...readPendingOrders(shopId), entry]);
   return entry;
+}
+
+async function getPosOrderRequestKey(
+  shopId: string,
+  payload: Record<string, unknown>
+): Promise<{ key: string; storageKey: string }> {
+  if (!crypto.subtle || !crypto.randomUUID) {
+    throw new Error('المتصفح لا يدعم حماية إعادة إرسال الطلب. حدّث المتصفح ثم حاول مرة أخرى.');
+  }
+  const serialized = new TextEncoder().encode(JSON.stringify(payload));
+  const digest = await crypto.subtle.digest('SHA-256', serialized);
+  const fingerprint = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, '0')
+  ).join('');
+  const storageKey = `pos-order-request:${shopId}:${fingerprint}`;
+  try {
+    const saved = window.localStorage.getItem(storageKey);
+    if (saved) return { key: saved, storageKey };
+    const key = crypto.randomUUID();
+    window.localStorage.setItem(storageKey, key);
+    return { key, storageKey };
+  } catch {
+    throw new Error('تعذر حفظ معرّف الطلب بأمان. تحقق من مساحة التخزين ثم حاول مرة أخرى.');
+  }
+}
+
+function clearPosOrderRequestKey(storageKey?: string) {
+  if (!storageKey) return;
+  try {
+    window.localStorage.removeItem(storageKey);
+  } catch (error) {
+    console.error('Could not clear the completed POS idempotency key', error);
+  }
 }
 
 /**
@@ -634,10 +680,14 @@ const POSSystemPage: React.FC = () => {
       let flushed = 0;
       while (queue.length > 0) {
         const next = queue[0];
+        next.requestKey ||= next.id;
+        writePendingOrders(shopId, queue);
         const resp = await apiRequest(`/shops/${shopId}/orders`, {
           method: 'POST',
+          headers: { 'X-Idempotency-Key': next.requestKey },
           body: JSON.stringify(next.payload),
         });
+        clearPosOrderRequestKey(next.requestStorageKey);
         queue.shift();
         writePendingOrders(shopId, queue);
         flushed += 1;
@@ -1211,6 +1261,8 @@ const POSSystemPage: React.FC = () => {
     if (cart.length === 0) return;
     setIsProcessing(true);
     let orderPayload: Record<string, unknown> | null = null;
+    let orderRequestKey = '';
+    let orderRequestStorageKey = '';
     try {
       const trimmedPhone = String(customerPhone || '').trim();
       const trimmedName = String(customerName || '').trim();
@@ -1318,10 +1370,15 @@ const POSSystemPage: React.FC = () => {
         ...(selectedTableId ? { tableId: selectedTableId } : {}),
       };
 
+      const requestKey = await getPosOrderRequestKey(shopId, orderPayload);
+      orderRequestKey = requestKey.key;
+      orderRequestStorageKey = requestKey.storageKey;
       const createdOrder = await apiRequest(`/shops/${shopId}/orders`, {
         method: 'POST',
+        headers: { 'X-Idempotency-Key': orderRequestKey },
         body: JSON.stringify(orderPayload),
       });
+      clearPosOrderRequestKey(orderRequestStorageKey);
 
       // Auto-confirm POS orders when enabled in cashier settings
       // (fire-and-forget — never blocks or fails the sale).
@@ -1388,7 +1445,12 @@ const POSSystemPage: React.FC = () => {
       // queue the full order locally; it flushes FIFO when the connection is
       // back (window 'online' event / next successful fetch).
       if (shopId && orderPayload && cart.length > 0 && !editingOrder && isNetworkError(err)) {
-        enqueuePendingOrder(shopId, orderPayload);
+        enqueuePendingOrder(
+          shopId,
+          orderPayload,
+          orderRequestKey,
+          orderRequestStorageKey || undefined
+        );
         setPendingCount(readPendingOrders(shopId).length);
         showPendingToast(
           isArabic
@@ -3664,272 +3726,32 @@ const POSSystemPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Success modal */}
-      <AnimatePresence>
-        {showSuccess && (
-          <MotionDiv
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/20 backdrop-blur-sm"
-          >
-            <div className="bg-white rounded-[3rem] p-12 text-center shadow-2xl">
-              <CheckCircle2 size={64} className="text-green-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-black">{isArabic ? 'تم بنجاح!' : 'Success!'}</h3>
-            </div>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
-
-      {/* Customer card modal */}
-      <AnimatePresence>
-        {isCustomerCardOpen && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setIsCustomerCardOpen(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-lg font-black">{isArabic ? 'بيانات العميل' : 'Customer'}</h3>
-                <button
-                  type="button"
-                  onClick={() => setIsCustomerCardOpen(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <div className="text-xs font-black text-slate-500">
-                    {isArabic ? 'الاسم (اختياري)' : 'Name (optional)'}
-                  </div>
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder={isArabic ? 'اسم العميل' : 'Customer name'}
-                    className="w-full bg-white border rounded-2xl py-3 px-4 outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <div className="text-xs font-black text-slate-500">
-                    {isArabic ? 'الهاتف' : 'Phone'}
-                  </div>
-                  <input
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="01xxxxxxxxx"
-                    className="w-full bg-white border rounded-2xl py-3 px-4 outline-none"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomerName('');
-                    setCustomerPhone('');
-                    setIsCustomerCardOpen(false);
-                  }}
-                  className="py-3 rounded-2xl bg-slate-50 text-slate-700 font-black"
-                >
-                  {isArabic ? 'مسح' : 'Clear'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsCustomerCardOpen(false)}
-                  className="py-3 rounded-2xl bg-slate-900 text-white font-black"
-                >
-                  {isArabic ? 'حفظ' : 'Save'}
-                </button>
-              </div>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
-
-      {/* Customer list modal */}
-      <AnimatePresence>
-        {isCustomerListOpen && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setIsCustomerListOpen(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5 flex flex-col max-h-[85vh] overflow-hidden"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-lg font-black">{isArabic ? 'اختر عميل' : 'Select Customer'}</h3>
-                <button
-                  type="button"
-                  onClick={() => setIsCustomerListOpen(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="relative mb-4">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder={isArabic ? 'بحث عن عميل...' : 'Search customers...'}
-                  className="w-full bg-slate-50 border rounded-xl py-2.5 pr-9 pl-4 outline-none text-sm text-right focus:ring-2 focus:ring-[#BD00FF]"
-                  value={customerSearchQuery}
-                  onChange={(e) => setCustomerSearchQuery(e.target.value)}
-                />
-              </div>
-              <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-1 select-none">
-                {isLoadingCustomers ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="animate-spin text-slate-400" size={24} />
-                  </div>
-                ) : (
-                  (() => {
-                    const filtered = savedCustomers.filter((c: any) => {
-                      const q = customerSearchQuery.trim().toLowerCase();
-                      if (!q) return true;
-                      return (
-                        String(c?.name || '')
-                          .toLowerCase()
-                          .includes(q) || String(c?.phone || '').includes(q)
-                      );
-                    });
-                    if (filtered.length === 0)
-                      return (
-                        <div className="text-center text-slate-400 py-8 font-bold text-sm">
-                          {isArabic ? 'لا يوجد عملاء' : 'No customers'}
-                        </div>
-                      );
-                    return filtered.map((cust: any) => (
-                      <button
-                        key={cust.id}
-                        type="button"
-                        onClick={() => {
-                          setCustomerName(cust.name || '');
-                          setCustomerPhone(cust.phone || '');
-                          setIsCustomerListOpen(false);
-                        }}
-                        className="w-full text-right p-3 rounded-xl border border-slate-100 hover:border-[#BD00FF] bg-slate-50/50 hover:bg-[#BD00FF]/5 transition-all flex flex-col gap-1"
-                      >
-                        <div className="font-black text-sm text-slate-900 flex justify-between flex-row-reverse w-full items-center">
-                          <span>{cust.name || (isArabic ? 'بدون اسم' : 'Unnamed')}</span>
-                          <span className="text-xs font-bold text-slate-400">{cust.phone}</span>
-                        </div>
-                      </button>
-                    ));
-                  })()
-                )}
-              </div>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
-
-      {/* Held orders modal (F7) */}
-      <AnimatePresence>
-        {showHeldOrders && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowHeldOrders(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5 flex flex-col max-h-[85vh] overflow-hidden"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-lg font-black flex items-center gap-2">
-                  <Pause size={18} className="text-amber-500" />{' '}
-                  {isArabic ? 'الطلبات المعلقة' : 'Held Orders'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowHeldOrders(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              {heldOrders.length === 0 ? (
-                <div className="text-center text-slate-400 py-12 font-bold text-sm">
-                  {isArabic ? 'لا توجد طلبات معلقة' : 'No held orders'}
-                </div>
-              ) : (
-                <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-1">
-                  {heldOrders.map((h) => {
-                    const total = (Array.isArray(h.cart) ? h.cart : []).reduce(
-                      (s, i) => s + Number(i?.price || 0) * Number(i?.quantity || 0),
-                      0
-                    );
-                    const items = (Array.isArray(h.cart) ? h.cart : []).length;
-                    return (
-                      <div
-                        key={h.id}
-                        className="p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-amber-50/40 transition-all"
-                      >
-                        <div className="flex items-center justify-between mb-2 flex-row-reverse">
-                          <div className="font-black text-sm text-slate-900">
-                            {isArabic ? 'طلب معلق' : 'Held order'}
-                            <span className="text-[10px] text-slate-400 mr-2">
-                              {new Date(h.savedAt).toLocaleTimeString('ar-EG')}
-                            </span>
-                          </div>
-                          <div className="font-black text-sm text-[#BD00FF]">
-                            ج.م {total.toFixed(2)}
-                          </div>
-                        </div>
-                        <div className="text-[10px] text-slate-500 font-bold mb-2">
-                          {items} {isArabic ? 'عنصر' : 'items'}
-                          {h.customerName ? ` · ${h.customerName}` : ''}
-                          {h.customerPhone ? ` · ${h.customerPhone}` : ''}
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => resumeHeldOrder(h.id)}
-                            className="py-2 rounded-xl bg-emerald-500 text-white font-black text-xs hover:bg-emerald-600 flex items-center justify-center gap-1.5"
-                          >
-                            <Play size={14} /> {isArabic ? 'استئناف' : 'Resume'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteHeldOrder(h.id)}
-                            className="py-2 rounded-xl bg-red-50 text-red-600 font-black text-xs hover:bg-red-100 flex items-center justify-center gap-1.5"
-                          >
-                            <Trash2 size={14} /> {isArabic ? 'حذف' : 'Delete'}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosCustomerAndHeldModals
+        isArabic={isArabic}
+        showSuccess={showSuccess}
+        isCustomerCardOpen={isCustomerCardOpen}
+        customerName={customerName}
+        setCustomerName={setCustomerName}
+        customerPhone={customerPhone}
+        setCustomerPhone={setCustomerPhone}
+        onCloseCustomerCard={() => setIsCustomerCardOpen(false)}
+        isCustomerListOpen={isCustomerListOpen}
+        onCloseCustomerList={() => setIsCustomerListOpen(false)}
+        customerSearchQuery={customerSearchQuery}
+        setCustomerSearchQuery={setCustomerSearchQuery}
+        savedCustomers={savedCustomers}
+        isLoadingCustomers={isLoadingCustomers}
+        onSelectCustomer={(customer) => {
+          setCustomerName(customer.name || '');
+          setCustomerPhone(customer.phone || '');
+          setIsCustomerListOpen(false);
+        }}
+        showHeldOrders={showHeldOrders}
+        heldOrders={heldOrders}
+        onCloseHeldOrders={() => setShowHeldOrders(false)}
+        onResumeHeldOrder={resumeHeldOrder}
+        onDeleteHeldOrder={deleteHeldOrder}
+      />
 
       {/* Camera barcode scanner modal */}
       <AnimatePresence>

@@ -36,6 +36,7 @@ type AppConfig struct {
 	Name        string `env:"APP_NAME" envDefault:"ray-backend-go"`
 	Env         string `env:"APP_ENV" envDefault:"development"`
 	Version     string `env:"APP_VERSION" envDefault:"0.1.0"`
+	Commit      string `env:"APP_COMMIT_SHA" envDefault:"unknown"`
 	Port        int    `env:"PORT" envDefault:"4001"`
 	Host        string `env:"HOST" envDefault:"0.0.0.0"`
 	FrontendURL string `env:"FRONTEND_APP_URL,required"`
@@ -47,7 +48,7 @@ type AppConfig struct {
 
 // DBConfig holds PostgreSQL connection parameters.
 type DBConfig struct {
-	URL             string        `env:"DATABASE_URL,required"`
+	URL string `env:"DATABASE_URL,required"`
 	// MaxOpenConns is the maximum number of open (in-use) connections in the
 	// pgxpool. This is a hard per-process cap; it is NOT the application-wide
 	// session budget.
@@ -118,19 +119,19 @@ type HTTPConfig struct {
 
 // AuthConfig holds authentication secrets and cookie settings.
 type AuthConfig struct {
-	JWTSecret                string        `env:"JWT_SECRET,required"`
-	AccessTokenExpiry        time.Duration `env:"AUTH_ACCESS_TOKEN_EXPIRY" envDefault:"15m"`
-	RefreshTokenExpiry       time.Duration `env:"AUTH_REFRESH_TOKEN_EXPIRY" envDefault:"168h"`
+	JWTSecret          string        `env:"JWT_SECRET,required"`
+	AccessTokenExpiry  time.Duration `env:"AUTH_ACCESS_TOKEN_EXPIRY" envDefault:"15m"`
+	RefreshTokenExpiry time.Duration `env:"AUTH_REFRESH_TOKEN_EXPIRY" envDefault:"168h"`
 	// SessionAbsoluteTTL caps the total lifetime of a session family from its
 	// first login, regardless of how often it is refreshed (sliding idle
 	// expiry alone would otherwise allow an endless session).
-	SessionAbsoluteTTL       time.Duration `env:"AUTH_SESSION_ABSOLUTE_TTL" envDefault:"720h"`
+	SessionAbsoluteTTL time.Duration `env:"AUTH_SESSION_ABSOLUTE_TTL" envDefault:"720h"`
 	// RefreshGrace is the window after a rotation during which the previous
 	// refresh token is still accepted. It absorbs parallel refreshes from
 	// multiple tabs sharing one cookie jar without tripping reuse detection.
-	RefreshGrace             time.Duration `env:"AUTH_REFRESH_GRACE" envDefault:"60s"`
+	RefreshGrace time.Duration `env:"AUTH_REFRESH_GRACE" envDefault:"60s"`
 	// CookieName is the name of the httpOnly cookie that stores the refresh token.
-	CookieName               string        `env:"AUTH_COOKIE_NAME" envDefault:"ray_session"`
+	CookieName string `env:"AUTH_COOKIE_NAME" envDefault:"ray_session"`
 	// AccessCookieName is the name of the httpOnly cookie that stores the short-lived access token.
 	// When non-empty, the backend sets this cookie on login/refresh so the frontend
 	// does not need to store the access token in localStorage.
@@ -172,13 +173,13 @@ type RateLimit struct {
 	AuthLockoutMax time.Duration `env:"AUTH_RATE_LIMIT_LOCKOUT_MAX" envDefault:"15m"`
 	// Dedicated, tighter budget for POST /auth/refresh: it is a token-minting
 	// endpoint and previously fell under the generous global limit only.
-	RefreshMax     int           `env:"AUTH_REFRESH_RATE_LIMIT_MAX" envDefault:"30"`
-	RefreshWindow  time.Duration `env:"AUTH_REFRESH_RATE_LIMIT_WINDOW" envDefault:"1m"`
+	RefreshMax    int           `env:"AUTH_REFRESH_RATE_LIMIT_MAX" envDefault:"30"`
+	RefreshWindow time.Duration `env:"AUTH_REFRESH_RATE_LIMIT_WINDOW" envDefault:"1m"`
 	// Dedicated budget for account creation: signup writes a user row and (in
 	// the merchant wizard) a shop, so a single IP must not be able to flood the
 	// database with accounts. Kept intentionally tiny (5/hour by default).
-	SignupMax     int           `env:"AUTH_SIGNUP_RATE_LIMIT_MAX" envDefault:"5"`
-	SignupWindow  time.Duration `env:"AUTH_SIGNUP_RATE_LIMIT_WINDOW" envDefault:"1h"`
+	SignupMax    int           `env:"AUTH_SIGNUP_RATE_LIMIT_MAX" envDefault:"5"`
+	SignupWindow time.Duration `env:"AUTH_SIGNUP_RATE_LIMIT_WINDOW" envDefault:"1h"`
 }
 
 // LogConfig holds logging configuration.

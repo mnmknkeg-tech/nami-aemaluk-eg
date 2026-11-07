@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Search, Plus, Check, Eye } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
-import {
-  sectionCategoriesList,
-  sectionTemplates,
-  SectionCategory,
-  SectionTemplate,
-} from '../../data/sectionLibrary';
+import { sectionCategoriesList, SectionCategory, SectionTemplate } from '../../data/sectionLibrary';
+import { getSectionTemplateRecords } from '../../data/registry';
 import { SectionWireframePreview } from './SectionWireframePreview';
 import { LiveTemplatePreviewModal } from './LiveTemplatePreviewModal';
+
+const registeredSectionTemplates = getSectionTemplateRecords().map((entry) => entry.template);
 
 export const SectionLibraryPanel: React.FC = () => {
   const { insertSectionTemplate } = useBuilder();
@@ -18,7 +16,7 @@ export const SectionLibraryPanel: React.FC = () => {
   const [previewTemplate, setPreviewTemplate] = useState<SectionTemplate | null>(null);
 
   const handleInsert = (tmpl: SectionTemplate) => {
-    insertSectionTemplate(tmpl.id);
+    if (!insertSectionTemplate(tmpl.id)) return;
     setInsertedId(tmpl.id);
     setTimeout(() => setInsertedId(null), 2000);
   };
@@ -30,7 +28,7 @@ export const SectionLibraryPanel: React.FC = () => {
 
   // Filter templates for current category & search query
   const categoryTemplates = selectedCategory
-    ? sectionTemplates.filter((tmpl) => {
+    ? registeredSectionTemplates.filter((tmpl) => {
         const matchCat = tmpl.category === selectedCategory;
         const matchSearch =
           !searchQuery ||
@@ -49,7 +47,7 @@ export const SectionLibraryPanel: React.FC = () => {
       {!selectedCategory ? (
         <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
           {sectionCategoriesList.map((cat) => {
-            const templateCount = sectionTemplates.filter(
+            const templateCount = registeredSectionTemplates.filter(
               (template) => template.category === cat.id
             ).length;
             const isEmpty = templateCount === 0;
@@ -80,7 +78,10 @@ export const SectionLibraryPanel: React.FC = () => {
                     {cat.nameAr}
                   </span>
                   <span className="text-[10px] font-mono text-slate-400 bg-slate-100 rounded-full px-1.5 py-0.5">
-                    {sectionTemplates.filter((template) => template.category === cat.id).length}
+                    {
+                      registeredSectionTemplates.filter((template) => template.category === cat.id)
+                        .length
+                    }
                   </span>
                 </div>
               </button>

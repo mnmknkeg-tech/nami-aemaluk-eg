@@ -14,6 +14,8 @@ import { DeveloperModeDrawer } from './components/dev/DeveloperModeDrawer';
 import { MobileBuilderTabBar } from './components/mobile/MobileBuilderTabBar';
 
 const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = false }) => {
+  const { templateError } = useBuilder();
+
   return (
     <div
       className={`flex flex-col ${fullScreen ? 'h-screen' : 'h-[calc(100vh-4rem)]'} w-full bg-slate-100 overflow-hidden font-sans antialiased text-slate-900 pb-16 lg:pb-0`}
@@ -26,15 +28,25 @@ const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = fal
         <EditingModeSelector />
       </div>
 
-      {/* Main Studio 3-Column Layout */}
+      {templateError && (
+        <div
+          role="alert"
+          className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900"
+        >
+          تعذر تطبيق القالب: {templateError}
+        </div>
+      )}
+
+      {/* Main Studio 3-Column Layout — dir="rtl" reverses visual order so the
+          FIRST child renders RIGHT, CENTER is Canvas, THIRD child renders LEFT */}
       <div className="flex flex-1 overflow-hidden relative" dir="rtl">
-        {/* Right Panel: Website structure, pages, sections, appearance, and settings */}
+        {/* FIRST CHILD → VISUAL RIGHT: Website structure, pages, sections, layers */}
         <LeftSidebar />
 
-        {/* Center Panel: Website canvas */}
+        {/* CENTER: Website canvas (component preview) */}
         <CanvasArea />
 
-        {/* Left Panel: Contextual Inspector for the selected element */}
+        {/* THIRD CHILD → VISUAL LEFT: Contextual Inspector for the selected element */}
         <RightInspector />
       </div>
 

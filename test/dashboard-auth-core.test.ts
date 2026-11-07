@@ -198,7 +198,60 @@ describe('case 5: structured 401 detection (code first, regex fallback)', () => 
   });
 });
 
+describe('403 role-claim recovery', () => {
+  it('refreshes once and retries a merchant request after an insufficient-role response', async () => {
+    fetchMock().mockImplementation(async (url: string) => {
+      if (String(url).includes('/auth/refresh')) {
+        refreshCalls++;
+        return jsonRes(200, refreshBody());
+      }
+      if (refreshCalls === 0) {
+        return jsonRes(403, {
+          success: false,
+          error: 'insufficient_role',
+          message: 'ليس لديك صلاحية للوصول',
+        });
+      }
+      return jsonRes(200, { success: true, data: { id: 'shop-1' } });
+    });
+
+    await expect(apiRequest('/shops/me', { cache: 'no-store' })).resolves.toEqual({
+      id: 'shop-1',
+    });
+    expect(refreshCalls).toBe(1);
+    expect(fetchMock().mock.calls.length).toBe(3);
+  });
+});
+
 describe('GET cache + in-flight dedup (request reduction)', () => {
+  it('unwraps no-store GET responses and always fetches them again', async () => {
+    fetchMock()
+      .mockResolvedValueOnce(jsonRes(200, { success: true, data: { id: 'first' } }))
+      .mockResolvedValueOnce(jsonRes(200, { success: true, data: { id: 'second' } }));
+
+    await expect(apiRequest('/shops/me', { cache: 'no-store' })).resolves.toEqual({
+      id: 'first',
+    });
+    await expect(apiRequest('/shops/me', { cache: 'no-store' })).resolves.toEqual({
+      id: 'second',
+    });
+    expect(fetchMock().mock.calls.length).toBe(2);
+  });
+
+  it('coalesces repeated failing GETs briefly to avoid request storms', async () => {
+    fetchMock().mockResolvedValue(
+      jsonRes(500, { success: false, error: 'internal_error', message: 'try again' })
+    );
+
+    await expect(apiRequest('/shops/me')).rejects.toMatchObject({ status: 500 });
+    await expect(apiRequest('/shops/me')).rejects.toMatchObject({ status: 500 });
+    expect(fetchMock().mock.calls.length).toBe(1);
+
+    clearApiCache();
+    await expect(apiRequest('/shops/me')).rejects.toMatchObject({ status: 500 });
+    expect(fetchMock().mock.calls.length).toBe(2);
+  });
+
   it('serves repeat GETs from cache within the TTL and refetches after a mutation', async () => {
     fetchMock().mockImplementation(async () => jsonRes(200, { success: true, data: { v: 1 } }));
 

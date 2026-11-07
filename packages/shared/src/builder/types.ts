@@ -197,6 +197,15 @@ export interface InteractionConfig {
   customJsSnippet?: string;
 }
 
+export type WebsiteLinkDestination =
+  | { type: 'none' }
+  | { type: 'page'; pageId: string }
+  | { type: 'section'; pageId: string; sectionId: string }
+  | { type: 'external'; url: string }
+  | { type: 'whatsapp'; url: string }
+  | { type: 'booking'; pageId?: string; sectionId?: string }
+  | { type: 'order'; pageId?: string; sectionId?: string };
+
 export interface DataBinding {
   field: string;
   sourceKey: string;
@@ -223,6 +232,7 @@ export interface ComponentNode {
   childrenIds: string[];
 
   props: Record<string, any>;
+  destination?: WebsiteLinkDestination;
 
   styles: {
     desktop: StyleProperties;
@@ -300,6 +310,7 @@ export interface DropdownSubItem {
   description?: string;
   url?: string;
   pageId?: string;
+  destination?: WebsiteLinkDestination;
   iconName?: string;
   badge?: string;
 }

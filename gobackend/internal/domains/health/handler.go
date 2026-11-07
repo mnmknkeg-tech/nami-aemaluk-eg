@@ -13,9 +13,11 @@ import (
 
 // Handler exposes monitoring and health endpoints.
 type Handler struct {
-	db     *db.Pool
-	redis  *redis.Client
-	logger *zap.Logger
+	db      *db.Pool
+	redis   *redis.Client
+	logger  *zap.Logger
+	version string
+	commit  string
 
 	// schema caching. VerifySchema is a single cheap catalog query, but
 	// readiness probes can fire every second from multiple replicas, so a
@@ -29,8 +31,8 @@ type Handler struct {
 const schemaCacheTTL = 30 * time.Second
 
 // NewHandler creates a health handler.
-func NewHandler(pool *db.Pool, redisClient *redis.Client, logger *zap.Logger) *Handler {
-	return &Handler{db: pool, redis: redisClient, logger: logger}
+func NewHandler(pool *db.Pool, redisClient *redis.Client, logger *zap.Logger, version, commit string) *Handler {
+	return &Handler{db: pool, redis: redisClient, logger: logger, version: version, commit: commit}
 }
 
 // verifySchema reports whether the public schema contains the tables the API
@@ -63,6 +65,15 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 	g.Get("/live", h.Live)
 	g.Get("/ready", h.Ready)
 	g.Get("/health", h.Live)
+	g.Get("/version", h.Version)
+}
+
+// Version reports non-sensitive build metadata for deployment correlation.
+func (h *Handler) Version(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{
+		"version": h.version,
+		"commit":  h.commit,
+	})
 }
 
 // Live returns a lightweight liveness probe.

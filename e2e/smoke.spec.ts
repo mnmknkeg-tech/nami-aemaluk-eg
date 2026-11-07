@@ -1,6 +1,15 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('marketplace smoke', () => {
+  test('version endpoint reports safe build metadata', async ({ request }) => {
+    const response = await request.get('/api/version');
+    expect(response.ok()).toBeTruthy();
+    expect(await response.json()).toEqual({
+      version: expect.any(String),
+      commit: expect.any(String),
+    });
+  });
+
   test('homepage renders', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveTitle(/./); // page has any title

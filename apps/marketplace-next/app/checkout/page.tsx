@@ -22,6 +22,27 @@ import { isSessionActive, jsonRequest } from '@/lib/api';
 import { LocationPicker } from '@/components/LocationPicker';
 import { playOrderNotifSound } from '@/lib/sounds';
 
+async function getCheckoutIdempotencyKey(shopId: string, payload: Record<string, unknown>) {
+  if (!crypto.subtle || !crypto.randomUUID) {
+    throw new Error('متصفحك لا يدعم حماية إعادة إرسال الطلب. حدّث المتصفح ثم حاول مرة أخرى.');
+  }
+  const serialized = new TextEncoder().encode(JSON.stringify(payload));
+  const digest = await crypto.subtle.digest('SHA-256', serialized);
+  const fingerprint = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, '0')
+  ).join('');
+  const storageKey = `checkout-request:${shopId}:${fingerprint}`;
+  try {
+    const saved = window.sessionStorage.getItem(storageKey);
+    if (saved) return { key: saved, storageKey };
+    const key = crypto.randomUUID();
+    window.sessionStorage.setItem(storageKey, key);
+    return { key, storageKey };
+  } catch {
+    throw new Error('تعذر حفظ معرّف الطلب بأمان. فعّل تخزين الجلسة ثم حاول مرة أخرى.');
+  }
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -170,46 +191,51 @@ export default function CheckoutPage() {
       const endpoint = isGuest ? '/orders/public' : '/orders';
 
       const orders: any[] = [];
+      const completedRequestKeys: string[] = [];
       const shopEntries = Object.entries(shopGroups);
 
       for (const [shopId, shopItems] of shopEntries) {
-        const shopTotal = shopItems.reduce((s, i) => s + i.price * i.quantity, 0);
+        const payload = {
+          shopId,
+          items: shopItems.map((i) => ({
+            productId: i.productId,
+            quantity: i.quantity,
+          })),
+          customer: {
+            name: customerName || undefined,
+            phone: phone || undefined,
+            city: city || undefined,
+            district: district || undefined,
+            address: address || undefined,
+            notes: notes || undefined,
+            lat: coords?.lat,
+            lng: coords?.lng,
+          },
+          customerNote: notes || undefined,
+          couponCode: isMerchantCheckout && couponCode ? couponCode : undefined,
+          deliveryAddressManual: [city, district, address].filter(Boolean).join('، ') || undefined,
+          deliveryLat: coords?.lat,
+          deliveryLng: coords?.lng,
+          deliveryNote: notes || undefined,
+          paymentMethod: paymentMethod === 'cod' ? 'COD' : 'CARD',
+          source: isMerchantCheckout ? 'website' : 'marketplace',
+        };
+        const requestKey = await getCheckoutIdempotencyKey(shopId, payload);
         const order = await jsonRequest<any>(endpoint, {
           method: 'POST',
-          body: JSON.stringify({
-            shopId,
-            items: shopItems.map((i) => ({
-              productId: i.productId,
-              quantity: i.quantity,
-            })),
-            customer: {
-              name: customerName || undefined,
-              phone: phone || undefined,
-              city: city || undefined,
-              district: district || undefined,
-              address: address || undefined,
-              notes: notes || undefined,
-              lat: coords?.lat,
-              lng: coords?.lng,
-            },
-            customerNote: notes || undefined,
-            couponCode: isMerchantCheckout && couponCode ? couponCode : undefined,
-            deliveryAddressManual:
-              [city, district, address].filter(Boolean).join('، ') || undefined,
-            deliveryLat: coords?.lat,
-            deliveryLng: coords?.lng,
-            deliveryNote: notes || undefined,
-            paymentMethod: paymentMethod === 'cod' ? 'COD' : 'CARD',
-            total: shopTotal,
-            source: isMerchantCheckout ? 'website' : 'marketplace',
-          }),
+          headers: { 'X-Idempotency-Key': requestKey.key },
+          body: JSON.stringify(payload),
         }).catch((err) => {
           throw new Error(err?.message || `فشل إنشاء الطلب من ${shopItems[0]?.shopName}`);
         });
 
         orders.push(order);
+        if (requestKey.storageKey) completedRequestKeys.push(requestKey.storageKey);
       }
 
+      for (const storageKey of completedRequestKeys) {
+        window.sessionStorage.removeItem(storageKey);
+      }
       clearCart();
       setSuccess({ orders, count: orders.length });
       playOrderNotifSound();

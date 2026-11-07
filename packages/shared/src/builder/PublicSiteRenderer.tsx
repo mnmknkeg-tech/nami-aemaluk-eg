@@ -1,12 +1,20 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import type { SiteProduct, SiteShopContext, SiteSubscriptionPlan, Website } from './types';
+import type {
+  SiteProduct,
+  SiteShopContext,
+  SiteSubscriptionPlan,
+  ViewportBreakpoint,
+  BuilderPage,
+  Website,
+} from './types';
 import { resolveTheme, buildWhatsAppLink } from './theme';
 import { NodeView } from './NodeView';
 import { SiteSubscriptionModal } from './SiteSubscriptionModal';
 import { SiteCartDrawer, type SiteCartItem } from './SiteCartDrawer';
 import { useResponsiveViewport } from './responsiveViewport';
+import { computeWebsiteRootStyles } from './responsiveStyles';
 import { inspectWebsiteTree, normalizeWebsiteTree } from './websiteTree';
 import { CartIcon } from './CartIcon';
 import { isCartVisible } from './cartPolicy';
@@ -20,6 +28,41 @@ export interface PublicSiteRendererProps {
   onOpenCart?: () => void;
   cartCount?: number;
   onNavigatePage?: (pageId: string) => void;
+  previewMode?: boolean;
+  previewViewport?: ViewportBreakpoint;
+  previewPageId?: string;
+}
+
+export type PreviewLinkResolution =
+  { type: 'page'; pageId: string } | { type: 'anchor' } | { type: 'blocked' };
+
+export function resolvePreviewLink(
+  href: string,
+  pages: Pick<BuilderPage, 'id' | 'slug'>[]
+): PreviewLinkResolution {
+  const trimmedHref = href.trim();
+  if (!trimmedHref) return { type: 'blocked' };
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(trimmedHref)) return { type: 'blocked' };
+
+  const isFragment = trimmedHref.startsWith('#');
+  const candidate = isFragment
+    ? trimmedHref.slice(1).toLowerCase()
+    : trimmedHref
+        .split(/[?#]/, 1)[0]
+        .replace(/^\/+|\/+$/g, '')
+        .toLowerCase()
+        .split('/')
+        .pop() || '';
+  if (!candidate && isFragment) return { type: 'anchor' };
+
+  const page = pages.find(
+    (item) =>
+      item.slug.toLowerCase() === candidate ||
+      item.id.toLowerCase() === candidate ||
+      item.id.toLowerCase() === `page_${candidate}`
+  );
+  if (page) return { type: 'page', pageId: page.id };
+  return isFragment ? { type: 'anchor' } : { type: 'blocked' };
 }
 
 export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
@@ -31,6 +74,9 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
   onOpenCart,
   cartCount,
   onNavigatePage,
+  previewMode = false,
+  previewViewport,
+  previewPageId,
 }) => {
   const [subModalPlan, setSubModalPlan] = useState<any | null>(null);
 
@@ -50,7 +96,7 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
     }
   }, [treeReport, website.id]);
 
-  const pages = safeWebsite.pages || [];
+  const pages = useMemo(() => safeWebsite.pages || [], [safeWebsite.pages]);
 
   const homePage = useMemo(
     () =>
@@ -61,17 +107,23 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
   );
 
   const [activePageId, setActivePageId] = useState<string | undefined>(homePage?.id);
-  const viewport = useResponsiveViewport();
+  const detectedViewport = useResponsiveViewport();
+  const viewport = previewViewport || detectedViewport;
+  useEffect(() => {
+    if (previewPageId && pages.some((page) => page.id === previewPageId)) {
+      setActivePageId(previewPageId);
+    }
+  }, [pages, previewPageId]);
 
   const cartSettings = safeWebsite.settings?.cart;
   const floating = safeWebsite.settings?.floatingActions;
 
-  const usesHostCart = Boolean(onAddToCart && onOpenCart);
+  const usesHostCart = !previewMode && Boolean(onAddToCart && onOpenCart);
 
   const showFloatingCart = isCartVisible({ settings: cartSettings, placement: 'floating' });
 
   const [standaloneItems, setStandaloneItems] = useState<SiteCartItem[]>(() => {
-    if (typeof window === 'undefined') return [];
+    if (previewMode || typeof window === 'undefined') return [];
     try {
       const stored = localStorage.getItem(`ray_site_cart_${shop.id}`);
       return stored ? JSON.parse(stored) : [];
@@ -83,11 +135,11 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
   const [isSiteCartOpen, setIsSiteCartOpen] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (previewMode || typeof window === 'undefined') return;
     try {
       localStorage.setItem(`ray_site_cart_${shop.id}`, JSON.stringify(standaloneItems));
     } catch {}
-  }, [standaloneItems, shop.id]);
+  }, [previewMode, standaloneItems, shop.id]);
 
   const handleAddToCart = (product: SiteProduct) => {
     if (usesHostCart && onAddToCart) {
@@ -143,13 +195,32 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
     }
   };
 
+  const handlePreviewLink = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!previewMode || !(event.target instanceof Element)) return;
+    const anchor = event.target.closest('a');
+    const href = anchor?.getAttribute('href')?.trim();
+    if (!anchor || !href) return;
+    const resolution = resolvePreviewLink(href, pages);
+    if (resolution.type === 'anchor') return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (resolution.type === 'page') handleNavigatePage(resolution.pageId);
+  };
+
   const effectiveCartCount = usesHostCart
     ? (cartCount ?? 0)
     : standaloneItems.reduce((acc, it) => acc + it.quantity, 0);
 
   const waLink = (text: string) => buildWhatsAppLink(shop.phone || shop.whatsapp, text);
   return (
-    <div className="min-h-screen bg-white text-slate-900 antialiased">
+    <div
+      className="min-h-screen bg-white text-slate-900 antialiased"
+      onClickCapture={handlePreviewLink}
+      onSubmitCapture={(event) => {
+        if (previewMode) event.preventDefault();
+      }}
+    >
       {showFloatingCart && (
         <button
           type="button"
@@ -205,12 +276,10 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
       )}
       <div
         className="published-site-renderer min-h-screen"
-        style={{
-          backgroundColor: theme.colors.background,
-          color: theme.colors.textPrimary,
-          fontFamily: theme.typography.fontBody,
-          direction: safeWebsite.defaultDirection === 'rtl' ? 'rtl' : 'ltr',
-        }}
+        style={computeWebsiteRootStyles(
+          theme,
+          safeWebsite.defaultDirection === 'rtl' ? 'rtl' : 'ltr'
+        )}
       >
         {hasContent && rootNodeId ? (
           <NodeView
@@ -221,13 +290,14 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
               activePage: activePage!,
               theme,
               shop,
-              realProducts: products,
-              realSubscriptionPlans: subscriptionPlans,
+              realProducts: previewMode ? [] : products,
+              realSubscriptionPlans: previewMode ? [] : subscriptionPlans,
               onNavigatePage: handleNavigatePage,
               waLink,
               onAddToCart: handleAddToCart,
               onOpenCart: handleOpenCart,
               cartCount: effectiveCartCount,
+              previewMode,
             }}
           />
         ) : (
@@ -237,13 +307,15 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
           </div>
         )}
 
-        <SiteSubscriptionModal
-          isOpen={Boolean(subModalPlan)}
-          onClose={() => setSubModalPlan(null)}
-          plan={subModalPlan}
-          shop={shop}
-          availablePlans={subscriptionPlans}
-        />
+        {!previewMode && (
+          <SiteSubscriptionModal
+            isOpen={Boolean(subModalPlan)}
+            onClose={() => setSubModalPlan(null)}
+            plan={subModalPlan}
+            shop={shop}
+            availablePlans={subscriptionPlans}
+          />
+        )}
         {!usesHostCart && (
           <SiteCartDrawer
             isOpen={isSiteCartOpen}
@@ -263,7 +335,9 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
             onRemoveItem={(id) =>
               setStandaloneItems((prev) => prev.filter((item) => item.id !== id))
             }
-            onProceedToCheckout={() => window.location.assign(`/site/${shop.slug}/checkout`)}
+            onProceedToCheckout={() => {
+              if (!previewMode) window.location.assign(`/site/${shop.slug}/checkout`);
+            }}
           />
         )}
       </div>

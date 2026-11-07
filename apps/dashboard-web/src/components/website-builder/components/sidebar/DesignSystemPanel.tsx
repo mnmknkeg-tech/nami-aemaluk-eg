@@ -1,20 +1,10 @@
 import React, { useState } from 'react';
-import {
-  Palette,
-  Sparkles,
-  Check,
-  Type,
-  Maximize2,
-  Eye,
-  Sliders,
-  CheckCircle2,
-  RefreshCw,
-  LayoutTemplate,
-  ArrowUpRight,
-  Search,
-} from 'lucide-react';
+import { Palette, Sparkles, Check, Eye, CheckCircle2, LayoutTemplate, Search } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
-import { themePresets, normalizeThemeTokens } from '../../data/defaultTheme';
+import { normalizeThemeTokens } from '../../data/defaultTheme';
+import { getThemePresetRecords } from '../../data/registry';
+
+const registeredThemePresets = getThemePresetRecords();
 
 export const DesignSystemPanel: React.FC = () => {
   const {
@@ -177,7 +167,7 @@ export const DesignSystemPanel: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          {Object.entries(themePresets).map(([key, preset]) => {
+          {registeredThemePresets.map(({ presetKey: key, preset }) => {
             const isCurrentActive = theme.colors.primary === preset.tokens.colors?.primary;
             return (
               <button

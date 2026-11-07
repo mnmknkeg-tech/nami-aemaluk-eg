@@ -19,8 +19,11 @@ export function SiteStoreProductCard({
   const [added, setAdded] = useState(false);
   const image = product.imageUrl || product.image_url || product.images?.[0];
   const price = product.price ?? product.basePrice ?? product.base_price;
+  const unavailable =
+    product.isAvailable === false || product.isActive === false || product.is_active === false;
 
   const handleAdd = () => {
+    if (unavailable) return;
     addItem(product, shop);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1600);
@@ -67,11 +70,16 @@ export function SiteStoreProductCard({
           <button
             type="button"
             onClick={handleAdd}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-black text-white transition hover:opacity-90"
-            style={{ backgroundColor: 'var(--site-primary, #2563eb)' }}
+            disabled={unavailable}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-400"
+            style={unavailable ? undefined : { backgroundColor: 'var(--site-primary, #2563eb)' }}
           >
-            {added ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
-            {added ? 'تمت الإضافة' : 'أضف للسلة'}
+            {unavailable ? null : added ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <ShoppingCart className="h-4 w-4" />
+            )}
+            {unavailable ? 'غير متوفر' : added ? 'تمت الإضافة' : 'أضف للسلة'}
           </button>
         </div>
       </div>

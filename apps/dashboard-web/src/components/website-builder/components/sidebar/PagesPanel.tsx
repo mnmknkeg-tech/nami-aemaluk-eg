@@ -13,10 +13,6 @@ import {
   Copy,
   Sparkles,
   X,
-  Layers,
-  ArrowRight,
-  ExternalLink,
-  Check,
   PhoneCall,
   User,
   ShieldCheck,
@@ -26,6 +22,7 @@ import {
 import { useBuilder } from '../../context/BuilderContext';
 import { Page, PagePlacementMode } from '../../types/builder';
 import { AddPageModal } from './AddPageModal';
+import type { WebsiteLinkDestination } from '@ray-eg/shared/builder';
 
 export const PagesPanel: React.FC = () => {
   const {
@@ -37,6 +34,7 @@ export const PagesPanel: React.FC = () => {
     updatePageMetadata,
     updatePagePlacement,
     getHeaderDropdownNavItems,
+    updateNodeProps,
   } = useBuilder();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -52,8 +50,95 @@ export const PagesPanel: React.FC = () => {
   const [editParentNavId, setEditParentNavId] = useState('');
   const [editDropdownDesc, setEditDropdownDesc] = useState('');
   const [editDropdownBadge, setEditDropdownBadge] = useState('');
+  const [newNavigationLabel, setNewNavigationLabel] = useState('');
+  const [newNavigationPageId, setNewNavigationPageId] = useState('');
 
   const availableDropdowns = getHeaderDropdownNavItems();
+  const navigationNode =
+    Object.values(website.components).find((component) =>
+      Array.isArray(component.props.navigationItems)
+    ) ||
+    Object.values(website.components).find(
+      (component) =>
+        component.type === 'paragraph' &&
+        typeof component.props.text === 'string' &&
+        component.props.text.includes('•') &&
+        /nav|روابط/i.test(`${component.id} ${component.name}`)
+    );
+  const navigationItems: Array<{
+    id?: string;
+    label?: string;
+    destination?: WebsiteLinkDestination;
+    hidden?: boolean;
+    [key: string]: unknown;
+  }> = navigationNode
+    ? Array.isArray(navigationNode.props.navigationItems)
+      ? navigationNode.props.navigationItems
+      : String(navigationNode.props.text || '')
+          .split('•')
+          .map((label) => label.trim())
+          .filter(Boolean)
+          .map((label) => {
+            const page = website.pages.find(
+              (candidate) => candidate.name === label || candidate.metadata.headerTitle === label
+            );
+            return {
+              label,
+              ...(page ? { destination: { type: 'page' as const, pageId: page.id } } : {}),
+            };
+          })
+    : [];
+  const saveNavigationItems = (items: typeof navigationItems) => {
+    if (!navigationNode) return;
+    updateNodeProps(navigationNode.id, {
+      navigationItems: items,
+      text: items
+        .filter((item) => item.label && !item.hidden)
+        .map((item) => item.label)
+        .join(' • '),
+    });
+  };
+  const updateNavigationItem = (
+    index: number,
+    patch: Partial<(typeof navigationItems)[number]>
+  ) => {
+    saveNavigationItems(
+      navigationItems.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item))
+    );
+  };
+  const getPageSections = (pageId: string) => {
+    const page = website.pages.find((candidate) => candidate.id === pageId);
+    if (!page) return [];
+    const sections: Array<{ id: string; label: string }> = [];
+    const visited = new Set<string>();
+    const visit = (id: string) => {
+      if (visited.has(id)) return;
+      visited.add(id);
+      const component = website.components[id];
+      if (!component) return;
+      if (id !== page.rootNodeId && component.type !== 'header' && component.type !== 'footer') {
+        sections.push({ id, label: component.name || id });
+      }
+      component.childrenIds.forEach(visit);
+    };
+    visit(page.rootNodeId);
+    return sections;
+  };
+  const addNavigationItem = () => {
+    if (!newNavigationPageId) return;
+    const page = website.pages.find((candidate) => candidate.id === newNavigationPageId);
+    if (!page) return;
+    const label = newNavigationLabel.trim() || page.metadata.headerTitle || page.name;
+    saveNavigationItems([
+      ...navigationItems,
+      {
+        id: `${navigationNode?.id || 'navigation'}_${Date.now()}`,
+        label,
+        destination: { type: 'page', pageId: page.id },
+      },
+    ]);
+    setNewNavigationLabel('');
+  };
 
   const handleOpenSettings = (p: Page, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -154,12 +239,16 @@ export const PagesPanel: React.FC = () => {
     e.preventDefault();
     if (!editingPage) return;
 
-    updatePageMetadata(editingPage.id, {
-      title: editTitle.trim() || editName,
-      description: editDesc.trim(),
-      slug: editSlug.trim() || editName.toLowerCase().replace(/\s+/g, '-'),
-      isHomePage: editingPage.metadata.isHomePage,
-    });
+    updatePageMetadata(
+      editingPage.id,
+      {
+        title: editTitle.trim() || editName,
+        description: editDesc.trim(),
+        slug: editSlug.trim() || editName.toLowerCase().replace(/\s+/g, '-'),
+        isHomePage: editingPage.metadata.isHomePage,
+      },
+      editName
+    );
 
     if (!editingPage.metadata.isHomePage) {
       updatePagePlacement(editingPage.id, {
@@ -334,6 +423,203 @@ export const PagesPanel: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {navigationNode && (
+        <section className="p-3 bg-white border border-slate-200 rounded-2xl space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <Navigation className="w-3.5 h-3.5 text-blue-600" />
+              عناصر قائمة التنقل
+            </span>
+            <span className="text-[10px] text-slate-400">{navigationItems.length} روابط</span>
+          </div>
+
+          <div className="space-y-2">
+            {navigationItems.map((item, index) => {
+              const destination = item.destination;
+              const targetPageId = destination && 'pageId' in destination ? destination.pageId : '';
+              const sections = targetPageId ? getPageSections(targetPageId) : [];
+              return (
+                <div
+                  key={item.id || `${navigationNode.id}_${index}`}
+                  className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={item.label || ''}
+                      onChange={(event) =>
+                        updateNavigationItem(index, { label: event.target.value })
+                      }
+                      aria-label="اسم رابط التنقل"
+                      className="min-w-0 flex-1 bg-white border border-slate-200 rounded-lg p-1.5 text-xs"
+                    />
+                    <label className="flex items-center gap-1 text-[10px] text-slate-500 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(item.hidden)}
+                        onChange={(event) =>
+                          updateNavigationItem(index, { hidden: event.target.checked })
+                        }
+                      />
+                      إخفاء
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        saveNavigationItems(
+                          navigationItems.filter((_, itemIndex) => itemIndex !== index)
+                        )
+                      }
+                      aria-label="حذف رابط التنقل"
+                      className="p-1 text-slate-400 hover:text-red-600"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <select
+                    value={destination?.type || 'none'}
+                    onChange={(event) => {
+                      const pageId = targetPageId || website.pages[0]?.id;
+                      const type = event.target.value;
+                      let nextDestination: WebsiteLinkDestination;
+                      if (type === 'page' && pageId) {
+                        nextDestination = { type: 'page', pageId };
+                      } else if (type === 'section' && pageId) {
+                        const sectionId =
+                          destination?.type === 'section' && destination.pageId === pageId
+                            ? destination.sectionId
+                            : getPageSections(pageId)[0]?.id;
+                        if (!sectionId) return;
+                        nextDestination = { type: 'section', pageId, sectionId };
+                      } else if (type === 'booking' && pageId) {
+                        nextDestination = { type: 'booking', pageId };
+                      } else if (type === 'external' || type === 'whatsapp') {
+                        nextDestination = { type, url: '' };
+                      } else if (type === 'order') {
+                        nextDestination = { type: 'order' };
+                      } else {
+                        nextDestination = { type: 'none' };
+                      }
+                      updateNavigationItem(index, { destination: nextDestination });
+                    }}
+                    aria-label="نوع وجهة رابط التنقل"
+                    className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs"
+                  >
+                    <option value="none">بدون وجهة</option>
+                    <option value="page">صفحة داخل الموقع</option>
+                    <option value="section">قسم داخل صفحة</option>
+                    <option value="booking">حجز / موعد</option>
+                    <option value="external">رابط خارجي</option>
+                    <option value="whatsapp">واتساب</option>
+                    <option value="order">طلب / سلة</option>
+                  </select>
+
+                  {destination &&
+                    'pageId' in destination &&
+                    (destination.type === 'page' ||
+                      destination.type === 'section' ||
+                      destination.type === 'booking') && (
+                      <select
+                        value={destination.pageId}
+                        onChange={(event) => {
+                          const pageId = event.target.value;
+                          if (destination.type === 'section') {
+                            const sectionId = getPageSections(pageId)[0]?.id;
+                            if (sectionId) {
+                              updateNavigationItem(index, {
+                                destination: { type: 'section', pageId, sectionId },
+                              });
+                            }
+                          } else {
+                            updateNavigationItem(index, {
+                              destination: { type: destination.type, pageId },
+                            });
+                          }
+                        }}
+                        aria-label="الصفحة المقصودة"
+                        className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs"
+                      >
+                        {website.pages.map((page) => (
+                          <option key={page.id} value={page.id}>
+                            {page.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                  {destination?.type === 'section' && (
+                    <select
+                      value={destination.sectionId}
+                      onChange={(event) =>
+                        updateNavigationItem(index, {
+                          destination: { ...destination, sectionId: event.target.value },
+                        })
+                      }
+                      aria-label="القسم المقصود"
+                      className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs"
+                    >
+                      {sections.map((section) => (
+                        <option key={section.id} value={section.id}>
+                          {section.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  {(destination?.type === 'external' || destination?.type === 'whatsapp') && (
+                    <input
+                      value={destination.url}
+                      onChange={(event) =>
+                        updateNavigationItem(index, {
+                          destination: { ...destination, url: event.target.value },
+                        })
+                      }
+                      placeholder={
+                        destination.type === 'whatsapp' ? 'https://wa.me/...' : 'https://...'
+                      }
+                      aria-label="الرابط الخارجي"
+                      className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs font-mono"
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-[1fr_1.2fr_auto] gap-1.5">
+            <input
+              value={newNavigationLabel}
+              onChange={(event) => setNewNavigationLabel(event.target.value)}
+              placeholder="اسم الرابط"
+              aria-label="اسم عنصر التنقل الجديد"
+              className="min-w-0 bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs"
+            />
+            <select
+              value={newNavigationPageId}
+              onChange={(event) => setNewNavigationPageId(event.target.value)}
+              aria-label="الصفحة لعنصر التنقل الجديد"
+              className="min-w-0 bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs"
+            >
+              <option value="">اختر صفحة</option>
+              {website.pages.map((page) => (
+                <option key={page.id} value={page.id}>
+                  {page.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={addNavigationItem}
+              disabled={!newNavigationPageId}
+              aria-label="إضافة عنصر تنقل"
+              className="p-1.5 bg-blue-600 text-white rounded-lg disabled:opacity-40"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Pages List */}
       <div className="space-y-2">

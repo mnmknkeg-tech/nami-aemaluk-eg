@@ -19,6 +19,7 @@ import { clearToken, readToken, writeUserJSON } from '../session-keys';
 const API_BASE = '/api/v1';
 const APP_SCOPE = 'dashboard';
 const GET_TTL_MS = 30_000;
+const GET_ERROR_TTL_MS = 1_000;
 
 /** Endpoints that own auth themselves and must never trigger a refresh retry. */
 const AUTH_PATHS = [
@@ -310,26 +311,40 @@ async function execute(
 // ---------------------------------------------------------------------------
 const getCache = new Map<string, { at: number; raw: any }>();
 const inflightGets = new Map<string, Promise<any>>();
+const failedGets = new Map<string, { at: number; error: unknown }>();
 
 export function clearApiCache(): void {
   getCache.clear();
+  failedGets.clear();
 }
 
 function cachedGet(path: string, options: RequestInit): Promise<any> {
   if (options.cache === 'no-store') {
-    return execute(path, options, false);
+    getCache.delete(path);
+    failedGets.delete(path);
+    return execute(path, options, false).then(({ body }) => body);
   }
   const hit = getCache.get(path);
   if (hit && Date.now() - hit.at < GET_TTL_MS) {
     return Promise.resolve(hit.raw);
   }
+  const failed = failedGets.get(path);
+  if (failed && Date.now() - failed.at < GET_ERROR_TTL_MS) {
+    return Promise.reject(failed.error);
+  }
+  if (failed) failedGets.delete(path);
   const pending = inflightGets.get(path);
   if (pending) return pending;
 
   const exec = execute(path, options, false)
     .then((result) => {
+      failedGets.delete(path);
       getCache.set(path, { at: Date.now(), raw: result.body });
       return result.body;
+    })
+    .catch((error: unknown) => {
+      failedGets.set(path, { at: Date.now(), error });
+      throw error;
     })
     .finally(() => {
       inflightGets.delete(path);
@@ -351,7 +366,7 @@ export async function apiRequest<T = any>(path: string, options: RequestInit = {
   const method = (options.method || 'GET').toUpperCase();
 
   if (method !== 'GET') {
-    getCache.clear();
+    clearApiCache();
     const { body } = await execute(path, options, false);
     return unwrap(body) as T;
   }

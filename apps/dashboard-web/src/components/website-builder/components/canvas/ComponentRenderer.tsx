@@ -1,7 +1,10 @@
 import React from 'react';
-import { computeResponsiveNodeStyles, resolveThemeFontFamily } from '@ray-eg/shared/builder';
+import {
+  computeThemeResponsiveNodeStyles,
+  resolveWebsiteLinkDestination,
+} from '@ray-eg/shared/builder';
 import { useBuilder } from '../../context/BuilderContext';
-import { StyleProperties, ViewportBreakpoint } from '../../types/builder';
+import { ViewportBreakpoint, WebsiteLinkDestination } from '../../types/builder';
 import { BaseRendererProps } from './renderers/types';
 import { HeaderRenderer } from './renderers/HeaderRenderer';
 import { HeroRenderer } from './renderers/HeroRenderer';
@@ -116,20 +119,56 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
 
   // Compute responsive styles merged by current breakpoint
   const getComputedStyles = (): React.CSSProperties =>
-    computeResponsiveNodeStyles(
-      node,
-      currentViewport,
-      resolveThemeFontFamily(node, website.theme?.typography || {})
-    );
+    computeThemeResponsiveNodeStyles(node, currentViewport, website.theme?.typography);
 
   // Smart Navigation and Action handler for preview mode
   const handleInteraction = (
     e: React.MouseEvent,
     overrideUrl?: string,
     overridePageId?: string,
-    overrideText?: string
+    _overrideText?: string,
+    overrideDestination?: WebsiteLinkDestination
   ) => {
     if (!isInteractivePreview) return;
+
+    const source: Record<string, any> = {
+      ...node.props,
+      ...(overrideUrl !== undefined ? { url: overrideUrl } : {}),
+      ...(overridePageId !== undefined ? { pageId: overridePageId } : {}),
+    };
+    const destination =
+      overrideDestination ||
+      source.destination ||
+      node.destination ||
+      resolveWebsiteLinkDestination(website, source);
+    if (destination?.type === 'none') return;
+    if (destination) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (destination.type === 'external') {
+        window.open(destination.url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      if (destination.type === 'whatsapp') return;
+      if (destination.type === 'order') {
+        setIsCartOpen(true);
+        return;
+      }
+      const targetPageId = destination.pageId;
+      if (!targetPageId) return;
+      if (targetPageId !== activePage.id) switchPage(targetPageId);
+      if (destination.type === 'section' || destination.type === 'booking') {
+        const scrollToSection = () => {
+          if (!destination.sectionId) return;
+          document
+            .getElementById(destination.sectionId)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        if (targetPageId === activePage.id) scrollToSection();
+        else window.setTimeout(scrollToSection, 0);
+      }
+      return;
+    }
 
     const url = (
       overrideUrl ??
@@ -150,7 +189,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
     ).trim();
 
     const text = (
-      overrideText ??
+      _overrideText ??
       node.props.text ??
       node.props.title ??
       node.props.label ??
@@ -239,7 +278,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
     }
 
     // 3. Keyword / Text Mapping for Pages and Sections
-    if (text) {
+    if (text && node.props.allowLegacyLabelNavigation === true) {
       const pageByExactName = website.pages.find((p) => p.name.trim() === text);
       if (pageByExactName && activePage.id !== pageByExactName.id) {
         e.preventDefault();

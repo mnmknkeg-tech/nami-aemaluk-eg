@@ -17,6 +17,7 @@ export type {
   StyleProperties,
   AnimationConfig,
   InteractionConfig,
+  WebsiteLinkDestination,
   DataBinding,
   CustomCodeScope,
   ComponentNode,

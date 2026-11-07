@@ -9,15 +9,12 @@ import {
   Smartphone,
   ArrowRight,
   CheckCircle2,
-  ExternalLink,
-  Store,
   Utensils,
   Stethoscope,
   Scissors,
   Car,
   Hotel,
   Briefcase,
-  Layers,
   Palette,
   Eye,
   PlusCircle,
@@ -25,10 +22,12 @@ import {
   X,
   Building2,
   ShoppingBag,
-  Laptop,
 } from 'lucide-react';
-import { all85ActivitiesMeta } from '@/components/website-builder/data/allBusinessCatalog';
-import { apiRequest } from '@/lib/auth';
+import {
+  getFullWebsiteTemplateMetadata,
+  resolveFullWebsiteTemplateId,
+} from '@/components/website-builder/data/registry';
+import { FullWebsiteTemplatePreview } from '@/components/website-builder/components/preview/FullWebsiteTemplatePreview';
 
 export interface ThemeItem {
   id: string;
@@ -55,7 +54,7 @@ export interface ThemeItem {
 
 /**
  * Maps a template/site ID → its matching colour preset key in defaultTheme.ts.
- * Used by handleApplyTheme to persist both template AND colour preset together.
+ * Used by handleApplyTheme to pass both the template and its initial preset to the editor.
  */
 const SITE_TO_PRESET_MAP: Record<string, string> = {
   site_restaurant_cafe: 'restaurantWarm',
@@ -374,10 +373,15 @@ function getGradientByColor(color?: string, sectorId?: string): string {
 
 // 4. Transform all 85 catalog activities into ThemeItems and merge
 const ALL_CATALOG_THEMES: ThemeItem[] = (() => {
-  const flagshipMap = new Map(FLAGSHIP_THEMES.map((t) => [t.id, t]));
-  const list: ThemeItem[] = [...FLAGSHIP_THEMES];
+  const normalizedFlagships = FLAGSHIP_THEMES.map((theme) => ({
+    ...theme,
+    id: resolveFullWebsiteTemplateId(theme.id) || theme.id,
+    presetKey: theme.presetKey || SITE_TO_PRESET_MAP[theme.id],
+  }));
+  const flagshipMap = new Map(normalizedFlagships.map((theme) => [theme.id, theme]));
+  const list: ThemeItem[] = normalizedFlagships;
 
-  all85ActivitiesMeta.forEach((meta) => {
+  getFullWebsiteTemplateMetadata().forEach((meta) => {
     if (flagshipMap.has(meta.id)) return; // Don't duplicate flagship
 
     const { sectorId, sectorLabel } = classifySector(meta.category, meta.name);
@@ -456,7 +460,7 @@ export default function ThemesGalleryPage() {
   const [selectedSector, setSelectedSector] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [applyingThemeId, setApplyingThemeId] = useState<string | null>(null);
-  const [previewTheme, setPreviewTheme] = useState<ThemeItem | null>(null);
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [applyError, setApplyError] = useState('');
 
   // Filtered Themes based on Sector and Search query
@@ -487,37 +491,24 @@ export default function ThemesGalleryPage() {
   const handleApplyTheme = async (themeId: string) => {
     const theme = ALL_CATALOG_THEMES.find((item) => item.id === themeId);
     if (!theme) return;
+    const canonicalTemplateId = resolveFullWebsiteTemplateId(themeId);
+    if (!canonicalTemplateId) {
+      setApplyError(`القالب "${theme.nameAr}" غير متاح في سجل قوالب المواقع.`);
+      return;
+    }
     setApplyingThemeId(themeId);
     setApplyError('');
-    const presetKey = theme.presetKey || SITE_TO_PRESET_MAP[themeId] || '';
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('ray_builder_selected_template', themeId);
-        // Also persist the colour/typography preset so the builder applies it immediately
-        if (presetKey) {
-          localStorage.setItem('ray_builder_selected_preset', presetKey);
-        } else {
-          localStorage.removeItem('ray_builder_selected_preset');
-        }
-      } catch {}
-    }
+    const presetKey =
+      theme.presetKey ||
+      SITE_TO_PRESET_MAP[themeId] ||
+      SITE_TO_PRESET_MAP[canonicalTemplateId] ||
+      '';
     try {
-      // Keep the chosen theme on the shop as well as in the browser so it is
-      // available after refresh, on another device, and to the publishing flow.
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          layoutConfig: {
-            selectedWebsiteTemplate: themeId,
-            selectedWebsitePreset: presetKey || null,
-          },
-        }),
-      });
       router.push(
-        `/dashboard/website?template=${encodeURIComponent(themeId)}${presetKey ? `&preset=${encodeURIComponent(presetKey)}` : ''}`
+        `/dashboard/website?template=${encodeURIComponent(canonicalTemplateId)}&applyTemplate=1${presetKey ? `&preset=${encodeURIComponent(presetKey)}` : ''}`
       );
     } catch (error: any) {
-      setApplyError(error?.message || 'تعذر حفظ اختيار الثيم. تحقق من الاتصال ثم أعد المحاولة.');
+      setApplyError(error?.message || 'تعذر فتح محرر الموقع. حاول مرة أخرى.');
     } finally {
       setApplyingThemeId(null);
     }
@@ -526,23 +517,10 @@ export default function ThemesGalleryPage() {
   const handleSkipBlank = async () => {
     setApplyingThemeId('blank');
     setApplyError('');
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('ray_builder_selected_template', 'blank');
-      } catch {}
-    }
     try {
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          layoutConfig: { selectedWebsiteTemplate: 'blank', selectedWebsitePreset: null },
-        }),
-      });
       router.push('/dashboard/website?template=blank');
     } catch (error: any) {
-      setApplyError(
-        error?.message || 'تعذر حفظ اختيار القالب الفارغ. تحقق من الاتصال ثم أعد المحاولة.'
-      );
+      setApplyError(error?.message || 'تعذر فتح محرر الموقع. حاول مرة أخرى.');
     } finally {
       setApplyingThemeId(null);
     }
@@ -589,7 +567,7 @@ export default function ThemesGalleryPage() {
           >
             <PlusCircle size={16} className="text-blue-600" />
             <span>
-              {applyingThemeId === 'blank' ? 'جاري الحفظ…' : 'تخطي والبدء من الصفر (قالب فارغ)'}
+              {applyingThemeId === 'blank' ? 'جاري الفتح…' : 'تخطي والبدء من الصفر (قالب فارغ)'}
             </span>
           </button>
           <Link
@@ -809,9 +787,9 @@ export default function ThemesGalleryPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPreviewTheme(theme)}
+                      onClick={() => setPreviewTemplateId(theme.id)}
                       className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
-                      title="معاينة تفاصيل الثيم"
+                      title="معاينة الموقع الكامل"
                     >
                       <Eye size={15} />
                     </button>
@@ -823,104 +801,16 @@ export default function ThemesGalleryPage() {
         </div>
       )}
 
-      {/* Modal: Live Theme Preview & Details */}
-      {previewTheme && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
-          dir="rtl"
-        >
-          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-150 flex flex-col">
-            {/* Modal Header Visual */}
-            <div
-              className={`h-40 bg-gradient-to-tr ${previewTheme.previewGradient} p-5 relative flex flex-col justify-between text-white`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white/20 text-white backdrop-blur-sm border border-white/25">
-                  {previewTheme.badge || previewTheme.category}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPreviewTheme(null)}
-                  className="w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl">
-                  {previewTheme.icon || '✨'}
-                </div>
-                <div>
-                  <h3 className="text-base font-black">{previewTheme.nameAr}</h3>
-                  <p className="text-xs text-white/80">{previewTheme.categoryNameAr}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6 space-y-4 text-slate-700 text-right">
-              <div>
-                <h4 className="text-xs font-bold text-slate-400 mb-1">وصف النشاط والقالب</h4>
-                <p className="text-xs leading-relaxed font-medium text-slate-700">
-                  {previewTheme.descriptionAr}
-                </p>
-              </div>
-
-              <div>
-                <h4 className="text-xs font-bold text-slate-400 mb-2">الميزات والأقسام المتضمنة</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {previewTheme.features.map((feat, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-1.5 text-xs font-semibold bg-slate-50 p-2 rounded-xl border border-slate-100"
-                    >
-                      <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
-                      <span className="truncate">{feat}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between border-t border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500">اللون الأساسي:</span>
-                  <span
-                    className="w-4 h-4 rounded-full border border-slate-200"
-                    style={{ backgroundColor: previewTheme.primaryColor }}
-                  />
-                </div>
-                <div className="flex items-center gap-1 text-[11px] text-slate-400 font-bold">
-                  <Smartphone size={13} />
-                  <span>متوافق مع كل الهواتف</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer Buttons */}
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  const id = previewTheme.id;
-                  setPreviewTheme(null);
-                  handleApplyTheme(id);
-                }}
-                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer"
-              >
-                <Palette size={15} />
-                <span>تطبيق هذا الثيم والذهاب للبلدر</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreviewTheme(null)}
-                className="px-5 py-3 rounded-xl border border-slate-200 hover:bg-white text-slate-600 font-bold text-xs transition-colors cursor-pointer"
-              >
-                إغلاق
-              </button>
-            </div>
-          </div>
-        </div>
+      {previewTemplateId && (
+        <FullWebsiteTemplatePreview
+          key={previewTemplateId}
+          templateId={previewTemplateId}
+          onClose={() => setPreviewTemplateId(null)}
+          onApply={(templateId) => {
+            setPreviewTemplateId(null);
+            void handleApplyTheme(templateId);
+          }}
+        />
       )}
 
       {/* Bottom Skip Bar for Blank Slate */}
@@ -943,7 +833,7 @@ export default function ThemesGalleryPage() {
         >
           <PlusCircle size={16} className="text-blue-600" />
           <span>
-            {applyingThemeId === 'blank' ? 'جاري الحفظ…' : 'تخطي والبدء من الصفر (قالب فارغ)'}
+            {applyingThemeId === 'blank' ? 'جاري الفتح…' : 'تخطي والبدء من الصفر (قالب فارغ)'}
           </span>
         </button>
       </div>

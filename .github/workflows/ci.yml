@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   frontend:
-    name: Frontend – lint, typecheck, tests & build
+    name: Frontend – lint, typecheck, tests & builds
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +21,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Validate shared package
+        run: npm run typecheck --workspace=@ray-eg/shared
       - name: Lint
         run: npm run lint
       - name: Typecheck
@@ -31,10 +33,62 @@ jobs:
         run: npm run build:marketplace
         env:
           NEXT_PUBLIC_BACKEND_URL: http://localhost:4000
+          NEXT_PUBLIC_APP_VERSION: 0.1.0
+          NEXT_PUBLIC_APP_COMMIT_SHA: ${{ github.sha }}
+      - name: Build dashboard
+        run: npm run build:dashboard-web
+        env:
+          NEXT_PUBLIC_BACKEND_URL: http://localhost:4000
+          NEXT_PUBLIC_APP_VERSION: 0.1.0
+          NEXT_PUBLIC_APP_COMMIT_SHA: ${{ github.sha }}
+
+  rendering-e2e:
+    name: Published rendering E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test smoke and responsive published fixtures
+        # commerce.spec.ts is intentionally excluded: it mutates a dev merchant
+        # through a dev-login API instead of using an isolated test fixture.
+        run: npm run e2e -- e2e/smoke.spec.ts e2e/responsive-template.spec.ts e2e/checkout.spec.ts
+        env:
+          NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:4179
+          NEXT_PUBLIC_APP_VERSION: 0.1.0
+          NEXT_PUBLIC_APP_COMMIT_SHA: ${{ github.sha }}
+      - name: Upload Playwright diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-rendering-${{ github.sha }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
 
   gobackend:
-    name: Go Backend – build, vet & test
+    name: Go Backend – migrations, integration, vet, test & build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ray_orders_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ray_orders_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: ./gobackend
@@ -42,21 +96,25 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.27'
+          go-version-file: gobackend/go.mod
           cache-dependency-path: gobackend/go.sum
       - run: go mod download
+      - name: Apply migrations to the disposable database
+        run: go run scripts/migrate.go up
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/ray_orders_test?sslmode=disable
+          FRONTEND_APP_URL: http://localhost:5174
+          JWT_SECRET: ci-only-order-test-secret
+      - name: Report test schema version
+        run: go run scripts/migrate.go version
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/ray_orders_test?sslmode=disable
+          FRONTEND_APP_URL: http://localhost:5174
+          JWT_SECRET: ci-only-order-test-secret
       - run: go vet ./...
-      - run: go test ./cmd/... ./internal/...
+      - name: Run backend tests and fresh-database migration integration
+        run: go test -v ./cmd/... ./internal/...
+        env:
+          ORDERS_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/ray_orders_test?sslmode=disable
       - run: go build -o /tmp/ray-api ./cmd/api
       - run: go build -o /tmp/ray-worker ./cmd/worker
-
-  # E2E (Playwright) — enable once a staging URL or local backend is wired in CI:
-  # e2e:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with: { node-version: 22, cache: npm }
-  #     - run: npm ci
-  #     - run: npx playwright install chromium --with-deps
-  #     - run: npm run e2e

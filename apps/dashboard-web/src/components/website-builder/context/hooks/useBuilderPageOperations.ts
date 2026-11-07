@@ -1,6 +1,12 @@
 import { useCallback, useMemo } from 'react';
 import {
+  getPageDestinationReferenceCount,
+  removePageDestinationReferences,
+  syncPageSlugInDestinations,
+} from '@ray-eg/shared/builder';
+import {
   AddPageOptions,
+  ComponentNode,
   DropdownSubItem,
   Page,
   PageMetadata,
@@ -38,12 +44,27 @@ export const removePageAndOrphans = (currentWebsite: Website, pageId: string): W
   for (const [id, node] of Object.entries(components)) {
     const childrenIds = (node.childrenIds || []).filter((childId) => {
       const child = components[childId];
-      return !(child?.props?.pageId === pageId || child?.props?.url === `/${deletedPage.slug}`);
+      return (
+        !(
+          child?.destination &&
+          'pageId' in child.destination &&
+          child.destination.pageId === pageId
+        ) &&
+        !(
+          child?.props?.pageId === pageId ||
+          child?.props?.url === `/${deletedPage.slug}` ||
+          child?.props?.href === `/${deletedPage.slug}`
+        )
+      );
     });
     const dropdownItems = Array.isArray(node.props?.dropdownItems)
-      ? node.props.dropdownItems.filter(
-          (item: DropdownSubItem) => item.pageId !== pageId && item.url !== `/${deletedPage.slug}`
-        )
+      ? node.props.dropdownItems.filter((item: DropdownSubItem) => {
+          const targetsDeletedPage =
+            item.destination && 'pageId' in item.destination && item.destination.pageId === pageId;
+          return (
+            item.pageId !== pageId && item.url !== `/${deletedPage.slug}` && !targetsDeletedPage
+          );
+        })
       : undefined;
     if (
       childrenIds.length !== (node.childrenIds || []).length ||
@@ -56,7 +77,15 @@ export const removePageAndOrphans = (currentWebsite: Website, pageId: string): W
       };
     }
   }
-  const newWebsite: Website = { ...currentWebsite, pages: newPages, components };
+  const linkedComponents = removePageDestinationReferences(
+    { ...currentWebsite, components },
+    pageId
+  );
+  const newWebsite: Website = {
+    ...currentWebsite,
+    pages: newPages,
+    components: linkedComponents,
+  };
   const remainingReachable = collectReachableIds(
     newWebsite,
     newPages.map((page) => page.rootNodeId)
@@ -158,7 +187,15 @@ export const useBuilderPageOperations = ({
       ]);
       const newPageId = createUniqueBuilderId('page', usedIds);
       const rootId = createUniqueBuilderId('root', usedIds);
-      const cleanSlug = (slug || name).toLowerCase().replace(/\s+/g, '-');
+      const baseSlug = (slug || name).toLowerCase().replace(/\s+/g, '-');
+      const cleanSlug = (() => {
+        let candidate = baseSlug;
+        let suffix = 2;
+        while (currentWebsite.pages.some((page) => page.slug === candidate)) {
+          candidate = `${baseSlug}-${suffix++}`;
+        }
+        return candidate;
+      })();
       const newComponents = { ...currentWebsite.components };
       const cloneSubtree = (
         sourceId: string,
@@ -513,6 +550,7 @@ export const useBuilderPageOperations = ({
               text: navText,
               url: `/${cleanSlug}`,
               pageId: newPageId,
+              destination: { type: 'page', pageId: newPageId },
             },
             styles: {
               desktop: {
@@ -538,6 +576,7 @@ export const useBuilderPageOperations = ({
             description: dropdownDescription || `تصفح تفاصيل ومحتوى ${name}`,
             url: `/${cleanSlug}`,
             pageId: newPageId,
+            destination: { type: 'page', pageId: newPageId },
             badge: dropdownBadge || undefined,
           };
           newComponents[targetParentNavId] = {
@@ -611,30 +650,80 @@ export const useBuilderPageOperations = ({
       const navText = opts.headerTitle || page.name;
       const cleanSlug = page.slug;
 
-      // 1. Remove any old direct nav links in header_nav pointing to this page
-      const headerNav = newComponents['header_nav'];
-      if (headerNav) {
-        const filteredNavChildren = headerNav.childrenIds.filter((cId) => {
-          const node = newComponents[cId];
-          const matches = node?.props?.pageId === pageId || node?.props?.url === `/${cleanSlug}`;
-          if (matches) {
-            delete newComponents[cId];
-            return false;
+      const pointsToPage = (destination?: ComponentNode['destination']) =>
+        Boolean(destination && 'pageId' in destination && destination.pageId === pageId);
+      const hasLegacyTarget = (source: Record<string, any>) =>
+        source.pageId === pageId ||
+        source.targetPage === pageId ||
+        source.targetPageId === pageId ||
+        [source.url, source.href, source.link, source.linkUrl, source.targetUrl].some(
+          (url) =>
+            typeof url === 'string' &&
+            [pageId, page.slug, page.metadata.slug].some(
+              (reference) =>
+                reference &&
+                url.replace(/^[#/]+|[#/]+$/g, '').toLowerCase() ===
+                  reference.replace(/^[#/]+|[#/]+$/g, '').toLowerCase()
+            )
+        );
+      const isNavigationNode = (node: (typeof newComponents)[string]) => {
+        let parentId = node.parentId;
+        const visited = new Set<string>();
+        while (parentId && !visited.has(parentId)) {
+          visited.add(parentId);
+          const parent = newComponents[parentId];
+          if (!parent) return false;
+          if (
+            parent.category === 'navigation' ||
+            parent.id.toLowerCase().includes('nav') ||
+            parent.name.toLowerCase().includes('روابط')
+          ) {
+            return true;
           }
-          return true;
-        });
-        newComponents['header_nav'] = {
-          ...headerNav,
-          childrenIds: filteredNavChildren,
-        };
-      }
+          parentId = parent.parentId;
+        }
+        return false;
+      };
 
-      // 2. Remove any old dropdown sub-items in all nav items pointing to this page
+      Object.entries(newComponents).forEach(([id, component]) => {
+        if (
+          isNavigationNode(component) &&
+          (pointsToPage(component.destination) || hasLegacyTarget(component.props || {}))
+        ) {
+          const parent = component.parentId ? newComponents[component.parentId] : undefined;
+          if (parent) {
+            newComponents[parent.id] = {
+              ...parent,
+              childrenIds: parent.childrenIds.filter((childId) => childId !== id),
+            };
+          }
+          delete newComponents[id];
+        }
+      });
+
       Object.keys(newComponents).forEach((k) => {
         const comp = newComponents[k];
+        if (Array.isArray(comp.props?.navigationItems)) {
+          const navigationItems = comp.props.navigationItems.filter(
+            (item: Record<string, any>) => !pointsToPage(item.destination) && !hasLegacyTarget(item)
+          );
+          if (navigationItems.length !== comp.props.navigationItems.length) {
+            newComponents[k] = {
+              ...newComponents[k],
+              props: {
+                ...newComponents[k].props,
+                navigationItems,
+                text: navigationItems.map((item: { label?: string }) => item.label).join(' • '),
+              },
+            };
+          }
+        }
         if (comp.props?.dropdownItems && Array.isArray(comp.props.dropdownItems)) {
           const filtered = comp.props.dropdownItems.filter(
-            (item: DropdownSubItem) => item.pageId !== pageId && item.url !== `/${cleanSlug}`
+            (item: DropdownSubItem) =>
+              item.pageId !== pageId &&
+              item.url !== `/${cleanSlug}` &&
+              !pointsToPage(item.destination)
           );
           if (filtered.length !== comp.props.dropdownItems.length) {
             newComponents[k] = {
@@ -648,22 +737,44 @@ export const useBuilderPageOperations = ({
         }
       });
 
-      // 3. Add new placement
       if (opts.placement === 'header_direct' || opts.placement === 'header_and_footer') {
-        const navLinkId = `nav_link_${pageId}`;
-        const hNav = newComponents['header_nav'];
-        if (hNav) {
+        const navContainerIds = new Set<string>();
+        const visitForNavigation = (id: string, seen = new Set<string>()) => {
+          if (seen.has(id)) return;
+          seen.add(id);
+          const component = newComponents[id];
+          if (!component) return;
+          if (
+            Array.isArray(component.childrenIds) &&
+            (id.toLowerCase().includes('nav') ||
+              component.category === 'navigation' ||
+              component.name.includes('روابط'))
+          ) {
+            navContainerIds.add(id);
+          }
+          component.childrenIds.forEach((childId) => visitForNavigation(childId, seen));
+        };
+        currentWebsite.pages.forEach((currentPage) => visitForNavigation(currentPage.rootNodeId));
+        if (!navContainerIds.size && newComponents.header_nav) {
+          navContainerIds.add('header_nav');
+        }
+        const usedIds = new Set(Object.keys(newComponents));
+        for (const navContainerId of navContainerIds) {
+          const hNav = newComponents[navContainerId];
+          if (!hNav) continue;
+          const navLinkId = createUniqueBuilderId('nav_link', usedIds);
           newComponents[navLinkId] = {
             id: navLinkId,
             name: `رابط ${navText}`,
             type: 'paragraph',
             category: 'typography',
-            parentId: 'header_nav',
+            parentId: navContainerId,
             childrenIds: [],
             props: {
               text: navText,
               url: `/${cleanSlug}`,
               pageId: pageId,
+              destination: { type: 'page', pageId },
             },
             styles: {
               desktop: {
@@ -673,7 +784,7 @@ export const useBuilderPageOperations = ({
               },
             },
           };
-          newComponents['header_nav'] = {
+          newComponents[navContainerId] = {
             ...hNav,
             childrenIds: [...hNav.childrenIds, navLinkId],
           };
@@ -689,6 +800,7 @@ export const useBuilderPageOperations = ({
             description: opts.dropdownDescription || `تصفح تفاصيل ${page.name}`,
             url: `/${cleanSlug}`,
             pageId: pageId,
+            destination: { type: 'page', pageId },
             badge: opts.dropdownBadge || undefined,
           };
           newComponents[targetParentNavId] = {
@@ -732,6 +844,16 @@ export const useBuilderPageOperations = ({
   const deletePage = useCallback(
     (pageId: string) => {
       const currentWebsite = websiteRef?.current ?? website;
+      const referenceCount = getPageDestinationReferenceCount(currentWebsite, pageId);
+      if (
+        referenceCount > 0 &&
+        typeof window !== 'undefined' &&
+        !window.confirm(
+          `هذه الصفحة مرتبطة بـ ${referenceCount} رابط أو زر. حذفها سيزيل وجهات الربط المتأثرة ويترك عناصرها دون وجهة. هل تريد المتابعة؟`
+        )
+      ) {
+        return;
+      }
       const newWebsite = removePageAndOrphans(currentWebsite, pageId);
       if (newWebsite === currentWebsite) return;
 
@@ -745,15 +867,28 @@ export const useBuilderPageOperations = ({
   );
 
   const updatePageMetadata = useCallback(
-    (pageId: string, metaPatch: Partial<PageMetadata>) => {
+    (pageId: string, metaPatch: Partial<PageMetadata>, pageName?: string) => {
       const currentWebsite = websiteRef?.current ?? website;
+      const currentPage = currentWebsite.pages.find((page) => page.id === pageId);
+      if (!currentPage) return;
+      const nextSlug =
+        typeof metaPatch.slug === 'string' && metaPatch.slug.trim()
+          ? metaPatch.slug.trim().replace(/^\/+|\/+$/g, '')
+          : currentPage.slug;
+      const components =
+        nextSlug !== currentPage.slug
+          ? syncPageSlugInDestinations(currentWebsite, pageId, currentPage.slug, nextSlug)
+          : currentWebsite.components;
       const newPages = currentWebsite.pages.map((p) => {
         if (p.id === pageId) {
           return {
             ...p,
+            ...(pageName?.trim() ? { name: pageName.trim() } : {}),
+            slug: nextSlug,
             metadata: {
               ...p.metadata,
               ...metaPatch,
+              slug: nextSlug,
             },
             updatedAt: new Date().toISOString(),
           };
@@ -764,9 +899,13 @@ export const useBuilderPageOperations = ({
       const newWebsite: Website = {
         ...currentWebsite,
         pages: newPages,
+        components,
       };
 
-      recordHistory(`تحديث بيانات SEO للصفحة`, newWebsite);
+      recordHistory(
+        `تحديث بيانات وروابط الصفحة (${pageName?.trim() || currentPage.name})`,
+        newWebsite
+      );
     },
     [website, websiteRef, recordHistory]
   );

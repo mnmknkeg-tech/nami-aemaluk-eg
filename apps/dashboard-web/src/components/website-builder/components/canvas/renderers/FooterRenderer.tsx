@@ -12,6 +12,8 @@ export const FooterRenderer: React.FC<BaseRendererProps> = ({
   handleMouseEnter,
   handleMouseLeave,
   renderChildren,
+  handleInteraction,
+  isInteractivePreview,
   currentViewport,
 }) => {
   const brandName = node.props.brandName || website.name || 'المتجر الإلكتروني';
@@ -77,6 +79,39 @@ export const FooterRenderer: React.FC<BaseRendererProps> = ({
             </p>
           </div>
         </div>
+
+        {Array.isArray(node.props.links) && node.props.links.length > 0 && (
+          <nav aria-label="روابط الموقع" className="flex flex-wrap gap-x-4 gap-y-2 py-5 text-xs">
+            {node.props.links.map((item: unknown, index: number) => {
+              const link =
+                typeof item === 'string' ? { label: item } : (item as Record<string, any>);
+              const label = String(link.label || link.title || '');
+              if (!label) return null;
+              return (
+                <button
+                  type="button"
+                  key={link.id || `${label}-${index}`}
+                  onClick={(event) => {
+                    if (isInteractivePreview) {
+                      handleInteraction(
+                        event,
+                        link.url || link.href,
+                        link.pageId,
+                        label,
+                        link.destination
+                      );
+                    } else {
+                      handleClick(event);
+                    }
+                  }}
+                  className="text-inherit hover:opacity-75 transition-opacity"
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </nav>
+        )}
 
         {/* Copyright & Powered by Badge */}
         <div className="pt-6 pb-2 text-center flex flex-col sm:flex-row items-center justify-center gap-2 text-xs text-slate-400 select-none border-t border-slate-800/60 mt-6">

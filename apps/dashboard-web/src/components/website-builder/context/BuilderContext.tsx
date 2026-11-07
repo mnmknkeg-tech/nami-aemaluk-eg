@@ -23,8 +23,12 @@ import { Tenant, Website, ViewportBreakpoint, WebsiteSettings } from '../types/b
 import { AssetDto } from '../types/dto';
 import { EditingModeId } from './types';
 import { mockTenants, mockAssets } from '../data/mockTenants';
-import { allActivityWebsites, activityTemplatesMeta } from '../data/allActivityTemplates';
-import { sampleWebsites } from '../data/initialWebsites';
+import {
+  getFullWebsiteTemplateMetadata,
+  getFullWebsiteTemplates,
+  loadFullWebsiteTemplate,
+  loadThemePreset,
+} from '../data/registry';
 import { apiRequest } from '../../../lib/api/client';
 import { uploadMediaFile } from '../../../lib/api/upload';
 import { validateImageFile } from '../../../lib/image-utils';
@@ -42,7 +46,15 @@ import { useBuilderPublishing } from './hooks/useBuilderPublishing';
 import { useBuilderAI } from './hooks/useBuilderAI';
 
 // Utilities
-import { getHomePageId, getInitialBuilderState, normalizeWebsite } from './builderUtils';
+import {
+  createFullWebsiteTemplateCandidate,
+  getHomePageId,
+  getInitialBuilderState,
+  hasWebsiteContentToReplace,
+  normalizeWebsite,
+  persistTemplateCandidateBeforeCommit,
+} from './builderUtils';
+import { getMergedThemeTokens } from '../data/themes/utils';
 
 // Types
 import { BuilderContextType } from './types';
@@ -106,7 +118,13 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   const [currentTenant, setCurrentTenant] = useState<Tenant>(mockTenants[0]);
   const [website, setWebsiteState] = useState<Website>(initialBuilderData.website);
   const [activeTemplateId, setActiveTemplateId] = useState(initialBuilderData.templateId);
+  const [templateError, setTemplateError] = useState<string | null>(
+    initialBuilderData.templateError
+  );
   const [activePageId, setActivePageId] = useState(initialBuilderData.pageId);
+  const hasPersistedWebsiteRef = useRef(false);
+  const websiteLoadFailedRef = useRef(false);
+  const pendingTemplateApplicationRef = useRef<string | null>(null);
 
   // Mutations update the ref synchronously so back-to-back actions compose even
   // before React has committed a render. The revision also guards in-flight saves.
@@ -161,14 +179,14 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
 
   // Stable wrappers that inject setWebsite into the raw hook callbacks
   const recordHistory = useCallback(
-    (actionDesc: string, newWebsite: Website | WebsiteReducer) => {
-      _recordHistoryRaw(actionDesc, newWebsite, setWebsite);
+    (actionDesc: string, newWebsite: Website | WebsiteReducer, alreadySaved = false) => {
+      _recordHistoryRaw(actionDesc, newWebsite, setWebsite, alreadySaved);
     },
     [_recordHistoryRaw, setWebsite]
   );
 
-  const undo = useCallback(() => _undoRaw(setWebsite), [_undoRaw]);
-  const redo = useCallback(() => _redoRaw(setWebsite), [_redoRaw]);
+  const undo = useCallback(() => _undoRaw(setWebsite), [_undoRaw, setWebsite]);
+  const redo = useCallback(() => _redoRaw(setWebsite), [_redoRaw, setWebsite]);
 
   useEffect(() => {
     const handleHistoryShortcut = (event: KeyboardEvent) => {
@@ -216,6 +234,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     viewport,
     recordHistory,
     setIsMobileInspectorOpen,
+    setTemplateError,
     initialSelectedNodeId: activePage?.rootNodeId ?? null,
   });
 
@@ -230,7 +249,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   });
 
   // ── Theme sub-hook ───────────────────────────────────────────────────────
-  const themeOps = useBuilderTheme(website, recordHistory, websiteRef);
+  const themeOps = useBuilderTheme(website, recordHistory, websiteRef, setTemplateError);
 
   // ── Computed URLs ────────────────────────────────────────────────────────
   // Real preview URL: a dedicated /preview route inside this dashboard app.
@@ -344,8 +363,17 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
           })
           .catch(() => undefined);
 
-        const config = await apiRequest(`/builder/${shopId}/config`).catch(() => null);
+        let config: any = null;
+        try {
+          config = await apiRequest(`/builder/${shopId}/config`);
+          websiteLoadFailedRef.current = false;
+        } catch (error) {
+          websiteLoadFailedRef.current = true;
+          console.error('[WebsiteBuilder] Could not load the current website draft.', error);
+          setTemplateError('تعذر تحميل مسودة الموقع الحالية. أعد تحميل المحرر قبل تطبيق أي قالب.');
+        }
         if (!cancelled && config?.website?.pages?.length && config?.website?.components) {
+          hasPersistedWebsiteRef.current = true;
           draftVersionRef.current = Number.isSafeInteger(config.draftVersion)
             ? config.draftVersion
             : 0;
@@ -368,6 +396,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
                 )
               ) {
                 loadedWebsite = localWebsite;
+                hasPersistedWebsiteRef.current = true;
                 setAutosaveStatus('unsaved');
               }
             }
@@ -388,6 +417,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
               )
             ) {
               const recovered = normalizeWebsite(parsed);
+              hasPersistedWebsiteRef.current = true;
               setWebsite(recovered);
               setActivePageId(getHomePageId(recovered) || 'page_home');
               setAutosaveStatus('unsaved');
@@ -410,6 +440,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
                 'تعذر تحميل مسودة الخادم. هل تريد فتح النسخة المحلية المحفوظة لهذا المتجر؟'
               )
             ) {
+              hasPersistedWebsiteRef.current = true;
               setWebsite(normalizeWebsite(parsed));
               setAutosaveStatus('unsaved');
             }
@@ -423,7 +454,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setAutosaveStatus, setTemplateError, setWebsite]);
 
   // ── Website utility helpers ───────────────────────────────────────────────
 
@@ -436,35 +467,151 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
 
   // Switchers (full template / tenant replacement)
   const switchWebsite = useCallback(
-    (websiteId: string) => {
-      const target = allActivityWebsites[websiteId] || sampleWebsites[websiteId];
-      if (!target) return;
-      setWebsite(normalizeWebsite(target));
-      setActiveTemplateId(websiteId);
-      const firstPage = target.pages[0];
-      setActivePageId(firstPage ? firstPage.id : 'page_home');
-      componentOps.setSelectedNodeId(firstPage ? firstPage.rootNodeId : 'comp_hero');
-      componentOps.setHoveredNode(null);
-      const found = mockTenants.find(
-        (t) => t.id === target.tenantId || t.businessActivity === target.activity
-      );
-      if (found) setCurrentTenant(found);
-      resetHistory(`تم تبديل القالب بالكامل إلى نشاط (${target.name})`);
-      setAutosaveStatus('unsaved');
+    async (websiteId: string, presetId?: string): Promise<boolean> => {
+      let candidate: Website;
+      let entry: ReturnType<typeof loadFullWebsiteTemplate>;
+      try {
+        if (!builderShopId) throw new Error('تعذّر تحديد المتجر لحفظ قالب الموقع.');
+        if (websiteLoadFailedRef.current) {
+          throw new Error(
+            'تعذر تحميل مسودة الموقع الحالية؛ لم يُطبّق القالب لحماية محتوى متجرك. أعد تحميل المحرر وحاول مجددًا.'
+          );
+        }
+        entry = loadFullWebsiteTemplate(websiteId);
+        const presetTheme = presetId
+          ? getMergedThemeTokens(loadThemePreset(presetId).presetKey)
+          : undefined;
+        candidate = createFullWebsiteTemplateCandidate(
+          websiteRef.current,
+          entry,
+          {
+            shopId: builderShopId,
+            shopSlug: builderShopSlug,
+            preserveExistingIdentity: hasPersistedWebsiteRef.current,
+          },
+          presetTheme
+        );
+        if (
+          entry.id === activeTemplateId &&
+          !presetId &&
+          JSON.stringify(candidate.pages) === JSON.stringify(websiteRef.current.pages) &&
+          JSON.stringify(candidate.components) === JSON.stringify(websiteRef.current.components)
+        ) {
+          return true;
+        }
+        const hasUnsavedChanges = autosaveStatus !== 'saved';
+        if (
+          (hasWebsiteContentToReplace(websiteRef.current) || hasUnsavedChanges) &&
+          typeof window !== 'undefined' &&
+          !window.confirm(
+            `تطبيق قالب "${entry.displayName}" سيستبدل صفحات ومكونات ومحتوى مسودة موقعك الحالية.${hasUnsavedChanges ? ' لديك أيضًا تغييرات غير محفوظة ستُستبدل.' : ''} سيُحفظ التغيير كمسودة فقط ولن يُنشر. يمكنك التراجع عنه من سجل التراجع بعد التطبيق. هل تريد المتابعة؟`
+          )
+        ) {
+          return false;
+        }
+
+        const startingRevision = websiteRevisionRef.current;
+        const applied = await persistTemplateCandidateBeforeCommit(
+          candidate,
+          (snapshot) => saveDraft(snapshot, false),
+          (savedCandidate) => {
+            recordHistory(`تطبيق قالب الموقع (${entry.displayName})`, savedCandidate, true);
+            setActiveTemplateId(entry.id);
+            const firstPageId = getHomePageId(savedCandidate) || 'page_home';
+            const firstPage = savedCandidate.pages.find((page) => page.id === firstPageId);
+            setActivePageId(firstPageId);
+            componentOps.setSelectedNodeId(
+              firstPage && savedCandidate.components[firstPage.rootNodeId]
+                ? firstPage.rootNodeId
+                : null
+            );
+            componentOps.setHoveredNode(null);
+            setTemplateError(null);
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('ray_builder_selected_template', entry.id);
+              } catch (error) {
+                console.error('[WebsiteBuilder] Could not remember the applied template.', error);
+              }
+            }
+          },
+          () => startingRevision === websiteRevisionRef.current
+        );
+        if (!applied && startingRevision !== websiteRevisionRef.current) {
+          const restored = await saveDraft(websiteRef.current, false);
+          throw new Error(
+            restored
+              ? 'تغيرت المسودة أثناء تطبيق القالب؛ أُعيد حفظ أحدث مسودتك ولم يُطبّق القالب.'
+              : 'تغيرت المسودة أثناء تطبيق القالب وتعذّر تأكيد استعادة أحدث نسخة على الخادم.'
+          );
+        }
+        if (!applied) {
+          throw new Error('لم يتم حفظ قالب الموقع على الخادم؛ بقيت مسودة موقعك الحالية كما هي.');
+        }
+
+        return true;
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : `Unable to load website template "${websiteId}".`;
+        console.error('[WebsiteBuilder] Website template switch failed.', {
+          templateId: websiteId,
+          error,
+        });
+        setTemplateError(message);
+        return false;
+      }
     },
-    [componentOps, resetHistory, setAutosaveStatus]
+    [
+      activeTemplateId,
+      autosaveStatus,
+      builderShopId,
+      builderShopSlug,
+      componentOps,
+      recordHistory,
+      saveDraft,
+      setTemplateError,
+      websiteRef,
+      websiteRevisionRef,
+    ]
   );
+
+  useEffect(() => {
+    if (isInitializing || !builderShopId || typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('applyTemplate') !== '1') return;
+
+    const templateId = url.searchParams.get('template');
+    const presetId = url.searchParams.get('preset') || undefined;
+    const requestKey = `${templateId || ''}:${presetId || ''}`;
+    if (!templateId || pendingTemplateApplicationRef.current === requestKey) return;
+    pendingTemplateApplicationRef.current = requestKey;
+
+    void switchWebsite(templateId, presetId).finally(() => {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.delete('applyTemplate');
+      currentUrl.searchParams.delete('template');
+      currentUrl.searchParams.delete('preset');
+      window.history.replaceState(
+        {},
+        '',
+        `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
+      );
+    });
+  }, [builderShopId, isInitializing, switchWebsite]);
 
   const switchTenant = useCallback(
     (tenantId: string) => {
       const found = mockTenants.find((t) => t.id === tenantId);
       if (!found) return;
       setCurrentTenant(found);
-      const entry = Object.entries(allActivityWebsites).find(
-        ([, site]) => site.tenantId === tenantId || site.activity === found.businessActivity
+      const entry = getFullWebsiteTemplates().find(
+        ({ website: site }) =>
+          site.tenantId === tenantId || site.activity === found.businessActivity
       );
       if (entry) {
-        const [id, site] = entry;
+        const { id, website: site } = entry;
         setWebsite(normalizeWebsite(site));
         setActiveTemplateId(id);
         const firstPage = site.pages[0];
@@ -472,9 +619,10 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         componentOps.setSelectedNodeId(firstPage ? firstPage.rootNodeId : 'comp_hero');
         resetHistory(`تم تبديل القالب والمستأجر إلى (${site.name})`);
         setAutosaveStatus('unsaved');
+        setTemplateError(null);
       }
     },
-    [componentOps, resetHistory, setAutosaveStatus]
+    [componentOps, resetHistory, setAutosaveStatus, setWebsite]
   );
 
   const uploadMockAsset = useCallback(
@@ -515,7 +663,8 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         switchTenant,
         website,
         activeTemplateId,
-        allTemplatesList: activityTemplatesMeta,
+        templateError,
+        allTemplatesList: getFullWebsiteTemplateMetadata(),
         switchWebsite,
 
         // Pages

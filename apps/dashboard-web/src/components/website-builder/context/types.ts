@@ -29,8 +29,9 @@ export interface BuilderContextType {
   switchTenant: (tenantId: string) => void;
   website: Website;
   activeTemplateId: string;
+  templateError: string | null;
   allTemplatesList: ActivityTemplateMeta[];
-  switchWebsite: (websiteId: string) => void;
+  switchWebsite: (websiteId: string, presetId?: string) => Promise<boolean>;
   activePageId: string;
   activePage: Page;
   switchPage: (pageId: string) => void;
@@ -40,7 +41,7 @@ export interface BuilderContextType {
     options?: Partial<AddPageOptions>
   ) => void;
   deletePage: (pageId: string) => void;
-  updatePageMetadata: (pageId: string, meta: Partial<PageMetadata>) => void;
+  updatePageMetadata: (pageId: string, meta: Partial<PageMetadata>, pageName?: string) => void;
   updatePagePlacement: (
     pageId: string,
     options: {
@@ -74,7 +75,7 @@ export interface BuilderContextType {
     breakpoint?: ViewportBreakpoint
   ) => void;
   insertNode: (node: ComponentNode, parentId: string, index?: number) => void;
-  insertSectionTemplate: (templateId: string, targetIndex?: number) => void;
+  insertSectionTemplate: (templateId: string, targetIndex?: number) => boolean;
   deleteNode: (id: string) => void;
   duplicateNode: (id: string) => void;
   moveNode: (id: string, direction: 'up' | 'down') => void;
@@ -149,7 +150,7 @@ export interface BuilderContextType {
   redo: () => void;
   historyLog: string[];
   autosaveStatus: 'saved' | 'saving' | 'unsaved' | 'error';
-  saveDraft: (manual?: boolean) => void;
+  saveDraft: (manual?: boolean) => Promise<boolean>;
 
   // Version Snapshots
   versions: VersionHistoryItem[];

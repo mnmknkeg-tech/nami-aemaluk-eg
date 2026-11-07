@@ -8,6 +8,7 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/responsive-global-setup.ts',
   // Chromium launch + first compile on a cold dev server can exceed 30s here.
   timeout: 120_000,
   retries: process.env.CI ? 2 : 0,
@@ -22,8 +23,9 @@ export default defineConfig({
     ? undefined
     : {
         command: 'npm run dev:marketplace',
-        url: 'http://localhost:5174',
+        url: 'http://localhost:5174/fonts/fonts.css',
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
+        env: { NEXT_PUBLIC_BACKEND_URL: 'http://127.0.0.1:4179' },
       },
 });

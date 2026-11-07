@@ -2,6 +2,7 @@ package orders
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/config"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/auth"
@@ -105,14 +106,17 @@ func (h *Handler) CreatePublic(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return errors.Validation("invalid_body", "تعذر قراءة بيانات الطلب")
 	}
+	if err := readIdempotencyKey(c, &req); err != nil {
+		return err
+	}
 
 	// Map nested customer object to flat fields (frontend compatibility).
 	if req.Customer != nil {
-		if req.Customer.Phone != "" && (req.CustomerPhone == nil || *req.CustomerPhone == "") {
+		if req.Customer.Phone != "" && (req.CustomerPhone == nil || strings.TrimSpace(*req.CustomerPhone) == "") {
 			phone := req.Customer.Phone
 			req.CustomerPhone = &phone
 		}
-		if req.Customer.Address != "" && (req.DeliveryAddressManual == nil || *req.DeliveryAddressManual == "") {
+		if req.Customer.Address != "" && (req.DeliveryAddressManual == nil || strings.TrimSpace(*req.DeliveryAddressManual) == "") {
 			addr := req.Customer.Address
 			if req.Customer.City != "" {
 				addr = req.Customer.City + ", " + addr
@@ -144,14 +148,17 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return errors.Validation("invalid_body", "تعذر قراءة بيانات الطلب")
 	}
+	if err := readIdempotencyKey(c, &req); err != nil {
+		return err
+	}
 
 	// Map nested customer object to flat fields (frontend compatibility).
 	if req.Customer != nil {
-		if req.Customer.Phone != "" && (req.CustomerPhone == nil || *req.CustomerPhone == "") {
+		if req.Customer.Phone != "" && (req.CustomerPhone == nil || strings.TrimSpace(*req.CustomerPhone) == "") {
 			phone := req.Customer.Phone
 			req.CustomerPhone = &phone
 		}
-		if req.Customer.Address != "" && (req.DeliveryAddressManual == nil || *req.DeliveryAddressManual == "") {
+		if req.Customer.Address != "" && (req.DeliveryAddressManual == nil || strings.TrimSpace(*req.DeliveryAddressManual) == "") {
 			addr := req.Customer.Address
 			if req.Customer.City != "" {
 				addr = req.Customer.City + ", " + addr
@@ -182,6 +189,33 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return err
 	}
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"success": true, "data": order})
+}
+
+func readIdempotencyKey(c *fiber.Ctx, req *CreateOrderRequest) error {
+	key, err := validateIdempotencyKey(c.Get("X-Idempotency-Key"))
+	if err != nil {
+		return err
+	}
+	req.IdempotencyKey = key
+	return nil
+}
+
+func validateIdempotencyKey(raw string) (string, error) {
+	key := strings.TrimSpace(raw)
+	if key == "" {
+		return "", nil
+	}
+	if len(key) > 128 {
+		return "", errors.Validation("idempotency_key_invalid", "معرّف الطلب غير صالح")
+	}
+	for i := 0; i < len(key); i++ {
+		ch := key[i]
+		if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+			(ch >= '0' && ch <= '9') || strings.ContainsRune("._:-", rune(ch))) {
+			return "", errors.Validation("idempotency_key_invalid", "معرّف الطلب غير صالح")
+		}
+	}
+	return key, nil
 }
 
 func (h *Handler) GetByID(c *fiber.Ctx) error {

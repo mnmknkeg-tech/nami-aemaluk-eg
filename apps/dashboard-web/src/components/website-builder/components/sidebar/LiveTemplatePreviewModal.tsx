@@ -15,8 +15,9 @@ import {
   ShieldCheck,
   Zap,
 } from 'lucide-react';
+import { computeThemeResponsiveNodeStyles, resolveTheme } from '@ray-eg/shared/builder';
 import { SectionTemplate } from '../../data/sectionLibrary';
-import { ComponentNode, StyleProperties, ViewportBreakpoint } from '../../types/builder';
+import { ComponentNode, ViewportBreakpoint } from '../../types/builder';
 
 interface Props {
   template: SectionTemplate | null;
@@ -33,84 +34,7 @@ const PreviewNodeRenderer: React.FC<{
   const node = nodes[nodeId];
   if (!node) return null;
 
-  const d = node.styles.desktop || {};
-  const t = node.styles.tablet || {};
-  const m = node.styles.mobile || {};
-
-  let merged: StyleProperties = { ...d };
-  if (viewport === 'tablet') {
-    merged = { ...merged, ...t };
-  } else if (viewport === 'mobile') {
-    merged = { ...merged, ...t, ...m };
-  }
-
-  const css: React.CSSProperties = {
-    display: merged.display,
-    flexDirection: merged.flexDirection,
-    justifyContent: merged.justifyContent,
-    alignItems: merged.alignItems,
-    flexWrap: merged.flexWrap,
-    gridTemplateColumns: merged.gridColumns,
-    gap: merged.gap,
-    width: merged.width,
-    minWidth: merged.minWidth,
-    maxWidth: merged.maxWidth,
-    height: merged.height,
-    minHeight: merged.minHeight,
-    paddingTop: merged.paddingTop,
-    paddingRight: merged.paddingRight,
-    paddingBottom: merged.paddingBottom,
-    paddingLeft: merged.paddingLeft,
-    marginTop: merged.marginTop,
-    marginRight: merged.marginRight,
-    marginBottom: merged.marginBottom,
-    marginLeft: merged.marginLeft,
-    fontSize: merged.fontSize,
-    fontWeight: merged.fontWeight as any,
-    lineHeight: merged.lineHeight,
-    letterSpacing: merged.letterSpacing,
-    textAlign: merged.textAlign,
-    color: merged.textColor,
-    backgroundColor: merged.backgroundColor,
-    backgroundImage: merged.backgroundImage,
-    backgroundSize: merged.backgroundSize,
-    borderWidth: merged.borderWidth,
-    borderStyle: merged.borderStyle,
-    borderColor: merged.borderColor,
-    borderRadius: merged.borderRadius,
-    boxShadow: merged.boxShadow,
-  };
-
-  // Library templates are desktop-first. Mirror the insertion-time responsive
-  // defaults here so the phone preview shows the exact safe layout users get.
-  if (viewport === 'mobile') {
-    const desktopGap = Number.parseFloat(d.gap || '');
-    if ((d.display === 'grid' || d.gridColumns) && !m.gridColumns) {
-      css.gridTemplateColumns = 'minmax(0, 1fr)';
-      css.gap = Number.isFinite(desktopGap) && desktopGap > 16 ? '16px' : d.gap || '12px';
-    }
-    if (
-      d.display === 'flex' &&
-      d.flexDirection !== 'column' &&
-      node.type !== 'header' &&
-      !m.flexDirection
-    ) {
-      css.flexDirection = 'column';
-      css.alignItems = 'stretch';
-      css.flexWrap = 'nowrap';
-      css.gap = css.gap || '12px';
-    }
-    if (node.category === 'section' || ['container', 'flex', 'grid'].includes(node.type)) {
-      css.width = '100%';
-      css.minWidth = 0;
-      css.maxWidth = '100%';
-    }
-    if (node.type === 'image') {
-      css.width = '100%';
-      css.maxWidth = '100%';
-      css.height = 'auto';
-    }
-  }
+  const css = computeThemeResponsiveNodeStyles(node, viewport, resolveTheme().typography);
 
   const renderChildren = () => {
     if (!node.childrenIds || node.childrenIds.length === 0) return null;

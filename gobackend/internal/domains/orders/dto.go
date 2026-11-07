@@ -53,6 +53,8 @@ type Order struct {
 	Items                 []OrderItem `json:"items"`
 	CreatedAt             time.Time   `json:"createdAt"`
 	UpdatedAt             time.Time   `json:"updatedAt"`
+	IdempotencyKey        *string     `json:"-"`
+	RequestHash           *string     `json:"-"`
 }
 
 // OrderItem represents a line item in an order.
@@ -65,6 +67,7 @@ type OrderItem struct {
 	Price            float64 `json:"price"`
 	Addons           []any   `json:"addons,omitempty"`
 	VariantSelection any     `json:"variantSelection,omitempty"`
+	TrackStock       bool    `json:"-"`
 }
 
 // CreateOrderItem is the input for an order line.
@@ -107,7 +110,8 @@ type CreateOrderRequest struct {
 	Status                *string           `json:"status,omitempty"`
 	// PosShiftID links this order to a POS shift. Sent by the cashier desktop
 	// syncer so refreshMetrics can use a direct join instead of time-window.
-	PosShiftID *string `json:"posShiftId,omitempty"`
+	PosShiftID     *string `json:"posShiftId,omitempty"`
+	IdempotencyKey string  `json:"-"`
 }
 
 // UpdateOrderRequest updates order status and metadata.

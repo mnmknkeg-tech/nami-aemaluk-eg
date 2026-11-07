@@ -84,11 +84,11 @@ export const restaurantComponents: Record<string, ComponentNode> = {
   rest_logo: {
     id: 'rest_logo',
     name: 'شعار المطعم',
-    type: 'heading',
+    type: 'paragraph',
     category: 'typography',
     parentId: 'rest_header_inner',
     childrenIds: [],
-    props: { text: '🍽️ لافيلا جورميه | La Villa', tag: 'h1' },
+    props: { text: '🍽️ لافيلا جورميه | La Villa' },
     styles: {
       desktop: { fontSize: '22px', fontWeight: '800', textColor: '#ea580c' },
       mobile: { fontSize: '16px', fontWeight: '800' },
@@ -114,7 +114,11 @@ export const restaurantComponents: Record<string, ComponentNode> = {
     category: 'action',
     parentId: 'rest_nav',
     childrenIds: [],
-    props: { text: 'قائمة المنيو الشهية', variant: 'ghost' },
+    props: {
+      text: 'قائمة المنيو الشهية',
+      variant: 'ghost',
+      destination: { type: 'section', pageId: 'page_home', sectionId: 'rest_menu_tabs' },
+    },
     styles: { desktop: { textColor: '#1c1917', fontWeight: '600', fontSize: '15px' } },
   },
   nav_item_book: {
@@ -124,7 +128,11 @@ export const restaurantComponents: Record<string, ComponentNode> = {
     category: 'action',
     parentId: 'rest_nav',
     childrenIds: [],
-    props: { text: 'حجز طاولة VIP', variant: 'ghost' },
+    props: {
+      text: 'حجز طاولة VIP',
+      variant: 'ghost',
+      destination: { type: 'booking', pageId: 'page_home', sectionId: 'rest_table_booking' },
+    },
     styles: { desktop: { textColor: '#ea580c', fontWeight: '700', fontSize: '15px' } },
   },
   nav_item_reviews: {
@@ -134,7 +142,11 @@ export const restaurantComponents: Record<string, ComponentNode> = {
     category: 'action',
     parentId: 'rest_nav',
     childrenIds: [],
-    props: { text: 'آراء الذواقة', variant: 'ghost' },
+    props: {
+      text: 'آراء الذواقة',
+      variant: 'ghost',
+      destination: { type: 'section', pageId: 'page_home', sectionId: 'rest_reviews' },
+    },
     styles: { desktop: { textColor: '#44403c', fontSize: '15px' } },
   },
   nav_item_branches: {
@@ -144,7 +156,11 @@ export const restaurantComponents: Record<string, ComponentNode> = {
     category: 'action',
     parentId: 'rest_nav',
     childrenIds: [],
-    props: { text: 'الفروع وساعات العمل', variant: 'ghost' },
+    props: {
+      text: 'تواصل معنا',
+      variant: 'ghost',
+      destination: { type: 'page', pageId: 'page_contact' },
+    },
     styles: { desktop: { textColor: '#44403c', fontSize: '15px' } },
   },
   rest_header_actions: {
@@ -167,7 +183,11 @@ export const restaurantComponents: Record<string, ComponentNode> = {
     category: 'action',
     parentId: 'rest_header_actions',
     childrenIds: [],
-    props: { text: '🛵 اطلب أونلاين دليفري', variant: 'primary' },
+    props: {
+      text: '🛵 اطلب أونلاين دليفري',
+      variant: 'primary',
+      destination: { type: 'order', pageId: 'page_home' },
+    },
     styles: {
       desktop: {
         backgroundColor: '#ea580c',
@@ -291,7 +311,17 @@ export const restaurantComponents: Record<string, ComponentNode> = {
     parentId: 'rest_hero_text_box',
     childrenIds: ['btn_hero_explore_menu', 'btn_hero_book_table'],
     props: {},
-    styles: { desktop: { display: 'flex', gap: '16px', marginTop: '12px' } },
+    styles: {
+      desktop: { display: 'flex', gap: '16px', marginTop: '12px' },
+      mobile: {
+        display: 'flex',
+        flexDirection: 'column',
+        flexWrap: 'wrap',
+        alignItems: 'stretch',
+        gap: '12px',
+        width: '100%',
+      },
+    },
   },
   btn_hero_explore_menu: {
     id: 'btn_hero_explore_menu',
@@ -300,7 +330,11 @@ export const restaurantComponents: Record<string, ComponentNode> = {
     category: 'action',
     parentId: 'rest_hero_ctas',
     childrenIds: [],
-    props: { text: '📖 تصفح المنيو والأسعار', variant: 'primary' },
+    props: {
+      text: '📖 تصفح المنيو والأسعار',
+      variant: 'primary',
+      destination: { type: 'section', pageId: 'page_home', sectionId: 'rest_menu_tabs' },
+    },
     styles: {
       desktop: {
         backgroundColor: '#ea580c',
@@ -313,6 +347,12 @@ export const restaurantComponents: Record<string, ComponentNode> = {
         fontWeight: '700',
         fontSize: '16px',
       },
+      mobile: {
+        width: '100%',
+        whiteSpace: 'normal',
+        textAlign: 'center',
+        lineHeight: '1.4',
+      },
     },
   },
   btn_hero_book_table: {
@@ -322,7 +362,11 @@ export const restaurantComponents: Record<string, ComponentNode> = {
     category: 'action',
     parentId: 'rest_hero_ctas',
     childrenIds: [],
-    props: { text: '🥂 حجز طاولة سهرة', variant: 'outline' },
+    props: {
+      text: '🥂 حجز طاولة سهرة',
+      variant: 'outline',
+      destination: { type: 'booking', pageId: 'page_home', sectionId: 'rest_table_booking' },
+    },
     styles: {
       desktop: {
         backgroundColor: '#ffffff',
@@ -336,6 +380,12 @@ export const restaurantComponents: Record<string, ComponentNode> = {
         borderRadius: '12px',
         fontWeight: '700',
         fontSize: '16px',
+      },
+      mobile: {
+        width: '100%',
+        whiteSpace: 'normal',
+        textAlign: 'center',
+        lineHeight: '1.4',
       },
     },
   },
@@ -353,9 +403,17 @@ export const restaurantComponents: Record<string, ComponentNode> = {
     styles: {
       desktop: {
         width: '100%',
-        height: '380px',
+        height: 'min(380px, 30vw)',
         borderRadius: '20px',
         boxShadow: '0 20px 25px -5px rgba(234, 88, 12, 0.15)',
+        objectFit: 'cover',
+      },
+      tablet: { height: '30vw' },
+      mobile: {
+        width: '100%',
+        height: 'auto',
+        minHeight: '220px',
+        maxHeight: '280px',
         objectFit: 'cover',
       },
     },
@@ -562,4 +620,32 @@ export const restaurantComponents: Record<string, ComponentNode> = {
       },
     },
   },
+};
+
+const restaurantMenu = restaurantComponents.rest_menu_tabs.props;
+restaurantMenu.title = restaurantMenu.sectionTitle;
+restaurantMenu.subtitle = restaurantMenu.sectionSubtitle;
+restaurantMenu.products = restaurantMenu.items.map((item: Record<string, any>) => ({
+  ...item,
+  title: item.title || item.name,
+}));
+
+const footerLinks = restaurantComponents.rest_footer.props.links as Array<Record<string, any>>;
+footerLinks[0].destination = {
+  type: 'section',
+  pageId: 'page_home',
+  sectionId: 'rest_menu_tabs',
+};
+footerLinks[1].destination = {
+  type: 'booking',
+  pageId: 'page_home',
+  sectionId: 'rest_table_booking',
+};
+footerLinks[2].label = 'تواصل معنا';
+footerLinks[2].destination = { type: 'page', pageId: 'page_contact' };
+footerLinks[3].label = 'آراء الزوار وتجاربهم';
+footerLinks[3].destination = {
+  type: 'section',
+  pageId: 'page_home',
+  sectionId: 'rest_reviews',
 };

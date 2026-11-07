@@ -10,6 +10,8 @@ export default tseslint.config(
       '**/out/**',
       '**/build/**',
       '**/coverage/**',
+      '**/test-results/**',
+      '**/playwright-report/**',
       'gobackend/**',
       '**/*.min.*',
       '**/sw.js',

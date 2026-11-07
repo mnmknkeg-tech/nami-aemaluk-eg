@@ -122,7 +122,7 @@ func (s *Syncer) Run(interactive bool) {
 
 	// ── 1. pull products (public endpoint) ──────────────────────────────
 	var prodResp struct {
-		Success bool          `json:"success"`
+		Success bool            `json:"success"`
 		Data    []store.Product `json:"data"`
 	}
 	if err := c.Get("/api/v1/products?shopId="+shopID+"&take=1000", &prodResp); err == nil {
@@ -216,9 +216,9 @@ func (s *Syncer) Run(interactive bool) {
 			for _, it := range o.Items {
 				qty := it.Quantity
 				items = append(items, map[string]any{
-					"productId": it.ProductID,
-					"quantity":  int(qty),
-					"addons":    nil,
+					"productId":        it.ProductID,
+					"quantity":         int(qty),
+					"addons":           nil,
 					"variantSelection": nil,
 				})
 			}
@@ -249,7 +249,12 @@ func (s *Syncer) Run(interactive bool) {
 					ID string `json:"id"`
 				} `json:"data"`
 			}
-			if err := c.Post("/api/v1/shops/"+shopID+"/orders", body, &out); err == nil && out.Data.ID != "" {
+			if err := c.PostWithIdempotencyKey(
+				"/api/v1/shops/"+shopID+"/orders",
+				body,
+				&out,
+				o.Order.ID,
+			); err == nil && out.Data.ID != "" {
 				_ = s.store.MarkOrderSynced(o.Order.ID, out.Data.ID)
 			} else if err != nil {
 				if ae, ok := err.(*client.APIError); ok && ae.Status >= 400 && ae.Status < 500 && ae.Status != 401 {

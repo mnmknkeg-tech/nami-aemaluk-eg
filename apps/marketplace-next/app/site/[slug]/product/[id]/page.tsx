@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getProducts } from '@/lib/services';
+import { mapSiteProduct } from '@ray-eg/shared/builder';
 import { SiteProductActions } from '@/components/SiteProductActions';
 import { SiteStoreProductCard } from '@/components/SiteStoreProductCard';
 import { ReviewsSection } from '@/components/ReviewsSection';
@@ -88,6 +89,11 @@ export default async function MerchantProductPage({ params }: Props) {
     ? `https://wa.me/${phone.startsWith('20') ? phone : `20${phone.replace(/^20/, '')}`}?text=${encodeURIComponent(`مرحبًا، أريد الاستفسار عن ${product.name}`)}`
     : null;
   const logo = site.shop.logoUrl;
+  const cartProduct = mapSiteProduct({
+    ...product,
+    shopId: site.shop.id,
+    shopSlug: site.shop.slug,
+  });
 
   return (
     <main
@@ -165,7 +171,7 @@ export default async function MerchantProductPage({ params }: Props) {
             </div>
             <div className="flex flex-wrap gap-3">
               {product.isAvailable !== false && (
-                <SiteProductActions product={product} shop={site.shop} />
+                <SiteProductActions product={cartProduct} shop={site.shop} />
               )}
               {whatsapp && (
                 <a

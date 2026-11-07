@@ -1,9 +1,13 @@
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { PublicSiteRenderer } from '../packages/shared/src/builder/PublicSiteRenderer';
+import {
+  PublicSiteRenderer,
+  resolvePreviewLink,
+} from '../packages/shared/src/builder/PublicSiteRenderer';
 import { NodeView } from '../packages/shared/src/builder/NodeView';
 import { NodeSkeleton } from '../packages/shared/src/builder/skeleton/NodeSkeleton';
 import { resolveTheme } from '../packages/shared/src/builder/theme';
+import { loadFullWebsiteTemplate } from '../apps/dashboard-web/src/components/website-builder/data/registry';
 
 function makeNode(
   id: string,
@@ -100,6 +104,70 @@ function renderWebsiteNodeAtViewport(website: any, viewport: 'desktop' | 'tablet
 }
 
 describe('published /site renderer product tree', () => {
+  it('renders complete RTL template structures and images in isolated preview mode', () => {
+    ['site_restaurant_cafe', 'site_clinic_hospital', 'site_opal_fashion'].forEach((templateId) => {
+      const website = loadFullWebsiteTemplate(templateId).website;
+      const originalWebsite = JSON.stringify(website);
+      const homePage =
+        website.pages.find((page) => page.metadata?.isHomePage) ||
+        website.pages.find((page) => page.id === 'page_home') ||
+        website.pages[0];
+      const reachable = new Set<string>();
+      const visit = (nodeId: string) => {
+        if (reachable.has(nodeId)) return;
+        const node = website.components[nodeId];
+        if (!node) return;
+        reachable.add(nodeId);
+        node.childrenIds.forEach(visit);
+      };
+      visit(homePage.rootNodeId);
+      const image = [...reachable]
+        .map((nodeId) => website.components[nodeId])
+        .find((node) => node.type === 'image' && typeof node.props.src === 'string');
+
+      const markup = renderToStaticMarkup(
+        React.createElement(PublicSiteRenderer, {
+          website,
+          shop: { id: 'template-preview', name: website.name, slug: 'template-preview' },
+          products: [
+            { id: 'merchant-product', title: 'Merchant-only product', price: 999, image: '' },
+          ],
+          previewMode: true,
+          previewViewport: 'desktop',
+        })
+      );
+
+      expect(markup).toContain(`id="${homePage.rootNodeId}"`);
+      expect(markup).toContain('direction:rtl');
+      expect(reachable.size).toBeGreaterThan(5);
+      expect(markup).not.toContain('Merchant-only product');
+      if (image) expect(markup).toContain(image.props.src.split('?')[0]);
+      expect(JSON.stringify(website)).toBe(originalWebsite);
+    });
+  });
+
+  it('keeps preview links inside the template while resolving internal page links', () => {
+    const pages = [
+      { id: 'page_home', slug: 'home' },
+      { id: 'page_services', slug: 'services' },
+    ];
+
+    expect(resolvePreviewLink('/services', pages)).toEqual({
+      type: 'page',
+      pageId: 'page_services',
+    });
+    expect(resolvePreviewLink('#services', pages)).toEqual({
+      type: 'page',
+      pageId: 'page_services',
+    });
+    expect(resolvePreviewLink('#hero', pages)).toEqual({ type: 'anchor' });
+    expect(resolvePreviewLink('https://example.com', pages)).toEqual({ type: 'blocked' });
+    expect(resolvePreviewLink('//example.com', pages)).toEqual({ type: 'blocked' });
+    expect(resolvePreviewLink('mailto:merchant@example.com', pages)).toEqual({ type: 'blocked' });
+    expect(resolvePreviewLink('https://wa.me/201000000000', pages)).toEqual({ type: 'blocked' });
+    expect(resolvePreviewLink('/site/store/checkout', pages)).toEqual({ type: 'blocked' });
+  });
+
   it('renders the merchant-owned mobile brand node instead of replacing it with shop metadata', () => {
     const website = makeWebsite([], {
       root: makeNode('header-root', 'header', null, ['brand-title']),
@@ -196,6 +264,72 @@ describe('published /site renderer product tree', () => {
     expect(markup).toContain('Design card');
     expect(markup).not.toContain('Real catalog item');
     expect(markup).not.toContain('data-section="products"');
+  });
+
+  it('renders layout grids as structural wrappers without binding shop catalog products', () => {
+    const website = makeWebsite(['layout-grid'], {
+      'layout-grid': makeNode(
+        'layout-grid',
+        'grid',
+        'root',
+        ['layout-child'],
+        {
+          title: 'Layout grid',
+          products: [{ id: 'template-1', title: 'Template product', price: 10 }],
+        },
+        'layout'
+      ),
+      'layout-child': makeNode(
+        'layout-child',
+        'heading',
+        'layout-grid',
+        [],
+        { text: 'Layout child' },
+        'content'
+      ),
+    });
+
+    const markup = renderSite(website);
+    expect(markup).toContain('Layout child');
+    expect(markup).not.toContain('Real catalog item');
+    expect(markup).not.toContain('Template product');
+    expect(markup).not.toContain('Layout grid');
+  });
+
+  it('continues binding catalog products into non-layout grids', () => {
+    const website = makeWebsite(['product-grid'], {
+      'product-grid': makeNode('product-grid', 'grid', 'root', [], { title: 'Catalog' }, 'section'),
+    });
+
+    expect(renderSite(website)).toContain('Real catalog item');
+  });
+
+  it('preserves responsive styles on structural grids at the mobile viewport', () => {
+    const website = makeWebsite([], {
+      root: {
+        ...makeNode('root', 'grid', null, ['layout-child'], {}, 'layout'),
+        styles: {
+          desktop: {
+            display: 'grid',
+            width: '1200px',
+            gridColumns: 'repeat(4, minmax(0, 1fr))',
+          },
+        },
+      },
+      'layout-child': makeNode(
+        'layout-child',
+        'heading',
+        'root',
+        [],
+        { text: 'Mobile layout child' },
+        'content'
+      ),
+    });
+
+    const markup = renderWebsiteNodeAtViewport(website, 'mobile');
+    expect(markup).toContain('width:100%');
+    expect(markup).toContain('grid-template-columns:repeat(1, minmax(0, 1fr))');
+    expect(markup).toContain('Mobile layout child');
   });
 
   it('does not display Products nested under Hero or add them outside the actual tree location', () => {

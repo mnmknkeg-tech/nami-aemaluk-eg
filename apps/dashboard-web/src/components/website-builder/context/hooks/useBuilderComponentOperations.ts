@@ -7,14 +7,11 @@ import {
   ViewportBreakpoint,
   Website,
 } from '../../types/builder';
-import { sectionTemplates } from '../../data/sectionLibrary';
+import { loadSectionTemplate } from '../../data/registry';
 import { createTemplateMobileStyles, createUniqueBuilderId } from '../builderUtils';
 
 export type WebsiteReducer = (website: Website) => Website;
-export type RecordWebsiteHistory = (
-  actionDesc: string,
-  website: Website | WebsiteReducer
-) => void;
+export type RecordWebsiteHistory = (actionDesc: string, website: Website | WebsiteReducer) => void;
 
 export interface UseBuilderComponentOperationsProps {
   website: Website;
@@ -23,39 +20,37 @@ export interface UseBuilderComponentOperationsProps {
   viewport: ViewportBreakpoint;
   recordHistory: RecordWebsiteHistory;
   setIsMobileInspectorOpen: (open: boolean) => void;
+  setTemplateError: (message: string | null) => void;
   initialSelectedNodeId?: string | null;
 }
 
 /** Pure reducers are exported so sequential UI changes can be regression-tested. */
-export const updateNodePropsReducer = (
-  id: string,
-  newProps: Record<string, any>
-): WebsiteReducer => (website) => {
-  const target = website.components[id];
-  if (!target) return website;
-  return {
-    ...website,
-    components: {
-      ...website.components,
-      [id]: { ...target, props: { ...target.props, ...newProps } },
-    },
+export const updateNodePropsReducer =
+  (id: string, newProps: Record<string, any>): WebsiteReducer =>
+  (website) => {
+    const target = website.components[id];
+    if (!target) return website;
+    return {
+      ...website,
+      components: {
+        ...website.components,
+        [id]: { ...target, props: { ...target.props, ...newProps } },
+      },
+    };
   };
-};
 
-export const updateNodeStyleReducer = (
-  id: string,
-  stylePatch: Partial<StyleProperties>,
-  bp: ViewportBreakpoint
-): WebsiteReducer => (website) => {
-  const target = website.components[id];
-  if (!target) return website;
-  const styles = { ...target.styles };
-  styles[bp] = { ...(styles[bp] || {}), ...stylePatch };
-  return {
-    ...website,
-    components: { ...website.components, [id]: { ...target, styles } },
+export const updateNodeStyleReducer =
+  (id: string, stylePatch: Partial<StyleProperties>, bp: ViewportBreakpoint): WebsiteReducer =>
+  (website) => {
+    const target = website.components[id];
+    if (!target) return website;
+    const styles = { ...target.styles };
+    styles[bp] = { ...(styles[bp] || {}), ...stylePatch };
+    return {
+      ...website,
+      components: { ...website.components, [id]: { ...target, styles } },
+    };
   };
-};
 
 const replaceNode = (
   website: Website,
@@ -92,6 +87,7 @@ export const useBuilderComponentOperations = ({
   viewport,
   recordHistory,
   setIsMobileInspectorOpen,
+  setTemplateError,
   initialSelectedNodeId = 'comp_hero',
 }: UseBuilderComponentOperationsProps) => {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(initialSelectedNodeId);
@@ -173,7 +169,8 @@ export const useBuilderComponentOperations = ({
 
   const insertNode = useCallback(
     (node: ComponentNode, parentId: string, index?: number) => {
-      if (!websiteRef.current.components[parentId] || websiteRef.current.components[node.id]) return;
+      if (!websiteRef.current.components[parentId] || websiteRef.current.components[node.id])
+        return;
       recordHistory(`إضافة عنصر (${node.name})`, (current) => {
         const parent = current.components[parentId];
         if (!parent) return current;
@@ -197,55 +194,77 @@ export const useBuilderComponentOperations = ({
 
   const insertSectionTemplate = useCallback(
     (templateId: string, targetIndex?: number) => {
-      const tmpl = sectionTemplates.find((item) => item.id === templateId);
-      if (!tmpl) return;
-      const rootId = activePage.rootNodeId;
-      const current = websiteRef.current;
-      if (!current.components[rootId]) return;
-      const idMap: Record<string, string> = {};
-      const usedIds = new Set(Object.keys(current.components));
-      Object.keys(tmpl.nodes).forEach((origId) => {
-        idMap[origId] = createUniqueBuilderId(`comp_${tmpl.category}`, usedIds);
-      });
-      const clonedNodes: Record<string, ComponentNode> = {};
-      Object.values(tmpl.nodes).forEach((node) => {
-        const newId = idMap[node.id];
-        clonedNodes[newId] = {
-          ...node,
-          id: newId,
-          parentId: node.parentId ? idMap[node.parentId] : rootId,
-          childrenIds: node.childrenIds.map((childId) => idMap[childId]),
-          styles: { ...node.styles, mobile: createTemplateMobileStyles(node) },
-        };
-      });
-      const newRootId = idMap[tmpl.rootNodeId];
-      recordHistory(`إدراج نموذج قسم (${tmpl.nameAr})`, (latest) => {
-        const root = latest.components[rootId];
-        if (!root) return latest;
-        const children = [...root.childrenIds];
-        if (typeof targetIndex === 'number' && targetIndex >= 0) {
-          children.splice(Math.min(targetIndex, children.length), 0, newRootId);
-        } else {
-          const footerIndex = children.findIndex((id) => latest.components[id]?.type === 'footer');
-          children.splice(footerIndex === -1 ? children.length : footerIndex, 0, newRootId);
+      try {
+        const tmpl = loadSectionTemplate(templateId).template;
+        const rootId = activePage.rootNodeId;
+        const current = websiteRef.current;
+        if (!current.components[rootId]) {
+          throw new Error(
+            `Cannot insert section "${templateId}": the active page root is missing.`
+          );
         }
-        return {
-          ...latest,
-          components: {
-            ...latest.components,
-            ...clonedNodes,
-            [rootId]: { ...root, childrenIds: children },
-          },
-        };
-      });
-      setSelectedNodeId(newRootId);
-      if (typeof document !== 'undefined') {
-        setTimeout(() => {
-          document.getElementById(newRootId)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }, 120);
+        const idMap: Record<string, string> = {};
+        const usedIds = new Set(Object.keys(current.components));
+        Object.keys(tmpl.nodes).forEach((origId) => {
+          idMap[origId] = createUniqueBuilderId(`comp_${tmpl.category}`, usedIds);
+        });
+        const clonedNodes: Record<string, ComponentNode> = {};
+        Object.values(tmpl.nodes).forEach((node) => {
+          const newId = idMap[node.id];
+          clonedNodes[newId] = {
+            ...node,
+            id: newId,
+            parentId: node.parentId ? idMap[node.parentId] : rootId,
+            childrenIds: node.childrenIds.map((childId) => idMap[childId]),
+            styles: { ...node.styles, mobile: createTemplateMobileStyles(node) },
+          };
+        });
+        const newRootId = idMap[tmpl.rootNodeId];
+        recordHistory(`إدراج نموذج قسم (${tmpl.nameAr})`, (latest) => {
+          const root = latest.components[rootId];
+          if (!root) return latest;
+          const children = [...root.childrenIds];
+          if (typeof targetIndex === 'number' && targetIndex >= 0) {
+            children.splice(Math.min(targetIndex, children.length), 0, newRootId);
+          } else {
+            const footerIndex = children.findIndex(
+              (id) => latest.components[id]?.type === 'footer'
+            );
+            children.splice(footerIndex === -1 ? children.length : footerIndex, 0, newRootId);
+          }
+          return {
+            ...latest,
+            components: {
+              ...latest.components,
+              ...clonedNodes,
+              [rootId]: { ...root, childrenIds: children },
+            },
+          };
+        });
+        setSelectedNodeId(newRootId);
+        setTemplateError(null);
+        if (typeof document !== 'undefined') {
+          setTimeout(() => {
+            document
+              .getElementById(newRootId)
+              ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }, 120);
+        }
+        return true;
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : `Unable to insert section template "${templateId}".`;
+        console.error('[WebsiteBuilder] Section template insertion failed.', {
+          templateId,
+          error,
+        });
+        setTemplateError(message);
+        return false;
       }
     },
-    [activePage.rootNodeId, recordHistory, websiteRef]
+    [activePage.rootNodeId, recordHistory, setTemplateError, websiteRef]
   );
 
   const deleteNode = useCallback(
@@ -352,7 +371,13 @@ export const useBuilderComponentOperations = ({
           if (index < 0 || nextIndex < 0 || nextIndex >= parent.childrenIds.length) return current;
           const children = [...parent.childrenIds];
           [children[index], children[nextIndex]] = [children[nextIndex], children[index]];
-          return { ...current, components: { ...current.components, [parent.id]: { ...parent, childrenIds: children } } };
+          return {
+            ...current,
+            components: {
+              ...current.components,
+              [parent.id]: { ...parent, childrenIds: children },
+            },
+          };
         }
       );
     },

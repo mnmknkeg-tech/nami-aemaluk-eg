@@ -22,7 +22,7 @@ interface SiteCartContextValue {
 
 const SiteCartContext = createContext<SiteCartContextValue | null>(null);
 
-export function isValidSiteCartEntry(value: unknown, shopId: string): value is SiteCartEntry {
+export function isValidSiteCartEntry(value: unknown, shopSlug: string): value is SiteCartEntry {
   if (!value || typeof value !== 'object') return false;
   const entry = value as Partial<SiteCartEntry>;
   const product = entry.product;
@@ -37,19 +37,19 @@ export function isValidSiteCartEntry(value: unknown, shopId: string): value is S
     Number.isInteger(entry.quantity) &&
     entry.quantity > 0 &&
     entry.shop &&
-    entry.shop.id === shopId &&
-    (!product.shopId || product.shopId === shopId) &&
+    entry.shop.slug === shopSlug &&
+    (!product.shopId || product.shopId === entry.shop.id) &&
     product.isActive !== false &&
     product.isAvailable !== false
   );
 }
 
-export function loadSiteCart(raw: string | null, shopId: string): SiteCartEntry[] {
+export function loadSiteCart(raw: string | null, shopSlug: string): SiteCartEntry[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((entry) => isValidSiteCartEntry(entry, shopId));
+    return parsed.filter((entry) => isValidSiteCartEntry(entry, shopSlug));
   } catch {
     return [];
   }

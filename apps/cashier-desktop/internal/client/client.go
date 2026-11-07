@@ -30,10 +30,10 @@ func New(baseURL, accessToken, refreshToken string) *Client {
 }
 
 type AuthUser struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
-	Name  string `json:"name"`
-	Role  string `json:"role"`
+	ID     string `json:"id"`
+	Email  string `json:"email"`
+	Name   string `json:"name"`
+	Role   string `json:"role"`
 	ShopID string `json:"shopId"`
 }
 
@@ -50,11 +50,11 @@ type AuthResponse struct {
 // Login performs POST /api/v1/auth/login and returns the parsed response.
 func (c *Client) Login(email, password string) (*AuthResponse, error) {
 	var out struct {
-		Success bool        `json:"success"`
+		Success bool         `json:"success"`
 		Data    AuthResponse `json:"data"`
 		AuthResponse
 	}
-	if err := c.doJSON(http.MethodPost, "/api/v1/auth/login", map[string]string{"email": email, "password": password}, &out, false); err != nil {
+	if err := c.doJSON(http.MethodPost, "/api/v1/auth/login", map[string]string{"email": email, "password": password}, &out, false, nil); err != nil {
 		return nil, err
 	}
 	resp := out.Data
@@ -76,7 +76,7 @@ func (c *Client) Refresh() (*TokenPair, error) {
 		} `json:"data"`
 		TokenPair
 	}
-	if err := c.doJSON(http.MethodPost, "/api/v1/auth/refresh", map[string]string{"refreshToken": c.RefreshToken}, &out, false); err != nil {
+	if err := c.doJSON(http.MethodPost, "/api/v1/auth/refresh", map[string]string{"refreshToken": c.RefreshToken}, &out, false, nil); err != nil {
 		return nil, err
 	}
 	t := out.Data.Token
@@ -99,8 +99,19 @@ func (c *Client) Post(path string, body any, out any) error {
 	return c.request(http.MethodPost, path, body, out, true)
 }
 
+// PostWithIdempotencyKey sends a POST with a stable retry key.
+func (c *Client) PostWithIdempotencyKey(path string, body any, out any, key string) error {
+	return c.requestWithHeaders(http.MethodPost, path, body, out, true, map[string]string{
+		"X-Idempotency-Key": key,
+	})
+}
+
 func (c *Client) request(method, path string, body any, out any, withAuth bool) error {
-	err := c.doJSON(method, path, body, out, withAuth)
+	return c.requestWithHeaders(method, path, body, out, withAuth, nil)
+}
+
+func (c *Client) requestWithHeaders(method, path string, body any, out any, withAuth bool, headers map[string]string) error {
+	err := c.doJSON(method, path, body, out, withAuth, headers)
 	if err == nil || withAuth == false {
 		return err
 	}
@@ -116,7 +127,7 @@ func (c *Client) request(method, path string, body any, out any, withAuth bool) 
 	if pair.RefreshToken != "" {
 		c.RefreshToken = pair.RefreshToken
 	}
-	return c.doJSON(method, path, body, out, withAuth)
+	return c.doJSON(method, path, body, out, withAuth, headers)
 }
 
 func isAuthError(err error) bool {
@@ -138,7 +149,7 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("HTTP %d", e.Status)
 }
 
-func (c *Client) doJSON(method, path string, body any, out any, withAuth bool) error {
+func (c *Client) doJSON(method, path string, body any, out any, withAuth bool, headers map[string]string) error {
 	var reader io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -156,6 +167,9 @@ func (c *Client) doJSON(method, path string, body any, out any, withAuth bool) e
 	}
 	if withAuth && c.AccessToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.AccessToken)
+	}
+	for name, value := range headers {
+		req.Header.Set(name, value)
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {

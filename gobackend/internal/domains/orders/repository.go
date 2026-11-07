@@ -17,6 +17,17 @@ type Repository struct {
 	pool *db.Pool
 }
 
+type OrderProduct struct {
+	ID         string
+	Name       string
+	Price      float64
+	Stock      int
+	TrackStock bool
+	IsActive   bool
+	AppActive  bool
+	ShopID     string
+}
+
 // Pool exposes the underlying pool (used by cross-domain helpers like customers.LinkOrderCustomer).
 func (r *Repository) Pool() *db.Pool { return r.pool }
 
@@ -234,40 +245,85 @@ func (r *Repository) RefreshShiftMetrics(ctx context.Context, shiftID string) {
 		WHERE s.id = $1 AND s.status = 'open'`, shiftID)
 }
 
-// CreateOrder inserts an order and its items in a transaction, optionally decrementing stock.
-func (r *Repository) CreateOrder(ctx context.Context, order *Order, decrementStock bool) (*Order, error) {
-	tx, err := r.pool.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback(ctx)
+const insertOrderQuery = `
+	INSERT INTO orders (
+		id, total, discount, coupon_code, status, payment_method, payment_status, notes, customer_phone,
+		delivery_address_manual, delivery_lat, delivery_lng, delivery_note, customer_note,
+		user_id, shop_id, customer_id, courier_id, source, pos_shift_id, created_at, updated_at,
+		idempotency_key, request_hash
+	) VALUES (
+		gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+		NULLIF($14, ''), $15, NULL, NULL, $16, $17, NOW(), NOW(), $18, $19
+	)
+	ON CONFLICT (shop_id, idempotency_key) DO NOTHING
+	RETURNING ` + orderColumnsNoAlias
 
-	// Insert order.
-	orderQuery := `
-		INSERT INTO orders (
-			id, total, discount, coupon_code, status, payment_method, payment_status, notes, customer_phone,
-			delivery_address_manual, delivery_lat, delivery_lng, delivery_note, customer_note,
-			user_id, shop_id, customer_id, courier_id, source, pos_shift_id, created_at, updated_at
-		) VALUES (
-			gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NULL, NULL, $15, $16, NOW(), NOW()
-		) RETURNING ` + orderColumnsNoAlias
-	var createdCustomerID sql.NullString
-	err = tx.QueryRow(ctx, orderQuery,
+func orderInsertArgs(order *Order) []any {
+	return []any{
 		order.Total, order.Discount, order.CouponCode, order.Status, order.PaymentMethod, order.PaymentStatus, order.Notes,
 		order.CustomerPhone, order.DeliveryAddressManual, order.DeliveryLat, order.DeliveryLng,
 		order.DeliveryNote, order.CustomerNote, order.UserID, order.ShopID, order.Source,
-		order.PosShiftID,
-	).Scan(
+		order.PosShiftID, order.IdempotencyKey, order.RequestHash,
+	}
+}
+
+// FindIdempotent returns a previous order for a matching retry key and payload.
+func (r *Repository) FindIdempotent(ctx context.Context, shopID, key, requestHash string) (*Order, error) {
+	var orderID, storedHash string
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, request_hash FROM orders WHERE shop_id = $1 AND idempotency_key = $2`,
+		shopID, key,
+	).Scan(&orderID, &storedHash)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if storedHash != requestHash {
+		return nil, errors.Conflict("idempotency_key_conflict", "معرّف الطلب مستخدم بالفعل لبيانات مختلفة")
+	}
+	return r.FindByID(ctx, orderID)
+}
+
+// CreateOrder inserts an order and its items in one transaction, decrementing
+// tracked stock and consuming a coupon only when the transaction can commit.
+func (r *Repository) CreateOrder(ctx context.Context, order *Order, couponID string) (*Order, bool, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+	defer tx.Rollback(ctx)
+
+	var createdCustomerID sql.NullString
+	var createdUserID sql.NullString
+	err = tx.QueryRow(ctx, insertOrderQuery, orderInsertArgs(order)...).Scan(
 		&order.ID, &order.Total, &order.Discount, &order.CouponCode, &order.Status, &order.PaymentMethod, &order.PaymentStatus,
 		&order.Notes, &order.CustomerPhone, &order.DeliveryAddressManual, &order.DeliveryLat,
-		&order.DeliveryLng, &order.DeliveryNote, &order.CustomerNote, &order.UserID, &order.ShopID,
+		&order.DeliveryLng, &order.DeliveryNote, &order.CustomerNote, &createdUserID, &order.ShopID,
 		&createdCustomerID, &order.CourierID, &order.HandedToCourierAt, &order.CodCollectedAt, &order.DeliveredAt,
 		&order.Source, &order.CreatedAt, &order.UpdatedAt,
 	)
-	order.CustomerID = nullStringPtr(createdCustomerID)
-	if err != nil {
-		return nil, err
+	if err == pgx.ErrNoRows && order.IdempotencyKey != nil && order.RequestHash != nil {
+		var existingID, existingHash string
+		if err := tx.QueryRow(ctx,
+			`SELECT id, request_hash FROM orders WHERE shop_id = $1 AND idempotency_key = $2`,
+			order.ShopID, *order.IdempotencyKey,
+		).Scan(&existingID, &existingHash); err != nil {
+			return nil, false, err
+		}
+		if existingHash != *order.RequestHash {
+			return nil, false, errors.Conflict("idempotency_key_conflict", "معرّف الطلب مستخدم بالفعل لبيانات مختلفة")
+		}
+		_ = tx.Rollback(ctx)
+		existing, err := r.FindByID(ctx, existingID)
+		return existing, true, err
 	}
+	if err != nil {
+		return nil, false, err
+	}
+	order.CustomerID = nullStringPtr(createdCustomerID)
+	order.UserID = createdUserID.String
 
 	// Insert items.
 	for i := range order.Items {
@@ -278,24 +334,43 @@ func (r *Repository) CreateOrder(ctx context.Context, order *Order, decrementSto
 			order.ID, item.ProductID, item.Quantity, item.Price, item.Addons, item.VariantSelection,
 		)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
-	if decrementStock {
-		for _, item := range order.Items {
-			_, err = tx.Exec(ctx,
+	for _, item := range order.Items {
+		if item.TrackStock {
+			commandTag, updateErr := tx.Exec(ctx,
 				`UPDATE products SET stock = stock - $1, updated_at = NOW() WHERE id = $2 AND stock >= $1 AND track_stock = true`,
 				item.Quantity, item.ProductID,
 			)
-			if err != nil {
-				return nil, err
+			if updateErr != nil {
+				return nil, false, updateErr
+			}
+			if commandTag.RowsAffected() != 1 {
+				return nil, false, errors.Validation("insufficient_stock", "الكمية لم تعد متوفرة في المخزون")
 			}
 		}
 	}
 
+	if couponID != "" {
+		commandTag, updateErr := tx.Exec(ctx, `
+			UPDATE coupons
+			SET used_count = used_count + 1, updated_at = NOW()
+			WHERE id = $1 AND shop_id = $2 AND status = 'active'
+				AND starts_at <= NOW() AND (ends_at IS NULL OR ends_at > NOW())
+				AND (usage_limit = 0 OR used_count < usage_limit)
+		`, couponID, order.ShopID)
+		if updateErr != nil {
+			return nil, false, updateErr
+		}
+		if commandTag.RowsAffected() != 1 {
+			return nil, false, errors.Validation("coupon_invalid", "الكوبون لم يعد صالحاً أو تجاوز حد الاستخدام")
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// Keep the live POS shift totals in sync immediately after the sale.
@@ -303,7 +378,8 @@ func (r *Repository) CreateOrder(ctx context.Context, order *Order, decrementSto
 		r.RefreshShiftMetrics(ctx, *order.PosShiftID)
 	}
 
-	return r.FindByID(ctx, order.ID)
+	created, err := r.FindByID(ctx, order.ID)
+	return created, false, err
 }
 
 // UpdateStatus updates order status and timestamps.
@@ -384,29 +460,13 @@ func (r *Repository) CourierUpdate(ctx context.Context, id string, status *Order
 }
 
 // GetProductForOrder returns product details used when building an order.
-func (r *Repository) GetProductForOrder(ctx context.Context, productID, shopID string) (*struct {
-	ID         string
-	Name       string
-	Price      float64
-	Stock      int
-	TrackStock bool
-	IsActive   bool
-	ShopID     string
-}, error) {
-	var p struct {
-		ID         string
-		Name       string
-		Price      float64
-		Stock      int
-		TrackStock bool
-		IsActive   bool
-		ShopID     string
-	}
+func (r *Repository) GetProductForOrder(ctx context.Context, productID, shopID string) (*OrderProduct, error) {
+	var p OrderProduct
 	row := r.pool.QueryRow(ctx,
-		`SELECT id, name, price, stock, track_stock, is_active, shop_id FROM products WHERE id = $1 AND shop_id = $2`,
+		`SELECT id, name, price, stock, track_stock, is_active, app_active, shop_id FROM products WHERE id = $1 AND shop_id = $2`,
 		productID, shopID,
 	)
-	err := row.Scan(&p.ID, &p.Name, &p.Price, &p.Stock, &p.TrackStock, &p.IsActive, &p.ShopID)
+	err := row.Scan(&p.ID, &p.Name, &p.Price, &p.Stock, &p.TrackStock, &p.IsActive, &p.AppActive, &p.ShopID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
@@ -447,6 +507,7 @@ const selectOrder = "SELECT " + orderColumns + " FROM orders o"
 
 func scanOrder(row pgx.Row) (*Order, error) {
 	var o Order
+	var userID sql.NullString
 	var couponCode, paymentMethod, paymentStatus, notes, customerPhone, deliveryAddressManual, deliveryNote, customerNote, customerID, courierID, source sql.NullString
 	var discount sql.NullFloat64
 	var deliveryLat, deliveryLng sql.NullFloat64
@@ -455,7 +516,7 @@ func scanOrder(row pgx.Row) (*Order, error) {
 	err := row.Scan(
 		&o.ID, &o.Total, &discount, &couponCode, &o.Status, &paymentMethod, &paymentStatus, &notes, &customerPhone,
 		&deliveryAddressManual, &deliveryLat, &deliveryLng, &deliveryNote, &customerNote,
-		&o.UserID, &o.ShopID, &customerID, &courierID, &handedAt, &codAt, &deliveredAt, &source,
+		&userID, &o.ShopID, &customerID, &courierID, &handedAt, &codAt, &deliveredAt, &source,
 		&o.CreatedAt, &o.UpdatedAt,
 	)
 	if err != nil {
@@ -466,6 +527,7 @@ func scanOrder(row pgx.Row) (*Order, error) {
 	}
 
 	o.PaymentMethod = nullStringPtr(paymentMethod)
+	o.UserID = userID.String
 	o.Discount = discount.Float64
 	o.CouponCode = nullStringPtr(couponCode)
 	o.PaymentStatus = nullStringPtr(paymentStatus)

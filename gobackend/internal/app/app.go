@@ -11,17 +11,20 @@ import (
 	"time"
 
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/config"
-	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/analytics"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/accounting"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/analytics"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/apps"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/audit"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/auth"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/bookings"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/breach"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/cartevent"
-	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/coupons"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/chat"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/consent"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/coupons"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/customers"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/dashboard"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/dsr"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/feedback"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/finance"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/gallery"
@@ -39,18 +42,15 @@ import (
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/productcategories"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/products"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/publicinbox"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/reports"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/reservation"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/reviews"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/search"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/seasonaloffers"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/shopimagemap"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/shops"
-	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/support"
-"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/consent"
-"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/dsr"
-"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/breach"
-"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/reports"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/subscriptions"
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/support"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/users"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/cache"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/compression"
@@ -73,56 +73,56 @@ import (
 
 // App ties together the Fiber HTTP server, dependencies, and middleware.
 type App struct {
-	StartedAt             time.Time
-	Config                *config.Config
-	Fiber                 *fiber.App
-	DB                    *db.Pool
-	Redis                 *redis.Client
-	Jobs                  *jobs.Client
-	Metrics               *telemetry.Metrics
-	Logger                *zap.Logger
-	auditHandler         *audit.Handler
-	authHandler           *auth.Handler
-	usersHandler          *users.Handler
-	shopsHandler          *shops.Handler
-	productsHandler       *products.Handler
-	ordersHandler         *orders.Handler
-	mediaHandler          *media.Handler
-	offersHandler         *offers.Handler
-	couponsHandler        *coupons.Handler
-	notificationHandler   *notification.Handler
-	analyticsHandler      *analytics.Handler
-	hrHandler             *hr.Handler
-	reservationHandler    *reservation.Handler
-	searchHandler         *search.Handler
-	chatHandler           *chat.Handler
-	invoiceHandler        *invoice.Handler
-	accountingHandler     *accounting.Handler
-	supportHandler        *support.Handler
-	customersHandler      *customers.Handler
-	galleryHandler        *gallery.Handler
-	feedbackHandler       *feedback.Handler
-	publicInboxHandler    *publicinbox.Handler
-	financeHandler        *finance.Handler
-	reviewsHandler        *reviews.Handler
-	seasonalOffersHandler *seasonaloffers.Handler
-	mapHandler            *mapdomain.Handler
-	builderHandler        *shops.BuilderHandler
-	bookingsHandler       *bookings.Handler
-	cartEventHandler      *cartevent.Handler
-	measurementHandler    *measurement.Handler
-	appsHandler           *apps.Handler
-	shopImageMapHandler   *shopimagemap.Handler
-	portalHandler         *portal.Handler
-	dashboardHandler      *dashboard.Handler
-	posHandler            *pos.Handler
+	StartedAt                time.Time
+	Config                   *config.Config
+	Fiber                    *fiber.App
+	DB                       *db.Pool
+	Redis                    *redis.Client
+	Jobs                     *jobs.Client
+	Metrics                  *telemetry.Metrics
+	Logger                   *zap.Logger
+	auditHandler             *audit.Handler
+	authHandler              *auth.Handler
+	usersHandler             *users.Handler
+	shopsHandler             *shops.Handler
+	productsHandler          *products.Handler
+	ordersHandler            *orders.Handler
+	mediaHandler             *media.Handler
+	offersHandler            *offers.Handler
+	couponsHandler           *coupons.Handler
+	notificationHandler      *notification.Handler
+	analyticsHandler         *analytics.Handler
+	hrHandler                *hr.Handler
+	reservationHandler       *reservation.Handler
+	searchHandler            *search.Handler
+	chatHandler              *chat.Handler
+	invoiceHandler           *invoice.Handler
+	accountingHandler        *accounting.Handler
+	supportHandler           *support.Handler
+	customersHandler         *customers.Handler
+	galleryHandler           *gallery.Handler
+	feedbackHandler          *feedback.Handler
+	publicInboxHandler       *publicinbox.Handler
+	financeHandler           *finance.Handler
+	reviewsHandler           *reviews.Handler
+	seasonalOffersHandler    *seasonaloffers.Handler
+	mapHandler               *mapdomain.Handler
+	builderHandler           *shops.BuilderHandler
+	bookingsHandler          *bookings.Handler
+	cartEventHandler         *cartevent.Handler
+	measurementHandler       *measurement.Handler
+	appsHandler              *apps.Handler
+	shopImageMapHandler      *shopimagemap.Handler
+	portalHandler            *portal.Handler
+	dashboardHandler         *dashboard.Handler
+	posHandler               *pos.Handler
 	productCategoriesHandler *productcategories.Handler
-consentHandler          *consent.Handler
-dsrHandler              *dsr.Handler
-breachHandler           *breach.Handler
-reportsHandler          *reports.Handler
-	subscriptionsHandler    *subscriptions.Handler
-	compressionService    *compression.Service
+	consentHandler           *consent.Handler
+	dsrHandler               *dsr.Handler
+	breachHandler            *breach.Handler
+	reportsHandler           *reports.Handler
+	subscriptionsHandler     *subscriptions.Handler
+	compressionService       *compression.Service
 }
 
 // New creates a fully wired App.
@@ -184,47 +184,47 @@ func New(cfg *config.Config) (*App, error) {
 	}
 
 	var (
-		authHandler           *auth.Handler
-		auditHandler          *audit.Handler
-		usersHandler          *users.Handler
-		shopsHandler          *shops.Handler
-		productsHandler       *products.Handler
-		ordersHandler         *orders.Handler
-		mediaHandler          *media.Handler
-		offersHandler         *offers.Handler
-		couponsHandler        *coupons.Handler
-		notificationHandler   *notification.Handler
-		analyticsHandler      *analytics.Handler
-		hrHandler             *hr.Handler
-		reservationHandler    *reservation.Handler
-		searchHandler         *search.Handler
-		chatHandler           *chat.Handler
-		invoiceHandler        *invoice.Handler
-		accountingHandler     *accounting.Handler
-		supportHandler        *support.Handler
-		customersHandler      *customers.Handler
-		galleryHandler        *gallery.Handler
-		feedbackHandler       *feedback.Handler
-		publicInboxHandler    *publicinbox.Handler
-		financeHandler        *finance.Handler
-		reviewsHandler        *reviews.Handler
-		seasonalOffersHandler *seasonaloffers.Handler
-		mapHandler            *mapdomain.Handler
-		builderHandler        *shops.BuilderHandler
-		bookingsHandler       *bookings.Handler
-		cartEventHandler      *cartevent.Handler
-		measurementHandler    *measurement.Handler
-		appsHandler           *apps.Handler
-		shopImageMapHandler   *shopimagemap.Handler
-		portalHandler         *portal.Handler
-		dashboardHandler      *dashboard.Handler
-		posHandler            *pos.Handler
+		authHandler              *auth.Handler
+		auditHandler             *audit.Handler
+		usersHandler             *users.Handler
+		shopsHandler             *shops.Handler
+		productsHandler          *products.Handler
+		ordersHandler            *orders.Handler
+		mediaHandler             *media.Handler
+		offersHandler            *offers.Handler
+		couponsHandler           *coupons.Handler
+		notificationHandler      *notification.Handler
+		analyticsHandler         *analytics.Handler
+		hrHandler                *hr.Handler
+		reservationHandler       *reservation.Handler
+		searchHandler            *search.Handler
+		chatHandler              *chat.Handler
+		invoiceHandler           *invoice.Handler
+		accountingHandler        *accounting.Handler
+		supportHandler           *support.Handler
+		customersHandler         *customers.Handler
+		galleryHandler           *gallery.Handler
+		feedbackHandler          *feedback.Handler
+		publicInboxHandler       *publicinbox.Handler
+		financeHandler           *finance.Handler
+		reviewsHandler           *reviews.Handler
+		seasonalOffersHandler    *seasonaloffers.Handler
+		mapHandler               *mapdomain.Handler
+		builderHandler           *shops.BuilderHandler
+		bookingsHandler          *bookings.Handler
+		cartEventHandler         *cartevent.Handler
+		measurementHandler       *measurement.Handler
+		appsHandler              *apps.Handler
+		shopImageMapHandler      *shopimagemap.Handler
+		portalHandler            *portal.Handler
+		dashboardHandler         *dashboard.Handler
+		posHandler               *pos.Handler
 		productCategoriesHandler *productcategories.Handler
-consentHandler          *consent.Handler
-dsrHandler              *dsr.Handler
-breachHandler           *breach.Handler
-reportsHandler          *reports.Handler
-subscriptionsHandler    *subscriptions.Handler
+		consentHandler           *consent.Handler
+		dsrHandler               *dsr.Handler
+		breachHandler            *breach.Handler
+		reportsHandler           *reports.Handler
+		subscriptionsHandler     *subscriptions.Handler
 	)
 	var compressionService *compression.Service
 	if pool != nil {
@@ -251,14 +251,14 @@ subscriptionsHandler    *subscriptions.Handler
 			cfg.Auth.RefreshGrace)
 		authSvc := auth.NewService(cfg, authRepo, tokenService, lockoutMgr, appMailer, jobsClient, sessionStore)
 		cookieCfg := auth.AuthCookieConfig{
-			Name:     cfg.Auth.CookieName,
+			Name: cfg.Auth.CookieName,
 			// Short-lived access token cookie: with this set the frontend no
 			// longer needs localStorage for auth (HttpOnly + Secure + Lax).
 			AccessCookieName: cfg.Auth.AccessCookieName,
-			Domain:   cfg.Auth.CookieDomain,
-			MaxAge:   cfg.Auth.CookieMaxAge,
-			Secure:   cfg.IsProduction(),
-			SameSite: "Lax",
+			Domain:           cfg.Auth.CookieDomain,
+			MaxAge:           cfg.Auth.CookieMaxAge,
+			Secure:           cfg.IsProduction(),
+			SameSite:         "Lax",
 		}
 
 		// Initialize audit service before auth handler
@@ -353,24 +353,24 @@ subscriptionsHandler    *subscriptions.Handler
 		supportSvc := support.NewService(supportRepo)
 		supportHandler = support.NewHandler(supportSvc, cfg)
 
-	// Compliance domains
-	consentRepo := consent.NewRepository(pool)
-	consentSvc := consent.NewService(consentRepo)
-	consentHandler = consent.NewHandler(consentSvc, cfg)
+		// Compliance domains
+		consentRepo := consent.NewRepository(pool)
+		consentSvc := consent.NewService(consentRepo)
+		consentHandler = consent.NewHandler(consentSvc, cfg)
 
-	dsrRepo := dsr.NewRepository(pool)
-	dsrSvc := dsr.NewService(dsrRepo)
-	dsrHandler = dsr.NewHandler(dsrSvc, cfg)
+		dsrRepo := dsr.NewRepository(pool)
+		dsrSvc := dsr.NewService(dsrRepo)
+		dsrHandler = dsr.NewHandler(dsrSvc, cfg)
 
-	breachRepo := breach.NewRepository(pool)
-	breachSvc := breach.NewService(breachRepo)
-	breachHandler = breach.NewHandler(breachSvc, cfg)
+		breachRepo := breach.NewRepository(pool)
+		breachSvc := breach.NewService(breachRepo)
+		breachHandler = breach.NewHandler(breachSvc, cfg)
 
-	reportsRepo := reports.NewRepository(pool)
-	reportsSvc := reports.NewService(reportsRepo)
-	reportsHandler = reports.NewHandler(reportsSvc, cfg)
+		reportsRepo := reports.NewRepository(pool)
+		reportsSvc := reports.NewService(reportsRepo)
+		reportsHandler = reports.NewHandler(reportsSvc, cfg)
 
-	// Initialize customers service
+		// Initialize customers service
 		customersRepo := customers.NewRepository(pool)
 		customersSvc := customers.NewService(customersRepo)
 		customersHandler = customers.NewHandler(customersSvc, cfg)
@@ -480,56 +480,56 @@ subscriptionsHandler    *subscriptions.Handler
 	f := fiber.New(appCfg)
 
 	a := &App{
-		StartedAt:             time.Now().UTC(),
-		Config:                cfg,
-		Fiber:                 f,
-		DB:                    pool,
-		Redis:                 redisClient,
-		Jobs:                  jobsClient,
-		Metrics:               metrics,
-		Logger:                log,
-		auditHandler:          auditHandler,
-		authHandler:           authHandler,
-		usersHandler:          usersHandler,
-		shopsHandler:          shopsHandler,
-		productsHandler:       productsHandler,
-		ordersHandler:         ordersHandler,
-		mediaHandler:          mediaHandler,
-		offersHandler:         offersHandler,
-		couponsHandler:        couponsHandler,
-		notificationHandler:   notificationHandler,
-		analyticsHandler:      analyticsHandler,
-		hrHandler:             hrHandler,
-		reservationHandler:    reservationHandler,
-		searchHandler:         searchHandler,
-		chatHandler:           chatHandler,
-		invoiceHandler:        invoiceHandler,
-		accountingHandler:     accountingHandler,
-		supportHandler:        supportHandler,
-		customersHandler:      customersHandler,
-		galleryHandler:        galleryHandler,
-		feedbackHandler:       feedbackHandler,
-		publicInboxHandler:    publicInboxHandler,
-		reviewsHandler:        reviewsHandler,
-		seasonalOffersHandler: seasonalOffersHandler,
-		mapHandler:            mapHandler,
-		builderHandler:        builderHandler,
-		bookingsHandler:       bookingsHandler,
-		cartEventHandler:      cartEventHandler,
-		measurementHandler:    measurementHandler,
-		appsHandler:           appsHandler,
-		shopImageMapHandler:   shopImageMapHandler,
-		portalHandler:         portalHandler,
-		financeHandler:        financeHandler,
-		dashboardHandler:      dashboardHandler,
-		posHandler:            posHandler,
+		StartedAt:                time.Now().UTC(),
+		Config:                   cfg,
+		Fiber:                    f,
+		DB:                       pool,
+		Redis:                    redisClient,
+		Jobs:                     jobsClient,
+		Metrics:                  metrics,
+		Logger:                   log,
+		auditHandler:             auditHandler,
+		authHandler:              authHandler,
+		usersHandler:             usersHandler,
+		shopsHandler:             shopsHandler,
+		productsHandler:          productsHandler,
+		ordersHandler:            ordersHandler,
+		mediaHandler:             mediaHandler,
+		offersHandler:            offersHandler,
+		couponsHandler:           couponsHandler,
+		notificationHandler:      notificationHandler,
+		analyticsHandler:         analyticsHandler,
+		hrHandler:                hrHandler,
+		reservationHandler:       reservationHandler,
+		searchHandler:            searchHandler,
+		chatHandler:              chatHandler,
+		invoiceHandler:           invoiceHandler,
+		accountingHandler:        accountingHandler,
+		supportHandler:           supportHandler,
+		customersHandler:         customersHandler,
+		galleryHandler:           galleryHandler,
+		feedbackHandler:          feedbackHandler,
+		publicInboxHandler:       publicInboxHandler,
+		reviewsHandler:           reviewsHandler,
+		seasonalOffersHandler:    seasonalOffersHandler,
+		mapHandler:               mapHandler,
+		builderHandler:           builderHandler,
+		bookingsHandler:          bookingsHandler,
+		cartEventHandler:         cartEventHandler,
+		measurementHandler:       measurementHandler,
+		appsHandler:              appsHandler,
+		shopImageMapHandler:      shopImageMapHandler,
+		portalHandler:            portalHandler,
+		financeHandler:           financeHandler,
+		dashboardHandler:         dashboardHandler,
+		posHandler:               posHandler,
 		productCategoriesHandler: productCategoriesHandler,
-		consentHandler:        consentHandler,
-		dsrHandler:            dsrHandler,
-		breachHandler:         breachHandler,
-		reportsHandler:        reportsHandler,
-		subscriptionsHandler:   subscriptionsHandler,
-		compressionService:    compressionService,
+		consentHandler:           consentHandler,
+		dsrHandler:               dsrHandler,
+		breachHandler:            breachHandler,
+		reportsHandler:           reportsHandler,
+		subscriptionsHandler:     subscriptionsHandler,
+		compressionService:       compressionService,
 	}
 
 	a.registerMiddleware(cfg, rateLimiter, idempotencyStore)
@@ -583,7 +583,7 @@ func (a *App) registerMiddleware(cfg *config.Config, rateLimiter *middleware.Rat
 
 func (a *App) registerRoutes() {
 	// Monitoring routes (outside the /api/v1 prefix).
-	h := health.NewHandler(a.DB, a.Redis, a.Logger)
+	h := health.NewHandler(a.DB, a.Redis, a.Logger, a.Config.App.Version, a.Config.App.Commit)
 	h.RegisterRoutes(a.Fiber)
 
 	// Prometheus metrics endpoint. In production this is guarded: a
@@ -829,43 +829,43 @@ func (a *App) metricsHandler() fiber.Handler {
 
 func (a *App) statusHandler(c *fiber.Ctx) error {
 	modules := fiber.Map{
-		"analytics":      a.analyticsHandler != nil,
-		"apps":           a.appsHandler != nil,
-		"auth":           a.authHandler != nil,
-		"bookings":       a.bookingsHandler != nil,
-		"cartEvents":     a.cartEventHandler != nil,
-		"chat":           a.chatHandler != nil,
-		"customers":      a.customersHandler != nil,
-		"dashboard":       a.dashboardHandler != nil,
-		"feedback":       a.feedbackHandler != nil,
-		"finance":         a.financeHandler != nil,
-		"gallery":        a.galleryHandler != nil,
-		"hr":             a.hrHandler != nil,
-		"invoice":        a.invoiceHandler != nil,
-		"accounting":     a.accountingHandler != nil,
-		"map":            a.mapHandler != nil,
-		"media":          a.mediaHandler != nil,
-		"measurement":    a.measurementHandler != nil,
-		"notification":   a.notificationHandler != nil,
-		"offers":         a.offersHandler != nil,
-		"orders":         a.ordersHandler != nil,
-		"portal":         a.portalHandler != nil,
-		"pos":            a.posHandler != nil,
+		"analytics":         a.analyticsHandler != nil,
+		"apps":              a.appsHandler != nil,
+		"auth":              a.authHandler != nil,
+		"bookings":          a.bookingsHandler != nil,
+		"cartEvents":        a.cartEventHandler != nil,
+		"chat":              a.chatHandler != nil,
+		"customers":         a.customersHandler != nil,
+		"dashboard":         a.dashboardHandler != nil,
+		"feedback":          a.feedbackHandler != nil,
+		"finance":           a.financeHandler != nil,
+		"gallery":           a.galleryHandler != nil,
+		"hr":                a.hrHandler != nil,
+		"invoice":           a.invoiceHandler != nil,
+		"accounting":        a.accountingHandler != nil,
+		"map":               a.mapHandler != nil,
+		"media":             a.mediaHandler != nil,
+		"measurement":       a.measurementHandler != nil,
+		"notification":      a.notificationHandler != nil,
+		"offers":            a.offersHandler != nil,
+		"orders":            a.ordersHandler != nil,
+		"portal":            a.portalHandler != nil,
+		"pos":               a.posHandler != nil,
 		"productCategories": a.productCategoriesHandler != nil,
-		"products":       a.productsHandler != nil,
-		"reservation":    a.reservationHandler != nil,
-		"reviews":        a.reviewsHandler != nil,
-		"search":         a.searchHandler != nil,
-		"seasonalOffers": a.seasonalOffersHandler != nil,
-		"shopBuilder":    a.builderHandler != nil,
-		"shopImageMap":   a.shopImageMapHandler != nil,
-		"shops":          a.shopsHandler != nil,
-		"support":        a.supportHandler != nil,
-		"consent":        a.consentHandler != nil,
-		"dsr":            a.dsrHandler != nil,
-		"breach":         a.breachHandler != nil,
-		"reports":        a.reportsHandler != nil,
-		"users":          a.usersHandler != nil,
+		"products":          a.productsHandler != nil,
+		"reservation":       a.reservationHandler != nil,
+		"reviews":           a.reviewsHandler != nil,
+		"search":            a.searchHandler != nil,
+		"seasonalOffers":    a.seasonalOffersHandler != nil,
+		"shopBuilder":       a.builderHandler != nil,
+		"shopImageMap":      a.shopImageMapHandler != nil,
+		"shops":             a.shopsHandler != nil,
+		"support":           a.supportHandler != nil,
+		"consent":           a.consentHandler != nil,
+		"dsr":               a.dsrHandler != nil,
+		"breach":            a.breachHandler != nil,
+		"reports":           a.reportsHandler != nil,
+		"users":             a.usersHandler != nil,
 	}
 
 	return c.JSON(fiber.Map{
@@ -931,10 +931,10 @@ func (a *App) WaitForShutdown() {
 // latency for permanent misconfigurations.
 func waitForDatabase(ctx context.Context, cfg *config.Config, log *zap.Logger) (*db.Pool, error) {
 	const (
-		maxAttempts = 6
+		maxAttempts  = 6
 		initialDelay = 1 * time.Second
-		maxDelay    = 32 * time.Second
-		totalBudget = 60 * time.Second
+		maxDelay     = 32 * time.Second
+		totalBudget  = 60 * time.Second
 	)
 	baseCtx, cancel := context.WithTimeout(ctx, totalBudget)
 	defer cancel()

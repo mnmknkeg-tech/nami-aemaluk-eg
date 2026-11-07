@@ -24,7 +24,8 @@ import { sanitizeHtml } from '@/lib/sanitize';
 import { useCart } from '@/lib/cart';
 import type { Shop, Product } from '@/lib/services';
 import {
-  computeResponsiveNodeStyles,
+  computeWebsiteRootStyles,
+  computeThemeResponsiveNodeStyles,
   normalizeWebsiteTree,
   isLegacyProductCardNode,
   productGridClass,
@@ -67,7 +68,13 @@ interface BuilderWebsite {
   }>;
   components: Record<string, ComponentNode>;
   theme: {
-    colors: { primary: string; secondary?: string; accent?: string };
+    colors: {
+      primary: string;
+      secondary?: string;
+      accent?: string;
+      background?: string;
+      textPrimary?: string;
+    };
     typography?: { fontBody?: string; fontHeading?: string };
     radius?: { sm?: string; md?: string; lg?: string; full?: string };
   };
@@ -90,11 +97,7 @@ function getComputedStyles(
   theme: BuilderWebsite['theme'],
   viewport: ResponsiveViewport
 ): React.CSSProperties {
-  return computeResponsiveNodeStyles(
-    node,
-    viewport,
-    theme?.typography?.fontBody || 'Cairo, sans-serif'
-  );
+  return computeThemeResponsiveNodeStyles(node, viewport, theme?.typography);
 }
 
 // ─── NodeRenderer (recursive, stateful) ───────────────────────────────────────
@@ -1149,7 +1152,7 @@ export function BuilderTreeRenderer({ website, shop, products }: BuilderTreeRend
       <div
         ref={rootRef}
         className="merchant-site-builder"
-        style={{ direction, minHeight: '100vh' }}
+        style={computeWebsiteRootStyles(safeWebsite.theme, direction)}
       >
         <NodeRenderer nodeId={activePage.rootNodeId} website={safeWebsite} />
       </div>

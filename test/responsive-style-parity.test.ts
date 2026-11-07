@@ -1,5 +1,7 @@
 import {
+  computeThemeResponsiveNodeStyles,
   computeResponsiveNodeStyles,
+  computeWebsiteRootStyles,
   resolveThemeFontFamily,
   mergeResponsiveStyles,
   stylePropertiesToCss,
@@ -125,6 +127,17 @@ describe('shared responsive style merge used by dashboard, shared public, and ma
         mobile: { gridColumns: 'repeat(2, minmax(0, 1fr))' },
       },
     } as const;
+    const customizedFlexNode = {
+      id: 'merchant-hero-layout',
+      type: 'container',
+      category: 'layout',
+      parentId: null,
+      props: {},
+      styles: {
+        desktop: { display: 'flex', flexDirection: 'row', paddingLeft: '32px', fontSize: '24px' },
+        mobile: { flexDirection: 'row', paddingLeft: '8px', gap: '6px', fontSize: '18px' },
+      },
+    } as const;
 
     expect(computeResponsiveNodeStyles(flexNode, 'mobile')).toMatchObject({
       flexDirection: 'column',
@@ -138,6 +151,23 @@ describe('shared responsive style merge used by dashboard, shared public, and ma
     expect(computeResponsiveNodeStyles(overriddenGrid, 'mobile').gridTemplateColumns).toBe(
       'repeat(2, minmax(0, 1fr))'
     );
+    expect(computeResponsiveNodeStyles(customizedFlexNode, 'mobile')).toMatchObject({
+      flexDirection: 'row',
+      paddingLeft: '8px',
+      gap: '6px',
+      fontSize: '18px',
+    });
+    expect(
+      computeThemeResponsiveNodeStyles(customizedFlexNode, 'mobile', {
+        fontHeading: 'Tajawal, sans-serif',
+        fontBody: 'Cairo, sans-serif',
+      })
+    ).toMatchObject({
+      flexDirection: 'row',
+      paddingLeft: '8px',
+      gap: '6px',
+      fontSize: '18px',
+    });
   });
 });
 
@@ -187,5 +217,55 @@ describe('theme typography font selection', () => {
   });
   it('uses a safe default when typography settings are missing', () => {
     expect(resolveThemeFontFamily({ type: 'heading' }, {})).toBe('Cairo, sans-serif');
+  });
+});
+
+describe('theme-aware responsive style parity', () => {
+  const node = {
+    id: 'hero-title',
+    type: 'heading',
+    category: 'typography',
+    props: { tag: 'h1' },
+    styles: {
+      desktop: {
+        width: '680px',
+        fontSize: '48px',
+        padding: '24px',
+        backgroundColor: 'linear-gradient(90deg, #123, #456)',
+      },
+      mobile: { width: '100%', fontSize: '24px' },
+    },
+  } as const;
+  const typography = {
+    fontHeading: 'Tajawal, sans-serif',
+    fontBody: 'Cairo, sans-serif',
+  };
+
+  it.each(['desktop', 'tablet', 'mobile'] as const)(
+    'uses the same responsive styles and heading font for %s across hosts',
+    (viewport) => {
+      const expected = computeResponsiveNodeStyles(
+        node,
+        viewport,
+        resolveThemeFontFamily(node, typography)
+      );
+
+      expect(computeThemeResponsiveNodeStyles(node, viewport, typography)).toEqual(expected);
+    }
+  );
+
+  it('shares theme background, typography, direction and viewport baseline between public hosts', () => {
+    const theme = {
+      colors: { background: '#faf7f0', textPrimary: '#241a17' },
+      typography: { fontBody: 'Cairo, sans-serif' },
+    };
+
+    expect(computeWebsiteRootStyles(theme, 'rtl')).toEqual({
+      backgroundColor: '#faf7f0',
+      color: '#241a17',
+      fontFamily: 'Cairo, sans-serif',
+      direction: 'rtl',
+      minHeight: '100vh',
+    });
   });
 });

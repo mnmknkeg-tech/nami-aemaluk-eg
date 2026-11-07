@@ -43,6 +43,7 @@ import type {
   ViewportBreakpoint,
   Website,
 } from './types';
+import { resolveWebsiteLinkDestination } from './linkDestinations';
 import { formatPrice, resolveTheme, withAlpha } from './theme';
 import {
   productGridClass as productGridClassName,
@@ -52,8 +53,8 @@ import {
 } from './productCard';
 import { CustomCodeFrame } from './CustomCodeFrame';
 import { PublishedProductCard } from './PublishedProductCard';
-import { computeResponsiveNodeStyles, resolveThemeFontFamily } from './responsiveStyles';
-import { resolveHeroContent } from './heroCompatibility';
+import { computeThemeResponsiveNodeStyles } from './responsiveStyles';
+import { isCompleteChildBasedHero, resolveHeroContent } from './heroCompatibility';
 import { CartIcon } from './CartIcon';
 import { isCartVisible, resolveCartIconType } from './cartPolicy';
 
@@ -86,6 +87,8 @@ export interface NodeViewContext {
   ) => void;
   /** Current unified-cart item count (for badges on mobile footer / cart buttons). */
   cartCount?: number;
+  /** Prevents checkout and other real-world actions in an isolated template preview. */
+  previewMode?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -103,12 +106,61 @@ function findPage(website: Website, matcher: (p: BuilderPage) => boolean): Build
 function handleInteraction(e: React.MouseEvent, node: ComponentNode, ctx: NodeViewContext) {
   const { website, activePage, onNavigatePage } = ctx;
 
+  const destination =
+    node.props.destination ||
+    node.destination ||
+    resolveWebsiteLinkDestination(website, {
+      ...node.props,
+      targetPageId: node.props.targetPageId,
+    });
+  if (destination?.type === 'none') return;
+  if (destination) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (destination.type === 'external' || destination.type === 'whatsapp') {
+      if (!ctx.previewMode) {
+        window.open(destination.url, '_blank', 'noopener,noreferrer');
+      }
+      return;
+    }
+    if (destination.type === 'order') {
+      ctx.onOpenCart?.();
+      return;
+    }
+    const targetPage = destination.pageId
+      ? findPage(website, (page) => page.id === destination.pageId)
+      : undefined;
+    if (!targetPage) return;
+    if (targetPage.id !== activePage.id) onNavigatePage(targetPage.id);
+    if (destination.type === 'section' || destination.type === 'booking') {
+      const scrollToSection = () => {
+        if (!destination.sectionId) return;
+        document
+          .getElementById(destination.sectionId)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+      if (targetPage.id === activePage.id) scrollToSection();
+      else window.setTimeout(scrollToSection, 0);
+    }
+    return;
+  }
+
   const url = (node.props.url ?? node.props.href ?? node.props.link ?? '').trim();
   const pageId = (node.props.pageId ?? node.props.targetPage ?? '').trim();
   const text = (node.props.text ?? node.props.title ?? '').trim();
 
   // Subscription modal trigger for any subscription / pricing button
   if (
+    ctx.previewMode &&
+    (/^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(url) || /whatsapp|wa\.me|checkout|subscribe/i.test(url))
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
+
+  if (
+    !ctx.previewMode &&
     ctx.onSubscribePlan &&
     (/اشتراك|باقة|اختر هذه الباقة|عضوية/.test(text) ||
       node.id.includes('tmpl_p1_btn') ||
@@ -182,67 +234,13 @@ function handleInteraction(e: React.MouseEvent, node: ComponentNode, ctx: NodeVi
       url.startsWith('tel:') ||
       url.startsWith('mailto:')
     ) {
+      if (ctx.previewMode) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       window.open(url, '_blank', 'noopener,noreferrer');
       return;
-    }
-  }
-
-  // 3. Fallback: resolve by link label against page names / Arabic keywords
-  if (text) {
-    const byName = findPage(website, (p) => p.name.trim() === text);
-    if (byName) return go(byName);
-
-    const lower = text.toLowerCase();
-    const keywordMap: Array<[RegExp, (p: BuilderPage) => boolean]> = [
-      [
-        /رئيسية|المجد/,
-        (p) => p.slug === 'home' || p.id === 'page_home' || !!p.metadata?.isHomePage,
-      ],
-      [
-        /أسطول|سيارات|معرض|موديل/,
-        (p) => p.slug === 'fleet' || p.id.includes('fleet') || p.name.includes('أسطول'),
-      ],
-      [
-        /من نحن|قصتنا|رؤيتنا|عن الشركة/,
-        (p) => p.slug === 'about' || p.id === 'page_about' || p.name.includes('من نحن'),
-      ],
-      [
-        /فريق|القيادة|الخبراء/,
-        (p) => p.slug === 'team' || p.id === 'page_team' || p.name.includes('فريق'),
-      ],
-      [
-        /فروع|صالات|الموقع/,
-        (p) => p.slug === 'branches' || p.id === 'page_branches' || p.name.includes('فروع'),
-      ],
-      [
-        /اعتماد|جوائز|شهادات|جودة/,
-        (p) =>
-          p.slug === 'certifications' ||
-          p.id === 'page_certifications' ||
-          p.name.includes('اعتمادات'),
-      ],
-      [
-        /تواصل|حجز|اتصل|تجربة|فحص/,
-        (p) => p.slug === 'contact' || p.id.includes('contact') || p.name.includes('تواصل'),
-      ],
-      [
-        /دخول|تسجيل الدخول|حسابي|عضوية|تسجيل دخول/,
-        (p) =>
-          p.slug === 'login' ||
-          p.id.includes('login') ||
-          p.name.includes('تسجيل الدخول') ||
-          p.slug === 'auth',
-      ],
-      [
-        /إنشاء حساب|تسجيل جديد|عضو جديد|حساب جديد/,
-        (p) => p.slug === 'register' || p.id.includes('register') || p.name.includes('إنشاء حساب'),
-      ],
-    ];
-    for (const [re, match] of keywordMap) {
-      if (re.test(lower)) {
-        const page = findPage(website, match);
-        if (page) return go(page);
-      }
     }
   }
 }
@@ -680,11 +678,11 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
   const [isMobileMenuDrawerOpen, setIsMobileMenuDrawerOpen] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
 
-  const isMobile = viewport === 'mobile';
+  const isCompactHeader = viewport !== 'desktop';
 
   // Compute responsive styles merged by current breakpoint (faithful port).
   const getComputedStyles = (): React.CSSProperties =>
-    computeResponsiveNodeStyles(node, viewport, resolveThemeFontFamily(node, theme.typography));
+    computeThemeResponsiveNodeStyles(node, viewport, theme.typography);
 
   const interactiveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -797,7 +795,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
 
       return (
         <header id={node.id} style={getComputedStyles()} className="relative transition-all">
-          {isMobile ? (
+          {isCompactHeader ? (
             <div className="w-full flex items-center justify-between gap-3 px-3 py-2.5">
               <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                 {mobileBrandNode ? (
@@ -1059,12 +1057,11 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
               )}
             </div>
           ) : (
-            <div className="w-full relative">
-              {renderChildren()}
+            <div className="flex w-full min-w-0 items-center gap-2">
+              <div className="min-w-0 flex-1">{renderChildren()}</div>
 
-              {/* Desktop Actions Bar: WhatsApp + Phone + Cart + Login/Account */}
               {(showCart || showLogin || showWhatsapp || showPhone) && (
-                <div className="absolute ltr:right-4 rtl:left-4 sm:ltr:right-6 sm:rtl:left-6 top-1/2 -translate-y-1/2 flex items-center gap-2 z-20 pointer-events-auto">
+                <div className="z-20 flex shrink-0 items-center gap-2 pointer-events-auto">
                   {showWhatsapp && (
                     <a
                       href={`https://wa.me/${whatsappNumber}`}
@@ -1212,7 +1209,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
           >
             <div
               style={computed}
-              onClick={(e) => setOpenDropdown(!openDropdown)}
+              onClick={() => setOpenDropdown(!openDropdown)}
               className={`transition-all flex items-center gap-1.5 cursor-pointer ${isNavNode ? 'hover:opacity-80' : ''}`}
             >
               <span>{text}</span>
@@ -1240,7 +1237,17 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                         setOpenDropdown(false);
                         handleInteraction(
                           e,
-                          { ...node, props: { ...node.props, url: item.url, pageId: item.pageId } },
+                          {
+                            ...node,
+                            destination: item.destination,
+                            props: {
+                              ...node.props,
+                              url: item.url,
+                              pageId: item.pageId,
+                              href: item.href,
+                              linkUrl: item.linkUrl,
+                            },
+                          },
                           ctx
                         );
                       }}
@@ -1313,6 +1320,9 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
           >
             {items.map((item: string, index: number) => {
               const trimmed = item.trim();
+              const navigationItem = node.props.navigationItems?.find(
+                (candidate: { label?: string }) => candidate.label?.trim() === trimmed
+              );
               const isItemActive =
                 activePage.name.trim() === trimmed ||
                 (trimmed === 'الرئيسية' && activePage.slug === 'home');
@@ -1321,7 +1331,11 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleInteraction(e, { ...node, props: { ...node.props } }, ctx);
+                      handleInteraction(
+                        e,
+                        { ...node, destination: navigationItem?.destination },
+                        ctx
+                      );
                     }}
                     className={`transition-colors hover:opacity-80 cursor-pointer ${isItemActive ? 'font-bold' : ''}`}
                     style={isItemActive ? { color: theme.colors.primary } : undefined}
@@ -1351,9 +1365,6 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
     // ----------------------------------------------------------------- button
     case 'button': {
       const btnText = node.props.text || 'زر الإجراء';
-      const waHref = waLink(
-        btnText ? `مرحبًا، بخصوص: ${btnText}` : `مرحبًا، أريد الاستفسار عن منتجات ${shop.name}`
-      );
       const isHeaderCta =
         node.id === 'header_cta_btn' ||
         node.parentId === 'header_inner_container' ||
@@ -1437,15 +1448,17 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
               e.stopPropagation();
               // If the button has no resolvable page target, fall back to WhatsApp.
               const hasTarget =
+                node.destination ||
                 node.props.url ||
                 node.props.href ||
                 node.props.link ||
+                node.props.linkUrl ||
+                node.props.targetUrl ||
                 node.props.pageId ||
-                node.props.targetPage;
+                node.props.targetPage ||
+                node.props.targetPageId;
               if (hasTarget) {
                 handleInteraction(e, node, ctx);
-              } else if (waHref) {
-                window.open(waHref, '_blank', 'noopener,noreferrer');
               }
             }}
             className="transition-all flex items-center justify-center gap-2 hover:opacity-90 active:scale-98 cursor-pointer"
@@ -1955,6 +1968,14 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
       const heroStats = heroContent.stats;
       const primaryColor = theme.colors.primary;
 
+      if (isCompleteChildBasedHero(heroContent)) {
+        return (
+          <section id={node.id} style={getComputedStyles()} className="transition-all">
+            {renderChildren()}
+          </section>
+        );
+      }
+
       return (
         <section id={node.id} style={getComputedStyles()} className="transition-all">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-16">
@@ -2078,6 +2099,14 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
 
     // ------------------------------------------------------------------- grid
     case 'grid': {
+      if (node.category === 'layout') {
+        return (
+          <div id={node.id} style={getComputedStyles()} className="transition-all">
+            {renderChildren()}
+          </div>
+        );
+      }
+
       const itemsList = boundProducts;
       const primaryColor = theme.colors.primary;
 
@@ -2241,7 +2270,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
           .map((f: any) => `${f.label}: ${inputValues[f.name] || '-'}`)
           .join('\n');
         const href = waLink(`مرحبًا، أريد إرسال الطلب التالي:\n${summary}`);
-        if (href) window.open(href, '_blank', 'noopener,noreferrer');
+        if (href && !ctx.previewMode) window.open(href, '_blank', 'noopener,noreferrer');
         setFormSubmitted(true);
       };
 
@@ -3306,18 +3335,40 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                 {node.props.heading}
               </h4>
               <div className="flex flex-col gap-1.5 text-xs text-slate-400">
-                {node.props.links.map((link: string, i: number) => (
-                  <span
-                    key={i}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleInteraction(e, { ...node, props: { ...node.props, text: link } }, ctx);
-                    }}
-                    className="hover:text-white cursor-pointer transition-colors"
-                  >
-                    {link}
-                  </span>
-                ))}
+                {node.props.links.map((link: unknown, i: number) => {
+                  const linkRecord =
+                    link && typeof link === 'object' ? (link as Record<string, any>) : undefined;
+                  const label =
+                    typeof link === 'string'
+                      ? link
+                      : String(linkRecord?.label || linkRecord?.title || '');
+                  return (
+                    <span
+                      key={linkRecord?.id || `${label}-${i}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleInteraction(
+                          e,
+                          {
+                            ...node,
+                            destination: linkRecord?.destination,
+                            props: {
+                              ...node.props,
+                              text: label,
+                              url: linkRecord?.url,
+                              href: linkRecord?.href,
+                              pageId: linkRecord?.pageId,
+                            },
+                          },
+                          ctx
+                        );
+                      }}
+                      className="hover:text-white cursor-pointer transition-colors"
+                    >
+                      {label}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           )}

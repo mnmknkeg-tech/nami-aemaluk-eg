@@ -7,14 +7,11 @@ import {
   Minus,
   ShieldCheck,
   CheckCircle2,
-  Tag,
-  CreditCard,
   Globe2,
   Store,
   Layers,
 } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
-import { apiRequest } from '../../../../lib/api/client';
 
 export interface CartDrawerProps {
   contained?: boolean;
@@ -38,103 +35,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ contained = false }) => 
     isRtl,
   } = useBuilder();
 
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
-  const [couponError, setCouponError] = useState<string | null>(null);
-  const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutCompleted, setCheckoutCompleted] = useState(false);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
-  const [placedOrderNumber, setPlacedOrderNumber] = useState('');
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   if (!isCartOpen) return null;
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCouponError(null);
-    setCouponSuccess(null);
-
-    const code = couponCode.trim().toUpperCase();
-    if (!code) return;
-
-    if (code === 'ALMAJD10' || code === 'VIP10' || code === 'SALE10') {
-      setAppliedDiscount(0.1);
-      setCouponSuccess('تم تطبيق كود الخصم (10%) بنجاح!');
-    } else if (code === 'VIP20') {
-      setAppliedDiscount(0.2);
-      setCouponSuccess('تم تطبيق كود الخصم الحصري (20%) بنجاح!');
-    } else {
-      setCouponError('كود الخصم غير صحيح أو منتهي الصلاحية');
-    }
-  };
-
-  const discountAmount = cartTotal * appliedDiscount;
-  const subtotalAfterDiscount = cartTotal - discountAmount;
-  const vatAmount = subtotalAfterDiscount * 0.15;
-  const finalTotal = subtotalAfterDiscount + vatAmount;
-
-  const handleCheckoutSubmit = async () => {
-    if (cartItems.length === 0 || isCheckingOut) return;
-    setIsCheckingOut(true);
-    setCheckoutError(null);
-    try {
-      // The Builder preview used to create a fake localStorage order here.
-      // Resolve the authenticated merchant's real shop and use the same
-      // orders contract as the published storefront/POS.
-      const shop = await apiRequest<any>('/shops/me');
-      const shopId = shop?.id || shop?.data?.id;
-      if (!shopId) throw new Error('لا يوجد متجر مرتبط بحساب التاجر');
-      const phone = customerPhone.trim() || currentTenant.businessInfo?.phone || '';
-      const created = await apiRequest<any>('/orders', {
-        method: 'POST',
-        body: JSON.stringify({
-          shopId,
-          items: cartItems.map((item) => ({
-            productId: item.id,
-            quantity: item.quantity,
-          })),
-          customer: {
-            name: customerName.trim() || 'عميل الموقع',
-            phone,
-            address: customerAddress.trim() || 'استلام / توصيل سريع',
-          },
-          customerPhone: phone || undefined,
-          deliveryAddressManual: customerAddress.trim() || 'استلام / توصيل سريع',
-          paymentMethod: 'COD',
-          source: 'website',
-          total: Math.round(finalTotal),
-        }),
-      });
-      const orderId = created?.id || created?.orderNumber;
-      setPlacedOrderNumber(
-        `#${String(orderId || '')
-          .slice(0, 8)
-          .toUpperCase()}`
-      );
-      // This is only a local UI event; the persisted order and notification
-      // are created by the backend above.
-      window.dispatchEvent(new CustomEvent('ray_new_website_order', { detail: created }));
-      setIsCheckingOut(false);
-      setCheckoutCompleted(true);
-    } catch (e: any) {
-      setIsCheckingOut(false);
-      setCheckoutError(e?.message || 'تعذر إنشاء الطلب، حاول مرة أخرى');
-    }
+  const handleCheckoutSubmit = () => {
+    if (cartItems.length === 0) return;
+    setCheckoutCompleted(true);
   };
 
   const resetAndClose = () => {
     if (checkoutCompleted) {
       clearCart();
       setCheckoutCompleted(false);
-      setAppliedDiscount(0);
-      setCouponCode('');
-      setCustomerName('');
-      setCustomerPhone('');
-      setCustomerAddress('');
-      setCheckoutError(null);
     }
     setIsCartOpen(false);
   };
@@ -252,11 +165,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ contained = false }) => 
             <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-lg">
               <CheckCircle2 className="w-10 h-10" />
             </div>
-            <h4 className="text-xl font-black text-slate-900">تم تأكيد طلب الحجز والدفع بنجاح!</h4>
+            <h4 className="text-xl font-black text-slate-900">اكتملت معاينة السلة</h4>
             <p className="text-xs text-slate-600 max-w-xs leading-relaxed">
-              رقم المرجع: <strong>{placedOrderNumber || 'تم التسجيل'}</strong>
+              <strong>معاينة فقط</strong>
               <br />
-              تم حفظ الطلب وإرساله إلى لوحة تحكم التاجر بنجاح.
+              لم يتم إنشاء طلب حقيقي أو تنفيذ دفع أو تعديل المخزون.
             </p>
             <button
               onClick={resetAndClose}
@@ -357,39 +270,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ contained = false }) => 
         {/* Footer & Checkout (Only shown when items exist and not completed) */}
         {cartItems.length > 0 && !checkoutCompleted && (
           <div className="p-4 border-t border-slate-200 bg-slate-50/90 space-y-3 shrink-0">
-            {/* Coupon Code Form */}
-            <form onSubmit={handleApplyCoupon} className="flex gap-2">
-              <div className="relative flex-1">
-                <Tag className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="كود الخصم (جرب ALMAJD10)"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  className="w-full pl-3 pr-8 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:border-blue-600 uppercase font-mono"
-                />
-              </div>
-              <button
-                type="submit"
-                className="px-3 py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-              >
-                تطبيق
-              </button>
-            </form>
-
-            {couponSuccess && (
-              <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" />
-                {couponSuccess}
-              </p>
-            )}
-            {couponError && <p className="text-[11px] text-red-500 font-medium">{couponError}</p>}
-            {checkoutError && (
-              <p className="text-[11px] text-red-600 font-bold bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                {checkoutError}
-              </p>
-            )}
-
             {/* Calculations Breakdown */}
             <div className="space-y-1.5 text-xs pt-1 border-t border-slate-200/80">
               <div className="flex justify-between text-slate-600">
@@ -397,63 +277,29 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ contained = false }) => 
                 <span className="font-mono font-bold">{cartTotal.toLocaleString()} ج.م</span>
               </div>
 
-              {appliedDiscount > 0 && (
-                <div className="flex justify-between text-emerald-600 font-semibold">
-                  <span>الخصم ({appliedDiscount * 100}%):</span>
-                  <span className="font-mono">-{discountAmount.toLocaleString()} ج.م</span>
-                </div>
-              )}
-
-              <div className="flex justify-between text-slate-600">
-                <span>ضريبة القيمة المضافة (15%):</span>
-                <span className="font-mono">{vatAmount.toLocaleString()} ج.م</span>
-              </div>
-
               <div className="flex justify-between text-sm font-black text-slate-900 pt-1.5 border-t border-slate-200">
-                <span>المبلغ الإجمالي المستحق:</span>
+                <span>إجمالي المعاينة:</span>
                 <span className="font-mono text-blue-700 text-base">
-                  {Math.round(finalTotal).toLocaleString()} ج.م
+                  {Math.round(cartTotal).toLocaleString()} ج.م
                 </span>
               </div>
-            </div>
-
-            {/* Payment simulator methods */}
-            <div className="flex items-center justify-center gap-2 py-1 text-[10px] text-slate-500">
-              <span className="px-1.5 py-0.5 bg-white border border-slate-200 rounded font-semibold">
-                مدى Mada
-              </span>
-              <span className="px-1.5 py-0.5 bg-white border border-slate-200 rounded font-semibold">
-                Apple Pay
-              </span>
-              <span className="px-1.5 py-0.5 bg-white border border-slate-200 rounded font-semibold">
-                تمارا 4 دفعات
-              </span>
-              <span className="px-1.5 py-0.5 bg-white border border-slate-200 rounded font-semibold">
-                Visa / MC
-              </span>
+              <p className="text-[10px] text-slate-500">
+                الأسعار والخصومات والضرائب النهائية تُراجع عند الطلب من المتجر المنشور.
+              </p>
             </div>
 
             {/* Primary Action Button */}
             <button
               onClick={handleCheckoutSubmit}
-              disabled={isCheckingOut}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
             >
-              {isCheckingOut ? (
-                <span className="animate-pulse">جاري معالجة الطلب والدفع...</span>
-              ) : (
-                <>
-                  <CreditCard className="w-4 h-4" />
-                  <span>
-                    {cartMode === 'standalone'
-                      ? 'متابعة الدفع وحجز الطلب'
-                      : 'ترحيل الطلب للسلة الموحدة'}
-                  </span>
-                  <span className="font-mono font-normal opacity-80">
-                    ({Math.round(finalTotal).toLocaleString()} ج.م)
-                  </span>
-                </>
-              )}
+              <CheckCircle2 className="w-4 h-4" />
+              <span>
+                {cartMode === 'standalone' ? 'معاينة إتمام الطلب' : 'معاينة السلة الموحدة'}
+              </span>
+              <span className="font-mono font-normal opacity-80">
+                ({Math.round(cartTotal).toLocaleString()} ج.م)
+              </span>
             </button>
           </div>
         )}

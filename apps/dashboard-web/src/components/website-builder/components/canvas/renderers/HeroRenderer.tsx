@@ -1,14 +1,11 @@
 import React from 'react';
 import { BaseRendererProps } from './types';
 import { Sparkles, ArrowRight } from 'lucide-react';
-import { resolveHeroContent } from '@ray-eg/shared/builder/heroCompatibility';
 import {
-  sectionBadgeStyle,
-  sectionHeaderWrapClass,
-  sectionShellClass,
-  sectionSubtitleClass,
-  sectionTitleClass,
-} from '@ray-eg/shared/builder';
+  isCompleteChildBasedHero,
+  resolveHeroContent,
+} from '@ray-eg/shared/builder/heroCompatibility';
+import { sectionBadgeStyle, sectionShellClass, sectionSubtitleClass } from '@ray-eg/shared/builder';
 
 export const HeroRenderer: React.FC<BaseRendererProps> = ({
   node,
@@ -27,6 +24,22 @@ export const HeroRenderer: React.FC<BaseRendererProps> = ({
   const content = resolveHeroContent(node, website.components);
   const heroStats = content.stats;
   const primaryColor = website.theme?.colors?.primary || '#2563eb';
+  const hasCompleteChildContent = isCompleteChildBasedHero(content);
+
+  if (hasCompleteChildContent) {
+    return (
+      <section
+        id={node.id}
+        style={getComputedStyles()}
+        onClick={handleClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={`cursor-pointer transition-all ${outlineClass}`}
+      >
+        {renderChildren()}
+      </section>
+    );
+  }
 
   return (
     <section

@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
 import { BaseRendererProps } from './types';
-import { Menu, X, ShoppingBag, User, ArrowRight, MessageCircle, Phone } from 'lucide-react';
+import { Menu, X, User, ArrowRight, MessageCircle, Phone } from 'lucide-react';
 import { ComponentRenderer } from '../ComponentRenderer';
 import { runPreviewOnlyInteraction } from '../previewInteraction';
-import { CartIcon, isCartVisible, resolveCartIconType } from '@ray-eg/shared/builder';
+import {
+  CartIcon,
+  isCartVisible,
+  resolveCartIconType,
+  type WebsiteLinkDestination,
+} from '@ray-eg/shared/builder';
 
 export interface HeaderRendererProps extends BaseRendererProps {
   cartCount: number;
@@ -21,6 +26,7 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
   handleMouseEnter,
   handleMouseLeave,
   renderChildren,
+  handleInteraction,
   switchPage,
   activePageId,
   overrideViewport,
@@ -57,111 +63,29 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
   const phoneNumber = String(node.props.phoneNumber || '01000000000');
 
   const activePage = website.pages.find((p) => p.id === activePageId) || website.pages[0];
-
-  // Extract nav section links from bullet-separated paragraph (gen_nav_items / header_nav)
-  const navSectionLinks = (() => {
-    const anchors: Array<{ label: string; anchor: string }> = [];
-
-    // 1. Try to find bullet-separated nav node (e.g. gen_nav_items, nav_*)
-    const navNode = Object.values(website.components).find(
-      (c) =>
-        (c.id.includes('nav') || c.category === 'navigation') &&
-        c.type === 'paragraph' &&
-        typeof c.props.text === 'string' &&
-        c.props.text.includes('•')
-    );
-
-    const resolveAnchor = (label: string): string => {
-      const lower = label.toLowerCase();
-      // Try exact or keyword page match
-      const pageMatch = website.pages.find((p) => {
-        const pLower = p.name.toLowerCase();
-        if (pLower === lower || p.slug === lower) return true;
-        if (lower.includes('رئيسية') && (p.slug === 'home' || p.id === 'page_home')) return true;
-        if (
-          (lower.includes('خدمات') ||
-            lower.includes('منتجات') ||
-            lower.includes('منيو') ||
-            lower.includes('عقارات') ||
-            lower.includes('باقات') ||
-            lower.includes('تخصصات') ||
-            lower.includes('أطباء')) &&
-          (p.slug === 'services' || p.id === 'page_services')
+  const navNode = Object.values(website.components).find(
+    (component) =>
+      (component.id.includes('nav') || component.category === 'navigation') &&
+      component.type === 'paragraph' &&
+      (Array.isArray(component.props.navigationItems) ||
+        (typeof component.props.text === 'string' && component.props.text.includes('•')))
+  );
+  const hasExplicitNavigation = Array.isArray(navNode?.props.navigationItems);
+  const navSectionLinks: Array<{ label: string; destination?: WebsiteLinkDestination }> =
+    hasExplicitNavigation
+      ? navNode.props.navigationItems.filter(
+          (item: { label?: string; hidden?: boolean }) => item.label && !item.hidden
         )
-          return true;
-        if (
-          (lower.includes('من نحن') ||
-            lower.includes('قصت') ||
-            lower.includes('تقييم') ||
-            lower.includes('ذواقة') ||
-            lower.includes('مدرب') ||
-            lower.includes('آراء')) &&
-          (p.slug === 'about' || p.id === 'page_about')
-        )
-          return true;
-        if (
-          (lower.includes('تواصل') ||
-            lower.includes('حجز') ||
-            lower.includes('طاولة') ||
-            lower.includes('موعد') ||
-            lower.includes('اتصل')) &&
-          (p.slug === 'contact' || p.id === 'page_contact')
-        )
-          return true;
-        return false;
-      });
-
-      if (pageMatch) return pageMatch.id;
-
-      // Fallback section anchor
-      if (lower.includes('رئيسية')) return 'page_home';
-      if (lower.includes('باقات') || lower.includes('أسعار')) return '#pricing';
-      if (lower.includes('آراء') || lower.includes('عملاء') || lower.includes('تقييم'))
-        return '#features';
-      if (lower.includes('تواصل') || lower.includes('حجز') || lower.includes('موعد'))
-        return '#form';
-      return '#items';
-    };
-
-    if (navNode) {
-      (navNode.props.text as string).split('•').forEach((item: string) => {
-        const label = item.trim();
-        if (!label) return;
-        anchors.push({ label, anchor: resolveAnchor(label) });
-      });
-      if (anchors.length > 0) return anchors;
-    }
-
-    // 2. Check if there is a nav flex/container with button children (e.g. restaurant.ts, clinic.ts, gym.ts)
-    const navContainer = Object.values(website.components).find(
-      (c) =>
-        (c.id.includes('nav') || c.category === 'navigation') &&
-        Array.isArray(c.childrenIds) &&
-        c.childrenIds.length > 0
-    );
-
-    if (navContainer && navContainer.childrenIds.length > 0) {
-      navContainer.childrenIds.forEach((childId) => {
-        const child = website.components[childId];
-        if (child && (child.type === 'button' || (child.type as string) === 'link')) {
-          const label = String(child.props?.text || child.props?.label || child.name || '').trim();
-          if (label) {
-            anchors.push({ label, anchor: resolveAnchor(label) });
-          }
-        }
-      });
-      if (anchors.length > 0) return anchors;
-    }
-
-    // 3. Fallback to website.pages
-    if (website.pages?.length > 0) {
-      website.pages.forEach((p) => {
-        anchors.push({ label: p.name, anchor: p.id });
-      });
-    }
-
-    return anchors;
-  })();
+      : website.pages
+          .filter(
+            (page) =>
+              page.metadata?.isHomePage ||
+              (page.metadata?.placement || 'header_direct') !== 'standalone'
+          )
+          .map((page) => ({
+            label: page.metadata?.headerTitle || page.name,
+            destination: { type: 'page' as const, pageId: page.id },
+          }));
 
   const headerDescendants: Array<typeof node> = [];
   const collectHeaderDescendants = (nodeId: string, visited = new Set<string>()) => {
@@ -408,29 +332,17 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
 
                     {/* Section scroll / page navigation links from nav_items bullet text */}
                     {navSectionLinks.length > 0
-                      ? navSectionLinks.map(({ label, anchor }) => {
-                          const isPage =
-                            anchor.startsWith('page_') ||
-                            website.pages.some((p) => p.id === anchor || p.slug === anchor);
+                      ? navSectionLinks.map(({ label, destination }) => {
+                          const targetPageId =
+                            destination && 'pageId' in destination ? destination.pageId : undefined;
                           return (
                             <button
                               key={label}
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (isPage) {
-                                  const target = website.pages.find(
-                                    (p) => p.id === anchor || p.slug === anchor
-                                  );
-                                  if (target) switchPage(target.id);
-                                } else {
-                                  const clean = anchor.replace('#', '');
-                                  const el =
-                                    document.getElementById(clean) ||
-                                    document.getElementById(`gen_${clean}`) ||
-                                    document.getElementById(`comp_${clean}`) ||
-                                    document.querySelector(`[id*="${clean}"]`);
-                                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                if (destination) {
+                                  handleInteraction(e, undefined, targetPageId, label, destination);
                                 }
                                 setIsMobileMenuDrawerOpen(false);
                               }}
@@ -441,31 +353,37 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
                             </button>
                           );
                         })
-                      : /* Fallback to pages when no bullet nav found */
-                        website.pages.map((p) => {
-                          const isActive = p.id === activePage.id;
-                          return (
-                            <button
-                              key={p.id}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                switchPage(p.id);
-                                setIsMobileMenuDrawerOpen(false);
-                              }}
-                              className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all text-right cursor-pointer ${
-                                isActive
-                                  ? 'bg-blue-600 text-white shadow-xs'
-                                  : 'text-slate-700 hover:bg-slate-100'
-                              }`}
-                            >
-                              <span>{p.name}</span>
-                              <ArrowRight
-                                className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'} rtl:rotate-180`}
-                              />
-                            </button>
-                          );
-                        })}
+                      : !hasExplicitNavigation /* Fallback to pages when no custom nav is configured */ &&
+                        website.pages
+                          .filter(
+                            (page) =>
+                              page.metadata?.isHomePage ||
+                              (page.metadata?.placement || 'header_direct') !== 'standalone'
+                          )
+                          .map((p) => {
+                            const isActive = p.id === activePage.id;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  switchPage(p.id);
+                                  setIsMobileMenuDrawerOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all text-right cursor-pointer ${
+                                  isActive
+                                    ? 'bg-blue-600 text-white shadow-xs'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                                }`}
+                              >
+                                <span>{p.name}</span>
+                                <ArrowRight
+                                  className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-slate-400'} rtl:rotate-180`}
+                                />
+                              </button>
+                            );
+                          })}
 
                     {/* Multi-page links (always shown if more than 1 page) */}
                     {navSectionLinks.length > 0 && website.pages.length > 1 && (
@@ -473,30 +391,36 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                           الصفحات
                         </span>
-                        {website.pages.map((p) => {
-                          const isActive = p.id === activePage.id;
-                          return (
-                            <button
-                              key={p.id}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                switchPage(p.id);
-                                setIsMobileMenuDrawerOpen(false);
-                              }}
-                              className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold transition-all text-right cursor-pointer ${
-                                isActive
-                                  ? 'bg-blue-600 text-white shadow-xs'
-                                  : 'text-slate-700 hover:bg-slate-100'
-                              }`}
-                            >
-                              <span>{p.name}</span>
-                              <ArrowRight
-                                className={`w-3 h-3 ${isActive ? 'text-white' : 'text-slate-400'} rtl:rotate-180`}
-                              />
-                            </button>
-                          );
-                        })}
+                        {website.pages
+                          .filter(
+                            (page) =>
+                              page.metadata?.isHomePage ||
+                              (page.metadata?.placement || 'header_direct') !== 'standalone'
+                          )
+                          .map((p) => {
+                            const isActive = p.id === activePage.id;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  switchPage(p.id);
+                                  setIsMobileMenuDrawerOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between p-2 rounded-xl text-xs font-bold transition-all text-right cursor-pointer ${
+                                  isActive
+                                    ? 'bg-blue-600 text-white shadow-xs'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                                }`}
+                              >
+                                <span>{p.name}</span>
+                                <ArrowRight
+                                  className={`w-3 h-3 ${isActive ? 'text-white' : 'text-slate-400'} rtl:rotate-180`}
+                                />
+                              </button>
+                            );
+                          })}
                       </div>
                     )}
                   </div>
@@ -510,29 +434,15 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
                           if (isInteractivePreview) {
                             e.stopPropagation();
                             setIsMobileMenuDrawerOpen(false);
-                            const link =
-                              (headerCtaComp.props.linkUrl as string) ||
-                              (headerCtaComp.props.url as string) ||
-                              '#contact';
-                            if (
-                              link.startsWith('page_') ||
-                              website.pages.some((p) => p.id === link || p.slug === link)
-                            ) {
-                              const targetP = website.pages.find(
-                                (p) => p.id === link || p.slug === link
-                              );
-                              if (targetP) switchPage(targetP.id);
-                            } else if (link.startsWith('#')) {
-                              const clean = link.replace('#', '');
-                              const target =
-                                document.getElementById(clean) ||
-                                document.getElementById(`gen_${clean}`) ||
-                                document.getElementById(`comp_${clean}`) ||
-                                document.querySelector(`[id*="${clean}"]`);
-                              if (target) {
-                                target.scrollIntoView({ behavior: 'smooth' });
-                              }
-                            }
+                            handleInteraction(
+                              e,
+                              headerCtaComp.props.url ||
+                                headerCtaComp.props.href ||
+                                headerCtaComp.props.linkUrl,
+                              headerCtaComp.props.pageId || headerCtaComp.props.targetPageId,
+                              undefined,
+                              headerCtaComp.destination
+                            );
                           }
                         }}
                         style={{

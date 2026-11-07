@@ -1,4 +1,5 @@
 export * from './types';
+export * from './linkDestinations';
 export * from './responsiveStyles';
 export * from './cartPolicy';
 export * from './responsiveViewport';

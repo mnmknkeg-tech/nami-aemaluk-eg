@@ -208,7 +208,15 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
     }
 
     case 'paragraph': {
-      const text = node.props.text || 'نص توضيحي افتراضي للمكون.';
+      const navigationItems = Array.isArray(node.props.navigationItems)
+        ? node.props.navigationItems.filter(
+            (item: { label?: string; hidden?: boolean }) => item.label && !item.hidden
+          )
+        : undefined;
+      if (navigationItems && navigationItems.length === 0) return null;
+      const text = navigationItems
+        ? navigationItems.map((item: { label: string }) => item.label).join(' • ')
+        : node.props.text || 'نص توضيحي افتراضي للمكون.';
       const computed = getComputedStyles();
 
       if (isActiveLink) {
@@ -305,7 +313,7 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         setOpenDropdown(false);
-                        handleInteraction(e, item.url, item.pageId, item.title);
+                        handleInteraction(e, item.url, item.pageId, item.title, item.destination);
                       }}
                       className="p-2.5 rounded-xl hover:bg-blue-50/80 transition-colors cursor-pointer group/sub flex items-center justify-between text-right"
                     >
@@ -354,8 +362,17 @@ export const BasicElementsRenderer: React.FC<BasicElementsRendererProps> = ({
                 <React.Fragment key={index}>
                   <span
                     onClick={(e) => {
+                      const navigationItem = node.props.navigationItems?.find(
+                        (candidate: { label?: string }) => candidate.label?.trim() === trimmed
+                      );
                       runPreviewOnlyInteraction(e, isInteractivePreview, () =>
-                        handleInteraction(e, undefined, undefined, trimmed)
+                        handleInteraction(
+                          e,
+                          undefined,
+                          undefined,
+                          trimmed,
+                          navigationItem?.destination
+                        )
                       );
                     }}
                     className={`transition-colors hover:text-blue-600 cursor-pointer ${

@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"strings"
 	"sync"
@@ -61,9 +63,22 @@ func (s *IdempotencyStore) Middleware() fiber.Handler {
 		if method != "POST" && method != "PUT" && method != "PATCH" {
 			return c.Next()
 		}
+		requestScope, err := json.Marshal([]string{
+			key,
+			method,
+			c.Path(),
+			string(c.Body()),
+			c.Get("Authorization"),
+			c.Get("Cookie"),
+		})
+		if err != nil {
+			return err
+		}
+		scopedDigest := sha256.Sum256(requestScope)
+		scopedKey := hex.EncodeToString(scopedDigest[:])
 
 		// Try replay.
-		rec, found, err := s.get(c.UserContext(), key)
+		rec, found, err := s.get(c.UserContext(), scopedKey)
 		if err != nil {
 			// Redis failure: fall through to avoid blocking the request.
 		}
@@ -83,7 +98,7 @@ func (s *IdempotencyStore) Middleware() fiber.Handler {
 		if status >= 200 && status < 400 {
 			body := append([]byte{}, c.Response().Body()...)
 			contentType := string(c.Response().Header.ContentType())
-			if err := s.set(c.UserContext(), key, idempotencyRecord{
+			if err := s.set(c.UserContext(), scopedKey, idempotencyRecord{
 				Status:      status,
 				Body:        body,
 				ContentType: contentType,

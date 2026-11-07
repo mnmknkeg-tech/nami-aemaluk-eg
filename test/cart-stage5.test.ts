@@ -13,12 +13,12 @@ const cartItem = {
   quantity: 2,
 };
 
-const siteShop = { id: 'shop-1', name: 'Shop', slug: 'shop' };
+const siteShop = { id: 'shop-internal-id', name: 'Shop', slug: 'shop' };
 const siteProduct = {
   id: 'product-1',
   title: 'Product',
   price: 10,
-  shopId: 'shop-1',
+  shopId: 'shop-internal-id',
 };
 
 describe('phase 5 cart integrity', () => {
@@ -34,25 +34,31 @@ describe('phase 5 cart integrity', () => {
 
   it('rejects unavailable and cross-merchant site products', () => {
     expect(
-      isValidSiteCartEntry({ product: siteProduct, quantity: 1, shop: siteShop }, 'shop-1')
+      isValidSiteCartEntry({ product: siteProduct, quantity: 1, shop: siteShop }, 'shop')
     ).toBe(true);
     expect(
       isValidSiteCartEntry(
+        { product: siteProduct, quantity: 1, shop: siteShop },
+        'shop-internal-id'
+      )
+    ).toBe(false);
+    expect(
+      isValidSiteCartEntry(
         { product: { ...siteProduct, isAvailable: false }, quantity: 1, shop: siteShop },
-        'shop-1'
+        'shop'
       )
     ).toBe(false);
     expect(
       isValidSiteCartEntry(
         { product: { ...siteProduct, shopId: 'shop-2' }, quantity: 1, shop: siteShop },
-        'shop-1'
+        'shop'
       )
     ).toBe(false);
   });
 
   it('recovers valid entries from corrupted site storage without throwing', () => {
     const valid = { product: siteProduct, quantity: 1, shop: siteShop };
-    expect(loadSiteCart(JSON.stringify([valid, { broken: true }]), 'shop-1')).toEqual([valid]);
-    expect(loadSiteCart('{not-json', 'shop-1')).toEqual([]);
+    expect(loadSiteCart(JSON.stringify([valid, { broken: true }]), 'shop')).toEqual([valid]);
+    expect(loadSiteCart('{not-json', 'shop')).toEqual([]);
   });
 });

@@ -29,6 +29,31 @@ export function resolveThemeFontFamily(
     node.type === 'heading' || /^h[1-6]$/.test(node.type.toLowerCase()) || /^h[1-6]$/.test(tagName);
   return (isHeading ? typography.fontHeading : typography.fontBody) || 'Cairo, sans-serif';
 }
+
+export function computeThemeResponsiveNodeStyles(
+  node: ResponsiveNodeStyleInput,
+  viewport: ResponsiveViewport,
+  typography: { fontHeading?: string; fontBody?: string } = {}
+): CSSProperties {
+  return computeResponsiveNodeStyles(node, viewport, resolveThemeFontFamily(node, typography));
+}
+
+export function computeWebsiteRootStyles(
+  theme: {
+    colors?: { background?: string; textPrimary?: string };
+    typography?: { fontBody?: string };
+  },
+  direction: CSSProperties['direction']
+): CSSProperties {
+  return {
+    backgroundColor: theme.colors?.background || '#ffffff',
+    color: theme.colors?.textPrimary || '#0f172a',
+    fontFamily: theme.typography?.fontBody || 'Cairo, sans-serif',
+    direction,
+    minHeight: '100vh',
+  };
+}
+
 export interface ResponsiveNodeStyleInput {
   id: string;
   type: string;

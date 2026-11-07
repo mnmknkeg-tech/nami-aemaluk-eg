@@ -22,6 +22,18 @@ export interface HeroContentValues {
   };
 }
 
+export function isCompleteChildBasedHero(content: HeroContentValues): boolean {
+  const child = content.childContent;
+  return (
+    child.badge &&
+    child.title &&
+    child.description &&
+    child.primaryCta &&
+    child.secondaryCta &&
+    child.image
+  );
+}
+
 const textValue = (props: Record<string, any> | undefined) =>
   [props?.text, props?.title, props?.label, props?.value].find(
     (value) => typeof value === 'string' && value.length > 0

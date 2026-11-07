@@ -28,6 +28,19 @@ func TestLiveAlwaysReportsOK(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
+func TestVersionReportsOnlyBuildMetadata(t *testing.T) {
+	h := &Handler{logger: zap.NewNop(), version: "1.2.3", commit: "abc123"}
+	app := newTestApp(h)
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/monitoring/version", nil))
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var body map[string]string
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	assert.Equal(t, map[string]string{"version": "1.2.3", "commit": "abc123"}, body)
+}
+
 // TestReadyFailsWithoutDatabasePool guards the regression that hid the real
 // cause of production failures: with no DATABASE_URL the API used to answer
 // 200 "ok" on /monitoring/ready while every /api/v1 request returned an opaque

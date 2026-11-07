@@ -1,5 +1,10 @@
 import React from 'react';
-import { ComponentNode, ViewportBreakpoint, Website } from '../../../types/builder';
+import {
+  ComponentNode,
+  ViewportBreakpoint,
+  Website,
+  WebsiteLinkDestination,
+} from '../../../types/builder';
 
 export interface BaseRendererProps {
   node: ComponentNode;
@@ -16,7 +21,8 @@ export interface BaseRendererProps {
     e: React.MouseEvent,
     overrideUrl?: string,
     overridePageId?: string,
-    overrideText?: string
+    overrideText?: string,
+    overrideDestination?: WebsiteLinkDestination
   ) => void;
   switchPage: (pageId: string) => void;
   activePageId: string;

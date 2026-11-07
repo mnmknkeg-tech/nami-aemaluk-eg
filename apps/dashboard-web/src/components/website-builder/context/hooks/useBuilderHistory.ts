@@ -107,7 +107,12 @@ export const useBuilderHistory = (
   const saveRequestIdRef = useRef(0);
 
   const recordHistory = useCallback(
-    (actionDesc: string, websiteUpdate: WebsiteUpdate, setWebsite: (w: Website) => void) => {
+    (
+      actionDesc: string,
+      websiteUpdate: WebsiteUpdate,
+      setWebsite: (w: Website) => void,
+      alreadySaved = false
+    ) => {
       const before = websiteRef.current;
       const next = typeof websiteUpdate === 'function' ? websiteUpdate(before) : websiteUpdate;
       if (next === before) return;
@@ -115,7 +120,7 @@ export const useBuilderHistory = (
       setFutureStates([]);
       setHistoryLog((prev) => [actionDesc, ...prev.slice(0, 40)]);
       setWebsite(next);
-      setAutosaveStatus('unsaved');
+      setAutosaveStatus(alreadySaved ? 'saved' : 'unsaved');
     },
     [websiteRef]
   );
@@ -201,7 +206,7 @@ export const useBuilderHistory = (
               draftVersionRef.current = response.draftVersion;
             }
           }
-          writeLocalDraft(builderShopId, normalizeWebsiteTree(websiteRef.current));
+          writeLocalDraft(builderShopId, safeSnapshot);
           if (
             isCurrentWebsiteRevision(revision, websiteRevisionRef.current) &&
             requestId === saveRequestIdRef.current

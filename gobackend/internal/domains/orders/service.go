@@ -2,6 +2,9 @@ package orders
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/coupons"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/customers"
 	"strconv"
@@ -98,6 +101,15 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 			return nil, errors.Validation("delivery_required", "حدد موقعك على الخريطة أو اكتب العنوان")
 		}
 	}
+	if (req.DeliveryLat == nil) != (req.DeliveryLng == nil) {
+		return nil, errors.Validation("delivery_coordinates_invalid", "يجب إرسال خط العرض وخط الطول معاً")
+	}
+	if req.DeliveryLat != nil && (*req.DeliveryLat < -90 || *req.DeliveryLat > 90) {
+		return nil, errors.Validation("delivery_coordinates_invalid", "خط العرض غير صحيح")
+	}
+	if req.DeliveryLng != nil && (*req.DeliveryLng < -180 || *req.DeliveryLng > 180) {
+		return nil, errors.Validation("delivery_coordinates_invalid", "خط الطول غير صحيح")
+	}
 
 	if len(req.Items) == 0 {
 		return nil, errors.Validation("items_required", "items مطلوبة")
@@ -109,20 +121,74 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 	// order.
 	trustedActor := strings.EqualFold(actorRole, "MERCHANT") || strings.EqualFold(actorRole, "ADMIN")
 
+	paymentMethod, err := normalizePaymentMethod(req.PaymentMethod, allowGuest)
+	if err != nil {
+		return nil, err
+	}
+	var normalizedPhone, normalizedAddress *string
+	if customerPhone != "" {
+		normalizedPhone = &customerPhone
+	}
+	if manual != "" {
+		normalizedAddress = &manual
+	}
 	order := &Order{
 		Status:                OrderStatusPending,
 		UserID:                userID,
 		ShopID:                shopID,
 		Source:                source,
-		PaymentMethod:         req.PaymentMethod,
+		PaymentMethod:         paymentMethod,
 		Notes:                 req.Notes,
-		CustomerPhone:         req.CustomerPhone,
-		DeliveryAddressManual: req.DeliveryAddressManual,
+		CustomerPhone:         normalizedPhone,
+		DeliveryAddressManual: normalizedAddress,
 		DeliveryLat:           req.DeliveryLat,
 		DeliveryLng:           req.DeliveryLng,
 		DeliveryNote:          req.DeliveryNote,
 		CustomerNote:          req.CustomerNote,
 		PosShiftID:            req.PosShiftID,
+	}
+	if req.IdempotencyKey != "" {
+		fingerprintRequest := req
+		fingerprintRequest.ShopID = shopID
+		fingerprintRequest.Items = append([]CreateOrderItem(nil), req.Items...)
+		for i := range fingerprintRequest.Items {
+			fingerprintRequest.Items[i].ProductID = strings.TrimSpace(fingerprintRequest.Items[i].ProductID)
+		}
+		if !(trustedActor && source == "pos") {
+			fingerprintRequest.Total = nil
+		}
+		if !trustedActor {
+			fingerprintRequest.PaymentStatus = nil
+			fingerprintRequest.Status = nil
+			fingerprintRequest.PosShiftID = nil
+		}
+		fingerprintPayload := struct {
+			UserID    string
+			ActorRole string
+			Source    string
+			Request   CreateOrderRequest
+		}{
+			UserID:    userID,
+			ActorRole: strings.ToUpper(strings.TrimSpace(actorRole)),
+			Source:    source,
+			Request:   fingerprintRequest,
+		}
+		encoded, err := json.Marshal(fingerprintPayload)
+		if err != nil {
+			return nil, errors.Internal("order_fingerprint_failed", err)
+		}
+		digest := sha256.Sum256(encoded)
+		requestHash := hex.EncodeToString(digest[:])
+		idempotencyKey := req.IdempotencyKey
+		order.IdempotencyKey = &idempotencyKey
+		order.RequestHash = &requestHash
+		existing, err := s.repo.FindIdempotent(ctx, shopID, idempotencyKey, requestHash)
+		if err != nil {
+			return nil, err
+		}
+		if existing != nil {
+			return existing, nil
+		}
 	}
 
 	// POS orders are always linked to the currently open shift so the shift
@@ -159,8 +225,7 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 	}
 
 	total := 0.0
-	decrementStock := false
-	for i, it := range req.Items {
+	for _, it := range req.Items {
 		pid := strings.TrimSpace(it.ProductID)
 		if pid == "" {
 			return nil, errors.Validation("productId_required", "productId مطلوب")
@@ -173,16 +238,12 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 		if err != nil {
 			return nil, err
 		}
-		if p == nil || !p.IsActive {
+		if p == nil || !productAvailableOnChannel(*p, req.Source) {
 			return nil, errors.Validation("product_unavailable", "بعض المنتجات غير متاحة")
 		}
 		if p.TrackStock && it.Quantity > p.Stock {
 			return nil, errors.Validation("insufficient_stock", "الكمية غير متوفرة في المخزون")
 		}
-		if p.TrackStock {
-			decrementStock = true
-		}
-
 		order.Items = append(order.Items, OrderItem{
 			ProductID:        pid,
 			ProductName:      p.Name,
@@ -190,9 +251,9 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 			Price:            p.Price,
 			Addons:           it.Addons,
 			VariantSelection: it.VariantSelection,
+			TrackStock:       p.TrackStock,
 		})
 		total += p.Price * float64(it.Quantity)
-		_ = i
 	}
 
 	// The total is always computed server-side for customer and website flows.
@@ -222,15 +283,16 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 		order.Total = total - discount
 	}
 
-	created, err := s.repo.CreateOrder(ctx, order, decrementStock)
+	created, duplicate, err := s.repo.CreateOrder(ctx, order, appliedCouponID)
 	if err != nil {
+		if _, ok := errors.IsAppError(err); ok {
+			return nil, err
+		}
 		logger.Global().Error("create order failed", zap.Error(err))
 		return nil, errors.Internal("create_order_failed", err)
 	}
-	if appliedCouponID != "" {
-		if err := s.couponRepo.Consume(ctx, appliedCouponID); err != nil {
-			logger.Global().Warn("failed to record coupon usage", zap.Error(err))
-		}
+	if duplicate {
+		return created, nil
 	}
 
 	// العميل الموحد: اربط الطلب بالعميل المركزي (بحث بالهاتف → إنشاء لو جديد →
@@ -278,6 +340,30 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 	}
 
 	return created, nil
+}
+
+func productAvailableOnChannel(product OrderProduct, channel *string) bool {
+	if channel != nil && strings.EqualFold(strings.TrimSpace(*channel), "marketplace") {
+		return product.AppActive
+	}
+	return product.IsActive
+}
+
+func normalizePaymentMethod(value *string, required bool) (*string, error) {
+	if value == nil || strings.TrimSpace(*value) == "" {
+		if required {
+			defaultMethod := "COD"
+			return &defaultMethod, nil
+		}
+		return nil, nil
+	}
+	method := strings.ToUpper(strings.TrimSpace(*value))
+	switch method {
+	case "COD", "CASH", "CARD", "WALLET", "CREDIT", "SPLIT":
+		return &method, nil
+	default:
+		return nil, errors.Validation("payment_method_invalid", "طريقة الدفع غير مدعومة")
+	}
 }
 
 // shopName resolves a shop display name for notification copy (best-effort).
