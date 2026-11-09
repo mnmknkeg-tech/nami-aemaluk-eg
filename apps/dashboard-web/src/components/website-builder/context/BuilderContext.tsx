@@ -389,8 +389,10 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
               typeof backup.components === 'object'
             ) {
               const localWebsite = normalizeWebsite(backup as Website);
-              if (
-                JSON.stringify(localWebsite) !== JSON.stringify(loadedWebsite) &&
+              if (JSON.stringify(localWebsite) === JSON.stringify(loadedWebsite)) {
+                // Local backup matches server exactly — clean it up so we don't prompt needlessly
+                localStorage.removeItem(`ray_builder_site_${shopId}`);
+              } else if (
                 window.confirm(
                   'تم العثور على تغييرات محلية غير مطابقة لمسودة الخادم لهذا المتجر. استعادة التغييرات المحلية؟ اختر إلغاء لاستخدام نسخة الخادم.'
                 )
@@ -398,6 +400,10 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
                 loadedWebsite = localWebsite;
                 hasPersistedWebsiteRef.current = true;
                 setAutosaveStatus('unsaved');
+              } else {
+                // User explicitly dismissed the local draft in favor of server draft:
+                // overwrite local storage with server copy so the prompt never appears again!
+                localStorage.setItem(`ray_builder_site_${shopId}`, JSON.stringify(loadedWebsite));
               }
             }
           } catch {
