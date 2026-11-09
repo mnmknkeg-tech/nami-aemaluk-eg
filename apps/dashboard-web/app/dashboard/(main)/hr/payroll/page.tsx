@@ -66,7 +66,10 @@ export default function PayrollPage() {
   const [formError, setFormError] = useState('');
 
   const load = useCallback(async () => {
-    if (!shopId) return;
+    if (!shopId) {
+      setLoading(false);
+      return;
+    }
     try {
       const data = await fetchPayroll(shopId);
       setRecords(data);

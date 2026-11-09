@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Printer, X } from 'lucide-react';
 import { readCurrentCashier } from '@/lib/posSettings';
+import { formatAddonsCompactParts, formatVariantSelectionCompact } from '@/lib/sales-utils';
 
 /* ============================================================
  * Shared print utilities — used by sales list and order detail page.
@@ -151,7 +152,7 @@ export function buildPrintHtml(
             <span>المبلغ المطلوب تحصيله (دفع عند الاستلام)</span>
             <span class="amt">ج.م ${money(total)}</span>
           </div>
-          ${customerNote ? `<div class="note"><strong>ملاحظة:</strong> ${escapeHtmlText(customerNote)}</div>` : ''}
+          ${customerNote ? `<div class="note"><strong>ملاحظة:</strong> ${escapeHtmlText(customerNote)}</div>` : '<div class="note" style="color:#777;"><strong>ملاحظة:</strong> لا توجد ملاحظات</div>'}
           <div class="sign">
             <div>توقيع المستلم</div>
             <div>توقيع المندوب</div>
@@ -189,7 +190,7 @@ export function buildPrintHtml(
               ${address ? `<div>${escapeHtmlText(address)}</div>` : ''}
               ${customerName ? `<div style="margin-top:6px;"><strong>العميل:</strong> ${escapeHtmlText(customerName)}</div>` : ''}
               ${customerAddress ? `<div style="margin-top:4px;"><strong>العنوان:</strong> ${escapeHtmlText(customerAddress)}</div>` : ''}
-              ${customerNote ? `<div style="margin-top:4px;"><strong>ملاحظة:</strong> ${escapeHtmlText(customerNote)}</div>` : ''}
+              ${customerNote ? `<div style="margin-top:4px;"><strong>ملاحظة:</strong> ${escapeHtmlText(customerNote)}</div>` : '<div style="margin-top:4px; color:#888;"><strong>ملاحظة:</strong> لا توجد ملاحظات</div>'}
               ${customerPhone ? `<div style="margin-top:6px;"><strong>الهاتف:</strong> ${escapeHtmlText(customerPhone)}</div>` : ''}
               ${createdAtLabel ? `<div style="margin-top:6px;">${escapeHtmlText(createdAtLabel)}</div>` : ''}
               ${ov.cashierName ? `<div style="margin-top:4px;"><strong>الكاشير:</strong> ${escapeHtmlText(ov.cashierName)}</div>` : ''}
@@ -199,16 +200,33 @@ export function buildPrintHtml(
               <tbody>
                 ${items
                   .map((it: any) => {
-                    const baseName = it?.product?.name || it?.name || it?.title || '-';
+                    const baseName =
+                      it?.product?.name || it?.productName || it?.name || it?.title || '-';
                     const name = escapeHtmlText(String(baseName).trim());
                     const qty = normalizeNumber(it?.quantity ?? it?.qty ?? 0);
                     const unit = normalizeNumber(it?.unitPrice ?? it?.unit_price ?? it?.price ?? 0);
                     const lineTotal = qty * unit;
+                    const addonsParts = formatAddonsCompactParts(
+                      it?.addons ?? it?.extras ?? it?.addOns
+                    );
+                    const variantText = formatVariantSelectionCompact(
+                      it?.variantSelection ?? it?.variant_selection
+                    );
+                    const variantHtml = variantText
+                      ? `<div style="font-size:10px; color:#555; margin-top:1px;">(${escapeHtmlText(variantText)})</div>`
+                      : '';
+                    const addonsHtml = addonsParts.length
+                      ? `<div style="font-size:10px; color:#555; margin-top:2px;">+ ${addonsParts.map(escapeHtmlText).join(' + ')}</div>`
+                      : '';
                     return `
                       <tr>
-                        <td style="padding: 6px 0;">${name || '-'}</td>
-                        <td style="padding: 6px 0; text-align:left;">${qty || 0}x</td>
-                        <td style="padding: 6px 0; text-align:left;">${money(lineTotal)}</td>
+                        <td style="padding: 6px 0;">
+                          <div style="font-weight:600;">${name || '-'}</div>
+                          ${variantHtml}
+                          ${addonsHtml}
+                        </td>
+                        <td style="padding: 6px 0; text-align:left; vertical-align:top;">${qty || 0}x</td>
+                        <td style="padding: 6px 0; text-align:left; vertical-align:top;">${money(lineTotal)}</td>
                       </tr>
                     `;
                   })
@@ -252,7 +270,38 @@ export function PrintPreviewModal({
   mode: 'invoice' | 'waybill';
   onClose: () => void;
 }) {
-  const [ov, setOv] = useState<PrintOverrides>({});
+  const originalName =
+    order?.customerName ||
+    order?.customer_name ||
+    order?.user?.name ||
+    (order as any)?.customer?.name ||
+    '';
+  const originalPhone =
+    order?.customerPhone ||
+    order?.customer_phone ||
+    order?.user?.phone ||
+    (order as any)?.phone ||
+    '';
+  const originalAddress = deliveryAddressOf(order);
+  const originalNote = order?.customerNote || order?.customer_note || order?.notes || '';
+
+  const originalMap = useMemo(
+    () => ({
+      customerName: originalName,
+      customerPhone: originalPhone,
+      customerAddress: originalAddress,
+      customerNote: originalNote,
+      footerNote: 'شكراً لتسوقك معنا!',
+    }),
+    [originalName, originalPhone, originalAddress, originalNote]
+  );
+
+  const [ov, setOv] = useState<PrintOverrides>(() => ({
+    customerName: originalName,
+    customerPhone: originalPhone,
+    customerAddress: originalAddress,
+    customerNote: originalNote,
+  }));
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
   // current cashier session (set at POS gate login) — shows on the invoice
   const sessionCashier = React.useMemo(() => {
@@ -268,11 +317,6 @@ export function PrintPreviewModal({
     [order, shop, mode, ov, sessionCashier]
   );
   const isInvoice = mode === 'invoice';
-
-  const originalName = order?.customerName || order?.customer_name || order?.user?.name || '';
-  const originalPhone = order?.customerPhone || order?.customer_phone || order?.user?.phone || '';
-  const originalAddress = deliveryAddressOf(order);
-  const originalNote = order?.customerNote || order?.customer_note || '';
 
   const handlePrint = () => {
     const win = iframeRef.current?.contentWindow;
@@ -306,15 +350,18 @@ export function PrintPreviewModal({
           className="w-full px-2.5 py-2 rounded-lg border border-slate-200 text-xs font-semibold outline-none focus:border-slate-900"
         />
       )}
-      {(ov[key] ?? '') !== '' && (
-        <button
-          type="button"
-          onClick={() => setOv((p) => ({ ...p, [key]: undefined }))}
-          className="text-[10px] font-bold text-slate-400 hover:text-slate-700 mt-0.5"
-        >
-          رجوع للأصلي
-        </button>
-      )}
+      {ov[key] !== undefined &&
+        ov[key] !== (originalMap[key as keyof typeof originalMap] ?? '') && (
+          <button
+            type="button"
+            onClick={() =>
+              setOv((p) => ({ ...p, [key]: originalMap[key as keyof typeof originalMap] }))
+            }
+            className="text-[10px] font-bold text-slate-400 hover:text-slate-700 mt-0.5"
+          >
+            رجوع للأصلي
+          </button>
+        )}
     </div>
   );
 

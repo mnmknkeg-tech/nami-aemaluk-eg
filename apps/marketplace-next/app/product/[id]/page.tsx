@@ -8,6 +8,8 @@ import { formatPrice, truncate } from '@/lib/utils';
 import { siteConfig } from '@/lib/config';
 import ShareButton from '@/components/ShareButton';
 import { CommerceAction } from '@/components/CommerceAction';
+import { MarketProductConfigurator } from '@/components/MarketProductConfigurator';
+import { productHasOptions } from '@/lib/product-options';
 import { resolveCommerce } from '@/lib/commerce';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { ProductCard } from '@/components/ProductCard';
@@ -27,13 +29,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = await getProductById(id);
   if (!product) return { title: 'منتج غير موجود' };
 
-  const title = `${product.name} | ${siteConfig.name}`;
-  const description = truncate(product.description || product.name, 160);
+  const extra = (product as any)?.extraData || {};
+  const seoTitle = extra.seoTitle || product.name;
+  const seoDesc = extra.seoDescription || product.description || product.name;
+  const title = `${seoTitle} | ${siteConfig.name}`;
+  const description = truncate(seoDesc, 160);
   const image = product.imageUrl || product.images?.[0] || siteConfig.ogImage;
+  const keywords = extra.seoKeywords
+    ? String(extra.seoKeywords)
+        .split(/[,،]+/)
+        .map((k: string) => k.trim())
+    : undefined;
 
   return {
     title,
     description,
+    keywords,
     alternates: { canonical: `/product/${product.id}` },
     openGraph: {
       title,
@@ -290,20 +301,35 @@ export default async function ProductPage({ params }: Props) {
             )}
           </div>
 
+          {/* Configurator with Sizes, Variants, Addons & Custom Note */}
+          {product.isAvailable !== false &&
+          (productHasOptions(product) ||
+            Boolean((product as any)?.addons?.length) ||
+            Boolean((product as any)?.menuVariants?.length) ||
+            Boolean((product as any)?.extraData?.calories) ||
+            Boolean((product as any)?.extraData?.digital)) ? (
+            <div className="mb-6">
+              <MarketProductConfigurator product={product} buttonColor={buttonColor} />
+            </div>
+          ) : null}
+
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-3 mt-auto" data-testid="product-actions">
-            {product.isAvailable !== false && (
-              <CommerceAction
-                decision={decision}
-                product={product}
-                shopId={product.shopId}
-                shopName={shop?.name}
-                variant="button"
-                cartSize="lg"
-                cartColor={buttonColor}
-                showQuantityStepper={true}
-              />
-            )}
+            {product.isAvailable !== false &&
+              !productHasOptions(product) &&
+              !(product as any)?.addons?.length &&
+              !(product as any)?.menuVariants?.length && (
+                <CommerceAction
+                  decision={decision}
+                  product={product}
+                  shopId={product.shopId}
+                  shopName={shop?.name}
+                  variant="button"
+                  cartSize="lg"
+                  cartColor={buttonColor}
+                  showQuantityStepper={true}
+                />
+              )}
             {shop?.whatsapp && (
               <a
                 href={`https://wa.me/${shop.whatsapp}?text=استفسار عن ${encodeURIComponent(product.name)}`}

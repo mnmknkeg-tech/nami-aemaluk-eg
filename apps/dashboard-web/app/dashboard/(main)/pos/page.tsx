@@ -59,6 +59,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { apiRequest, useAuth } from '@/lib/auth';
 import { useShop } from '@/hooks/useShop';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { HIDE_UNPUBLISHED } from '@/config/sidebar';
 import {
   HeldOrders,
   startUsbBarcodeListener,
@@ -251,6 +253,9 @@ interface CartItem {
 }
 
 const POSSystemPage: React.FC = () => {
+  if (HIDE_UNPUBLISHED) {
+    notFound();
+  }
   const { shop } = useShop();
   const shopId = shop?.id || '';
   const isArabic = true;

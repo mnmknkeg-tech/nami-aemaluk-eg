@@ -109,6 +109,7 @@ export default function SettingsShell({ shop, onSaved }: SettingsShellProps) {
     .toLowerCase() as SettingsTab;
   // Market-launch switch: local-only settings tabs fall back to overview in production.
   const LOCAL_ONLY_TABS: ReadonlySet<string> = new Set([
+    'pos_settings',
     'accounting_settings',
     'hr_settings',
     'analytics_settings',

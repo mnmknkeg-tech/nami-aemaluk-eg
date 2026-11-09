@@ -72,16 +72,18 @@ export const ContextToolbar: React.FC = () => {
         <span className="font-medium hidden min-[480px]:inline">محتوى</span>
       </button>
 
-      {/* Code Workspace Trigger */}
-      <button
-        onClick={() => setIsCodeWorkspaceOpen(true)}
-        disabled={isLocked}
-        className={`hidden sm:flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition-colors cursor-pointer shrink-0 ${disabledWhileLocked}`}
-        title="تعديل الكود المخصص للمكون"
-      >
-        <Code2 className="w-3.5 h-3.5 text-blue-400" />
-        <span className="font-medium">كود</span>
-      </button>
+      {/* Code Workspace Trigger — LOCAL-ONLY */}
+      {!HIDE_UNPUBLISHED && (
+        <button
+          onClick={() => setIsCodeWorkspaceOpen(true)}
+          disabled={isLocked}
+          className={`hidden sm:flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-white transition-colors cursor-pointer shrink-0 ${disabledWhileLocked}`}
+          title="تعديل الكود المخصص للمكون"
+        >
+          <Code2 className="w-3.5 h-3.5 text-blue-400" />
+          <span className="font-medium">كود</span>
+        </button>
+      )}
 
       {/* AI Patch Trigger — market-launch switch: AI is local-only for now. */}
       {!HIDE_UNPUBLISHED && (

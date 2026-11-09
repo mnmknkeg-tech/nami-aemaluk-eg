@@ -46,20 +46,40 @@ async function getCheckoutIdempotencyKey(shopId: string, payload: Record<string,
 export default function CheckoutPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const isMerchantCheckout = /^\/(shop|site)\/[^/]+\/checkout\/?$/.test(pathname || '');
   const formRef = useRef<HTMLFormElement | null>(null);
   const marketCart = useCart();
   const siteCart = useSiteCart();
+
+  const siteCartShop = siteCart.items[0]?.shop;
+  const isMerchantPath = /^\/(shop|site)\/[^/]+\/checkout\/?$/.test(pathname || '');
+  const merchantMatch = (pathname || '').match(/^\/(shop|site)\/([^/]+)/);
+  const merchantType = merchantMatch?.[1] || 'site';
+  const merchantSlug = merchantMatch?.[2] || siteCartShop?.slug || '';
+  const isMerchantCheckout =
+    isMerchantPath || Boolean(siteCartShop?.slug || siteCartShop?.id || merchantSlug);
+
+  const merchantShopName = siteCartShop?.name || '';
+  const merchantHomeUrl = merchantSlug
+    ? `/${merchantType}/${merchantSlug}`
+    : (pathname || '/').replace(/\/checkout\/?$/, '') || '/';
   const items = isMerchantCheckout
-    ? siteCart.items.map(({ product, quantity, shop }) => ({
-        id: product.id,
-        productId: product.id,
-        name: product.title,
-        price: typeof product.price === 'string' ? Number(product.price) || 0 : product.price,
-        quantity,
-        image: product.image,
-        shopId: shop.id,
-        shopName: shop.name,
+    ? siteCart.items.map((entry: any) => ({
+        id: entry.product.id,
+        productId: entry.product.id,
+        name: entry.product.title,
+        price:
+          typeof entry.product.price === 'string'
+            ? Number(entry.product.price) || 0
+            : entry.product.price,
+        quantity: entry.quantity,
+        image: entry.product.image,
+        shopId: entry.shop.id,
+        shopName: entry.shop.name,
+        addons: entry.addons || entry.product?.addons,
+        variantSelection:
+          entry.variantSelection ||
+          entry.product?.variantSelection ||
+          entry.product?.selectedVariant,
       }))
     : marketCart.items;
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -80,24 +100,28 @@ export default function CheckoutPage() {
       <div className="max-w-[1200px] mx-auto px-4 md:px-6 h-14 flex items-center gap-3">
         <button
           type="button"
-          onClick={() => (window.history.length > 1 ? router.back() : router.push('/'))}
+          onClick={() =>
+            window.history.length > 1
+              ? router.back()
+              : router.push(isMerchantCheckout ? merchantHomeUrl : '/')
+          }
           className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-brand-cyan transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           رجوع
         </button>
         <span className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
-        {isMerchantCheckout && siteCart.items[0]?.shop.logoUrl && (
+        {isMerchantCheckout && (siteCart.items[0]?.shop?.logoUrl || siteCartShop?.logoUrl) && (
           <img
-            src={siteCart.items[0].shop.logoUrl}
-            alt={siteCart.items[0].shop.name}
+            src={siteCart.items[0]?.shop?.logoUrl || siteCartShop?.logoUrl}
+            alt={siteCart.items[0]?.shop?.name || siteCartShop?.name || 'متجر'}
             className="h-8 w-8 rounded-lg object-cover"
           />
         )}
         <div className="min-w-0">
-          {isMerchantCheckout && siteCart.items[0]?.shop.name && (
+          {isMerchantCheckout && (siteCart.items[0]?.shop?.name || siteCartShop?.name) && (
             <p className="truncate text-[11px] font-bold text-slate-500">
-              {siteCart.items[0].shop.name}
+              {siteCart.items[0]?.shop?.name || siteCartShop?.name}
             </p>
           )}
           <h1 className="truncate text-sm font-black text-slate-900 dark:text-white md:text-base">
@@ -197,26 +221,30 @@ export default function CheckoutPage() {
       for (const [shopId, shopItems] of shopEntries) {
         const payload = {
           shopId,
-          items: shopItems.map((i) => ({
+          items: shopItems.map((i: any) => ({
             productId: i.productId,
             quantity: i.quantity,
+            addons: i.addons || undefined,
+            variantSelection: i.variantSelection || undefined,
           })),
+          customerName: customerName.trim() || undefined,
           customer: {
-            name: customerName || undefined,
+            name: customerName.trim() || undefined,
             phone: phone || undefined,
             city: city || undefined,
             district: district || undefined,
             address: address || undefined,
-            notes: notes || undefined,
+            notes: notes.trim() || undefined,
             lat: coords?.lat,
             lng: coords?.lng,
           },
-          customerNote: notes || undefined,
+          customerNote: notes.trim() || undefined,
+          notes: notes.trim() || undefined,
           couponCode: isMerchantCheckout && couponCode ? couponCode : undefined,
           deliveryAddressManual: [city, district, address].filter(Boolean).join('، ') || undefined,
           deliveryLat: coords?.lat,
           deliveryLng: coords?.lng,
-          deliveryNote: notes || undefined,
+          deliveryNote: notes.trim() || undefined,
           paymentMethod: paymentMethod === 'cod' ? 'COD' : 'CARD',
           source: isMerchantCheckout ? 'website' : 'marketplace',
         };
@@ -236,8 +264,30 @@ export default function CheckoutPage() {
       for (const storageKey of completedRequestKeys) {
         window.sessionStorage.removeItem(storageKey);
       }
+      const finalShopSlug =
+        merchantSlug || siteCart.items[0]?.shop?.slug || (orders[0] as any)?.shopSlug || '';
+      const finalShopName =
+        siteCart.items[0]?.shop?.name ||
+        orders[0]?.shopName ||
+        (orders[0] as any)?.shop?.name ||
+        merchantShopName ||
+        '';
+      const isActuallyMerchant = isMerchantCheckout || Boolean(finalShopSlug);
+      const targetHomeUrl = finalShopSlug
+        ? `/${merchantType}/${finalShopSlug}`
+        : isActuallyMerchant && pathname
+          ? pathname.replace(/\/checkout\/?$/, '') || '/'
+          : '/';
+
       clearCart();
-      setSuccess({ orders, count: orders.length });
+      setSuccess({
+        orders,
+        count: orders.length,
+        isMerchantCheckout: isActuallyMerchant,
+        merchantHomeUrl: targetHomeUrl,
+        merchantShopName: finalShopName,
+        merchantSlug: finalShopSlug,
+      });
       playOrderNotifSound();
     } catch (err: any) {
       setError(err?.message || 'فشل إنشاء الطلب');
@@ -247,6 +297,22 @@ export default function CheckoutPage() {
   };
 
   if (success) {
+    const isMerchant = Boolean(success.isMerchantCheckout);
+    const resolvedShopSlug = success.merchantSlug || merchantSlug;
+    const homeUrl =
+      success.merchantHomeUrl ||
+      (resolvedShopSlug
+        ? `/${merchantType}/${resolvedShopSlug}`
+        : isMerchant && pathname
+          ? pathname.replace(/\/checkout\/?$/, '')
+          : '/');
+    const shopName =
+      success.merchantShopName ||
+      merchantShopName ||
+      success.orders?.[0]?.shopName ||
+      success.orders?.[0]?.shop?.name ||
+      '';
+
     return (
       <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950/40">
         {checkoutHeader('تم الطلب')}
@@ -256,9 +322,11 @@ export default function CheckoutPage() {
           </div>
           <h2 className="text-3xl font-bold mb-3">تم إنشاء طلبك بنجاح!</h2>
           <p className="text-slate-500 font-semibold mb-8">
-            {success.count > 1
-              ? `تم إنشاء ${success.count} طلبات من متاجر مختلفة`
-              : 'سيتم التواصل معك قريباً لتأكيد الطلب'}
+            {isMerchant && shopName
+              ? `تم استلام طلبك في متجر ${shopName}، وسيتم التواصل معك قريباً لتأكيد الطلب`
+              : success.count > 1
+                ? `تم إنشاء ${success.count} طلبات من متاجر مختلفة`
+                : 'سيتم التواصل معك قريباً لتأكيد الطلب'}
           </p>
           <div className="space-y-3 mb-8">
             {success.orders.map((o: any) => (
@@ -276,12 +344,12 @@ export default function CheckoutPage() {
                         .toUpperCase()}
                     </div>
                     <div className="text-xs text-slate-500">
-                      {o?.shopName || o?.shop?.name || ''}
+                      {o?.shopName || o?.shop?.name || shopName}
                     </div>
                   </div>
                 </div>
                 <Link
-                  href={`/track/${o?.id || o?.orderNumber || ''}`}
+                  href={`/track/${o?.id || o?.orderNumber || ''}${isMerchant ? `?from=${encodeURIComponent(homeUrl)}` : ''}`}
                   className="text-brand-cyan font-bold text-sm hover:underline"
                 >
                   تتبع الطلب
@@ -291,12 +359,23 @@ export default function CheckoutPage() {
           </div>
           <div className="flex gap-3 justify-center">
             <Link
-              href="/"
+              href={homeUrl}
               className="px-6 py-3 rounded-xl bg-brand-gradient text-white font-bold text-sm"
             >
-              العودة للرئيسية
+              {isMerchant
+                ? shopName
+                  ? `العودة إلى متجر ${shopName}`
+                  : 'العودة إلى المتجر'
+                : 'العودة للرئيسية'}
             </Link>
-            {!isMerchantCheckout && (
+            {isMerchant ? (
+              <Link
+                href={homeUrl}
+                className="px-6 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold text-sm"
+              >
+                متابعة التسوق
+              </Link>
+            ) : (
               <Link
                 href="/dalil"
                 className="px-6 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold text-sm"

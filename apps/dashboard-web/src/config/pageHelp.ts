@@ -7,9 +7,13 @@ const LOCAL_ONLY_HREFS = [
   '/dashboard/finance',
   '/dashboard/accounting',
   '/dashboard/hr',
-  '/dashboard/team',
   '/dashboard/analytics',
   '/dashboard/ai',
+  '/dashboard/customers/statements',
+  '/dashboard/customers/credit-limits',
+  '/dashboard/customers/wholesale-pricing',
+  '/dashboard/customers/segments',
+  '/dashboard/customers/tags',
 ];
 
 function visibleRelatedPages(

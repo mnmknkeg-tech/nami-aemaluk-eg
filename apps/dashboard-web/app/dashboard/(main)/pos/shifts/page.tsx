@@ -19,6 +19,8 @@ import {
   BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { HIDE_UNPUBLISHED } from '@/config/sidebar';
 import { apiRequest } from '@/lib/auth';
 import { useShop } from '@/hooks/useShop';
 import {
@@ -51,6 +53,9 @@ interface ShiftData {
 }
 
 const POSShiftsPage: React.FC = () => {
+  if (HIDE_UNPUBLISHED) {
+    notFound();
+  }
   const { shop } = useShop();
   const shopId = shop?.id || '';
   const [shift, setShift] = useState<ShiftData | null>(null);

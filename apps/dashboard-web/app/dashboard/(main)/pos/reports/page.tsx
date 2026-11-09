@@ -17,6 +17,8 @@ import {
   Calendar,
 } from 'lucide-react';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { HIDE_UNPUBLISHED } from '@/config/sidebar';
 import { apiRequest } from '@/lib/auth';
 import { useShop } from '@/hooks/useShop';
 import { exportToCsv, paginate } from '@/lib/pos-utils';
@@ -26,6 +28,9 @@ const isArabic = true;
 type RangeKey = 'today' | 'yesterday' | 'last7days' | 'last30days';
 
 const POSReportsPage: React.FC = () => {
+  if (HIDE_UNPUBLISHED) {
+    notFound();
+  }
   const { shop } = useShop();
   const shopId = shop?.id || '';
   const [orders, setOrders] = useState<any[]>([]);

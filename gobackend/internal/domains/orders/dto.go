@@ -35,6 +35,7 @@ type Order struct {
 	PaymentMethod         *string     `json:"paymentMethod,omitempty"`
 	PaymentStatus         *string     `json:"paymentStatus,omitempty"`
 	Notes                 *string     `json:"notes,omitempty"`
+	CustomerName          *string     `json:"customerName,omitempty"`
 	CustomerPhone         *string     `json:"customerPhone,omitempty"`
 	DeliveryAddressManual *string     `json:"deliveryAddressManual,omitempty"`
 	DeliveryLat           *float64    `json:"deliveryLat,omitempty"`
@@ -63,6 +64,8 @@ type OrderItem struct {
 	OrderID          string  `json:"orderId"`
 	ProductID        string  `json:"productId"`
 	ProductName      string  `json:"productName"`
+	Name             string  `json:"name,omitempty"`
+	Title            string  `json:"title,omitempty"`
 	Quantity         int     `json:"quantity"`
 	Price            float64 `json:"price"`
 	Addons           []any   `json:"addons,omitempty"`
@@ -100,6 +103,7 @@ type CreateOrderRequest struct {
 	PaymentStatus         *string           `json:"paymentStatus,omitempty"`
 	Notes                 *string           `json:"notes,omitempty"`
 	Customer              *CustomerInfo     `json:"customer,omitempty"`
+	CustomerName          *string           `json:"customerName,omitempty"`
 	CustomerPhone         *string           `json:"customerPhone,omitempty"`
 	DeliveryAddressManual *string           `json:"deliveryAddressManual,omitempty"`
 	DeliveryLat           *float64          `json:"deliveryLat,omitempty"`

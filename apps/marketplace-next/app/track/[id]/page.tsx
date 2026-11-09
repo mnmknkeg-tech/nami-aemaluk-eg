@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   Package,
   Truck,
@@ -76,10 +76,22 @@ function getStatusIndex(status: string): number {
 
 export default function TrackOrderPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const orderId = params?.id as string;
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const fromParam = searchParams?.get('from');
+  const shopSlugParam = searchParams?.get('shopSlug') || (order as any)?.shop?.slug;
+  const isFromMerchantSite = Boolean(fromParam || shopSlugParam);
+  const homeUrl = fromParam || (shopSlugParam ? `/site/${shopSlugParam}` : '/');
+  const shopName = order?.shop?.name || '';
+  const homeLabel = isFromMerchantSite
+    ? shopName
+      ? `العودة لمتجر ${shopName}`
+      : 'العودة للمتجر'
+    : 'العودة للرئيسية';
 
   useEffect(() => {
     if (!orderId) return;
@@ -120,8 +132,8 @@ export default function TrackOrderPage() {
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
         <AlertCircle className="w-16 h-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
         <h1 className="text-xl font-bold mb-2">{error || 'لم يتم العثور على الطلب'}</h1>
-        <Link href="/" className="text-brand-cyan font-bold text-sm hover:underline">
-          العودة للرئيسية
+        <Link href={homeUrl} className="text-brand-cyan font-bold text-sm hover:underline">
+          {homeLabel}
         </Link>
       </div>
     );
@@ -135,8 +147,8 @@ export default function TrackOrderPage() {
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-12">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-6">
-        <Link href="/" className="hover:text-brand-cyan">
-          الرئيسية
+        <Link href={homeUrl} className="hover:text-brand-cyan">
+          {isFromMerchantSite ? shopName || 'المتجر' : 'الرئيسية'}
         </Link>
         <span>/</span>
         <span className="text-slate-600 dark:text-slate-300">تتبع الطلب</span>
@@ -333,11 +345,11 @@ export default function TrackOrderPage() {
 
       <div className="text-center">
         <Link
-          href="/"
+          href={homeUrl}
           className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-brand-cyan"
         >
           <ArrowLeft className="w-4 h-4" />
-          العودة للرئيسية
+          {homeLabel}
         </Link>
       </div>
     </div>

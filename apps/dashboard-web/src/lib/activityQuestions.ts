@@ -317,6 +317,10 @@ export function getQuestionsForActivity(
       })),
     }))
     .filter((q) => {
+      if (q.id === 'pos') {
+        // Drop cashier question when pos is local-only
+        return !isLocalOnly('pos');
+      }
       if (q.id === 'employees') {
         return q.options.some((o) => (o.modules || []).length > 0);
       }
@@ -388,19 +392,19 @@ export function specialtiesFromAnswers(
  * dashboard really shows only what the merchant picked.
  */
 const DASHBOARD_FEATURE_MAP: Record<string, string[]> = {
-  sales: ['orders'],
+  sales: ['sales'],
   pos: ['posCheckout'],
-  inventory: ['products'],
+  inventory: ['inventoryOverview', 'products'],
   finance: ['invoice'],
-  bookings: ['reservations'],
+  bookings: ['bookingsSchedule'],
   subscriptions: ['subscriptionsOverview', 'subscriptionPlans', 'subscriptionRenewals'],
   hr: ['employees'],
-  website: ['website'],
-  marketing: ['campaigns'],
+  website: ['website_themes', 'website_builder'],
+  marketing: ['marketingHub', 'campaigns'],
   crm: ['customers'],
   customers: ['customers'],
   accounting: ['accounts'],
-  analytics: ['reports'],
+  analytics: ['analyticsOverview'],
 };
 
 export function dashboardEnabledFeatures(moduleIds: ModuleId[]): Record<string, string[]> {

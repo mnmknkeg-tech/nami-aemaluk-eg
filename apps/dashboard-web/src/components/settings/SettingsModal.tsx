@@ -58,6 +58,7 @@ import HrSettingsTab from './tabs/HrSettingsTab';
 import AnalyticsSettingsTab from './tabs/AnalyticsSettingsTab';
 import { apiRequest } from '@/lib/auth';
 import { isModuleEnabled } from '@/hooks/useModuleGuard';
+import { HIDE_UNPUBLISHED } from '@/config/sidebar';
 
 export const TAB_MODULE_MAP: Record<string, string> = {
   booking_settings: 'bookings',
@@ -315,8 +316,18 @@ export default function SettingsModal() {
   const filteredCategories = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return SETTINGS_CATEGORIES.map((cat) => {
-      // Exclude tabs belonging to modules this merchant hasn't enabled
+      // Exclude tabs belonging to modules this merchant hasn't enabled or local-only tabs in production
       const availableTabs = cat.tabs.filter((t) => {
+        if (
+          HIDE_UNPUBLISHED &&
+          (t.id === 'pos_settings' ||
+            t.id === 'payments' ||
+            t.id === 'accounting_settings' ||
+            t.id === 'hr_settings' ||
+            t.id === 'analytics_settings')
+        ) {
+          return false;
+        }
         const reqMod = TAB_MODULE_MAP[t.id];
         if (reqMod && !isModuleEnabled(shop, reqMod)) {
           return false;

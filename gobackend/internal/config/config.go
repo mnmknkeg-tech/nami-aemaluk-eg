@@ -244,6 +244,28 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
+	// Backwards-compatible aliases for dev bootstrap flags (ALLOW_DEV_*_BOOT)
+	if !cfg.Auth.AllowDevMerchantBoot {
+		if v := os.Getenv("ALLOW_DEV_MERCHANT_BOOT"); strings.EqualFold(v, "true") || v == "1" {
+			cfg.Auth.AllowDevMerchantBoot = true
+		}
+	}
+	if !cfg.Auth.AllowDevAdminBoot {
+		if v := os.Getenv("ALLOW_DEV_ADMIN_BOOT"); strings.EqualFold(v, "true") || v == "1" {
+			cfg.Auth.AllowDevAdminBoot = true
+		}
+	}
+	if !cfg.Auth.AllowDevCourierBoot {
+		if v := os.Getenv("ALLOW_DEV_COURIER_BOOT"); strings.EqualFold(v, "true") || v == "1" {
+			cfg.Auth.AllowDevCourierBoot = true
+		}
+	}
+	if !cfg.Auth.AllowDevCustomerBoot {
+		if v := os.Getenv("ALLOW_DEV_CUSTOMER_BOOT"); strings.EqualFold(v, "true") || v == "1" {
+			cfg.Auth.AllowDevCustomerBoot = true
+		}
+	}
+
 	cfg.App.Env = strings.ToLower(cfg.App.Env)
 
 	if err := cfg.validate(); err != nil {

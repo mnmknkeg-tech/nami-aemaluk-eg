@@ -117,7 +117,12 @@ export default function StatementsPage() {
               </>
             ) : (
               <>
-                <h1 className="text-xl font-bold text-slate-900">كشوف الحساب</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold text-slate-900">كشوف الحساب</h1>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-200">
+                    قريباً · محلي فقط
+                  </span>
+                </div>
                 <p className="text-xs text-slate-400 mt-0.5">
                   مشتريات كل عميل من عندك — اختار عميل وشوف كشف حسابه بالتفصيل
                   {customers.length > 0 && (

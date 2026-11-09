@@ -330,10 +330,10 @@ export default function PosSettingsTab({ shop, onSaved }: PosSettingsTabProps) {
               </div>
             </div>
             <Link
-              href="/dashboard/team"
+              href="/dashboard/hr"
               className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              إدارة الفريق والكاشيرات
+              إدارة الموظفين والصلاحيات
             </Link>
           </div>
         </CardContent>

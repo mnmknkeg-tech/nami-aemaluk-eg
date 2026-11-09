@@ -115,7 +115,6 @@ export type SidebarSection = {
 export const SECTION_COLORS: Record<string, string> = {
   dashboard: 'text-sky-500',
   branches: 'text-blue-600',
-  team: 'text-teal-600',
   sales: 'text-emerald-500',
   pos: 'text-lime-600',
   inventory: 'text-amber-500',
@@ -237,6 +236,7 @@ export const sidebarSections: SidebarSection[] = [
     moduleId: 'pos',
     icon: Calculator,
     mainHref: '/dashboard/pos',
+    published: false, // LOCAL-ONLY: الكاشير مخفي في الإنتاج
     items: [
       {
         id: 'posCheckout',
@@ -345,6 +345,7 @@ export const sidebarSections: SidebarSection[] = [
       },
       {
         id: 'customerStatements',
+        published: false,
         label: 'Statements',
         labelAr: 'كشوف الحساب',
         icon: ScrollText,
@@ -352,6 +353,7 @@ export const sidebarSections: SidebarSection[] = [
       },
       {
         id: 'creditLimits',
+        published: false,
         label: 'Credit Limits',
         labelAr: 'حدود الائتمان',
         icon: PiggyBank,
@@ -367,6 +369,7 @@ export const sidebarSections: SidebarSection[] = [
       },
       {
         id: 'customerSegments',
+        published: false,
         label: 'Segments',
         labelAr: 'الشرائح',
         icon: UserRoundSearch,
@@ -374,17 +377,11 @@ export const sidebarSections: SidebarSection[] = [
       },
       {
         id: 'customerTags',
+        published: false,
         label: 'Tags',
         labelAr: 'الوسوم',
         icon: Tag,
         href: '/dashboard/customers/tags',
-      },
-      {
-        id: 'loyaltyProgram',
-        label: 'Loyalty & Rewards',
-        labelAr: 'الولاء والمكافآت',
-        icon: Award,
-        href: '/dashboard/customers/loyalty',
       },
       {
         id: 'customersSettings',
@@ -621,37 +618,7 @@ export const sidebarSections: SidebarSection[] = [
       },
     ],
   },
-  {
-    id: 'team',
-    published: false,
-    title: 'Team',
-    titleAr: 'فريق العمل',
-    moduleId: 'team',
-    icon: UsersRound,
-    items: [
-      {
-        id: 'teamMembers',
-        label: 'Team Members',
-        labelAr: 'المستخدمون',
-        icon: UsersRound,
-        href: '/dashboard/team',
-      },
-      {
-        id: 'teamRoles',
-        label: 'Roles & Permissions',
-        labelAr: 'الأدوار والصلاحيات',
-        icon: KeyRound,
-        href: '/dashboard/team/roles',
-      },
-      {
-        id: 'teamSettings',
-        label: 'Team Settings',
-        labelAr: 'إعدادات الفريق',
-        icon: Settings,
-        href: '/dashboard/settings?tab=hr_settings&from=team',
-      },
-    ],
-  },
+
   {
     id: 'marketing',
     title: 'Marketing',
@@ -1048,6 +1015,7 @@ export const sidebarSections: SidebarSection[] = [
         labelAr: 'الكاشير (POS)',
         icon: Printer,
         href: '/dashboard/settings?tab=pos_settings',
+        published: false, // LOCAL-ONLY: إعدادات الكاشير مخفية في الإنتاج
       },
       {
         id: 'settings_inventory',
@@ -1096,8 +1064,8 @@ export const sidebarSections: SidebarSection[] = [
       {
         id: 'settings_hr',
         published: false,
-        label: 'Team & Roles',
-        labelAr: 'فريق العمل',
+        label: 'HR & Roles',
+        labelAr: 'الموارد البشرية',
         icon: UserCog,
         href: '/dashboard/settings?tab=hr_settings',
       },

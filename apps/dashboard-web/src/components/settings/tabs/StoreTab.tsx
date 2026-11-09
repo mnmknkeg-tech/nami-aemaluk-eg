@@ -14,7 +14,6 @@ import {
 } from '../ui';
 import { useToast } from '../ToastProvider';
 import { apiRequest } from '@/lib/auth';
-import CommerceSettingsCard from './CommerceSettingsCard';
 
 interface StoreTabProps {
   shop: any;
@@ -330,8 +329,6 @@ export default function StoreTab({ shop, onSaved }: StoreTabProps) {
         <h1 className="text-2xl font-bold text-slate-900">إعدادات المتجر</h1>
         <p className="text-slate-500 text-sm mt-1">إدارة حالة المتجر والتواصل والموقع</p>
       </div>
-
-      <CommerceSettingsCard shop={shop} onSaved={onSaved} />
 
       <Card>
         <CardHeader>

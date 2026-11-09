@@ -101,7 +101,10 @@ export default function HrTasksPage() {
 
   const loadTasks = useCallback(
     async (silent = false) => {
-      if (!shopId) return;
+      if (!shopId) {
+        setLoading(false);
+        return;
+      }
       if (silent) setRefreshing(true);
       else setLoading(true);
       setError('');

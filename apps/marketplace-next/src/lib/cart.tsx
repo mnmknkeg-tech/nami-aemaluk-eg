@@ -17,6 +17,8 @@ export interface CartItem {
   image: string;
   quantity: number;
   maxQuantity?: number;
+  variantSelection?: any;
+  addons?: any[];
 }
 
 interface CartContextValue {
@@ -26,7 +28,12 @@ interface CartContextValue {
    * true (builder sites rely on it); the marketplace quick-add passes `false`
    * so tapping "+" just adds the product instead of hijacking the screen.
    */
-  addItem: (product: Product, quantity?: number, openDrawer?: boolean) => void;
+  addItem: (
+    product: Product,
+    quantity?: number,
+    openDrawer?: boolean,
+    options?: { variantSelection?: any; addons?: any[]; calculatedPrice?: number }
+  ) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -112,33 +119,53 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (hydrated) saveToStorage(storageKey, items);
   }, [items, hydrated, storageKey]);
 
-  const addItem = useCallback((product: Product, quantity = 1, openDrawer = true) => {
-    if (product.isAvailable === false || !Number.isInteger(quantity) || quantity < 1) return;
-    setItems((prev) => {
-      const existing = prev.find((i) => i.productId === product.id);
-      if (existing) {
-        return prev.map((i) =>
-          i.productId === product.id ? { ...i, quantity: i.quantity + quantity } : i
-        );
-      }
-      const newItem: CartItem = {
-        id: `${product.id}-${Date.now()}`,
-        productId: product.id,
-        shopId: product.shopId,
-        shopName: product.shopName || '',
-        shopSlug: product.shopSlug || '',
-        name: product.name,
-        price: product.price || 0,
-        oldPrice: product.oldPrice,
-        image: product.imageUrl || product.images?.[0] || '/placeholder-product.png',
-        quantity,
-        maxQuantity: undefined,
-      };
-      return [...prev, newItem];
-    });
-    if (openDrawer) setCartOpen(true);
-    playCartSound();
-  }, []);
+  const addItem = useCallback(
+    (
+      product: Product,
+      quantity = 1,
+      openDrawer = true,
+      options?: { variantSelection?: any; addons?: any[]; calculatedPrice?: number }
+    ) => {
+      if (product.isAvailable === false || !Number.isInteger(quantity) || quantity < 1) return;
+      const vKey = options?.variantSelection ? JSON.stringify(options.variantSelection) : '';
+      const aKey =
+        options?.addons && options.addons.length > 0 ? JSON.stringify(options.addons) : '';
+      const itemKey = vKey || aKey ? `${product.id}::${vKey}::${aKey}` : product.id;
+
+      const finalPrice =
+        options?.calculatedPrice !== undefined && Number.isFinite(options.calculatedPrice)
+          ? options.calculatedPrice
+          : product.price || 0;
+
+      setItems((prev) => {
+        const existing = prev.find((i) => i.productId === itemKey);
+        if (existing) {
+          return prev.map((i) =>
+            i.productId === itemKey ? { ...i, quantity: i.quantity + quantity } : i
+          );
+        }
+        const newItem: CartItem = {
+          id: `${product.id}-${Date.now()}`,
+          productId: itemKey,
+          shopId: product.shopId,
+          shopName: product.shopName || '',
+          shopSlug: product.shopSlug || '',
+          name: product.name,
+          price: finalPrice,
+          oldPrice: product.oldPrice,
+          image: product.imageUrl || product.images?.[0] || '/placeholder-product.png',
+          quantity,
+          maxQuantity: undefined,
+          variantSelection: options?.variantSelection,
+          addons: options?.addons,
+        };
+        return [...prev, newItem];
+      });
+      if (openDrawer) setCartOpen(true);
+      playCartSound();
+    },
+    []
+  );
 
   const removeItem = useCallback((productId: string) => {
     setItems((prev) => prev.filter((i) => i.productId !== productId));

@@ -89,7 +89,10 @@ export default function AttendancePage() {
   const [formError, setFormError] = useState('');
 
   const load = useCallback(async () => {
-    if (!shopId) return;
+    if (!shopId) {
+      setLoading(false);
+      return;
+    }
     try {
       const data = await fetchAttendance(shopId);
       setRecords(data);

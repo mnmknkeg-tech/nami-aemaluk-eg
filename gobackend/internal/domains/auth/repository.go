@@ -132,18 +132,22 @@ func (r *Repository) FindFirstAdmin(ctx context.Context) (*User, error) {
 func (r *Repository) CreateDevShop(ctx context.Context, userID, category string) (string, error) {
 	shopID := "dev-shop-" + userID
 	query := `
-		INSERT INTO shops (id, owner_id, name, category, phone, governorate, city, is_active, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, true, NOW(), NOW())
+		INSERT INTO shops (id, owner_id, name, slug, category, phone, governorate, city, is_active, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW(), NOW())
 		ON CONFLICT (id) DO UPDATE SET owner_id = $2, updated_at = NOW()
 		RETURNING id
 	`
 
+	if category == "" {
+		category = "RETAIL"
+	}
 	shopName := "Dev Shop"
-	if category != "" {
+	if category != "RETAIL" {
 		shopName = "Dev " + category + " Shop"
 	}
+	slug := "dev-shop-" + userID
 
-	row := r.pool.QueryRow(ctx, query, shopID, userID, shopName, category, "01000000000", "Cairo", "Cairo")
+	row := r.pool.QueryRow(ctx, query, shopID, userID, shopName, slug, category, "01000000000", "Cairo", "Cairo")
 	var id string
 	if err := row.Scan(&id); err != nil {
 		return "", errors.Internal("create_dev_shop_failed", err)

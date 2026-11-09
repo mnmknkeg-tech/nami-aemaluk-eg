@@ -623,6 +623,14 @@ export default function CustomersPage() {
                                       عرض التفاصيل
                                     </Link>
                                     <Link
+                                      href={`/dashboard/marketing/loyalty-programs?tab=cards`}
+                                      className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                                      onClick={() => setMenuOpenId(null)}
+                                    >
+                                      <CreditCard size={13} className="text-amber-600" />
+                                      كروت وأختام الولاء
+                                    </Link>
+                                    <Link
                                       href={`/dashboard/customers/${c.id}/edit`}
                                       className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                                       onClick={() => setMenuOpenId(null)}

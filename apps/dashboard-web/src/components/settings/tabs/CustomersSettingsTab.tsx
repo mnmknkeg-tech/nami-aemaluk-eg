@@ -18,6 +18,7 @@ export default function CustomersSettingsTab({ shop, onSaved }: CustomersSetting
   const initial = useMemo(
     () => ({
       loyaltyEnabled: Boolean(pd.custLoyaltyEnabled ?? true),
+      cardsEnabled: Boolean(pd.custCardsEnabled ?? true),
       loyaltyEarnPer100: String(pd.custLoyaltyEarnPer100 ?? 5),
       loyaltyPointValue: String(pd.custLoyaltyPointValue ?? 1),
       minRedeemPoints: String(pd.custMinRedeemPoints ?? 50),
@@ -65,6 +66,7 @@ export default function CustomersSettingsTab({ shop, onSaved }: CustomersSetting
           pageDesign: {
             ...pd,
             custLoyaltyEnabled: current.loyaltyEnabled,
+            custCardsEnabled: current.cardsEnabled,
             custLoyaltyEarnPer100: Number(current.loyaltyEarnPer100) || 5,
             custLoyaltyPointValue: Number(current.loyaltyPointValue) || 1,
             custMinRedeemPoints: Number(current.minRedeemPoints) || 50,
@@ -156,10 +158,17 @@ export default function CustomersSettingsTab({ shop, onSaved }: CustomersSetting
         </CardHeader>
         <CardContent className="space-y-4">
           <ToggleRow
-            title="تفعيل برنامج نقاط الولاء"
-            desc="إضافة رصيد نقاط تلقائيًا في حساب العميل مع كل طلب مكتمل"
+            title="تفعيل برنامج نقاط الولاء والمستويات"
+            desc="إضافة رصيد نقاط تلقائيًا في حساب العميل مع كل طلب مكتمل واستبدالها بخصومات"
             value={form.loyaltyEnabled}
             onChange={(v) => setForm((f) => ({ ...f, loyaltyEnabled: v }))}
+          />
+
+          <ToggleRow
+            title="تفعيل نظام كروت الولاء وبطاقات الأختام"
+            desc="إصدار بطاقات أختام رقمية للعملاء ومكافأتهم بهدايا وخصومات عند اكتمال الأختام"
+            value={form.cardsEnabled}
+            onChange={(v) => setForm((f) => ({ ...f, cardsEnabled: v }))}
           />
 
           {form.loyaltyEnabled && (

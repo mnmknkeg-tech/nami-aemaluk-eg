@@ -236,8 +236,9 @@ const BASE_SETTING_CARDS: SettingCard[] = [
 ];
 
 // Market-launch switch: local-only settings cards (finance + accounting +
-// HR + analytics) are stripped from the settings hub in production builds.
+// HR + analytics + pos/cashier) are stripped from the settings hub in production builds.
 const LOCAL_ONLY_CARD_IDS: ReadonlySet<string> = new Set([
+  'pos_settings',
   'payments',
   'accounting_settings',
   'hr_settings',

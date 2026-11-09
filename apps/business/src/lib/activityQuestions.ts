@@ -317,6 +317,10 @@ export function getQuestionsForActivity(
       })),
     }))
     .filter((q) => {
+      if (q.id === 'pos') {
+        // Drop cashier question when pos is local-only
+        return !isLocalOnly('pos');
+      }
       if (q.id === 'employees') {
         return q.options.some((o) => (o.modules || []).length > 0);
       }

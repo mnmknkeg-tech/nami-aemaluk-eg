@@ -250,10 +250,10 @@ const insertOrderQuery = `
 		id, total, discount, coupon_code, status, payment_method, payment_status, notes, customer_phone,
 		delivery_address_manual, delivery_lat, delivery_lng, delivery_note, customer_note,
 		user_id, shop_id, customer_id, courier_id, source, pos_shift_id, created_at, updated_at,
-		idempotency_key, request_hash
+		idempotency_key, request_hash, customer_name
 	) VALUES (
 		gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-		NULLIF($14, ''), $15, NULL, NULL, $16, $17, NOW(), NOW(), $18, $19
+		NULLIF($14, ''), $15, NULL, NULL, $16, $17, NOW(), NOW(), $18, $19, $20
 	)
 	ON CONFLICT (shop_id, idempotency_key) DO NOTHING
 	RETURNING ` + orderColumnsNoAlias
@@ -263,7 +263,7 @@ func orderInsertArgs(order *Order) []any {
 		order.Total, order.Discount, order.CouponCode, order.Status, order.PaymentMethod, order.PaymentStatus, order.Notes,
 		order.CustomerPhone, order.DeliveryAddressManual, order.DeliveryLat, order.DeliveryLng,
 		order.DeliveryNote, order.CustomerNote, order.UserID, order.ShopID, order.Source,
-		order.PosShiftID, order.IdempotencyKey, order.RequestHash,
+		order.PosShiftID, order.IdempotencyKey, order.RequestHash, order.CustomerName,
 	}
 }
 
@@ -297,12 +297,13 @@ func (r *Repository) CreateOrder(ctx context.Context, order *Order, couponID str
 
 	var createdCustomerID sql.NullString
 	var createdUserID sql.NullString
+	var createdCustomerName sql.NullString
 	err = tx.QueryRow(ctx, insertOrderQuery, orderInsertArgs(order)...).Scan(
 		&order.ID, &order.Total, &order.Discount, &order.CouponCode, &order.Status, &order.PaymentMethod, &order.PaymentStatus,
 		&order.Notes, &order.CustomerPhone, &order.DeliveryAddressManual, &order.DeliveryLat,
 		&order.DeliveryLng, &order.DeliveryNote, &order.CustomerNote, &createdUserID, &order.ShopID,
 		&createdCustomerID, &order.CourierID, &order.HandedToCourierAt, &order.CodCollectedAt, &order.DeliveredAt,
-		&order.Source, &order.CreatedAt, &order.UpdatedAt,
+		&order.Source, &order.CreatedAt, &order.UpdatedAt, &createdCustomerName,
 	)
 	if err == pgx.ErrNoRows && order.IdempotencyKey != nil && order.RequestHash != nil {
 		var existingID, existingHash string
@@ -324,6 +325,7 @@ func (r *Repository) CreateOrder(ctx context.Context, order *Order, couponID str
 	}
 	order.CustomerID = nullStringPtr(createdCustomerID)
 	order.UserID = createdUserID.String
+	order.CustomerName = nullStringPtr(createdCustomerName)
 
 	// Insert items.
 	for i := range order.Items {
@@ -490,7 +492,8 @@ const orderColumns = `
 	o.id, o.total, o.discount, o.coupon_code, o.status, o.payment_method, o.payment_status, o.notes, o.customer_phone,
 	o.delivery_address_manual, o.delivery_lat, o.delivery_lng, o.delivery_note, o.customer_note,
 	o.user_id, o.shop_id, o.customer_id, o.courier_id, o.handed_to_courier_at, o.cod_collected_at, o.delivered_at,
-	o.source, o.created_at, o.updated_at
+	o.source, o.created_at, o.updated_at,
+	COALESCE(NULLIF(TRIM(o.customer_name), ''), NULLIF(TRIM(c.name), ''), NULLIF(TRIM(u.name), '')) AS customer_name
 `
 
 // orderColumnsNoAlias is used in INSERT/UPDATE ... RETURNING clauses where the
@@ -500,15 +503,16 @@ const orderColumnsNoAlias = `
 	id, total, discount, coupon_code, status, payment_method, payment_status, notes, customer_phone,
 	delivery_address_manual, delivery_lat, delivery_lng, delivery_note, customer_note,
 	user_id, shop_id, customer_id, courier_id, handed_to_courier_at, cod_collected_at, delivered_at,
-	source, created_at, updated_at
+	source, created_at, updated_at, customer_name
 `
 
-const selectOrder = "SELECT " + orderColumns + " FROM orders o"
+const selectOrder = "SELECT " + orderColumns + " FROM orders o LEFT JOIN customers c ON c.id = o.customer_id LEFT JOIN users u ON u.id = o.user_id"
 
 func scanOrder(row pgx.Row) (*Order, error) {
 	var o Order
 	var userID sql.NullString
 	var couponCode, paymentMethod, paymentStatus, notes, customerPhone, deliveryAddressManual, deliveryNote, customerNote, customerID, courierID, source sql.NullString
+	var customerName sql.NullString
 	var discount sql.NullFloat64
 	var deliveryLat, deliveryLng sql.NullFloat64
 	var handedAt, codAt, deliveredAt sql.NullTime
@@ -517,7 +521,7 @@ func scanOrder(row pgx.Row) (*Order, error) {
 		&o.ID, &o.Total, &discount, &couponCode, &o.Status, &paymentMethod, &paymentStatus, &notes, &customerPhone,
 		&deliveryAddressManual, &deliveryLat, &deliveryLng, &deliveryNote, &customerNote,
 		&userID, &o.ShopID, &customerID, &courierID, &handedAt, &codAt, &deliveredAt, &source,
-		&o.CreatedAt, &o.UpdatedAt,
+		&o.CreatedAt, &o.UpdatedAt, &customerName,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -526,6 +530,7 @@ func scanOrder(row pgx.Row) (*Order, error) {
 		return nil, errors.Internal("scan_order_failed", err)
 	}
 
+	o.CustomerName = nullStringPtr(customerName)
 	o.PaymentMethod = nullStringPtr(paymentMethod)
 	o.UserID = userID.String
 	o.Discount = discount.Float64
@@ -588,7 +593,7 @@ func (r *Repository) scanOrderItems(ctx context.Context, orderIDs []string) ([]O
 		placeholders[i] = fmt.Sprintf("$%d", i+1)
 		args[i] = id
 	}
-	query := "SELECT id, order_id, product_id, quantity, price, addons, variant_selection FROM order_items WHERE order_id IN (" + strings.Join(placeholders, ",") + ") ORDER BY created_at"
+	query := "SELECT oi.id, oi.order_id, oi.product_id, oi.quantity, oi.price, oi.addons, oi.variant_selection, COALESCE(p.name, '') FROM order_items oi LEFT JOIN products p ON p.id = oi.product_id WHERE oi.order_id IN (" + strings.Join(placeholders, ",") + ") ORDER BY oi.created_at"
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -598,9 +603,13 @@ func (r *Repository) scanOrderItems(ctx context.Context, orderIDs []string) ([]O
 	var items []OrderItem
 	for rows.Next() {
 		var it OrderItem
-		if err := rows.Scan(&it.ID, &it.OrderID, &it.ProductID, &it.Quantity, &it.Price, &it.Addons, &it.VariantSelection); err != nil {
+		var pName sql.NullString
+		if err := rows.Scan(&it.ID, &it.OrderID, &it.ProductID, &it.Quantity, &it.Price, &it.Addons, &it.VariantSelection, &pName); err != nil {
 			return nil, err
 		}
+		it.ProductName = pName.String
+		it.Name = pName.String
+		it.Title = pName.String
 		items = append(items, it)
 	}
 	return items, rows.Err()

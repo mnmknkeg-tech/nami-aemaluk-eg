@@ -176,38 +176,30 @@ const isDeliveryDisabledOrder = (order: any) => {
 };
 
 const formatOrderItemsSummary = (sale: any, t?: any, isArabic = false) => {
-  const items = Array.isArray(sale?.items) ? sale.items : [];
+  const items = Array.isArray(sale) ? sale : Array.isArray(sale?.items) ? sale.items : [];
   if (items.length === 0) return '';
 
   const parts = items
-    .slice(0, 3)
     .map((it: any) => {
-      const name = asCleanText(it?.product?.name || it?.name || it?.title);
+      const name = asCleanText(
+        it?.product?.name || it?.productName || it?.name || it?.title || 'صنف'
+      );
       const qty = Number(it?.quantity || it?.qty || 1);
-      const qtyText = Number.isFinite(qty) && qty > 1 ? ` × ${qty}` : '';
       const unitPrice = Number(it?.price ?? it?.unitPrice ?? it?.unit_price ?? 0);
       const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
-      const lineTotal = Number.isFinite(unitPrice) ? unitPrice * safeQty : NaN;
-      const priceText = (() => {
-        if (!Number.isFinite(unitPrice) || unitPrice < 0) return '';
-        const useTotal = Number.isFinite(lineTotal) && safeQty > 1;
-        const n = useTotal ? lineTotal : unitPrice;
-        return ` ج.م ${Math.round(n * 100) / 100}`;
-      })();
+      const base = unitPrice > 0 ? `${safeQty}-${name}*${unitPrice}` : `${safeQty}-${name}`;
       const variantText = formatVariantSelectionCompact(
         it?.variantSelection ?? it?.variant_selection,
         isArabic
       );
       const addonsParts = formatAddonsCompactParts(it?.addons ?? it?.extras ?? it?.addOns);
-      const core = [name, variantText].filter(Boolean).join(' ');
-      const base = [core ? `${core}${qtyText}` : '', priceText].filter(Boolean).join('');
+      const variantPart = variantText ? ` (${variantText})` : '';
       const addons = addonsParts.length ? ` + ${addonsParts.join(' + ')}` : '';
-      return `${base}${addons}`.trim();
+      return `${base}${variantPart}${addons}`.trim();
     })
     .filter(Boolean);
 
-  const more = items.length > 3 ? ` +${items.length - 3}` : '';
-  return `${parts.join(' + ')}${more}`;
+  return parts.join(' + ');
 };
 
 const getDeliveryAddress = (order: any): string => {

@@ -70,8 +70,9 @@ export type ModuleDef = {
 // local/dev machines only — same convention as dashboard-web sidebar.
 export const HIDE_UNPUBLISHED = process.env.NODE_ENV === 'production';
 
-/** Local-only module ids: finance + accounting + HR + analytics + AI. */
+/** Local-only module ids: finance + accounting + HR + analytics + AI + pos (cashier). */
 export const LOCAL_ONLY_MODULES: ReadonlySet<string> = new Set([
+  'pos',
   'finance',
   'accounting',
   'hr',

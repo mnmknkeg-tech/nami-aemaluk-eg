@@ -20,11 +20,11 @@ type Shop = {
 const DEFAULT_FEATURES: Record<string, string[]> = {
   branches: ['branchesList', 'branchCompare'],
   team: ['teamMembers', 'teamRoles'],
-  sales: ['orders', 'salesOrders', 'deliveryNotes'],
+  sales: ['sales', 'salesOrders', 'deliveryNotes'],
   inventory: [
-    'inventoryoverview',
+    'inventoryOverview',
     'products',
-    'purchaseorders',
+    'purchaseOrders',
     'warehouses',
     'stocktake',
     'suppliers',
@@ -44,21 +44,28 @@ const DEFAULT_FEATURES: Record<string, string[]> = {
     'customers',
     'customerStatements',
     'creditLimits',
+    'wholesalePricing',
     'customerSegments',
     'customerTags',
-    'loyaltyProgram',
   ],
-  pos: ['posCheckout', 'posSettings'],
-  website: ['website', 'website_themes', 'website_builder'],
-  analytics: [],
+  pos: ['posCheckout', 'posShifts', 'posReports'],
+  website: ['website_themes', 'website_builder'],
+  subscriptions: ['subscriptionsOverview', 'subscriptionPlans', 'subscriptionRenewals'],
+  marketing: ['marketingHub', 'campaigns', 'offers', 'messages', 'loyaltyPrograms'],
+  bookings: ['bookingsSchedule'],
+  analytics: ['analyticsOverview', 'analyticsInsights', 'analyticsPerformance'],
 };
 
 const FEATURE_ALIASES: Record<string, string> = {
-  sales: 'orders',
+  // Legacy aliases
+  orders: 'sales',
   addProduct: 'products',
-  marketingHub: 'campaigns',
   promotions: 'campaigns',
-  bookingsOverview: 'reservations',
+  reservations: 'bookingsSchedule',
+  bookingsOverview: 'bookingsSchedule',
+  website: 'website_themes',
+  discounts: 'offers',
+  coupons: 'offers',
   aiTheme: 'aiContent',
   aiPages: 'aiContent',
   aiBrand: 'aiContent',
@@ -85,6 +92,8 @@ const SETTINGS_ITEM_MODULES: Record<string, string> = {
   settings_customers: 'customers',
   settings_crm: 'crm',
   settings_hr: 'hr',
+  settings_payments: 'finance',
+  settings_analytics: 'analytics',
 };
 
 const SETTINGS_TAB_MODULES: Record<string, string> = {
@@ -97,6 +106,8 @@ const SETTINGS_TAB_MODULES: Record<string, string> = {
   customers: 'customers_settings',
   crm: 'crm_settings',
   hr: 'hr_settings',
+  payments: 'payments',
+  analytics: 'analytics_settings',
 };
 
 /**

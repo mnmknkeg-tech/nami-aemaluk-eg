@@ -23,10 +23,12 @@ const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = fal
       {/* Top Navigation Header */}
       <TopBar />
 
-      {/* Editing mode selector bar */}
-      <div className="border-b border-slate-200 bg-white/80 backdrop-blur-md px-4 py-2 flex items-center gap-4">
-        <EditingModeSelector />
-      </div>
+      {/* Editing mode selector bar — hidden in production if only visual mode remains */}
+      {!HIDE_UNPUBLISHED && (
+        <div className="border-b border-slate-200 bg-white/80 backdrop-blur-md px-4 py-2 flex items-center gap-4">
+          <EditingModeSelector />
+        </div>
+      )}
 
       {templateError && (
         <div
@@ -50,15 +52,15 @@ const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = fal
         <RightInspector />
       </div>
 
-      {/* Bottom Scoped Code Workspace Dock */}
-      <CodeWorkspace />
+      {/* Bottom Scoped Code Workspace Dock — LOCAL-ONLY */}
+      {!HIDE_UNPUBLISHED && <CodeWorkspace />}
 
       {/* Modals, Drawers & Overlays */}
       <PublishModal />
       {/* Market-launch switch: the AI assistant is local-only for now. */}
       {!HIDE_UNPUBLISHED && <AiAssistantModal />}
-      <SecurePreview />
-      <DeveloperModeDrawer />
+      {!HIDE_UNPUBLISHED && <SecurePreview />}
+      {!HIDE_UNPUBLISHED && <DeveloperModeDrawer />}
 
       {/* Mobile bottom tab bar — only visible on small screens (hidden on lg+) */}
       <MobileBuilderTabBar />

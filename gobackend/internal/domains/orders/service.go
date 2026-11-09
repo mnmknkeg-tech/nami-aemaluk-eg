@@ -132,6 +132,14 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 	if manual != "" {
 		normalizedAddress = &manual
 	}
+	var resolvedCustomerName *string
+	if req.CustomerName != nil && strings.TrimSpace(*req.CustomerName) != "" {
+		trimmed := strings.TrimSpace(*req.CustomerName)
+		resolvedCustomerName = &trimmed
+	} else if req.Customer != nil && strings.TrimSpace(req.Customer.Name) != "" {
+		trimmed := strings.TrimSpace(req.Customer.Name)
+		resolvedCustomerName = &trimmed
+	}
 	order := &Order{
 		Status:                OrderStatusPending,
 		UserID:                userID,
@@ -139,6 +147,7 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 		Source:                source,
 		PaymentMethod:         paymentMethod,
 		Notes:                 req.Notes,
+		CustomerName:          resolvedCustomerName,
 		CustomerPhone:         normalizedPhone,
 		DeliveryAddressManual: normalizedAddress,
 		DeliveryLat:           req.DeliveryLat,

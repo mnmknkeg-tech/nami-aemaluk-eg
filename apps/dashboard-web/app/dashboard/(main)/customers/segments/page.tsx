@@ -358,6 +358,9 @@ export default function CustomerSegmentsPage() {
         <div className="text-right">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900">شرائح العملاء</h1>
+            <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-200">
+              قريباً · محلي فقط
+            </span>
             <button
               onClick={() => setGuideOpen(true)}
               className="p-1.5 rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all"

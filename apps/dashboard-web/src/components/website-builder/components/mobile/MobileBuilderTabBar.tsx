@@ -1,5 +1,6 @@
 import React from 'react';
 import { LayoutGrid, FileText, Sparkles, Play, Layers, Palette, Settings } from 'lucide-react';
+import { HIDE_UNPUBLISHED } from '@/config/sidebar';
 import { useBuilder } from '../../context/BuilderContext';
 
 export const MobileBuilderTabBar: React.FC = () => {
@@ -111,15 +112,17 @@ export const MobileBuilderTabBar: React.FC = () => {
         )}
       </button>
 
-      {/* 5. Live Preview */}
-      <button
-        type="button"
-        onClick={() => setIsLivePreviewOpen(true)}
-        className="flex flex-col items-center justify-center gap-1 py-1 px-2 rounded-xl text-slate-600 hover:text-slate-900 active:scale-95 transition-all cursor-pointer"
-      >
-        <Play className="w-4 h-4 text-emerald-600 fill-emerald-600" />
-        <span className="text-[10px] font-bold">معاينة</span>
-      </button>
+      {/* 5. Live Preview — LOCAL-ONLY */}
+      {!HIDE_UNPUBLISHED && (
+        <button
+          type="button"
+          onClick={() => setIsLivePreviewOpen(true)}
+          className="flex flex-col items-center justify-center gap-1 py-1 px-2 rounded-xl text-slate-600 hover:text-slate-900 active:scale-95 transition-all cursor-pointer"
+        >
+          <Play className="w-4 h-4 text-emerald-600 fill-emerald-600" />
+          <span className="text-[10px] font-bold">معاينة</span>
+        </button>
+      )}
     </nav>
   );
 };

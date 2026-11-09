@@ -35,7 +35,6 @@ const LOCAL_ONLY_ROUTES: Array<{ prefix: string; target: SectionSettingsTarget }
     target: { tab: 'accounting_settings', from: 'accounting' },
   },
   { prefix: '/dashboard/finance', target: { tab: 'payments', from: 'finance' } },
-  { prefix: '/dashboard/team', target: { tab: 'hr_settings', from: 'hr' } },
   { prefix: '/dashboard/hr', target: { tab: 'hr_settings', from: 'hr' } },
   { prefix: '/dashboard/analytics', target: { tab: 'analytics_settings', from: 'analytics' } },
   { prefix: '/dashboard/ai', target: { tab: 'apps', from: 'ai' } },

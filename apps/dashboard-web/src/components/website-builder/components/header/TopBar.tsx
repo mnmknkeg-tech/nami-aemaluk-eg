@@ -298,15 +298,17 @@ export const TopBar: React.FC = () => {
           <span>حفظ</span>
         </button>
 
-        {/* Preview Button (opens live interactive preview modal) */}
-        <button
-          onClick={() => setIsLivePreviewOpen(true)}
-          title="معاينة حية للمتجر في كافة الشاشات"
-          className="hidden md:flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-800 shadow-xs transition-all shrink-0 cursor-pointer"
-        >
-          <Play className="w-3.5 h-3.5 text-blue-600 fill-blue-600" />
-          <span>معاينة</span>
-        </button>
+        {/* Preview Button (opens live interactive preview modal) — LOCAL-ONLY */}
+        {!HIDE_UNPUBLISHED && (
+          <button
+            onClick={() => setIsLivePreviewOpen(true)}
+            title="معاينة حية للمتجر في كافة الشاشات"
+            className="hidden md:flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-800 shadow-xs transition-all shrink-0 cursor-pointer"
+          >
+            <Play className="w-3.5 h-3.5 text-blue-600 fill-blue-600" />
+            <span>معاينة</span>
+          </button>
+        )}
 
         {/* Publish Button */}
         <button
@@ -318,83 +320,85 @@ export const TopBar: React.FC = () => {
           <span>نشر</span>
         </button>
 
-        {/* More Tools Dropdown (Advanced Developer & Utility Tools) */}
-        <div className="relative">
-          <button
-            onClick={() => setIsMoreToolsOpen(!isMoreToolsOpen)}
-            title="أدوات وميزات متقدمة"
-            className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
-          >
-            <SlidersHorizontal className="w-4 h-4 text-slate-600" />
-          </button>
-
-          {isMoreToolsOpen && (
-            <div
-              onClick={() => setIsMoreToolsOpen(false)}
-              className="absolute left-0 top-full mt-1 w-52 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150 flex flex-col gap-1 text-xs"
+        {/* More Tools Dropdown (Advanced Developer & Utility Tools) — LOCAL-ONLY in production */}
+        {!HIDE_UNPUBLISHED && (
+          <div className="relative">
+            <button
+              onClick={() => setIsMoreToolsOpen(!isMoreToolsOpen)}
+              title="أدوات وميزات متقدمة"
+              className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
             >
-              <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
-                أدوات متقدمة
-              </div>
+              <SlidersHorizontal className="w-4 h-4 text-slate-600" />
+            </button>
 
-              {/* AI Assistant — market-launch switch: AI is local-only for now. */}
-              {!HIDE_UNPUBLISHED && (
+            {isMoreToolsOpen && (
+              <div
+                onClick={() => setIsMoreToolsOpen(false)}
+                className="absolute left-0 top-full mt-1 w-52 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150 flex flex-col gap-1 text-xs"
+              >
+                <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 mb-1">
+                  أدوات متقدمة
+                </div>
+
+                {/* AI Assistant — market-launch switch: AI is local-only for now. */}
+                {!HIDE_UNPUBLISHED && (
+                  <button
+                    onClick={() => setIsAiModalOpen(true)}
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-slate-700 font-semibold transition-colors w-full text-right"
+                  >
+                    <Sparkles className="w-4 h-4 text-indigo-500" />
+                    <span>مساعد الذكاء الاصطناعي</span>
+                  </button>
+                )}
+
+                {/* Live Preview Modal */}
                 <button
-                  onClick={() => setIsAiModalOpen(true)}
-                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-600 text-slate-700 font-semibold transition-colors w-full text-right"
+                  onClick={() => setIsLivePreviewOpen(true)}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right"
                 >
-                  <Sparkles className="w-4 h-4 text-indigo-500" />
-                  <span>مساعد الذكاء الاصطناعي</span>
+                  <Play className="w-4 h-4 text-blue-600 fill-blue-600" />
+                  <span>معاينة حية تفاعلية</span>
                 </button>
-              )}
 
-              {/* Live Preview Modal */}
-              <button
-                onClick={() => setIsLivePreviewOpen(true)}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right"
-              >
-                <Play className="w-4 h-4 text-blue-600 fill-blue-600" />
-                <span>معاينة حية تفاعلية</span>
-              </button>
+                {/* Code Workspace IDE */}
+                <button
+                  onClick={() => setIsCodeWorkspaceOpen(!isCodeWorkspaceOpen)}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right"
+                >
+                  <Code2 className="w-4 h-4 text-blue-600" />
+                  <span>محرر الكود (Code IDE)</span>
+                </button>
 
-              {/* Code Workspace IDE */}
-              <button
-                onClick={() => setIsCodeWorkspaceOpen(!isCodeWorkspaceOpen)}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right"
-              >
-                <Code2 className="w-4 h-4 text-blue-600" />
-                <span>محرر الكود (Code IDE)</span>
-              </button>
+                {/* Dev AST Drawer */}
+                <button
+                  onClick={() => setIsDevDrawerOpen(!isDevDrawerOpen)}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right"
+                >
+                  <Terminal className="w-4 h-4 text-cyan-600" />
+                  <span>شجرة العناصر للمطورين</span>
+                </button>
 
-              {/* Dev AST Drawer */}
-              <button
-                onClick={() => setIsDevDrawerOpen(!isDevDrawerOpen)}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right"
-              >
-                <Terminal className="w-4 h-4 text-cyan-600" />
-                <span>شجرة العناصر للمطورين</span>
-              </button>
+                {/* RTL / LTR Direction */}
+                <button
+                  onClick={() => setIsRtl(!isRtl)}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right"
+                >
+                  <Languages className="w-4 h-4 text-purple-600" />
+                  <span>تبديل الاتجاه ({isRtl ? 'RTL -> LTR' : 'LTR -> RTL'})</span>
+                </button>
 
-              {/* RTL / LTR Direction */}
-              <button
-                onClick={() => setIsRtl(!isRtl)}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right"
-              >
-                <Languages className="w-4 h-4 text-purple-600" />
-                <span>تبديل الاتجاه ({isRtl ? 'RTL -> LTR' : 'LTR -> RTL'})</span>
-              </button>
-
-              {/* Reset Zoom */}
-              <button
-                onClick={() => setZoom(100)}
-                className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right border-t border-slate-100 mt-1"
-              >
-                <ZoomIn className="w-4 h-4 text-slate-500" />
-                <span>إعادة ضبط المقياس 100%</span>
-              </button>
-            </div>
-          )}
-        </div>
+                {/* Reset Zoom */}
+                <button
+                  onClick={() => setZoom(100)}
+                  className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right border-t border-slate-100 mt-1"
+                >
+                  <ZoomIn className="w-4 h-4 text-slate-500" />
+                  <span>إعادة ضبط المقياس 100%</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Mobile Hamburger Menu */}
         <button

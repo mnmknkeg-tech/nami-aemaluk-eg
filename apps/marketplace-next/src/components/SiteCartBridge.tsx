@@ -51,13 +51,18 @@ export function SiteCartBridge({
   const [isCartOpen, setCartOpen] = useState(false);
   const [ready, setReady] = useState(false);
 
-  const cartItems = items.map(({ product, quantity }) => ({
-    id: product.id,
-    productId: product.id,
-    title: product.title,
-    price: typeof product.price === 'string' ? Number(product.price) || 0 : product.price,
-    quantity,
-    image: product.image,
+  const cartItems = items.map((entry) => ({
+    id: entry.cartItemId || entry.product.id,
+    productId: entry.product.id,
+    title: entry.product.title,
+    price:
+      typeof entry.product.price === 'string'
+        ? Number(entry.product.price) || 0
+        : entry.product.price,
+    quantity: entry.quantity,
+    image: entry.product.image,
+    addons: entry.addons || (entry.product as any)?.addons,
+    variantSelection: entry.variantSelection || (entry.product as any)?.variantSelection,
   }));
 
   // One frame of skeleton so hydration doesn't flash an empty page.

@@ -40,25 +40,55 @@ export async function uploadMediaFile(
     throw new Error('تعذّر تجهيز رابط رفع الصورة');
   }
 
-  const put = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': file.type || 'image/jpeg' },
-    body: file,
-  });
-  if (!put.ok) {
-    throw new Error('فشل رفع الصورة');
+  try {
+    const put = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type || 'image/jpeg' },
+      body: file,
+    });
+    if (!put.ok) {
+      throw new Error('فشل رفع الصورة على خادم التخزين');
+    }
+
+    const completed = await apiRequest<any>('/media/complete', {
+      method: 'POST',
+      body: JSON.stringify({
+        shopId,
+        key,
+        mimeType: file.type || 'image/jpeg',
+        purpose,
+        fileSize: file.size,
+      }),
+    });
+
+    return completed?.originalUrl || completed?.data?.originalUrl || publicUrl || '';
+  } catch (putErr) {
+    console.warn('Presigned upload failed, falling back to direct upload / local data:', putErr);
+
+    // Fallback 1: Direct multipart upload through backend
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('shopId', shopId);
+      formData.append('purpose', purpose);
+
+      const direct = await apiRequest<any>('/media/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const directUrl =
+        direct?.originalUrl || direct?.data?.originalUrl || direct?.url || direct?.data?.url;
+      if (directUrl) return directUrl;
+    } catch (directErr) {
+      console.warn('Direct upload also failed, using data URL fallback:', directErr);
+    }
+
+    // Fallback 2: Data URL so user work is never lost
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string) || publicUrl || '');
+      reader.onerror = () => resolve(publicUrl || '');
+      reader.readAsDataURL(file);
+    });
   }
-
-  const completed = await apiRequest<any>('/media/complete', {
-    method: 'POST',
-    body: JSON.stringify({
-      shopId,
-      key,
-      mimeType: file.type || 'image/jpeg',
-      purpose,
-      fileSize: file.size,
-    }),
-  });
-
-  return completed?.originalUrl || completed?.data?.originalUrl || publicUrl || '';
 }

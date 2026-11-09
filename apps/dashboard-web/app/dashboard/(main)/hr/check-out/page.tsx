@@ -108,7 +108,10 @@ export default function CheckOutPage() {
   const [formError, setFormError] = useState('');
 
   const load = useCallback(async () => {
-    if (!shopId) return;
+    if (!shopId) {
+      setLoading(false);
+      return;
+    }
     try {
       const data = await fetchCheckOuts(shopId);
       setRecords(data);

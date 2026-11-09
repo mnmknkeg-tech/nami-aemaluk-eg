@@ -78,340 +78,23 @@ interface ModulesTabProps {
 }
 
 import { HIDE_UNPUBLISHED } from '@/config/sidebar';
+import {
+  MODULE_GROUPS as RAW_MODULE_GROUPS,
+  REGISTRY_FEATURES as RAW_REGISTRY_FEATURES,
+} from './modulesData.generated';
 
-const moduleIcons: Record<string, any> = {
-  overview: LayoutGrid,
-  apps: LayoutGrid,
-  products: Package,
-  promotions: Tag,
-  builder: Monitor,
-  settings: SettingsIcon,
-  gallery: Camera,
-  reservations: Clock,
-  website: Globe,
-  invoice: Receipt,
-  pos: ShoppingCart,
-  posSettings: SettingsIcon,
-  sales: CreditCard,
-  customers: Users,
-  reports: BarChart3,
-  marketing: Megaphone,
-  expenses: Coins,
-  employees: UserCog,
-  attendance: Clock,
-  payroll: Wallet,
-  orders: CreditCard,
-  quotes: FileText,
-  returnsReport: Undo2,
-  loyalty: Star,
-  subscriptions: CreditCard,
-  epayment: CreditCard,
-  abandonedCart: ShoppingCart,
-  categories: Tag,
-  variants: ListChecks,
-  warehouses: Package,
-  stocktake: Clipboard,
-  suppliers: Truck,
-  purchaseOrders: FileText,
-  transfers: ArrowLeftRight,
-  barcode: Scan,
-  qrCode: QrCode,
-  stockTracking: Package,
-  lowStockAlerts: Bell,
-  revenue: TrendingUp,
-  profits: Coins,
-  taxes: Receipt,
-  journal: FileText,
-  cashflow: TrendingUp,
-  accounts: Briefcase,
-  wallets: Wallet,
-  financialReports: BarChart3,
-  chats: MessageSquare,
-  tickets: Ticket,
-  complaints: Headphones,
-  reviews: ThumbsUp,
-  notes: StickyNote,
-  followUps: Phone,
-  contactLog: ListChecks,
-  campaigns: Megaphone,
-  coupons: Ticket,
-  discounts: Percent,
-  messages: MessageSquare,
-  emailCampaigns: Mail,
-  pushNotifications: Smartphone,
-  smsCampaigns: Smartphone,
-  loyaltyPrograms: Gift,
-  seasonalOffers: Star,
-  providers: Users,
-  services: ListChecks,
-  appointments: CalendarCheck,
-  calendar: Calendar,
-  rooms: Building,
-  doctors: Stethoscope,
-  bookingConfirm: CalendarCheck,
-  bookingCancel: CalendarX,
-  bookingReminder: AlarmClock,
-  patient_records: FileText,
-  activity_inventory: Package,
-  restaurant_tables: Utensils,
-  permissions: ShieldCheck,
-  checkOut: Clock,
-  leaves: CalendarOff,
-  tasks: CheckSquare,
-  kpi: TrendingUp,
-  charts: PieChart,
-  salesPerformance: LineChart,
-  productPerformance: BarChart3,
-  visitors: Eye,
-  conversions: MousePointer,
-  ai_theme: Palette,
-  ai_pages: FileText,
-  ai_brand: Sparkles,
-  ai_chat: MessageSquare,
-  aiContent: Pen,
-  aiImages: Sparkles,
-  aiSEO: Search,
-  aiAnalysis: BarChart3,
-  aiReplies: MessageSquare,
-  aiSuggestions: Lightbulb,
-  aiPages: Sparkles,
-  aiDataAnalysis: Brain,
-};
+// Filter out unpublished groups and features in production builds (HIDE_UNPUBLISHED)
+// while keeping them fully interactive on local/dev.
+const MODULE_GROUPS = RAW_MODULE_GROUPS.filter((g) => !HIDE_UNPUBLISHED || g.published);
 
-const MODULE_GROUPS = [
-  { id: 'sales', label: 'المبيعات والطلبات', icon: CreditCard, color: '#2563EB' },
-  { id: 'pos', label: 'الكاشير ومبيعات نقاط البيع', icon: ShoppingCart, color: '#0F766E' },
-  { id: 'inventory', label: 'المخزون والمنتجات', icon: Package, color: '#16A34A' },
-  // Market-launch switch: local-only groups are stripped in production builds.
-  ...(HIDE_UNPUBLISHED
-    ? []
-    : [
-        { id: 'finance', label: 'المالية والفواتير', icon: Receipt, color: '#7C3AED' },
-        { id: 'accounting', label: 'المحاسبة والدفاتر', icon: BookOpen, color: '#16A34A' },
-      ]),
-  { id: 'crm', label: 'علاقات العملاء', icon: Users, color: '#DC2626' },
-  { id: 'marketing', label: 'التسويق والعروض', icon: Megaphone, color: '#EA580C' },
-  { id: 'bookings', label: 'الحجوزات والمواعيد', icon: Calendar, color: '#0891B2' },
-  { id: 'subscriptions', label: 'الاشتراكات والعضويات', icon: Repeat, color: '#7C3AED' },
-  { id: 'website', label: 'الموقع الإلكتروني والمتجر', icon: Globe, color: '#0EA5E9' },
-  // Market-launch switch: local-only groups are stripped in production builds.
-  ...(HIDE_UNPUBLISHED
-    ? []
-    : [
-        { id: 'hr', label: 'الموارد البشرية', icon: UserCog, color: '#9333EA' },
-        { id: 'analytics', label: 'التحليلات والتقارير', icon: BarChart3, color: '#059669' },
-        { id: 'ai', label: 'مساعد الذكاء الاصطناعي', icon: Sparkles, color: '#BD00FF' },
-      ]),
-];
-
-// Feature registry (simplified — mirrors React app's MODULE_REGISTRY structure)
 const REGISTRY_FEATURES: Record<
   string,
-  Array<{ id: string; label: string; labelAr: string; defaultEnabled?: boolean }>
-> = {
-  sales: [
-    { id: 'orders', label: 'Orders', labelAr: 'الطلبات', defaultEnabled: true },
-    { id: 'quotes', label: 'Quotes', labelAr: 'عروض الأسعار' },
-    { id: 'abandonedCart', label: 'Abandoned Carts', labelAr: 'السلات المتروكة' },
-    { id: 'loyalty', label: 'Loyalty Points', labelAr: 'نقاط الولاء' },
-    { id: 'subscriptions', label: 'Subscriptions', labelAr: 'الاشتراكات' },
-    { id: 'epayment', label: 'E-Payment', labelAr: 'الدفع الإلكتروني' },
-  ],
-  pos: [
-    { id: 'posCheckout', label: 'Cashier', labelAr: 'الكاشير', defaultEnabled: true },
-    { id: 'posShifts', label: 'Shifts', labelAr: 'الورديات' },
-    { id: 'posSettings', label: 'POS Settings', labelAr: 'إعدادات الكاشير', defaultEnabled: true },
-    { id: 'posReports', label: 'POS Reports', labelAr: 'تقارير الكاشير' },
-  ],
-  inventory: [
-    { id: 'products', label: 'Products', labelAr: 'المنتجات', defaultEnabled: true },
-    { id: 'categories', label: 'Categories', labelAr: 'الفئات' },
-    { id: 'variants', label: 'Variants', labelAr: 'الأنواع' },
-    { id: 'stocktake', label: 'Stock Take', labelAr: 'جرد المخزون' },
-    { id: 'suppliers', label: 'Suppliers', labelAr: 'الموردين' },
-    { id: 'purchaseOrders', label: 'Purchase Orders', labelAr: 'أوامر الشراء' },
-    { id: 'warehouses', label: 'Warehouses', labelAr: 'المخازن' },
-    { id: 'transfers', label: 'Transfers', labelAr: 'النقل بين المخازن' },
-    { id: 'barcode', label: 'Barcode', labelAr: 'الباركود' },
-    { id: 'qrCode', label: 'QR Code', labelAr: 'رمز QR' },
-    { id: 'stockTracking', label: 'Stock Tracking', labelAr: 'تتبع الكميات' },
-    { id: 'lowStockAlerts', label: 'Low Stock', labelAr: 'تنبيهات المخزون' },
-  ],
-  finance: [
-    { id: 'invoice', label: 'Invoices', labelAr: 'الفواتير', defaultEnabled: true },
-    { id: 'expenses', label: 'Expenses', labelAr: 'المصروفات' },
-    { id: 'revenue', label: 'Revenue', labelAr: 'الإيرادات' },
-    { id: 'taxes', label: 'Taxes', labelAr: 'الضرائب' },
-    { id: 'cashflow', label: 'Cash Flow', labelAr: 'التدفق النقدي' },
-    { id: 'accounts', label: 'Accounts', labelAr: 'الحسابات' },
-    { id: 'wallets', label: 'Wallets', labelAr: 'المحافظ' },
-    { id: 'profits', label: 'Profits', labelAr: 'الأرباح' },
-    { id: 'journal', label: 'Journal Entries', labelAr: 'القيود اليومية' },
-    { id: 'financialReports', label: 'Financial Reports', labelAr: 'التقارير المالية' },
-  ],
-  accounting: [
-    { id: 'accounts', label: 'Chart of Accounts', labelAr: 'دليل الحسابات', defaultEnabled: true },
-    { id: 'journal', label: 'Journal Entries', labelAr: 'القيود المحاسبية', defaultEnabled: true },
-    { id: 'trialBalance', label: 'Trial Balance', labelAr: 'ميزان المراجعة', defaultEnabled: true },
-    {
-      id: 'financialReports',
-      label: 'Financial Reports',
-      labelAr: 'القوائم المالية',
-      defaultEnabled: true,
-    },
-    { id: 'expenses', label: 'Expenses', labelAr: 'المصروفات', defaultEnabled: true },
-    { id: 'taxes', label: 'Taxes', labelAr: 'الضرائب', defaultEnabled: true },
-  ],
-  crm: [
-    { id: 'customers', label: 'Customers', labelAr: 'العملاء', defaultEnabled: true },
-    { id: 'customerStatements', label: 'Statements', labelAr: 'كشوف الحساب', defaultEnabled: true },
-    { id: 'creditLimits', label: 'Credit Limits', labelAr: 'حدود الائتمان', defaultEnabled: true },
-    { id: 'customerSegments', label: 'Segments', labelAr: 'الشرائح', defaultEnabled: true },
-    { id: 'customerTags', label: 'Tags', labelAr: 'الوسوم', defaultEnabled: true },
-    {
-      id: 'loyaltyProgram',
-      label: 'Loyalty & Rewards',
-      labelAr: 'الولاء والمكافآت',
-      defaultEnabled: true,
-    },
-    { id: 'chats', label: 'Chats', labelAr: 'المحادثات' },
-    { id: 'tickets', label: 'Tickets', labelAr: 'التذاكر' },
-    { id: 'complaints', label: 'Complaints', labelAr: 'الشكاوى' },
-    { id: 'reviews', label: 'Reviews', labelAr: 'التقييمات' },
-  ],
-  marketing: [
-    { id: 'campaigns', label: 'Campaigns', labelAr: 'الحملات' },
-    { id: 'coupons', label: 'Coupons', labelAr: 'الكوبونات' },
-    { id: 'discounts', label: 'Discounts', labelAr: 'الخصومات' },
-    { id: 'messages', label: 'Messages', labelAr: 'الرسائل' },
-    { id: 'emailCampaigns', label: 'Email Campaigns', labelAr: 'حملات الإيميل' },
-    { id: 'smsCampaigns', label: 'SMS Campaigns', labelAr: 'حملات SMS' },
-    { id: 'pushNotifications', label: 'Push Notifications', labelAr: 'الإشعارات الفورية' },
-    { id: 'loyaltyPrograms', label: 'Loyalty Programs', labelAr: 'برامج الولاء' },
-    { id: 'seasonalOffers', label: 'Seasonal Offers', labelAr: 'العروض الموسمية' },
-  ],
-  bookings: [
-    { id: 'reservations', label: 'Reservations', labelAr: 'الحجوزات' },
-    { id: 'appointments', label: 'Appointments', labelAr: 'المواعيد' },
-    { id: 'calendar', label: 'Calendar', labelAr: 'التقويم' },
-    { id: 'rooms', label: 'Rooms', labelAr: 'الغرف' },
-    { id: 'doctors', label: 'Doctors', labelAr: 'الأطباء' },
-    { id: 'tables', label: 'Tables', labelAr: 'الطاولات' },
-    { id: 'bookingsNotifications', label: 'Notifications', labelAr: 'إشعارات الحجوزات' },
-    { id: 'bookingsSettings', label: 'Settings', labelAr: 'إعدادات الحجوزات' },
-  ],
-  subscriptions: [
-    {
-      id: 'subscriptionsOverview',
-      label: 'Member Subscriptions',
-      labelAr: 'اشتراكات الأعضاء',
-      defaultEnabled: true,
-    },
-    {
-      id: 'subscriptionPlans',
-      label: 'Subscription Plans',
-      labelAr: 'باقات الاشتراك',
-      defaultEnabled: true,
-    },
-    {
-      id: 'subscriptionRenewals',
-      label: 'Renewals',
-      labelAr: 'التجديدات',
-      defaultEnabled: true,
-    },
-  ],
-  website: [{ id: 'website', label: 'Website', labelAr: 'الموقع الإلكتروني' }],
-  hr: [
-    { id: 'employees', label: 'Employees', labelAr: 'الموظفين' },
-    { id: 'permissions', label: 'Permissions', labelAr: 'الصلاحيات' },
-    { id: 'attendance', label: 'Attendance', labelAr: 'الحضور' },
-    { id: 'checkout', label: 'Check-out', labelAr: 'الانصراف' },
-    { id: 'payroll', label: 'Payroll', labelAr: 'الرواتب' },
-    { id: 'leaves', label: 'Leaves', labelAr: 'الإجازات' },
-    { id: 'tasks', label: 'Tasks', labelAr: 'المهام' },
-  ],
-  analytics: [
-    { id: 'allAnalytics', label: 'All Analytics', labelAr: 'كل التحليلات', defaultEnabled: true },
-    { id: 'kpi', label: 'KPIs', labelAr: 'المؤشرات', defaultEnabled: true },
-    { id: 'charts', label: 'Charts', labelAr: 'الرسوم البيانية', defaultEnabled: true },
-    {
-      id: 'salesPerformance',
-      label: 'Sales Performance',
-      labelAr: 'أداء المبيعات',
-      defaultEnabled: true,
-    },
-    {
-      id: 'productPerformance',
-      label: 'Product Performance',
-      labelAr: 'أداء المنتجات',
-      defaultEnabled: true,
-    },
-    {
-      id: 'inventoryReports',
-      label: 'Inventory Reports',
-      labelAr: 'تقارير المخزون',
-      defaultEnabled: true,
-    },
-    {
-      id: 'customerInsights',
-      label: 'Customer Insights',
-      labelAr: 'تحليلات العملاء',
-      defaultEnabled: true,
-    },
-    {
-      id: 'engagementAnalytics',
-      label: 'Engagement',
-      labelAr: 'تحليلات المشاركة',
-      defaultEnabled: true,
-    },
-    { id: 'visitors', label: 'Visitors', labelAr: 'الزوار', defaultEnabled: true },
-    { id: 'conversions', label: 'Conversions', labelAr: 'التحويلات', defaultEnabled: true },
-    {
-      id: 'returnsReport',
-      label: 'Returns Reports',
-      labelAr: 'تقارير المرتجعات',
-      defaultEnabled: true,
-    },
-    {
-      id: 'financeAnalytics',
-      label: 'Finance Reports',
-      labelAr: 'تقارير المالية',
-      defaultEnabled: true,
-    },
-    {
-      id: 'marketingAnalytics',
-      label: 'Marketing Analytics',
-      labelAr: 'تحليلات التسويق',
-      defaultEnabled: true,
-    },
-    {
-      id: 'operationsAnalytics',
-      label: 'Operations Analytics',
-      labelAr: 'تحليلات العمليات',
-      defaultEnabled: true,
-    },
-    {
-      id: 'paymentsAnalytics',
-      label: 'Payments Reports',
-      labelAr: 'تقارير المدفوعات',
-      defaultEnabled: true,
-    },
-    {
-      id: 'logisticsAnalytics',
-      label: 'Logistics Reports',
-      labelAr: 'تقارير اللوجستيات',
-      defaultEnabled: true,
-    },
-  ],
-  ai: [
-    { id: 'aiContent', label: 'AI Content', labelAr: 'محتوى AI' },
-    { id: 'aiImages', label: 'AI Images', labelAr: 'صور AI' },
-    { id: 'aiSEO', label: 'AI SEO', labelAr: 'AI لتحسين البحث' },
-    { id: 'aiAnalysis', label: 'AI Analysis', labelAr: 'تحليلات AI' },
-    { id: 'aiInsights', label: 'AI Insights', labelAr: 'رؤى AI' },
-    { id: 'aiAutomations', label: 'AI Automations', labelAr: 'أتمتة AI' },
-  ],
-};
+  Array<{ id: string; labelAr: string; icon: any; published: boolean; defaultEnabled: boolean }>
+> = {};
+
+for (const [k, v] of Object.entries(RAW_REGISTRY_FEATURES)) {
+  REGISTRY_FEATURES[k] = v.filter((f) => !HIDE_UNPUBLISHED || f.published);
+}
 
 export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
   const { toast } = useToast();
@@ -575,11 +258,11 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
   };
 
   const coreModules = [
-    { id: 'overview', label: 'النظرة العامة' },
-    { id: 'products', label: 'المنتجات' },
-    { id: 'promotions', label: 'العروض' },
-    { id: 'builder', label: 'البولدر' },
-    { id: 'settings', label: 'الإعدادات' },
+    { id: 'overview', label: 'النظرة العامة', icon: LayoutGrid },
+    { id: 'products', label: 'المنتجات', icon: Package },
+    { id: 'promotions', label: 'العروض', icon: Tag },
+    { id: 'builder', label: 'البولدر', icon: Monitor },
+    { id: 'settings', label: 'الإعدادات', icon: SettingsIcon },
   ];
 
   return (
@@ -601,7 +284,7 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {coreModules.map((m) => {
-            const Icon = moduleIcons[m.id] || LayoutGrid;
+            const Icon = m.icon || LayoutGrid;
             return (
               <div
                 key={m.id}
@@ -702,7 +385,7 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
                               <Check size={16} strokeWidth={3} />
                             ) : (
                               (() => {
-                                const FeatureIcon = moduleIcons[feature.id] || LayoutGrid;
+                                const FeatureIcon = feature.icon || LayoutGrid;
                                 return <FeatureIcon size={16} />;
                               })()
                             )}

@@ -53,9 +53,9 @@ const nextConfig = {
           // vercel.live hosts Vercel's preview toolbar script (preview deployments only).
           `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''} https://vercel.live`,
           "style-src 'self' 'unsafe-inline'",
-          "img-src 'self' data: blob: https:",
+          "img-src 'self' data: blob: https: http:",
           "font-src 'self' data: https://vercel.live",
-          "connect-src 'self' https: ws: wss: https://vercel.live",
+          `connect-src 'self' https: ws: wss: blob: data: http://localhost:* http://127.0.0.1:* ${process.env.NODE_ENV === 'development' ? 'http:' : ''} https://vercel.live`,
           "frame-src 'self' https://www.openstreetmap.org https://www.google.com https://vercel.live",
           "manifest-src 'self' https://vercel.com",
           "worker-src 'self' blob:",

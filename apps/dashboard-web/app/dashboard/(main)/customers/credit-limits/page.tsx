@@ -78,7 +78,6 @@ export default function CreditLimitsPage() {
     const near = allRows.filter((r) => statusOf(r) === 'near').length;
     const safe = allRows.filter((r) => statusOf(r) === 'safe').length;
     return { all: allRows.length, exceeded, near, safe };
-     
   }, [allRows]);
 
   const rows = allRows
@@ -113,7 +112,12 @@ export default function CreditLimitsPage() {
       <div className="bg-white border-b border-slate-200">
         <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">حدود الائتمان</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-slate-900">حدود الائتمان</h1>
+              <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-200">
+                قريباً · محلي فقط
+              </span>
+            </div>
             <p className="text-xs text-slate-400 mt-0.5">
               حدد سقف البيع بالأجل لكل عميل — بيتحذر لو عدّى حدّه
               {counts.all > 0 && counts.exceeded > 0 && (

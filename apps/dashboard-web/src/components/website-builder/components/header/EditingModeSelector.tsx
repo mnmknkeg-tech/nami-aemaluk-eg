@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Layout, FileCode, Palette, Code2, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { HIDE_UNPUBLISHED } from '@/config/sidebar';
 import { useBuilder } from '../../context/BuilderContext';
 
 export type EditingModeId = 'visual' | 'html_only' | 'css_only' | 'full_code';
@@ -60,6 +61,8 @@ export const EditingModeSelector: React.FC = () => {
   } = useBuilder();
   const [showWarning, setShowWarning] = useState<EditingModeId | null>(null);
 
+  const visibleModes = HIDE_UNPUBLISHED ? MODES.filter((m) => m.id === 'visual') : MODES;
+
   const mode = MODES.find((m) => m.id === activeMode);
 
   const switchMode = (next: EditingModeId) => {
@@ -82,7 +85,7 @@ export const EditingModeSelector: React.FC = () => {
   return (
     <div className="flex flex-col gap-1 w-full">
       <div className="flex gap-1 border border-slate-200 rounded-xl bg-white p-1 shadow-2xs">
-        {MODES.map((m) => {
+        {visibleModes.map((m) => {
           const isActive = activeMode === m.id;
           return (
             <button

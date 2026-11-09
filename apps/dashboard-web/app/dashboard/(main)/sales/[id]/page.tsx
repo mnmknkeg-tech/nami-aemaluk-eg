@@ -23,7 +23,13 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
 import { useShop } from '@/hooks/useShop';
-import { getDeliveryAddress, renderDeliveryFee, isDeliveryDisabledOrder } from '@/lib/sales-utils';
+import {
+  getDeliveryAddress,
+  renderDeliveryFee,
+  isDeliveryDisabledOrder,
+  formatAddonsCompactParts,
+  formatVariantSelectionCompact,
+} from '@/lib/sales-utils';
 import { cardClass } from '@/lib/ui/tokens';
 import { PrintPreviewModal, parseOrderNotes } from '@/components/sales/print-utils';
 
@@ -382,6 +388,12 @@ export default function OrderDetailPage() {
                         const weight = it?.weight || it?.weightKg || it?.weight_kg;
                         const name =
                           it?.product?.name || it?.productName || it?.name || it?.title || 'منتج';
+                        const variant = formatVariantSelectionCompact(
+                          it?.variantSelection ?? it?.variant_selection
+                        );
+                        const addons = formatAddonsCompactParts(
+                          it?.addons ?? it?.extras ?? it?.addOns
+                        );
                         return (
                           <tr
                             key={i}
@@ -391,6 +403,16 @@ export default function OrderDetailPage() {
                               <span className="text-[13px] font-bold text-slate-800 block truncate max-w-[220px]">
                                 {name}
                               </span>
+                              {variant ? (
+                                <span className="text-[11px] text-slate-400 font-semibold block mt-0.5">
+                                  ({variant})
+                                </span>
+                              ) : null}
+                              {addons.length > 0 ? (
+                                <span className="text-[11px] text-emerald-600 font-semibold block mt-0.5">
+                                  + {addons.join(' + ')}
+                                </span>
+                              ) : null}
                               {it?.product?.sku || it?.sku ? (
                                 <span className="text-[10px] text-slate-400 block" dir="ltr">
                                   {it.product?.sku || it.sku}

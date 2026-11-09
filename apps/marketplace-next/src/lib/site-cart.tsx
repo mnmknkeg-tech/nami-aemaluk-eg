@@ -8,19 +8,41 @@ export interface SiteCartEntry {
   product: SiteProduct;
   quantity: number;
   shop: SiteShopContext;
+  cartItemId?: string;
+  variantSelection?: any;
+  addons?: any[];
 }
 
 interface SiteCartContextValue {
   items: SiteCartEntry[];
   totalItems: number;
   totalPrice: number;
-  addItem: (product: SiteProduct, shop: SiteShopContext) => void;
-  updateQuantity: (productId: string, delta: number) => void;
-  removeItem: (productId: string) => void;
+  addItem: (
+    product: SiteProduct,
+    shop: SiteShopContext,
+    options?: {
+      variantSelection?: any;
+      addons?: any[];
+      quantity?: number;
+      calculatedPrice?: number;
+    }
+  ) => void;
+  updateQuantity: (cartItemIdOrProductId: string, delta: number) => void;
+  removeItem: (cartItemIdOrProductId: string) => void;
   clearCart: () => void;
 }
 
 const SiteCartContext = createContext<SiteCartContextValue | null>(null);
+
+function getEntryKey(entry: Partial<SiteCartEntry>): string {
+  if (entry.cartItemId) return entry.cartItemId;
+  const pId = entry.product?.id || '';
+  const v = entry.variantSelection ? JSON.stringify(entry.variantSelection) : '';
+  const a =
+    Array.isArray(entry.addons) && entry.addons.length > 0 ? JSON.stringify(entry.addons) : '';
+  if (!v && !a) return pId;
+  return `${pId}::${v}::${a}`;
+}
 
 export function isValidSiteCartEntry(value: unknown, shopSlug: string): value is SiteCartEntry {
   if (!value || typeof value !== 'object') return false;
@@ -98,7 +120,7 @@ export function SiteCartProvider({ children }: { children: React.ReactNode }) {
       items,
       totalItems,
       totalPrice,
-      addItem: (product, shop) => {
+      addItem: (product, shop, options) => {
         if (
           product.isActive === false ||
           product.isAvailable === false ||
@@ -106,26 +128,68 @@ export function SiteCartProvider({ children }: { children: React.ReactNode }) {
         ) {
           return;
         }
+        const qtyToAdd = Math.max(1, options?.quantity || 1);
+        const resolvedPrice =
+          options?.calculatedPrice !== undefined && Number.isFinite(options.calculatedPrice)
+            ? options.calculatedPrice
+            : typeof product.price === 'string'
+              ? Number(product.price) || 0
+              : product.price;
+
+        const effectiveProduct: SiteProduct & { addons?: any; variantSelection?: any } = {
+          ...product,
+          price: resolvedPrice,
+          addons: options?.addons || (product as any)?.addons,
+          variantSelection: options?.variantSelection || (product as any)?.variantSelection,
+        };
+
+        const targetEntryKey = getEntryKey({
+          product: effectiveProduct,
+          variantSelection: options?.variantSelection,
+          addons: options?.addons,
+        });
+
         setItems((current) => {
-          const existing = current.find((item) => item.product.id === product.id);
-          if (existing) {
-            return current.map((item) =>
-              item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          const existingIndex = current.findIndex((item) => getEntryKey(item) === targetEntryKey);
+          if (existingIndex >= 0) {
+            return current.map((item, idx) =>
+              idx === existingIndex ? { ...item, quantity: item.quantity + qtyToAdd } : item
             );
           }
-          return [...current, { product, quantity: 1, shop }];
+          return [
+            ...current,
+            {
+              product: effectiveProduct,
+              quantity: qtyToAdd,
+              shop,
+              cartItemId: targetEntryKey,
+              variantSelection: options?.variantSelection,
+              addons: options?.addons,
+            },
+          ];
         });
       },
-      updateQuantity: (productId, delta) =>
+      updateQuantity: (cartItemIdOrProductId, delta) =>
         setItems((current) =>
           current
             .map((item) =>
-              item.product.id === productId ? { ...item, quantity: item.quantity + delta } : item
+              item.cartItemId === cartItemIdOrProductId ||
+              item.product.id === cartItemIdOrProductId ||
+              getEntryKey(item) === cartItemIdOrProductId
+                ? { ...item, quantity: item.quantity + delta }
+                : item
             )
             .filter((item) => item.quantity > 0)
         ),
-      removeItem: (productId) =>
-        setItems((current) => current.filter((item) => item.product.id !== productId)),
+      removeItem: (cartItemIdOrProductId) =>
+        setItems((current) =>
+          current.filter(
+            (item) =>
+              item.cartItemId !== cartItemIdOrProductId &&
+              item.product.id !== cartItemIdOrProductId &&
+              getEntryKey(item) !== cartItemIdOrProductId
+          )
+        ),
       clearCart: () => setItems([]),
     };
   }, [items]);

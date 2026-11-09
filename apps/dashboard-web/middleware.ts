@@ -34,6 +34,15 @@ export function middleware(req: NextRequest) {
     }
   }
 
+  // Guard dashboard area: strictly require valid session cookie
+  if (pathname.startsWith('/dashboard')) {
+    if (!hasSessionCookie(req)) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Only guard admin area (excluding the gate page itself and static/next internals)
   if (!pathname.startsWith('/admin')) {
     return NextResponse.next();
