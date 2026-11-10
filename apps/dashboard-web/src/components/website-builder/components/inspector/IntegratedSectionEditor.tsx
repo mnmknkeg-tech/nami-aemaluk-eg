@@ -115,12 +115,23 @@ export const IntegratedSectionEditor: React.FC = () => {
   const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     targetNodeId: string,
-    isBackground = false
+    isBackground = false,
+    mediaKind: 'image' | 'video' = 'image'
   ) => {
     const input = e.currentTarget;
     const file = input.files?.[0];
     if (!file) return;
-    const validation = validateImageFile(file);
+    const validation =
+      mediaKind === 'video'
+        ? {
+            valid:
+              ['video/mp4', 'video/webm', 'video/quicktime'].includes(file.type) &&
+              file.size <= 250 * 1024 * 1024,
+            error: !['video/mp4', 'video/webm', 'video/quicktime'].includes(file.type)
+              ? 'صيغة الفيديو غير مدعومة؛ استخدم MP4 أو WebM أو MOV.'
+              : 'حجم الفيديو كبير؛ الحد الأقصى 250MB.',
+          }
+        : validateImageFile(file);
     if (!validation.valid) {
       setUploadError(validation.error || 'نوع أو حجم الصورة غير مقبول.');
       input.value = '';
@@ -133,14 +144,24 @@ export const IntegratedSectionEditor: React.FC = () => {
     }
     setUploadError(null);
     try {
-      const url = await uploadMediaFile(file, currentTenant.id, 'website_image');
+      const url = await uploadMediaFile(
+        file,
+        currentTenant.id,
+        mediaKind === 'video' ? 'website_video' : 'website_image'
+      );
       if (!url || !/^https:\/\//i.test(url) || /^blob:/i.test(url)) {
-        throw new Error('لم يُرجع التخزين رابط صورة دائمًا وآمنًا.');
+        throw new Error('لم يُرجع التخزين رابط وسائط دائمًا وآمنًا.');
       }
-      if (isBackground) {
+      if (mediaKind === 'video') {
+        handlePropChange(parentSection.id, 'mediaType', 'video');
+        handlePropChange(parentSection.id, 'videoUrl', url);
+      } else if (isBackground) {
         handleStyleChange(targetNodeId, 'backgroundImage', `url("${url}")`);
         handleStyleChange(targetNodeId, 'backgroundSize', 'cover');
         handleStyleChange(targetNodeId, 'backgroundPosition', 'center');
+      } else if (isHero && targetNodeId === parentSection.id) {
+        handlePropChange(parentSection.id, 'mediaType', 'image');
+        handlePropChange(parentSection.id, 'imageUrl', url);
       } else if (targetNodeId === `${parentSection.id}:hero-image`) {
         handlePropChange(parentSection.id, 'imageUrl', url);
       } else {

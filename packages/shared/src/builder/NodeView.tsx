@@ -1976,17 +1976,98 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
       const heroContent = resolveHeroContent(node, website.components);
       const heroStats = heroContent.stats;
       const primaryColor = theme.colors.primary;
+      const mediaType = node.props?.mediaType === 'video' ? 'video' : 'image';
+      const imageUrl = node.props?.imageUrl || heroContent.imageUrl;
+      const videoUrl = node.props?.videoUrl;
+      const mediaUrl = mediaType === 'video' ? videoUrl : imageUrl;
+      const hasTextContent = Boolean(
+        heroContent.badge ||
+        heroContent.title ||
+        heroContent.description ||
+        heroContent.primaryCtaText ||
+        heroContent.secondaryCtaText ||
+        heroStats.length
+      );
+      const bannerHeight = {
+        small: { desktop: 220, mobile: 180 },
+        medium: { desktop: 340, mobile: 260 },
+        large: { desktop: 520, mobile: 360 },
+      }[node.props?.bannerHeight as 'small' | 'medium' | 'large'] || { desktop: 340, mobile: 260 };
+      const showMediaOnly = Boolean(mediaUrl && (node.props?.bannerMediaOnly || !hasTextContent));
+
+      if (showMediaOnly) {
+        const mediaHeight = viewport === 'mobile' ? bannerHeight.mobile : bannerHeight.desktop;
+        return (
+          <section
+            id={node.id}
+            style={{
+              ...getComputedStyles(),
+              position: 'relative',
+              width: '100%',
+              height: `${mediaHeight}px`,
+              minHeight: `${mediaHeight}px`,
+              maxHeight: 'none',
+              padding: 0,
+              overflow: 'hidden',
+            }}
+            className="relative transition-all"
+          >
+            {mediaType === 'video' ? (
+              <video
+                src={videoUrl}
+                poster={imageUrl || undefined}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                aria-label={heroContent.title || 'فيديو البنر'}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            ) : (
+              <img
+                src={imageUrl}
+                alt={heroContent.title || 'صورة البنر'}
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="lazy"
+              />
+            )}
+          </section>
+        );
+      }
 
       if (isCompleteChildBasedHero(heroContent)) {
         return (
-          <section id={node.id} style={getComputedStyles()} className="transition-all">
+          <section
+            id={node.id}
+            style={{
+              ...getComputedStyles(),
+              ...(node.props?.bannerHeight
+                ? {
+                    minHeight: `${viewport === 'mobile' ? bannerHeight.mobile : bannerHeight.desktop}px`,
+                  }
+                : {}),
+            }}
+            className="transition-all"
+          >
             {renderChildren()}
           </section>
         );
       }
 
       return (
-        <section id={node.id} style={getComputedStyles()} className="transition-all">
+        <section
+          id={node.id}
+          style={{
+            ...getComputedStyles(),
+            ...(node.props?.bannerHeight
+              ? {
+                  minHeight: `${viewport === 'mobile' ? bannerHeight.mobile : bannerHeight.desktop}px`,
+                }
+              : {}),
+          }}
+          className="transition-all"
+        >
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-16">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-center">
               <div className="lg:col-span-7 space-y-4 sm:space-y-6 text-right">
@@ -2085,15 +2166,29 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                 )}
               </div>
 
-              {heroContent.imageUrl && !heroContent.childContent.image && (
+              {mediaUrl && (mediaType === 'video' || !heroContent.childContent.image) && (
                 <div className="lg:col-span-5 w-full">
                   <div className="relative rounded-2xl overflow-hidden shadow-xl border border-slate-100 bg-slate-100 aspect-16/10 sm:aspect-square max-h-[340px] sm:max-h-none">
-                    <img
-                      src={heroContent.imageUrl}
-                      alt={heroContent.title || 'صورة الواجهة'}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
+                    {mediaType === 'video' ? (
+                      <video
+                        src={videoUrl}
+                        poster={imageUrl || undefined}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        preload="metadata"
+                        aria-label={heroContent.title || 'فيديو البنر'}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={imageUrl}
+                        alt={heroContent.title || 'صورة الواجهة'}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60" />
                   </div>
                 </div>

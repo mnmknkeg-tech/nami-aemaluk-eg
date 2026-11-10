@@ -25,12 +25,82 @@ export const HeroRenderer: React.FC<BaseRendererProps> = ({
   const heroStats = content.stats;
   const primaryColor = website.theme?.colors?.primary || '#2563eb';
   const hasCompleteChildContent = isCompleteChildBasedHero(content);
+  const mediaType = node.props?.mediaType === 'video' ? 'video' : 'image';
+  const imageUrl = node.props?.imageUrl || content.imageUrl;
+  const videoUrl = node.props?.videoUrl;
+  const mediaUrl = mediaType === 'video' ? videoUrl : imageUrl;
+  const hasTextContent = Boolean(
+    content.badge ||
+    content.title ||
+    content.description ||
+    content.primaryCtaText ||
+    content.secondaryCtaText ||
+    heroStats.length
+  );
+  const heightPreset = node.props?.bannerHeight || 'medium';
+  const bannerHeights: Record<string, { desktop: number; mobile: number }> = {
+    small: { desktop: 220, mobile: 180 },
+    medium: { desktop: 340, mobile: 260 },
+    large: { desktop: 520, mobile: 360 },
+  };
+  const bannerHeight = bannerHeights[heightPreset] || bannerHeights.medium;
+  const showMediaOnly = Boolean(mediaUrl && (node.props?.bannerMediaOnly || !hasTextContent));
+
+  if (showMediaOnly) {
+    const computedStyles = getComputedStyles();
+    const mediaHeight = isMobile ? bannerHeight.mobile : bannerHeight.desktop;
+    return (
+      <section
+        id={node.id}
+        style={{
+          ...computedStyles,
+          position: 'relative',
+          width: '100%',
+          height: `${mediaHeight}px`,
+          minHeight: `${mediaHeight}px`,
+          maxHeight: 'none',
+          padding: 0,
+          overflow: 'hidden',
+        }}
+        onClick={handleClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={`relative cursor-pointer transition-all ${outlineClass}`}
+      >
+        {mediaType === 'video' ? (
+          <video
+            src={videoUrl}
+            poster={imageUrl || undefined}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-label={content.title || 'فيديو البنر'}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <img
+            src={imageUrl}
+            alt={content.title || 'صورة البنر'}
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+          />
+        )}
+      </section>
+    );
+  }
 
   if (hasCompleteChildContent) {
     return (
       <section
         id={node.id}
-        style={getComputedStyles()}
+        style={{
+          ...getComputedStyles(),
+          ...(node.props?.bannerHeight
+            ? { minHeight: `${isMobile ? bannerHeight.mobile : bannerHeight.desktop}px` }
+            : {}),
+        }}
         onClick={handleClick}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -44,7 +114,12 @@ export const HeroRenderer: React.FC<BaseRendererProps> = ({
   return (
     <section
       id={node.id}
-      style={getComputedStyles()}
+      style={{
+        ...getComputedStyles(),
+        ...(node.props?.bannerHeight
+          ? { minHeight: `${isMobile ? bannerHeight.mobile : bannerHeight.desktop}px` }
+          : {}),
+      }}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -165,17 +240,31 @@ export const HeroRenderer: React.FC<BaseRendererProps> = ({
           </div>
 
           {/* Image Column */}
-          {content.imageUrl && !content.childContent.image && (
+          {mediaUrl && (mediaType === 'video' || !content.childContent.image) && (
             <div className={isMobile ? 'w-full' : 'lg:col-span-5 w-full'}>
               <div
                 className={`relative rounded-2xl overflow-hidden shadow-xl border border-slate-100 bg-slate-100 ${isMobile ? 'aspect-video max-h-[200px]' : 'aspect-16/10 sm:aspect-square max-h-[340px] sm:max-h-none'}`}
               >
-                <img
-                  src={content.imageUrl}
-                  alt={content.title || 'صورة الواجهة'}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+                {mediaType === 'video' ? (
+                  <video
+                    src={videoUrl}
+                    poster={imageUrl || undefined}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    aria-label={content.title || 'فيديو البنر'}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <img
+                    src={imageUrl}
+                    alt={content.title || 'صورة الواجهة'}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60" />
               </div>
             </div>

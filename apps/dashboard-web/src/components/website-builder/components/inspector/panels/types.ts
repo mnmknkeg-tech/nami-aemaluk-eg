@@ -42,7 +42,8 @@ export interface InspectorPanelProps {
   handleFileUpload: (
     e: React.ChangeEvent<HTMLInputElement>,
     targetNodeId: string,
-    isBackground?: boolean
+    isBackground?: boolean,
+    mediaKind?: 'image' | 'video'
   ) => void;
   selectNode: (id: string) => void;
   website: { components: Record<string, ComponentNode> };

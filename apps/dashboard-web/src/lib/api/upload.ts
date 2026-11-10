@@ -76,6 +76,11 @@ export async function uploadMediaFile(
     if (!put.ok) throw new Error('فشل رفع الصورة على خادم التخزين');
   } catch (putError) {
     console.warn('[media] presigned PUT failed; trying direct upload once', putError);
+    // The legacy multipart endpoint only accepts images. Never turn a failed
+    // video upload into a huge data URL or retry it through that endpoint.
+    if (uploadFile.type.toLowerCase().startsWith('video/')) {
+      throw new Error('فشل رفع الفيديو على التخزين؛ تحقق من الاتصال ثم حاول مرة أخرى.');
+    }
     // Non-browser callers cannot use the multipart/data-URL fallback safely.
     if (typeof FileReader === 'undefined') throw new Error('فشل رفع الصورة');
     try {
