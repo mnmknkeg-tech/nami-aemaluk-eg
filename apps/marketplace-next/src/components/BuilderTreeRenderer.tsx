@@ -946,7 +946,7 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
 
   // ── footer ─────────────────────────────────────────────────────────────────
   if (node.type === 'footer') {
-    const brandName = node.props.brandName || shop?.name || website.name || 'المتجر الإلكتروني';
+    const brandName = node.props.brandName || ctxShop?.name || 'المتجر الإلكتروني';
     const description =
       node.props.description || 'منصة متكاملة للتجارة والخدمات بأعلى معايير الجودة.';
     const isDarkText = node.props.textColorMode === 'dark_text';
@@ -960,9 +960,9 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
       ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700'
       : 'bg-slate-800/80 hover:bg-slate-800 border-slate-700/60 text-slate-300 hover:text-white';
 
-    const phone = node.props.phone || shop?.phone || shop?.whatsapp;
-    const email = node.props.email || shop?.email;
-    const address = node.props.address || shop?.address;
+    const phone = node.props.phone || ctxShop?.phone || ctxShop?.whatsapp;
+    const email = node.props.email || ctxShop?.email;
+    const address = node.props.address || ctxShop?.address;
     const links = Array.isArray(node.props.links) ? node.props.links : [];
 
     return (
