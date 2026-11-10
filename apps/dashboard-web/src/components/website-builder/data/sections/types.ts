@@ -3,6 +3,7 @@ import { BusinessActivity, ComponentNode } from '../../types/builder';
 export type SectionCategory =
   | 'navbar'
   | 'hero'
+  | 'products'
   | 'product_detail'
   | 'about'
   | 'features'
@@ -31,6 +32,7 @@ export interface SectionCategoryDef {
 export const sectionCategoriesList: SectionCategoryDef[] = [
   { id: 'navbar', nameAr: 'شريط التنقل', nameEn: 'Navigation Bar' },
   { id: 'hero', nameAr: 'هيرو والواجهة الرئيسية', nameEn: 'Hero' },
+  { id: 'products', nameAr: 'المنتجات والمتجر', nameEn: 'Products & Store' },
   { id: 'product_detail', nameAr: 'صفحة وتفاصيل المنتج', nameEn: 'Product Details' },
   { id: 'about', nameAr: 'من نحن وقصة الشركة', nameEn: 'About Us' },
   { id: 'features', nameAr: 'المميزات والخدمات', nameEn: 'Features' },
@@ -41,7 +43,7 @@ export const sectionCategoriesList: SectionCategoryDef[] = [
   { id: 'pricing', nameAr: 'الأسعار والباقات', nameEn: 'Pricing' },
   { id: 'auth', nameAr: 'تسجيل الدخول وعضويات العملاء', nameEn: 'Auth & Login' },
   { id: 'team', nameAr: 'أعضاء الفريق والخبراء', nameEn: 'Team' },
-  { id: 'tabs', nameAr: 'علامات التبويب', nameEn: 'Tabs' },
+  { id: 'tabs', nameAr: 'التبويبات وعرض المحتوى', nameEn: 'Tabs & Content Switchers' },
   { id: 'accordion', nameAr: 'الأسئلة الشائعة (FAQ)', nameEn: 'Accordion' },
   { id: 'testimonials', nameAr: 'الآراء والتقييمات', nameEn: 'Testimonials' },
   { id: 'contact', nameAr: 'التواصل والحجز', nameEn: 'Contact' },

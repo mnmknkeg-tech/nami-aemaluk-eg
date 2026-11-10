@@ -1,5 +1,6 @@
 import { SectionTemplate } from '../types';
 import { productDetailTemplates } from './productDetail';
+import { productsTemplates } from './products';
 import { navbarTemplates } from './navbar';
 import { heroTemplates } from './hero';
 import { featuresTemplates } from './features';
@@ -18,6 +19,7 @@ import { tabsTemplates } from './tabs';
 import { supplementalTemplates } from './supplemental';
 
 export const allSectionTemplates: SectionTemplate[] = [
+  ...productsTemplates,
   ...productDetailTemplates,
   ...navbarTemplates,
   ...heroTemplates,
@@ -38,6 +40,7 @@ export const allSectionTemplates: SectionTemplate[] = [
 ];
 
 export * from './productDetail';
+export * from './products';
 export * from './navbar';
 export * from './hero';
 export * from './features';

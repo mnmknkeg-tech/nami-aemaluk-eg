@@ -14,6 +14,7 @@ import {
   validateTemplateEntry,
 } from '../apps/dashboard-web/src/components/website-builder/data/registry';
 import { getInitialBuilderState } from '../apps/dashboard-web/src/components/website-builder/context/builderUtils';
+import { sectionCategoriesList } from '../apps/dashboard-web/src/components/website-builder/data/sections';
 
 describe('canonical website template registry', () => {
   it('loads every registered full website template with its stable id and page roots', () => {
@@ -50,6 +51,21 @@ describe('canonical website template registry', () => {
     expect(templateRegistry.getThemePresets().every((entry) => !sectionIds.has(entry.id))).toBe(
       true
     );
+  });
+
+  it('keeps a restorable products section available in the page-builder section library', () => {
+    expect(sectionCategoriesList.some((category) => category.id === 'products')).toBe(true);
+
+    const productTemplate = getSectionTemplateRecords().find(
+      (entry) => entry.template.category === 'products'
+    );
+    expect(productTemplate).toBeDefined();
+
+    const loaded = loadSectionTemplate(productTemplate!.id);
+    const root = loaded.template.nodes[loaded.template.rootNodeId];
+    expect(root.type).toBe('products');
+    expect(root.props.title).toBeTruthy();
+    expect(root.props.columnsDesktop).toBeGreaterThan(0);
   });
 
   it('loads every visual theme preset without treating it as a website template', () => {
