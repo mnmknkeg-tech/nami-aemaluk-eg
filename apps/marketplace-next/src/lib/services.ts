@@ -183,13 +183,23 @@ export async function getProductsByActivity(activity: string, limit = 24): Promi
   }
 }
 
+export function normalizeProductDetailResponse(response: any, expectedId: string): Product | null {
+  const candidate = response?.data ?? response;
+  const product = Array.isArray(candidate)
+    ? candidate.find((item) => String(item?.id ?? '') === String(expectedId))
+    : candidate;
+  if (!product || typeof product !== 'object' || Array.isArray(product)) return null;
+  if (String(product.id ?? '') !== String(expectedId)) return null;
+  return product as Product;
+}
+
 export async function getProductById(id: string): Promise<Product | null> {
   try {
     const data = await api.get<any>(`/products/${id}`, {
       revalidate: 300,
       tags: [`product:${id}`],
     });
-    return data?.data ?? data;
+    return normalizeProductDetailResponse(data, id);
   } catch {
     return null;
   }

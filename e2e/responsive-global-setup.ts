@@ -84,6 +84,11 @@ export default async function globalSetup() {
       return;
     }
 
+    if (url.pathname === `/api/v1/products/${checkoutProduct.id}`) {
+      respond(response, checkoutProduct);
+      return;
+    }
+
     if (
       url.pathname === '/api/v1/products' &&
       url.searchParams.get('shopId') === 'shop-checkout-restaurant'

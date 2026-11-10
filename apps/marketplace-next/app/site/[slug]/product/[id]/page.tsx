@@ -15,9 +15,10 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getProductById, getProducts } from '@/lib/services';
-import { mapSiteProduct } from '@ray-eg/shared/builder';
+import { getSiteProductImageUrl, mapSiteProduct } from '@ray-eg/shared/builder';
 import { SiteProductActions } from '@/components/SiteProductActions';
 import { SiteStoreProductCard } from '@/components/SiteStoreProductCard';
+import { SafeProductImage } from '@/components/SafeProductImage';
 import { ReviewsSection } from '@/components/ReviewsSection';
 
 export const dynamic = 'force-dynamic';
@@ -50,8 +51,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const site = await getWebsite(slug);
   if (!site) return { title: 'المنتج غير موجود', robots: { index: false } };
 
-  const product = (await getProductById(id)) || null;
+  const productDetails = await getProductById(id);
+  const product =
+    productDetails ||
+    (await getProducts(site.shop.id, 100, 'site', true)).find(
+      (item: any) => String(item.id) === String(id)
+    );
   if (!product) return { title: 'المنتج غير موجود', robots: { index: false } };
+  const imageUrl = getSiteProductImageUrl(product);
 
   const extra = (product as any)?.extraData || {};
   const seoTitle = extra.seoTitle || product.name;
@@ -75,7 +82,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: pageTitle,
       description: seoDesc,
       siteName: site.shop.name,
-      images: product.imageUrl ? [product.imageUrl] : [],
+      images: imageUrl ? [imageUrl] : [],
       locale: 'ar_EG',
       type: 'website',
     },
@@ -83,7 +90,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: 'summary_large_image',
       title: pageTitle,
       description: seoDesc,
-      ...(product.imageUrl ? { images: [product.imageUrl] } : {}),
+      ...(imageUrl ? { images: [imageUrl] } : {}),
     },
   };
 }
@@ -98,6 +105,7 @@ export default async function MerchantProductPage({ params }: Props) {
   const products = await getProducts(site.shop.id, 100, 'site', true);
   const product = productDetails || products.find((item: any) => String(item.id) === String(id));
   if (!product) notFound();
+  const productImageUrl = getSiteProductImageUrl(product);
 
   const config = site.config || {};
   const theme = config.website?.theme || config.theme || {};
@@ -129,6 +137,7 @@ export default async function MerchantProductPage({ params }: Props) {
       shopSlug: site.shop.slug,
     }),
     ...product,
+    image: productImageUrl,
     shopId: site.shop.id,
     shopSlug: site.shop.slug,
   };
@@ -138,7 +147,7 @@ export default async function MerchantProductPage({ params }: Props) {
     '@type': 'Product',
     name: product.name,
     description: product.description || product.name,
-    image: product.imageUrl ? [product.imageUrl] : [],
+    image: productImageUrl ? [productImageUrl] : [],
     brand: extra.brand
       ? { '@type': 'Brand', name: extra.brand }
       : { '@type': 'Brand', name: site.shop.name },
@@ -196,8 +205,8 @@ export default async function MerchantProductPage({ params }: Props) {
                 boxShadow: 'var(--site-shadow)',
               }}
             >
-              <Image
-                src={product.imageUrl || '/placeholder-product.png'}
+              <SafeProductImage
+                src={productImageUrl}
                 alt={product.name}
                 fill
                 priority

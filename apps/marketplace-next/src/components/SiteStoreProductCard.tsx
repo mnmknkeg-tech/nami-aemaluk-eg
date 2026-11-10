@@ -1,10 +1,11 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { Check, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
+import { getSiteProductImageUrl } from '@ray-eg/shared/builder';
 import { useSiteCart } from '@/lib/site-cart';
+import { SafeProductImage } from '@/components/SafeProductImage';
 
 export function SiteStoreProductCard({
   product,
@@ -17,7 +18,7 @@ export function SiteStoreProductCard({
 }) {
   const { addItem } = useSiteCart();
   const [added, setAdded] = useState(false);
-  const image = product.imageUrl || product.image_url || product.images?.[0];
+  const image = getSiteProductImageUrl(product);
   const price = product.price ?? product.basePrice ?? product.base_price;
   const unavailable =
     product.isAvailable === false || product.isActive === false || product.is_active === false;
@@ -36,11 +37,12 @@ export function SiteStoreProductCard({
         className="block overflow-hidden bg-slate-100"
       >
         {image ? (
-          <Image
+          <SafeProductImage
             src={image}
             alt={product.name || 'منتج'}
             width={640}
             height={480}
+            sizes="(max-width: 768px) 100vw, 640px"
             className="aspect-[4/3] w-full object-cover transition duration-300 hover:scale-105"
           />
         ) : (

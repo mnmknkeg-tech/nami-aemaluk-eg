@@ -72,6 +72,21 @@ export function formatPrice(price: number | string | undefined): string {
   return `${price.toLocaleString('en-US')} ج.م`;
 }
 
+export function getSiteProductImageUrl(product: any): string | undefined {
+  const images = Array.isArray(product?.images) ? product.images : [];
+  const candidates = [product?.imageUrl, product?.image_url, product?.image, ...images];
+  for (const candidate of candidates) {
+    const value =
+      typeof candidate === 'string'
+        ? candidate
+        : candidate && typeof candidate === 'object'
+          ? candidate.url || candidate.imageUrl || candidate.image_url
+          : undefined;
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
 /** Map a real catalog product into the shape section templates expect. */
 export function mapSiteProduct(p: any): SiteProduct {
   const images: string[] = Array.isArray(p?.images) ? p.images.filter(Boolean) : [];
@@ -80,7 +95,7 @@ export function mapSiteProduct(p: any): SiteProduct {
     title: p?.title || p?.name || 'منتج',
     description: p?.description || undefined,
     price: typeof p?.price === 'number' ? p.price : Number(p?.price) || (p?.price as string),
-    image: images[0] || p?.image || p?.image_url || p?.imageUrl,
+    image: getSiteProductImageUrl(p),
     hoverImage: images[1],
     badge: p?.badge,
     specs: Array.isArray(p?.specs) ? p.specs : undefined,
