@@ -71,8 +71,8 @@ export default function SalesAbandonedCartPage() {
         return;
       }
       const [statsRes, listRes] = await Promise.allSettled([
-        apiRequest(`/abandoned-carts/stats?shopId=${sid}`),
-        apiRequest(`/abandoned-carts?shopId=${sid}&limit=50`),
+        apiRequest(`/cart-events/stats?shopId=${sid}`),
+        apiRequest(`/cart-events/abandoned?shopId=${sid}&limit=50`),
       ]);
       if (statsRes.status === 'fulfilled') setStats(statsRes.value);
       else
@@ -117,7 +117,7 @@ export default function SalesAbandonedCartPage() {
 
   const handleMarkRecovered = async (id: string) => {
     try {
-      await apiRequest(`/abandoned-carts/${id}/recover`, { method: 'PATCH' });
+      await apiRequest(`/cart-events/${id}/recover`, { method: 'PATCH' });
       setList((prev) => prev.map((e) => (e.id === id ? { ...e, isRecovered: true } : e)));
       setStats((prev: any) => ({ ...prev, recovered: (prev?.recovered || 0) + 1 }));
     } catch (err: any) {
@@ -202,7 +202,7 @@ export default function SalesAbandonedCartPage() {
     try {
       await Promise.all(
         Array.from(selectedIds).map((id) =>
-          apiRequest(`/abandoned-carts/${id}/recover`, { method: 'PATCH' })
+          apiRequest(`/cart-events/${id}/recover`, { method: 'PATCH' })
         )
       );
       await loadData();
