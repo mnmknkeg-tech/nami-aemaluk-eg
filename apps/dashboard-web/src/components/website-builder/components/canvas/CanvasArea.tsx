@@ -4,7 +4,7 @@ import { useBuilder } from '../../context/BuilderContext';
 import { ComponentRenderer } from './ComponentRenderer';
 import { SelectionOverlay } from './SelectionOverlay';
 import { ContextToolbar } from './ContextToolbar';
-import { PREVIEW_VIEWPORT_WIDTHS, SiteSkeleton } from '@ray-eg/shared/builder';
+import { PREVIEW_VIEWPORT_WIDTHS, SiteSkeleton, computeWebsiteBackgroundStyles } from '@ray-eg/shared/builder';
 import { FloatingCartButton } from '../cart/FloatingCartButton';
 import { CartDrawer } from '../cart/CartDrawer';
 
@@ -124,6 +124,7 @@ export const CanvasArea: React.FC = () => {
                   color: website.theme?.colors?.textPrimary || '#0f172a',
                   fontFamily: website.theme?.typography?.fontBody || 'Cairo, sans-serif',
                   direction: isRtl ? 'rtl' : 'ltr',
+                  ...computeWebsiteBackgroundStyles(website.settings?.background),
                 }}
               >
                 {isThemeLoading ? (

@@ -21,6 +21,17 @@ export const FooterRenderer: React.FC<BaseRendererProps> = ({
     node.props.description || 'منصة متكاملة للتجارة والخدمات بأعلى معايير الجودة.';
   const isMobile = currentViewport === 'mobile';
 
+  const isDarkText = node.props.textColorMode === 'dark_text';
+  const headingClass = isDarkText ? 'text-slate-900' : 'text-white';
+  const subheadClass = isDarkText ? 'text-slate-800' : 'text-slate-300';
+  const bodyTextClass = isDarkText ? 'text-slate-600' : 'text-slate-400';
+  const borderDivider = isDarkText ? 'border-slate-300/80' : 'border-slate-800';
+  const bottomBorder = isDarkText ? 'border-slate-300/60' : 'border-slate-800/60';
+  const linkHover = isDarkText ? 'text-slate-700 hover:text-slate-950' : 'text-slate-300 hover:text-white';
+  const badgeStyle = isDarkText
+    ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700'
+    : 'bg-slate-800/80 hover:bg-slate-800 border-slate-700/60 text-slate-300 hover:text-white';
+
   return (
     <footer
       id={node.id}
@@ -32,12 +43,12 @@ export const FooterRenderer: React.FC<BaseRendererProps> = ({
     >
       <div className={`${sectionShellClass} text-right`}>
         <div
-          className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'} gap-6 sm:gap-8 pb-8 border-b border-slate-800`}
+          className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3'} gap-6 sm:gap-8 pb-8 border-b ${borderDivider}`}
         >
           {/* Brand Col */}
           <div className="space-y-2.5">
-            <h3 className="text-base sm:text-lg font-black text-white break-words">{brandName}</h3>
-            <p className="text-xs text-slate-400 leading-relaxed max-w-sm break-words">
+            <h3 className={`text-base sm:text-lg font-black ${headingClass} break-words`}>{brandName}</h3>
+            <p className={`text-xs ${bodyTextClass} leading-relaxed max-w-sm break-words`}>
               {description}
             </p>
           </div>
@@ -48,10 +59,10 @@ export const FooterRenderer: React.FC<BaseRendererProps> = ({
             node.props.email ||
             node.props.address) && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              <h4 className={`text-xs font-bold ${subheadClass} uppercase tracking-wider`}>
                 {node.props.contactTitle || 'معلومات التواصل'}
               </h4>
-              <div className="space-y-1.5 text-xs text-slate-400">
+              <div className={`space-y-1.5 text-xs ${bodyTextClass}`}>
                 {node.props.phone && (
                   <div className="flex items-center gap-2">
                     <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -77,10 +88,10 @@ export const FooterRenderer: React.FC<BaseRendererProps> = ({
           {/* Quick Trust Col */}
           {!node.props.hideTrustCol && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+              <h4 className={`text-xs font-bold ${subheadClass} uppercase tracking-wider`}>
                 {node.props.trustTitle || 'ضمان واعتماد'}
               </h4>
-              <p className="text-xs text-slate-400 leading-relaxed">
+              <p className={`text-xs ${bodyTextClass} leading-relaxed`}>
                 {node.props.trustDescription ||
                   'جميع المعاملات والخدمات مشمولة بضمان معتمد وفريق دعم فني متواجد على مدار الساعة.'}
               </p>
@@ -122,7 +133,7 @@ export const FooterRenderer: React.FC<BaseRendererProps> = ({
         )}
 
         {/* Copyright & Powered by Badge */}
-        <div className="pt-6 pb-2 text-center flex flex-col sm:flex-row items-center justify-center gap-2 text-xs text-slate-400 select-none border-t border-slate-800/60 mt-6">
+        <div className={`pt-6 pb-2 text-center flex flex-col sm:flex-row items-center justify-center gap-2 text-xs ${bodyTextClass} select-none border-t ${bottomBorder} mt-6`}>
           <span>
             {node.props.copyright ||
               `جميع الحقوق محفوظة © ${new Date().getFullYear()} ${brandName}`}
@@ -132,7 +143,7 @@ export const FooterRenderer: React.FC<BaseRendererProps> = ({
             href="https://mnmknk.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 text-slate-300 hover:text-white transition-all text-[11px] font-medium shadow-xs"
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${badgeStyle} border transition-all text-[11px] font-medium shadow-xs`}
           >
             <span>صنع بكل فخر عبر</span>
             <strong className="text-blue-400 font-extrabold flex items-center gap-1">

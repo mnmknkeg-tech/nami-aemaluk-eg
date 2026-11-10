@@ -121,10 +121,10 @@ export function computeResponsiveNodeStyles(
     css.maxWidth = '100%';
   }
 
-  // Transparent headers overlay the first visual section (usually the hero).
-  // If the hero is removed, the page root's long background remains underneath.
-  // Footers stay in normal flow while allowing that same background to show.
-  if ((node.type === 'header' || node.type === 'footer') && node.props?.transparent) {
+  // Transparent sections (header, footer, products, testimonials, hero, cta, bento, containers, etc.):
+  // If transparent is enabled (via node.props.transparent or merged.backgroundColor === 'transparent'),
+  // let the underlying page background or parent container show through cleanly.
+  if (node.props?.transparent || merged.backgroundColor === 'transparent') {
     css.backgroundColor = 'transparent';
     css.backgroundImage = 'none';
     css.boxShadow = 'none';

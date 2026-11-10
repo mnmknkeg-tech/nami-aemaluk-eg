@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image as ImageIcon, Upload, Sparkles, ChevronDown, ChevronUp, Video } from 'lucide-react';
 import type { InspectorPanelProps } from './types';
+import { useBuilder } from '../../../context/BuilderContext';
 
 type MediaSectionProps = Pick<
   InspectorPanelProps,
@@ -33,7 +34,12 @@ export const MediaSection: React.FC<MediaSectionProps> = ({
   handleFileUpload,
   setActiveGalleryTarget,
   setShowPresetGallery,
-}) => (
+}) => {
+  const { updateWebsiteSettings } = useBuilder();
+  const rawBgMatch = sectionStyles.backgroundImage?.match(/url\(["']?(.*?)["']?\)/);
+  const sectionBgUrl = rawBgMatch ? rawBgMatch[1] : (sectionStyles.backgroundImage || parentSection.props?.imageUrl || '');
+
+  return (
   <div className="p-3">
     <button
       onClick={() => toggleAccordion('media')}
@@ -303,8 +309,33 @@ export const MediaSection: React.FC<MediaSectionProps> = ({
               <span>خلفيات جاهزة</span>
             </button>
           </div>
+          {sectionBgUrl && (
+            <button
+              type="button"
+              onClick={() => {
+                updateWebsiteSettings({
+                  background: {
+                    enabled: true,
+                    imageUrl: sectionBgUrl,
+                    attachment: 'fixed',
+                    size: 'cover',
+                    position: 'center top',
+                    repeat: 'no-repeat',
+                  },
+                });
+                handlePropChange(parentSection.id, 'transparent', true);
+                handleStyleChange(parentSection.id, 'backgroundColor', 'transparent');
+                handleStyleChange(parentSection.id, 'backgroundImage', undefined);
+              }}
+              className="w-full flex items-center justify-center gap-1.5 p-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition-all cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>✨ جعلها خلفية موحدة تمتد لكامل الموقع (تغطي الأقسام والفوتر)</span>
+            </button>
+          )}
         </div>
       </div>
     )}
   </div>
 );
+};

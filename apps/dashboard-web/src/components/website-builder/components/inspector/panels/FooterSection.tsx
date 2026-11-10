@@ -54,20 +54,61 @@ export const FooterSection: React.FC<InspectorPanelProps> = ({
 
       {expandedSections.footerSettings && (
         <div className="space-y-4 pt-3">
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-2.5">
-            <span className="text-xs font-bold text-slate-800">شفاف</span>
-            <button
-              type="button"
-              aria-pressed={transparentFooter}
-              onClick={() => handleUpdate('transparent', !transparentFooter)}
-              className={`rounded-lg border px-3 py-1.5 text-[10px] font-bold transition-colors cursor-pointer ${
-                transparentFooter
-                  ? 'border-blue-600 bg-blue-600 text-white'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              شفاف
-            </button>
+          <div className="space-y-2.5 p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">خلفية الفوتر</span>
+                <span className="text-[10px] text-slate-500 block">
+                  اجعل الفوتر شفافًا ليندمج مع خلفية الموقع الممتدة
+                </span>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-pressed={transparentFooter}
+                onClick={() => handleUpdate('transparent', !transparentFooter)}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                  transparentFooter
+                    ? 'border-blue-600 bg-blue-600 text-white shadow-xs'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {transparentFooter ? 'شفاف (مفعّل)' : 'شفاف'}
+              </button>
+            </div>
+
+            {/* مظهر ألوان النصوص والتباين */}
+            <div className="pt-2 border-t border-slate-200/70">
+              <label className="text-[10px] font-bold text-slate-600 block mb-1.5">
+                مظهر ولون النصوص (Text Tone)
+              </label>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleUpdate('textColorMode', 'light_text')}
+                  className={`p-1.5 rounded-lg border text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    props.textColorMode !== 'dark_text'
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-white border border-slate-300" />
+                  <span>نصوص فاتحة (للصور الداكنة)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleUpdate('textColorMode', 'dark_text')}
+                  className={`p-1.5 rounded-lg border text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    props.textColorMode === 'dark_text'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-900" />
+                  <span>نصوص داكنة (للخلفيات الفاتحة)</span>
+                </button>
+              </div>
+            </div>
           </div>
           {/* Brand Info */}
           <div className="space-y-2 p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl">
