@@ -126,6 +126,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   const hasPersistedWebsiteRef = useRef(false);
   const websiteLoadFailedRef = useRef(false);
   const pendingTemplateApplicationRef = useRef<string | null>(null);
+  const [localDraftRecovery, setLocalDraftRecovery] = useState<Website | null>(null);
 
   // Mutations update the ref synchronously so back-to-back actions compose even
   // before React has committed a render. The revision also guards in-flight saves.
@@ -185,6 +186,22 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     },
     [_recordHistoryRaw, setWebsite]
   );
+
+  const restoreLocalDraft = useCallback(() => {
+    if (!localDraftRecovery) return;
+    recordHistory('استعادة النسخة المحلية من المسودة', localDraftRecovery);
+    // Keep the recovery copy until this restored snapshot is successfully saved.
+    setLocalDraftRecovery(null);
+  }, [localDraftRecovery, recordHistory]);
+
+  const dismissLocalDraftRecovery = useCallback(() => {
+    if (typeof window !== 'undefined' && builderShopId) {
+      try {
+        localStorage.removeItem(`ray_builder_site_${builderShopId}_recovery`);
+      } catch {}
+    }
+    setLocalDraftRecovery(null);
+  }, [builderShopId]);
 
   const undo = useCallback(() => _undoRaw(setWebsite), [_undoRaw, setWebsite]);
   const redo = useCallback(() => _redoRaw(setWebsite), [_redoRaw, setWebsite]);
@@ -379,12 +396,37 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
           console.error('[WebsiteBuilder] Could not load the current website draft.', error);
           setTemplateError('تعذر تحميل مسودة الموقع الحالية. أعد تحميل المحرر قبل تطبيق أي قالب.');
         }
+        const recoveryKey = `ray_builder_site_${shopId}_recovery`;
+        let recoveredLocalWebsite: Website | null = null;
+        try {
+          const rawRecovery = localStorage.getItem(recoveryKey);
+          const parsedRecovery = rawRecovery ? JSON.parse(rawRecovery) : null;
+          if (
+            Array.isArray(parsedRecovery?.pages) &&
+            parsedRecovery.pages.length > 0 &&
+            parsedRecovery.components &&
+            typeof parsedRecovery.components === 'object'
+          ) {
+            recoveredLocalWebsite = normalizeWebsite(parsedRecovery as Website);
+            setLocalDraftRecovery(recoveredLocalWebsite);
+          } else if (rawRecovery) {
+            localStorage.removeItem(recoveryKey);
+          }
+        } catch {}
         if (!cancelled && config?.website?.pages?.length && config?.website?.components) {
           hasPersistedWebsiteRef.current = true;
           draftVersionRef.current = Number.isSafeInteger(config.draftVersion)
             ? config.draftVersion
             : 0;
           const loadedWebsite = normalizeWebsite(config.website as Website);
+          if (
+            recoveredLocalWebsite &&
+            JSON.stringify(recoveredLocalWebsite) === JSON.stringify(loadedWebsite)
+          ) {
+            localStorage.removeItem(recoveryKey);
+            recoveredLocalWebsite = null;
+            setLocalDraftRecovery(null);
+          }
           try {
             const rawBackup = localStorage.getItem(`ray_builder_site_${shopId}`);
             const backup = rawBackup ? JSON.parse(rawBackup) : null;
@@ -400,8 +442,14 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
                 // Local backup matches server exactly — clean it up so we don't prompt needlessly
                 localStorage.removeItem(`ray_builder_site_${shopId}`);
               } else {
-                // Silently adopt server draft as the source of truth, and update local storage
-                // to eliminate annoying blocking alerts on entry.
+                const localWebsite = normalizeWebsite(backup as Website);
+                if (!recoveredLocalWebsite) {
+                  localStorage.setItem(recoveryKey, JSON.stringify(localWebsite));
+                  recoveredLocalWebsite = localWebsite;
+                  setLocalDraftRecovery(localWebsite);
+                }
+                // Keep the server draft as the initial view, but preserve the local version
+                // separately so a failed or stale autosave can be restored intentionally.
                 localStorage.setItem(`ray_builder_site_${shopId}`, JSON.stringify(loadedWebsite));
               }
             }
@@ -724,6 +772,9 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         historyLog,
         autosaveStatus,
         saveDraft: saveDraftWithWebsite,
+        localDraftRecoveryAvailable: Boolean(localDraftRecovery),
+        restoreLocalDraft,
+        dismissLocalDraftRecovery,
 
         // Publishing
         ...publishing,

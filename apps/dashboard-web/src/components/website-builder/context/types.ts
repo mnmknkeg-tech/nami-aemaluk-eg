@@ -151,6 +151,9 @@ export interface BuilderContextType {
   historyLog: string[];
   autosaveStatus: 'saved' | 'saving' | 'unsaved' | 'error';
   saveDraft: (manual?: boolean) => Promise<boolean>;
+  localDraftRecoveryAvailable: boolean;
+  restoreLocalDraft: () => void;
+  dismissLocalDraftRecovery: () => void;
 
   // Version Snapshots
   versions: VersionHistoryItem[];
