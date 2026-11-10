@@ -95,13 +95,12 @@ export const ProductCardSection: React.FC<ProductCardSectionProps> = ({
   handlePropChange,
 }) => {
   const [activeTab, setActiveTab] = useState<TabId>('shape');
-
-  if (!isProductOrCard) return null;
-
   const p = node.props || {};
   const [categoryImagesDraft, setCategoryImagesDraft] = useState(() =>
     JSON.stringify(p.categoryImages || {}, null, 2)
   );
+
+  if (!isProductOrCard) return null;
   const isExpanded = expandedSections?.productCard ?? true;
 
   const currentShape = (p.cardShape ?? p.shape ?? 'classic') as ProductCardShape;
