@@ -1,6 +1,18 @@
 import React from 'react';
 import { BaseRendererProps } from './types';
-import { ShieldCheck } from 'lucide-react';
+import {
+  ShieldCheck,
+  Star,
+  Truck,
+  Sparkles,
+  Zap,
+  Clock,
+  Heart,
+  Award,
+  CheckCircle2,
+  ThumbsUp,
+  Headphones,
+} from 'lucide-react';
 import {
   sectionBadgeStyle,
   sectionHeaderWrapClass,
@@ -9,6 +21,46 @@ import {
   sectionTitleClass,
   responsiveGridClass,
 } from '@ray-eg/shared/builder';
+
+const renderFeatureIcon = (iconName?: string) => {
+  if (!iconName) return <Star className="w-6 h-6" />;
+  const normalized = iconName.toLowerCase().trim();
+  switch (normalized) {
+    case 'truck':
+    case 'shipping':
+    case 'delivery':
+      return <Truck className="w-6 h-6" />;
+    case 'sparkles':
+    case 'magic':
+      return <Sparkles className="w-6 h-6" />;
+    case 'zap':
+    case 'fast':
+    case 'speed':
+      return <Zap className="w-6 h-6" />;
+    case 'clock':
+    case 'time':
+      return <Clock className="w-6 h-6" />;
+    case 'heart':
+      return <Heart className="w-6 h-6" />;
+    case 'award':
+    case 'trophy':
+      return <Award className="w-6 h-6" />;
+    case 'check':
+    case 'checkcircle':
+      return <CheckCircle2 className="w-6 h-6" />;
+    case 'like':
+    case 'thumbsup':
+      return <ThumbsUp className="w-6 h-6" />;
+    case 'support':
+    case 'headphones':
+      return <Headphones className="w-6 h-6" />;
+    case 'shield':
+    case 'shieldcheck':
+    case 'security':
+    default:
+      return <ShieldCheck className="w-6 h-6" />;
+  }
+};
 
 export const FeaturesRenderer: React.FC<BaseRendererProps> = ({
   node,
@@ -67,7 +119,7 @@ export const FeaturesRenderer: React.FC<BaseRendererProps> = ({
                   }}
                   className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"
                 >
-                  {feat.icon ? <ShieldCheck className="w-6 h-6" /> : <span>⭐</span>}
+                  {renderFeatureIcon(feat.icon)}
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">{feat.title}</h3>

@@ -384,7 +384,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
           draftVersionRef.current = Number.isSafeInteger(config.draftVersion)
             ? config.draftVersion
             : 0;
-          let loadedWebsite = normalizeWebsite(config.website as Website);
+          const loadedWebsite = normalizeWebsite(config.website as Website);
           try {
             const rawBackup = localStorage.getItem(`ray_builder_site_${shopId}`);
             const backup = rawBackup ? JSON.parse(rawBackup) : null;
@@ -399,17 +399,9 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
               if (JSON.stringify(localWebsite) === JSON.stringify(loadedWebsite)) {
                 // Local backup matches server exactly — clean it up so we don't prompt needlessly
                 localStorage.removeItem(`ray_builder_site_${shopId}`);
-              } else if (
-                window.confirm(
-                  'تم العثور على تغييرات محلية غير مطابقة لمسودة الخادم لهذا المتجر. استعادة التغييرات المحلية؟ اختر إلغاء لاستخدام نسخة الخادم.'
-                )
-              ) {
-                loadedWebsite = localWebsite;
-                hasPersistedWebsiteRef.current = true;
-                setAutosaveStatus('unsaved');
               } else {
-                // User explicitly dismissed the local draft in favor of server draft:
-                // overwrite local storage with server copy so the prompt never appears again!
+                // Silently adopt server draft as the source of truth, and update local storage
+                // to eliminate annoying blocking alerts on entry.
                 localStorage.setItem(`ray_builder_site_${shopId}`, JSON.stringify(loadedWebsite));
               }
             }
@@ -431,14 +423,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         } else if (!cancelled) {
           try {
             const parsed = JSON.parse(localStorage.getItem(`ray_builder_site_${shopId}`) || '');
-            if (
-              Array.isArray(parsed?.pages) &&
-              parsed.pages.length &&
-              parsed?.components &&
-              window.confirm(
-                'تعذر تحميل مسودة الخادم. هل تريد فتح النسخة المحلية المحفوظة لهذا المتجر؟'
-              )
-            ) {
+            if (Array.isArray(parsed?.pages) && parsed.pages.length && parsed?.components) {
               const recovered = normalizeWebsite(parsed);
               hasPersistedWebsiteRef.current = true;
               setWebsite(recovered);
@@ -455,14 +440,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
               ? `ray_builder_site_${builderShopIdRef.current}`
               : 'ray_builder_site_local';
             const parsed = JSON.parse(localStorage.getItem(key) || '');
-            if (
-              Array.isArray(parsed?.pages) &&
-              parsed.pages.length &&
-              parsed?.components &&
-              window.confirm(
-                'تعذر تحميل مسودة الخادم. هل تريد فتح النسخة المحلية المحفوظة لهذا المتجر؟'
-              )
-            ) {
+            if (Array.isArray(parsed?.pages) && parsed.pages.length && parsed?.components) {
               hasPersistedWebsiteRef.current = true;
               setWebsite(normalizeWebsite(parsed));
               setAutosaveStatus('unsaved');

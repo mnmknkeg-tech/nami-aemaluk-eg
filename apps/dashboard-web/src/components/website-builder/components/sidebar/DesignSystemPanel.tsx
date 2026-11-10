@@ -382,6 +382,70 @@ export const DesignSystemPanel: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* 4. Background Color */}
+        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <label className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-300 cursor-pointer shadow-2xs block shrink-0">
+                <input
+                  type="color"
+                  value={theme.colors.background || '#ffffff'}
+                  onChange={(e) => updateThemeToken('colors', 'background', e.target.value)}
+                  className="absolute -top-4 -left-4 w-16 h-16 cursor-pointer border-0 p-0"
+                />
+                <div
+                  className="w-full h-full"
+                  style={{ backgroundColor: theme.colors.background || '#ffffff' }}
+                />
+              </label>
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">
+                  لون خلفية الموقع (Background)
+                </span>
+                <span className="text-[10px] text-slate-500">الخلفية العامة للموقع والصفحات</span>
+              </div>
+            </div>
+            <input
+              type="text"
+              value={theme.colors.background || '#ffffff'}
+              onChange={(e) => updateThemeToken('colors', 'background', e.target.value)}
+              className="w-20 bg-white border border-slate-200 rounded-md px-1.5 py-1 text-[11px] font-mono font-bold text-center text-slate-700"
+            />
+          </div>
+        </div>
+
+        {/* 5. Text Primary Color */}
+        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <label className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-300 cursor-pointer shadow-2xs block shrink-0">
+                <input
+                  type="color"
+                  value={theme.colors.textPrimary || '#0f172a'}
+                  onChange={(e) => updateThemeToken('colors', 'textPrimary', e.target.value)}
+                  className="absolute -top-4 -left-4 w-16 h-16 cursor-pointer border-0 p-0"
+                />
+                <div
+                  className="w-full h-full"
+                  style={{ backgroundColor: theme.colors.textPrimary || '#0f172a' }}
+                />
+              </label>
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">
+                  لون النص الرئيسي (Text Primary)
+                </span>
+                <span className="text-[10px] text-slate-500">العناوين والنصوص البارزة</span>
+              </div>
+            </div>
+            <input
+              type="text"
+              value={theme.colors.textPrimary || '#0f172a'}
+              onChange={(e) => updateThemeToken('colors', 'textPrimary', e.target.value)}
+              className="w-20 bg-white border border-slate-200 rounded-md px-1.5 py-1 text-[11px] font-mono font-bold text-center text-slate-700"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Typography Tokens */}

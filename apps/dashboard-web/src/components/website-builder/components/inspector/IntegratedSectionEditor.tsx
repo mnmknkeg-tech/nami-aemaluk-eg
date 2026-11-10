@@ -17,6 +17,7 @@ import {
   ActionsSection,
   SubItemsSection,
   AdvancedSection,
+  FooterSection,
 } from './panels';
 
 export const IntegratedSectionEditor: React.FC = () => {
@@ -406,6 +407,7 @@ export const IntegratedSectionEditor: React.FC = () => {
       {/* ACCORDION PANELS */}
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
         <ContentSection {...sharedProps} />
+        {isFooter && <FooterSection {...sharedProps} />}
         {isHeader && <HeaderSettingsSection {...sharedProps} />}
         {(isHero || isHeader || isProductOrCard || isCta || isTestimonials) && (
           <MediaSection {...sharedProps} />

@@ -6,6 +6,7 @@ export const DEFAULT_INSPECTOR_EXPANDED_SECTIONS: Record<string, boolean> = {
   colors: false,
   theme: false,
   actions: true,
+  footerSettings: true,
   subitems: false,
   advanced: false,
 };

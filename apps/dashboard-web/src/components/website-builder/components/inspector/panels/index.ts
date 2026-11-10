@@ -7,4 +7,5 @@ export { ColorsSection } from './ColorsSection';
 export { ActionsSection } from './ActionsSection';
 export { SubItemsSection } from './SubItemsSection';
 export { AdvancedSection } from './AdvancedSection';
+export { FooterSection } from './FooterSection';
 export type { InspectorPanelProps } from './types';

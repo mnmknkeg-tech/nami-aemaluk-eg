@@ -43,41 +43,49 @@ export const FooterRenderer: React.FC<BaseRendererProps> = ({
           </div>
 
           {/* Contact Info Col */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              معلومات التواصل
-            </h4>
-            <div className="space-y-1.5 text-xs text-slate-400">
-              {node.props.phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span dir="ltr">{node.props.phone}</span>
-                </div>
-              )}
-              {node.props.email && (
-                <div className="flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                  <span>{node.props.email}</span>
-                </div>
-              )}
-              {node.props.address && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                  <span>{node.props.address}</span>
-                </div>
-              )}
+          {(!node.props.hideContactInfo ||
+            node.props.phone ||
+            node.props.email ||
+            node.props.address) && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                {node.props.contactTitle || 'معلومات التواصل'}
+              </h4>
+              <div className="space-y-1.5 text-xs text-slate-400">
+                {node.props.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span dir="ltr">{node.props.phone}</span>
+                  </div>
+                )}
+                {node.props.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                    <span>{node.props.email}</span>
+                  </div>
+                )}
+                {node.props.address && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                    <span>{node.props.address}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Quick Trust Col */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              ضمان واعتماد
-            </h4>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              جميع المعاملات والخدمات مشمولة بضمان معتمد وفريق دعم فني متواجد على مدار الساعة.
-            </p>
-          </div>
+          {!node.props.hideTrustCol && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                {node.props.trustTitle || 'ضمان واعتماد'}
+              </h4>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                {node.props.trustDescription ||
+                  'جميع المعاملات والخدمات مشمولة بضمان معتمد وفريق دعم فني متواجد على مدار الساعة.'}
+              </p>
+            </div>
+          )}
         </div>
 
         {Array.isArray(node.props.links) && node.props.links.length > 0 && (
