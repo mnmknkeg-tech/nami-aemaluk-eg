@@ -8,4 +8,5 @@ export { ActionsSection } from './ActionsSection';
 export { SubItemsSection } from './SubItemsSection';
 export { AdvancedSection } from './AdvancedSection';
 export { FooterSection } from './FooterSection';
+export { FaqSection } from './FaqSection';
 export type { InspectorPanelProps } from './types';

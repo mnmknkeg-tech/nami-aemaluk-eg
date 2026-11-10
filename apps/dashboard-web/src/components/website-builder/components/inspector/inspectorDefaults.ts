@@ -7,6 +7,7 @@ export const DEFAULT_INSPECTOR_EXPANDED_SECTIONS: Record<string, boolean> = {
   theme: false,
   actions: true,
   footerSettings: true,
+  faqSettings: true,
   subitems: false,
   advanced: false,
 };

@@ -18,6 +18,7 @@ import {
   SubItemsSection,
   AdvancedSection,
   FooterSection,
+  FaqSection,
 } from './panels';
 
 export const IntegratedSectionEditor: React.FC = () => {
@@ -206,6 +207,8 @@ export const IntegratedSectionEditor: React.FC = () => {
   const isCta = sectionType === 'cta' || parentSection.id === 'comp_cta_banner';
   const isTestimonials = sectionType === 'testimonials' || parentSection.id === 'comp_testimonials';
   const isFooter = sectionType === 'footer' || parentSection.id === 'comp_footer';
+  const isFaq =
+    sectionType === 'faq' || parentSection.id === 'comp_faq' || parentSection.id.includes('faq');
 
   // ── Extracted child nodes ─────────────────────────────────────────────────
 
@@ -408,6 +411,7 @@ export const IntegratedSectionEditor: React.FC = () => {
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
         <ContentSection {...sharedProps} />
         {isFooter && <FooterSection {...sharedProps} />}
+        {isFaq && <FaqSection {...sharedProps} />}
         {isHeader && <HeaderSettingsSection {...sharedProps} />}
         {(isHero || isHeader || isProductOrCard || isCta || isTestimonials) && (
           <MediaSection {...sharedProps} />
