@@ -25,7 +25,7 @@ export function computeWebsiteBackgroundStyles(
   if (!background?.enabled || !background.imageUrl) return {};
   const imageUrl = background.imageUrl.replace(/"/g, '\\"');
   return {
-    position: \'relative\',
+    position: 'relative',
     backgroundImage: `url("${imageUrl}")`,
     backgroundSize: background.size || 'cover',
     backgroundPosition: background.position || 'center top',
