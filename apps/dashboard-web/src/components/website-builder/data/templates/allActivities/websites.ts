@@ -291,8 +291,14 @@ const missingRegistrySiteMetas: ActivityTemplateMeta[] = [
     tags: ['مصانع', 'تصنيع', 'توريدات جملة', 'B2B'],
   },
 ];
+// Fill in the remaining registry-required activities ONLY when no real design
+// exists for them. This used to overwrite entries unconditionally, which
+// clobbered the handcrafted site_gold_jewelry design (sampleActivities/jewelry)
+// with the generic generated skeleton — the "old/identical templates" complaint.
 missingRegistrySiteMetas.forEach((meta) => {
-  allActivityWebsites[meta.id] = generateActivityWebsite(meta);
+  if (!allActivityWebsites[meta.id]) {
+    allActivityWebsites[meta.id] = generateActivityWebsite(meta);
+  }
 });
 
 // Metadata for UI Switcher (Full 85 Activities Catalog)

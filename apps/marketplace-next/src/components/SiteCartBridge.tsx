@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSiteCart } from '@/lib/site-cart';
 import { jsonRequest } from '@/lib/api';
@@ -8,8 +8,6 @@ import {
   normalizeWebsiteTree,
   PublicSiteRenderer,
   SiteCartDrawer,
-  SiteSkeleton,
-  useResponsiveViewport,
 } from '@ray-eg/shared/builder';
 import type {
   SiteProduct,
@@ -34,9 +32,9 @@ interface SiteCartBridgeProps {
  * The published site cart is scoped to this merchant and sends checkout
  * orders through the merchant's dashboard order flow.
  *
- * The skeleton is drawn from the SAME component tree that renders the real
- * site, so the loading frame matches this merchant's layout exactly —
- * no layout shift, no generic spinner.
+ * The route-level loading.tsx shows the ONLY skeleton while the server
+ * fetches the config; this component server-renders the real site directly
+ * so visitors never see a second "fake" frame.
  */
 export function SiteCartBridge({
   website,
@@ -46,10 +44,8 @@ export function SiteCartBridge({
 }: SiteCartBridgeProps) {
   const router = useRouter();
   const safeWebsite = useMemo(() => normalizeWebsiteTree(website), [website]);
-  const viewport = useResponsiveViewport();
   const { items, totalItems, addItem, updateQuantity, removeItem } = useSiteCart();
   const [isCartOpen, setCartOpen] = useState(false);
-  const [ready, setReady] = useState(false);
 
   const cartItems = items.map((entry) => ({
     id: entry.cartItemId || entry.product.id,
@@ -65,21 +61,11 @@ export function SiteCartBridge({
     variantSelection: entry.variantSelection || (entry.product as any)?.variantSelection,
   }));
 
-  // One frame of skeleton so hydration doesn't flash an empty page.
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setReady(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
-
-  if (!ready) {
-    return (
-      <SiteSkeleton
-        website={safeWebsite}
-        viewport={viewport}
-        backgroundColor={safeWebsite.theme?.colors?.background || '#ffffff'}
-      />
-    );
-  }
+  // No client-side skeleton gate: the renderer is deterministic on the server
+  // (cart starts empty in both environments), so SSR emits the REAL site HTML
+  // and the first client render matches it exactly. A gate here would paint a
+  // second skeleton on top of the route-level loading skeleton — merchants saw
+  // the "fake" site frame twice before content appeared.
 
   return (
     <div>

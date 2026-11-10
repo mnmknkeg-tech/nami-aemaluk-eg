@@ -631,6 +631,34 @@ export const useBuilderPageOperations = ({
     [website, websiteRef, recordHistory, setActivePageId, setSelectedNodeId]
   );
 
+  /**
+   * Make one page the site home page. Exactly one home page is a renderer
+   * invariant (PublicSiteRenderer picks `metadata.isHomePage` first), so this
+   * atomically unsets every other page — previously the UI had no way at all
+   * to change which page is the home page.
+   */
+  const setHomePage = useCallback(
+    (pageId: string) => {
+      const currentWebsite = websiteRef?.current ?? website;
+      const target = currentWebsite.pages.find((page) => page.id === pageId);
+      if (!target || target.metadata.isHomePage) return;
+      const newPages = currentWebsite.pages.map((page) => {
+        const isTarget = page.id === pageId;
+        if (isTarget === Boolean(page.metadata.isHomePage)) return page;
+        return {
+          ...page,
+          metadata: { ...page.metadata, isHomePage: isTarget },
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      recordHistory(
+        `تعيين (${target.name}) كصفحة رئيسية للموقع`,
+        { ...currentWebsite, pages: newPages }
+      );
+    },
+    [website, websiteRef, recordHistory]
+  );
+
   const updatePagePlacement = useCallback(
     (
       pageId: string,
@@ -918,5 +946,6 @@ export const useBuilderPageOperations = ({
     updatePagePlacement,
     deletePage,
     updatePageMetadata,
+    setHomePage,
   };
 };

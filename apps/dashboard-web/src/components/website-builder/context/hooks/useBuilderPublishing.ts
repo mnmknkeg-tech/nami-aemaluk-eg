@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { PublishingPipelineStatus, VersionHistoryItem, Website } from '../../types/builder';
-import { apiRequest } from '../../../../lib/api/client';
+import { apiRequest, clearApiCache } from '../../../../lib/api/client';
 import { validateWebsiteForPublishing } from './publishValidation';
 import { inspectWebsiteTree, normalizeWebsiteTree } from '@ray-eg/shared/builder';
 
@@ -22,6 +22,33 @@ function findInvalidLinks(website: Website): string[] {
   return [...new Set(invalid)];
 }
 
+/**
+ * Deterministic JSON stringify (object keys sorted) so a draft can be compared
+ * byte-for-byte with the published snapshot regardless of key order — the
+ * backend stores the config as JSONB which re-sorts keys.
+ */
+export function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, v]) => v !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`;
+}
+
+/**
+ * Draft-vs-published state shown next to the publish button so a merchant can
+ * always tell whether what they see in the editor is what visitors see live.
+ * Without it, the autosave "محفوظ" pill was the only status — merchants
+ * believed their edits were live when they were not.
+ */
+export type BuilderPublishState = {
+  status: 'checking' | 'never_published' | 'up_to_date' | 'has_changes' | 'unknown';
+  /** Stable-stringified published website snapshot (null when never published). */
+  publishedSnapshot: string | null;
+  lastPublishedAt: string | null;
+};
+
 export const useBuilderPublishing = (
   websiteRef: { current: Website },
   builderShopIdRef: { current: string },
@@ -30,9 +57,16 @@ export const useBuilderPublishing = (
   saveDraft: (website: Website, manual?: boolean) => Promise<boolean>,
   setHistoryLog: React.Dispatch<React.SetStateAction<string[]>>,
   recordHistory: (actionDesc: string, newWebsite: Website) => void,
-  draftVersionRef: { current: number }
+  draftVersionRef: { current: number },
+  autosaveStatus?: string
 ) => {
   const [versions, setVersions] = useState<VersionHistoryItem[]>([]);
+  const [publishState, setPublishState] = useState<BuilderPublishState>({
+    status: 'checking',
+    publishedSnapshot: null,
+    lastPublishedAt: null,
+  });
+  const publishStateSlugRef = useRef('');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -75,6 +109,74 @@ export const useBuilderPublishing = (
         : 'https://nami-aemaluk-marketplace-eg.vercel.app');
     return `${marketplaceBase}/site/${slug}`;
   }, [builderShopSlugRef]);
+
+  /**
+   * Fetch the PUBLISHED config (the exact JSON visitors see on /site/:slug)
+   * and remember it, so the UI can tell "منشور ومحدّث" from "عندك تعديلات
+   * غير منشورة". 404 → the site was never published.
+   */
+  const refreshPublishState = useCallback(async (): Promise<void> => {
+    const slug = builderShopSlugRef.current;
+    if (typeof window === 'undefined' || !slug) {
+      setPublishState((prev) => ({ ...prev, status: 'unknown' }));
+      return;
+    }
+    publishStateSlugRef.current = slug;
+    try {
+      // cache: 'no-store' bypasses the 30s GET cache so a post-publish refetch
+      // sees the new snapshot immediately.
+      const res = await apiRequest<any>(`/shops/${slug}/website`, { cache: 'no-store' });
+      const publishedWebsite = res?.data?.config?.website || null;
+      if (!publishedWebsite || !publishedWebsite.components) {
+        setPublishState({ status: 'never_published', publishedSnapshot: null, lastPublishedAt: null });
+        return;
+      }
+      setPublishState({
+        status:
+          stableStringify(publishedWebsite) ===
+          stableStringify(normalizeWebsiteTree(websiteRef.current))
+            ? 'up_to_date'
+            : 'has_changes',
+        publishedSnapshot: stableStringify(publishedWebsite),
+        lastPublishedAt: res?.data?.publishedAt || null,
+      });
+    } catch (err: any) {
+      if (err?.status === 404) {
+        setPublishState({ status: 'never_published', publishedSnapshot: null, lastPublishedAt: null });
+      } else {
+        setPublishState((prev) => ({ ...prev, status: 'unknown' }));
+      }
+    }
+  }, [builderShopSlugRef, websiteRef]);
+
+  // Fetch once the shop slug becomes known (builder finished initializing).
+  useEffect(() => {
+    const slug = builderShopSlugRef.current;
+    if (!slug || publishStateSlugRef.current === slug) return;
+    void refreshPublishState();
+  }, [builderShopSlugRef, refreshPublishState]);
+
+  // Re-compare after every completed autosave so the badge stays honest
+  // ("has_changes" as soon as a draft edit is persisted) without polling.
+  const lastComparedStatusRef = useRef<string>('');
+  useEffect(() => {
+    if (!autosaveStatus || lastComparedStatusRef.current === autosaveStatus) return;
+    lastComparedStatusRef.current = autosaveStatus;
+    if (autosaveStatus !== 'saved') return;
+    setPublishState((prev) => {
+      if (prev.status === 'never_published' || prev.status === 'unknown' || prev.status === 'checking') {
+        return prev;
+      }
+      if (!prev.publishedSnapshot) return prev;
+      return {
+        ...prev,
+        status:
+          stableStringify(normalizeWebsiteTree(websiteRef.current)) === prev.publishedSnapshot
+            ? 'up_to_date'
+            : 'has_changes',
+      };
+    });
+  }, [autosaveStatus, websiteRef]);
 
   // Version Snapshots
   const createVersionSnapshot = useCallback(
@@ -199,6 +301,10 @@ export const useBuilderPublishing = (
         publishedAt: new Date().toLocaleTimeString('ar-EG'),
       });
       setHistoryLog((prev) => ['نشر الموقع المحفوظ بنجاح', ...prev]);
+      // Refresh the draft-vs-published badge (and drop the GET cache so the
+      // public endpoint is read fresh).
+      clearApiCache();
+      void refreshPublishState();
     } catch (err) {
       setPublishingStatus({
         status: 'failed',
@@ -217,6 +323,7 @@ export const useBuilderPublishing = (
     saveDraft,
     setHistoryLog,
     draftVersionRef,
+    refreshPublishState,
   ]);
 
   return {
@@ -226,5 +333,7 @@ export const useBuilderPublishing = (
     publishingStatus,
     runPublishPipeline,
     publishedSiteUrl: publicSiteUrl(),
+    publishState,
+    refreshPublishState,
   };
 };

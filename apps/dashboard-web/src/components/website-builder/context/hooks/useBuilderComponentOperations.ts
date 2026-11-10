@@ -7,6 +7,7 @@ import {
   ViewportBreakpoint,
   Website,
 } from '../../types/builder';
+import { isAllowedProductsParent } from '@ray-eg/shared/builder';
 import { loadSectionTemplate } from '../../data/registry';
 import { createTemplateMobileStyles, createUniqueBuilderId } from '../builderUtils';
 
@@ -111,6 +112,88 @@ const replaceNode = (
   const target = website.components[id];
   if (!target) return website;
   return { ...website, components: { ...website.components, [id]: update(target) } };
+};
+
+// ── Products-section placement rules ────────────────────────────────────────
+// The public renderer normalizes every tree with `normalizeWebsiteTree`, which
+// detaches a products section whose parent is not a layout container, and any
+// SECOND products section on the same page. If the editor allowed those states
+// to be created, the section would look fine in the canvas and then silently
+// disappear on the next save/reload/publish — merchants experienced this as
+// "sections vanish / order jumps randomly". Every mutating operation therefore
+// validates against the SAME rules the normalizer enforces.
+
+/** True when the subtree rooted at `rootId` contains a `products` node. */
+const subtreeContainsProducts = (website: Website, rootId: string): boolean => {
+  const stack = [rootId];
+  while (stack.length) {
+    const id = stack.pop() as string;
+    const node = website.components[id];
+    if (!node) continue;
+    if (node.type === 'products') return true;
+    stack.push(...(node.childrenIds || []));
+  }
+  return false;
+};
+
+/** Count `products` nodes reachable from a page root, skipping one subtree. */
+const countPageProducts = (
+  website: Website,
+  pageRootId: string,
+  excludeSubtreeId?: string
+): number => {
+  let count = 0;
+  const stack = [pageRootId];
+  while (stack.length) {
+    const id = stack.pop() as string;
+    if (excludeSubtreeId && id === excludeSubtreeId) continue;
+    const node = website.components[id];
+    if (!node) continue;
+    if (node.type === 'products') count += 1;
+    stack.push(...(node.childrenIds || []));
+  }
+  return count;
+};
+
+/**
+ * Shared validation for any operation that would place `draggedNode` (with its
+ * subtree) under `newParent`. Returns an Arabic error message, or null when the
+ * placement is allowed.
+ */
+export const validateProductsPlacement = (
+  website: Website,
+  draggedNode: ComponentNode,
+  newParent: ComponentNode,
+  pageRootId: string
+): string | null => {
+  const draggedHasProducts =
+    draggedNode.type === 'products' || subtreeContainsProducts(website, draggedNode.id);
+  if (!draggedHasProducts) return null;
+
+  // The products node's effective parent after the move: the new parent when
+  // the dragged node IS the products section, otherwise the dragged container.
+  const productsParent = draggedNode.type === 'products' ? newParent : draggedNode;
+  if (!isAllowedProductsParent(productsParent as any, pageRootId)) {
+    return 'قسم المنتجات مسموح فقط داخل الصفحة الرئيسية أو داخل حاوية تخطيط (Layout) — لا يمكن وضعه داخل هيرو أو كارت أو جاليري.';
+  }
+  if (countPageProducts(website, pageRootId, draggedNode.id) >= 1) {
+    return 'يوجد قسم منتجات بالفعل في هذه الصفحة — يسمح بقسم منتجات واحد فقط لكل صفحة.';
+  }
+  return null;
+};
+
+/**
+ * Index at which to insert a top-level child into `parent` so it lands ABOVE
+ * the footer instead of after it. Sections added "at the end" of a page root
+ * used to drop below the footer — merchants read that as sections jumping
+ * to a random place.
+ */
+export const topLevelInsertIndex = (website: Website, parent: ComponentNode): number => {
+  if (parent.type !== 'container') return parent.childrenIds.length;
+  const footerIndex = parent.childrenIds.findIndex(
+    (childId) => website.components[childId]?.type === 'footer'
+  );
+  return footerIndex === -1 ? parent.childrenIds.length : footerIndex;
 };
 
 export const getPageReachableNodeIds = (website: Website, rootId: string): Set<string> => {
@@ -220,27 +303,40 @@ export const useBuilderComponentOperations = ({
 
   const insertNode = useCallback(
     (node: ComponentNode, parentId: string, index?: number) => {
-      if (!websiteRef.current.components[parentId] || websiteRef.current.components[node.id])
-        return;
-      recordHistory(`إضافة عنصر (${node.name})`, (current) => {
-        const parent = current.components[parentId];
-        if (!parent) return current;
-        const children = [...parent.childrenIds];
+      const current = websiteRef.current;
+      if (!current.components[parentId] || current.components[node.id]) return;
+      const parent = current.components[parentId];
+      if (node.type === 'products' && parent) {
+        const placementError = validateProductsPlacement(
+          current,
+          node,
+          parent,
+          activePage.rootNodeId
+        );
+        if (placementError) {
+          setTemplateError(placementError);
+          return;
+        }
+      }
+      recordHistory(`إضافة عنصر (${node.name})`, (latest) => {
+        const latestParent = latest.components[parentId];
+        if (!latestParent) return latest;
+        const children = [...latestParent.childrenIds];
         if (typeof index === 'number' && index >= 0 && index <= children.length) {
           children.splice(index, 0, node.id);
         } else children.push(node.id);
         return {
-          ...current,
+          ...latest,
           components: {
-            ...current.components,
-            [parentId]: { ...parent, childrenIds: children },
+            ...latest.components,
+            [parentId]: { ...latestParent, childrenIds: children },
             [node.id]: { ...node, parentId },
           },
         };
       });
       setSelectedNodeId(node.id);
     },
-    [recordHistory, websiteRef]
+    [activePage.rootNodeId, recordHistory, setTemplateError, websiteRef]
   );
 
   const insertSectionTemplate = useCallback(
@@ -271,6 +367,16 @@ export const useBuilderComponentOperations = ({
           };
         });
         const newRootId = idMap[tmpl.rootNodeId];
+        const templateRootType = tmpl.nodes[tmpl.rootNodeId]?.type;
+        if (templateRootType === 'products') {
+          const existingProducts = countPageProducts(websiteRef.current, rootId);
+          if (existingProducts >= 1) {
+            setTemplateError(
+              'يوجد قسم منتجات بالفعل في هذه الصفحة — يسمح بقسم منتجات واحد فقط لكل صفحة.'
+            );
+            return false;
+          }
+        }
         recordHistory(`إدراج نموذج قسم (${tmpl.nameAr})`, (latest) => {
           const root = latest.components[rootId];
           if (!root) return latest;
@@ -362,6 +468,14 @@ export const useBuilderComponentOperations = ({
       const current = websiteRef.current;
       const target = current.components[id];
       if (!target?.parentId) return;
+      // A duplicated products subtree would create a SECOND products section on
+      // this page — the public normalizer detaches it silently on next save.
+      if (subtreeContainsProducts(current, id)) {
+        setTemplateError(
+          'يسمح بقسم منتجات واحد فقط لكل صفحة، لذلك لا يمكن تكرار قسم المنتجات.'
+        );
+        return;
+      }
       const idMap: Record<string, string> = {};
       const usedIds = new Set(Object.keys(current.components));
       const visited = new Set<string>();
@@ -458,6 +572,19 @@ export const useBuilderComponentOperations = ({
       }
       const newParent = current.components[newParentId];
       if (!newParent) return false;
+      // Reject moves that would place a products section where the public
+      // normalizer would silently detach it (invalid parent or a second
+      // products section on the same page).
+      const placementError = validateProductsPlacement(
+        current,
+        dragged,
+        newParent,
+        activePage.rootNodeId
+      );
+      if (placementError) {
+        setTemplateError(placementError);
+        return false;
+      }
       const posLabel = position === 'inside' ? 'داخل' : position === 'before' ? 'قبل' : 'بعد';
       recordHistory(`سحب وإفلات (${dragged.name}) إلى ${posLabel} (${target.name})`, (latest) => {
         const node = latest.components[draggedId];
@@ -473,8 +600,11 @@ export const useBuilderComponentOperations = ({
           components[previousParent.id] = { ...previousParent, childrenIds: oldChildren };
         }
         const nextChildren = destination.childrenIds.filter((childId) => childId !== draggedId);
-        if (position === 'inside') nextChildren.push(draggedId);
-        else {
+        if (position === 'inside') {
+          // Insert ABOVE the page footer, never after it — dropping a section
+          // "inside the page" used to land below the footer and look random.
+          nextChildren.splice(topLevelInsertIndex(latest, destination), 0, draggedId);
+        } else {
           const targetIndex = nextChildren.indexOf(targetId);
           if (targetIndex < 0) return latest;
           nextChildren.splice(position === 'before' ? targetIndex : targetIndex + 1, 0, draggedId);
@@ -498,7 +628,7 @@ export const useBuilderComponentOperations = ({
       setSelectedNodeId(draggedId);
       return true;
     },
-    [recordHistory, websiteRef]
+    [activePage.rootNodeId, recordHistory, setTemplateError, websiteRef]
   );
 
   const reorderChildren = useCallback(

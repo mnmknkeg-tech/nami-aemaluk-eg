@@ -27,9 +27,64 @@ import {
   Maximize2,
   Minimize2,
   SlidersHorizontal,
+  CircleDashed,
 } from 'lucide-react';
 import { HIDE_UNPUBLISHED } from '@/config/sidebar';
 import { useBuilder } from '../../context/BuilderContext';
+
+/** Small always-visible badge: does the live site match this draft? */
+const PublishStateBadge: React.FC<{ onOpenPublish: () => void }> = ({ onOpenPublish }) => {
+  const { publishState } = useBuilder();
+  if (publishState.status === 'checking') {
+    return (
+      <span
+        title="جاري فحص حالة النشر"
+        className="hidden xl:flex items-center gap-1 px-2 py-1 rounded-full bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-500"
+      >
+        <Loader2 className="w-3 h-3 animate-spin" />
+        <span>جاري الفحص...</span>
+      </span>
+    );
+  }
+  if (publishState.status === 'never_published') {
+    return (
+      <button
+        type="button"
+        onClick={onOpenPublish}
+        title="موقعك غير منشور بعد — اضغط للنشر"
+        className="hidden xl:flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-300 text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
+      >
+        <CircleDashed className="w-3 h-3" />
+        <span>لم يُنشر بعد</span>
+      </button>
+    );
+  }
+  if (publishState.status === 'has_changes') {
+    return (
+      <button
+        type="button"
+        onClick={onOpenPublish}
+        title="لديك تعديلات محفوظة في المسودة لم تُنشر بعد — اضغط للنشر"
+        className="hidden xl:flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-300 text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
+      >
+        <AlertTriangle className="w-3 h-3" />
+        <span>تعديلات غير منشورة</span>
+      </button>
+    );
+  }
+  if (publishState.status === 'up_to_date') {
+    return (
+      <span
+        title="ما تراه في المحرر مطابق تمامًا للموقع المنشور"
+        className="hidden xl:flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-[11px] font-bold text-emerald-700"
+      >
+        <CheckCircle2 className="w-3 h-3" />
+        <span>منشور ومحدّث</span>
+      </span>
+    );
+  }
+  return null;
+};
 
 export const TopBar: React.FC = () => {
   const {
@@ -298,17 +353,19 @@ export const TopBar: React.FC = () => {
           <span>حفظ</span>
         </button>
 
-        {/* Preview Button (opens live interactive preview modal) — LOCAL-ONLY */}
-        {!HIDE_UNPUBLISHED && (
-          <button
-            onClick={() => setIsLivePreviewOpen(true)}
-            title="معاينة حية للمتجر في كافة الشاشات"
-            className="hidden md:flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-800 shadow-xs transition-all shrink-0 cursor-pointer"
-          >
-            <Play className="w-3.5 h-3.5 text-blue-600 fill-blue-600" />
-            <span>معاينة</span>
-          </button>
-        )}
+        {/* Draft-vs-published badge — the truth about what visitors see */}
+        <PublishStateBadge onOpenPublish={() => setIsPublishModalOpen(true)} />
+
+        {/* Preview Button — always available: a merchant must see his site
+            before publishing it (was hidden in production builds). */}
+        <button
+          onClick={() => setIsLivePreviewOpen(true)}
+          title="معاينة حية للمتجر في كافة الشاشات"
+          className="hidden md:flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-800 shadow-xs transition-all shrink-0 cursor-pointer"
+        >
+          <Play className="w-3.5 h-3.5 text-blue-600 fill-blue-600" />
+          <span>معاينة</span>
+        </button>
 
         {/* Publish Button */}
         <button

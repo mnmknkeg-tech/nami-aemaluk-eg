@@ -122,24 +122,32 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
 
   const showFloatingCart = isCartVisible({ settings: cartSettings, placement: 'floating' });
 
-  const [standaloneItems, setStandaloneItems] = useState<SiteCartItem[]>(() => {
-    if (previewMode || typeof window === 'undefined') return [];
-    try {
-      const stored = localStorage.getItem(`ray_site_cart_${shop.id}`);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [isSiteCartOpen, setIsSiteCartOpen] = useState(false);
+  // Hydration-safe standalone cart: the server (and the first client render)
+  // both start from an empty list; stored items are loaded after mount. Reading
+  // localStorage inside the useState initializer would desynchronize the first
+  // client render from the SSR HTML and break hydration.
+  const [standaloneItems, setStandaloneItems] = useState<SiteCartItem[]>([]);
+  const [standaloneCartHydrated, setStandaloneCartHydrated] = useState(previewMode);
 
   useEffect(() => {
     if (previewMode || typeof window === 'undefined') return;
     try {
+      const stored = localStorage.getItem(`ray_site_cart_${shop.id}`);
+      setStandaloneItems(stored ? JSON.parse(stored) : []);
+    } catch {
+      setStandaloneItems([]);
+    }
+    setStandaloneCartHydrated(true);
+  }, [previewMode, shop.id]);
+
+  const [isSiteCartOpen, setIsSiteCartOpen] = useState(false);
+
+  useEffect(() => {
+    if (previewMode || typeof window === 'undefined' || !standaloneCartHydrated) return;
+    try {
       localStorage.setItem(`ray_site_cart_${shop.id}`, JSON.stringify(standaloneItems));
     } catch {}
-  }, [previewMode, standaloneItems, shop.id]);
+  }, [previewMode, standaloneCartHydrated, standaloneItems, shop.id]);
 
   const handleAddToCart = (product: SiteProduct) => {
     if (usesHostCart && onAddToCart) {

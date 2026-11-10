@@ -40,7 +40,7 @@ const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = fal
           role="alert"
           className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900"
         >
-          تعذر تطبيق القالب: {templateError}
+          تنبيه: {templateError}
         </div>
       )}
 
@@ -93,7 +93,10 @@ const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = fal
       <PublishModal />
       {/* Market-launch switch: the AI assistant is local-only for now. */}
       {!HIDE_UNPUBLISHED && <AiAssistantModal />}
-      {!HIDE_UNPUBLISHED && <SecurePreview />}
+      {/* SecurePreview IS the live preview modal opened by the TopBar "معاينة"
+          button — a merchant must see his site before publishing, so it is NOT
+          hidden in production (unlike AI / dev tools). */}
+      <SecurePreview />
       {!HIDE_UNPUBLISHED && <DeveloperModeDrawer />}
 
       {/* Mobile bottom tab bar — only visible on small screens (hidden on lg+) */}

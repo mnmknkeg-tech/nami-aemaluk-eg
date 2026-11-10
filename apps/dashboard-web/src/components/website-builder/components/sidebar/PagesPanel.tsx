@@ -33,6 +33,7 @@ export const PagesPanel: React.FC = () => {
     deletePage,
     updatePageMetadata,
     updatePagePlacement,
+    setHomePage,
     getHeaderDropdownNavItems,
     updateNodeProps,
   } = useBuilder();
@@ -670,6 +671,20 @@ export const PagesPanel: React.FC = () => {
                 >
                   <Copy className="w-3.5 h-3.5" />
                 </button>
+
+                {/* Set as home page */}
+                {!p.metadata.isHomePage && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setHomePage(p.id);
+                    }}
+                    title="تعيين هذه الصفحة كصفحة رئيسية للموقع (أول ما يفتحه الزائر)"
+                    className="p-1.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Home className="w-3.5 h-3.5" />
+                  </button>
+                )}
 
                 {/* Page Settings */}
                 <button

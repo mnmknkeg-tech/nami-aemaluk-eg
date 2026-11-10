@@ -19,6 +19,7 @@ import {
 import { StructuredAiPatch } from '../types/ai';
 import { ActivityTemplateMeta } from '../data/allActivityTemplates';
 import { AssetDto } from '../types/dto';
+import type { BuilderPublishState } from './hooks/useBuilderPublishing';
 
 export type EditingModeId = 'visual' | 'html_only' | 'css_only' | 'full_code';
 
@@ -42,6 +43,8 @@ export interface BuilderContextType {
   ) => void;
   deletePage: (pageId: string) => void;
   updatePageMetadata: (pageId: string, meta: Partial<PageMetadata>, pageName?: string) => void;
+  /** Atomically make one page the site home page (unset all others). */
+  setHomePage: (pageId: string) => void;
   updatePagePlacement: (
     pageId: string,
     options: {
@@ -164,6 +167,9 @@ export interface BuilderContextType {
   publishingStatus: PublishingPipelineStatus;
   runPublishPipeline: () => void;
   publishedSiteUrl: string;
+  /** Draft-vs-published badge state (what visitors see vs what the editor has). */
+  publishState: BuilderPublishState;
+  refreshPublishState: () => Promise<void>;
 
   // AI Modification Engine
   applyAiPatch: (patch: StructuredAiPatch) => void;

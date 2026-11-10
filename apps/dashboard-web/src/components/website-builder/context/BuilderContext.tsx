@@ -24,6 +24,8 @@ import { AssetDto } from '../types/dto';
 import { EditingModeId } from './types';
 import { mockTenants, mockAssets } from '../data/mockTenants';
 import {
+  TEMPLATE_SCHEMA_VERSIONS,
+  type FullWebsiteTemplateEntry,
   getFullWebsiteTemplateMetadata,
   getFullWebsiteTemplates,
   loadFullWebsiteTemplate,
@@ -47,6 +49,7 @@ import { useBuilderAI } from './hooks/useBuilderAI';
 
 // Utilities
 import {
+  BLANK_WEBSITE,
   createFullWebsiteTemplateCandidate,
   getHomePageId,
   getInitialBuilderState,
@@ -59,6 +62,33 @@ import { normalizeCatalogProduct } from '@ray-eg/shared/builder';
 
 // Types
 import { BuilderContextType } from './types';
+
+// ─── Blank "start from scratch" template ────────────────────────────────
+// Not a catalog template — built in. Before this entry existed,
+// `?template=blank` from the themes gallery threw "تعذر تطبيق القالب"
+// because the registry had no 'blank' id.
+const BLANK_TEMPLATE_ENTRY: FullWebsiteTemplateEntry = {
+  id: 'blank',
+  category: 'full-website',
+  displayName: 'موقع فارغ جديد',
+  version: '1',
+  dataSource: 'built-in',
+  schemaVersion: TEMPLATE_SCHEMA_VERSIONS.fullWebsite,
+  capabilities: { preview: false, apply: true },
+  metadata: {
+    id: 'blank',
+    tenantId: 'blank',
+    name: 'موقع فارغ جديد',
+    category: 'عام',
+    icon: '⬜',
+    badge: 'ابدأ من الصفر',
+    themeKey: '',
+    primaryColor: '#0f172a',
+    description: 'صفحة بيضاء تمامًا — أضف الأقسام بنفسك خطوة بخطوة.',
+    tags: ['فارغ', 'من الصفر'],
+  },
+  website: BLANK_WEBSITE,
+};
 
 // ─── Context ────────────────────────────────────────────────────────────────
 
@@ -278,7 +308,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     return `${window.location.origin}/preview`;
   }, []);
 
-  // ── Publishing sub-hook ──────────────────────────────────────────────────
+  // ── Publishing sub-hook ────────────────────────────────────────────────────
   const publishing = useBuilderPublishing(
     websiteRef,
     builderShopIdRef,
@@ -287,7 +317,8 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     saveDraft,
     setHistoryLog,
     recordHistory,
-    draftVersionRef
+    draftVersionRef,
+    autosaveStatus
   );
 
   // ── AI sub-hook ──────────────────────────────────────────────────────────
@@ -526,7 +557,11 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             'تعذر تحميل مسودة الموقع الحالية؛ لم يُطبّق القالب لحماية محتوى متجرك. أعد تحميل المحرر وحاول مجددًا.'
           );
         }
-        entry = loadFullWebsiteTemplate(websiteId);
+        if (websiteId === 'blank') {
+          entry = BLANK_TEMPLATE_ENTRY;
+        } else {
+          entry = loadFullWebsiteTemplate(websiteId);
+        }
         const presetTheme = presetId
           ? getMergedThemeTokens(loadThemePreset(presetId).presetKey)
           : undefined;
