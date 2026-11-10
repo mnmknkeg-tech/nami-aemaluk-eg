@@ -114,7 +114,7 @@ const searchableTemplateText = (template: SectionTemplate) =>
     .toLocaleLowerCase();
 
 export const SectionLibraryPanel: React.FC = () => {
-  const { insertSectionTemplate } = useBuilder();
+  const { insertSectionTemplate, website, activePage } = useBuilder();
   const [selectedCategory, setSelectedCategory] = useState<SectionCategory | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>('all');
@@ -227,37 +227,86 @@ export const SectionLibraryPanel: React.FC = () => {
                 const Icon = categoryIcons[category.id];
                 const group = categoryFilters[category.id];
                 const templateCount = templateCounts.get(category.id) || 0;
+                const quickAddTemplate =
+                  category.id === 'products'
+                    ? templatesByCategory
+                        .get('products')
+                        ?.find((template) => template.id === 'products-featured-grid')
+                    : undefined;
+                const rootNode = website.components[activePage.rootNodeId];
+                const hasProductsSection =
+                  category.id === 'products' &&
+                  Boolean(
+                    rootNode?.childrenIds.some(
+                      (childId) => website.components[childId]?.type === 'products'
+                    )
+                  );
                 return (
-                  <button
+                  <div
                     key={category.id}
-                    type="button"
-                    aria-label={`${category.nameAr}، ${templateCount} تصميم`}
-                    onClick={() => {
-                      setSelectedCategory(category.id);
-                      setSearchQuery('');
-                    }}
-                    className="group flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-3 text-right transition hover:border-slate-200 hover:bg-slate-50 active:bg-slate-100"
+                    className="group flex w-full items-center gap-2 rounded-xl border border-transparent px-2 py-2 text-right transition hover:border-slate-200 hover:bg-slate-50"
                   >
-                    <span
-                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ring-1 ring-inset ${accentByFilter[group]}`}
+                    <button
+                      type="button"
+                      aria-label={`${category.nameAr}، ${templateCount} تصميم`}
+                      onClick={() => {
+                        setSelectedCategory(category.id);
+                        setSearchQuery('');
+                      }}
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 text-right"
                     >
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span className="truncate text-xs font-bold text-slate-800 transition group-hover:text-blue-700">
-                          {category.nameAr}
+                      <span
+                        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ring-1 ring-inset ${accentByFilter[group]}`}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span className="truncate text-xs font-bold text-slate-800 transition group-hover:text-blue-700">
+                            {category.nameAr}
+                          </span>
+                          <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-slate-500">
+                            {templateCount}
+                          </span>
                         </span>
-                        <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-slate-500">
-                          {templateCount}
+                        <span className="mt-1 block text-[10px] text-slate-400">
+                          {category.id === 'products'
+                            ? 'يعرض منتجات متجرك تلقائياً'
+                            : templateCount === 1
+                              ? 'تصميم جاهز للإضافة'
+                              : 'تصاميم جاهزة للإضافة'}
                         </span>
                       </span>
-                      <span className="mt-1 block text-[10px] text-slate-400">
-                        {templateCount === 1 ? 'تصميم جاهز للإضافة' : 'تصاميم جاهزة للإضافة'}
-                      </span>
-                    </span>
-                    <ChevronLeft className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:-translate-x-0.5 group-hover:text-blue-600" />
-                  </button>
+                      <ChevronLeft className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:-translate-x-0.5 group-hover:text-blue-600" />
+                    </button>
+                    {quickAddTemplate && (
+                      <button
+                        type="button"
+                        disabled={hasProductsSection}
+                        aria-label={
+                          hasProductsSection
+                            ? 'قسم المنتجات مضاف بالفعل'
+                            : 'إضافة قسم المنتجات مباشرة'
+                        }
+                        title={
+                          hasProductsSection ? 'قسم المنتجات مضاف بالفعل' : 'إضافة شبكة المنتجات'
+                        }
+                        onClick={() => handleInsert(quickAddTemplate)}
+                        className={`flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-2 text-[10px] font-bold transition ${
+                          hasProductsSection
+                            ? 'cursor-not-allowed bg-slate-100 text-slate-400'
+                            : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                        }`}
+                      >
+                        {hasProductsSection ? (
+                          <Check className="h-3.5 w-3.5" />
+                        ) : (
+                          <Plus className="h-3.5 w-3.5" />
+                        )}
+                        <span>{hasProductsSection ? 'مضاف' : 'إضافة'}</span>
+                      </button>
+                    )}
+                  </div>
                 );
               })
             )}
