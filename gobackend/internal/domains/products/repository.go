@@ -403,11 +403,16 @@ func (r *Repository) FindIDForUpdate(ctx context.Context, tx pgx.Tx, shopID, pro
 func (r *Repository) UpdateImported(ctx context.Context, tx pgx.Tx, id string, p *Product) (string, error) {
 	_, err := tx.Exec(ctx,
 		`UPDATE products SET
-			name = $2, description = $3, price = $4, stock = $5, category = $6,
-			unit = $7, image_url = $8, track_stock = $9, updated_at = NOW()
-		 WHERE id = $1`,
-		id, p.Name, p.Description, p.Price, p.Stock, p.Category,
-		p.Unit, p.ImageURL, p.TrackStock)
+				name = $2, description = $3, price = $4, stock = $5, category = $6,
+				unit = $7, image_url = $8, track_stock = $9, is_active = $10, app_active = $11,
+				images = $12, colors = $13, sizes = $14, addons = $15, menu_variants = $16,
+				pack_options = $17, model_3d_url = $18, spin_images = $19, extra_data = $20,
+				updated_at = NOW()
+			 WHERE id = $1`,
+			id, p.Name, p.Description, p.Price, p.Stock, p.Category,
+			p.Unit, p.ImageURL, p.TrackStock, p.IsActive, p.AppActive,
+			p.Images, p.Colors, p.Sizes, p.Addons, p.MenuVariants, p.PackOptions,
+			p.Model3DURL, p.SpinImages, p.ExtraData)
 	if err != nil {
 		return "", err
 	}
@@ -421,15 +426,15 @@ func (r *Repository) CreateImported(ctx context.Context, tx pgx.Tx, p *Product) 
 	var id string
 	err := tx.QueryRow(ctx,
 		`INSERT INTO products (
-			id, name, description, price, stock, category, image_url, is_active, app_active,
-			shop_id, track_stock, unit, images, colors, sizes, addons,
-			menu_variants, pack_options, model_3d_url, spin_images, created_at, updated_at
-		) VALUES (
-			gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW()
-		) RETURNING id`,
-		p.Name, p.Description, p.Price, p.Stock, p.Category, p.ImageURL, p.IsActive, p.AppActive,
-		p.ShopID, p.TrackStock, p.Unit, p.Images, p.Colors, p.Sizes, p.Addons,
-		p.MenuVariants, p.PackOptions, p.Model3DURL, p.SpinImages).Scan(&id)
+				id, name, description, price, stock, category, image_url, is_active, app_active,
+				shop_id, track_stock, unit, images, colors, sizes, addons,
+				menu_variants, pack_options, model_3d_url, spin_images, extra_data, created_at, updated_at
+			) VALUES (
+				gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW(), NOW()
+			) RETURNING id`,
+			p.Name, p.Description, p.Price, p.Stock, p.Category, p.ImageURL, p.IsActive, p.AppActive,
+			p.ShopID, p.TrackStock, p.Unit, p.Images, p.Colors, p.Sizes, p.Addons,
+			p.MenuVariants, p.PackOptions, p.Model3DURL, p.SpinImages, p.ExtraData).Scan(&id)
 	if err != nil {
 		return "", err
 	}
@@ -468,6 +473,27 @@ func (r *Repository) upsertFurnitureMeta(ctx context.Context, productID string, 
 	row := r.pool.QueryRow(ctx, query, productID, fm.Unit, fm.LengthCm, fm.WidthCm, fm.HeightCm)
 	var out FurnitureMeta
 	if err := row.Scan(&out.ID, &out.Unit, &out.LengthCm, &out.WidthCm, &out.HeightCm); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// upsertFurnitureMetaTx is the transaction-safe variant used by bulk import.
+func (r *Repository) upsertFurnitureMetaTx(ctx context.Context, tx pgx.Tx, productID string, fm *FurnitureMeta) (*FurnitureMeta, error) {
+	query := `
+		INSERT INTO product_furniture_meta (id, product_id, unit, length_cm, width_cm, height_cm, created_at, updated_at)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NOW(), NOW())
+		ON CONFLICT (product_id) DO UPDATE SET
+			unit = EXCLUDED.unit,
+			length_cm = EXCLUDED.length_cm,
+			width_cm = EXCLUDED.width_cm,
+			height_cm = EXCLUDED.height_cm,
+			updated_at = NOW()
+		RETURNING id, unit, length_cm, width_cm, height_cm
+	`
+	var out FurnitureMeta
+	if err := tx.QueryRow(ctx, query, productID, fm.Unit, fm.LengthCm, fm.WidthCm, fm.HeightCm).
+		Scan(&out.ID, &out.Unit, &out.LengthCm, &out.WidthCm, &out.HeightCm); err != nil {
 		return nil, err
 	}
 	return &out, nil

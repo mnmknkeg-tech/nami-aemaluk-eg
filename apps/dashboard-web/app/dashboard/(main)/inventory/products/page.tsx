@@ -38,8 +38,10 @@ import {
   buildProductImportPreview,
   importProductsInChunks,
   downloadProductTemplate,
+  PRODUCT_TEMPLATE_LABELS,
   type ProductImportPreview as ImportPreview,
   type ImportProgress,
+  type ProductTemplateKind,
 } from '@/lib/importer';
 import { SectionTabs, useInvSectionTab } from '@/components/inventory/InventoryShell';
 import CategoriesView from '@/components/inventory/views/CategoriesView';
@@ -122,6 +124,7 @@ function ProductsPageContent() {
   const [importRunning, setImportRunning] = useState(false);
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
   const [importFileName, setImportFileName] = useState('');
+  const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stockTab, setStockTab] = useState<'all' | 'visible' | 'hidden' | 'low'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock' | 'newest'>('newest');
@@ -347,7 +350,11 @@ function ProductsPageContent() {
     }
     return {
       sheetName: 'المنتجات',
-      headers: ['name', 'price', 'stock', 'category', 'description', 'unit'],
+      headers: [
+        'name', 'price', 'stock', 'category', 'description', 'unit', 'imageUrl', 'images',
+        'colors', 'sizes', 'addons', 'menuVariants', 'packOptions', 'model3dUrl', 'spinImages',
+        'extraData', 'furnitureMeta', 'trackStock', 'isActive', 'appActive',
+      ],
       rows: all.map((p: any) => [
         String(p?.name ?? ''),
         Number(p?.price ?? 0),
@@ -355,6 +362,20 @@ function ProductsPageContent() {
         typeof p?.category === 'string' ? p?.category : String(p?.category?.name ?? 'عام'),
         String(p?.description ?? ''),
         String(p?.unit ?? ''),
+        String(p?.imageUrl ?? p?.image_url ?? ''),
+        JSON.stringify(p?.images ?? []),
+        JSON.stringify(p?.colors ?? []),
+        JSON.stringify(p?.sizes ?? []),
+        JSON.stringify(p?.addons ?? []),
+        JSON.stringify(p?.menuVariants ?? []),
+        JSON.stringify(p?.packOptions ?? []),
+        String(p?.model3dUrl ?? ''),
+        JSON.stringify(p?.spinImages ?? []),
+        JSON.stringify(p?.extraData ?? {}),
+        JSON.stringify(p?.furnitureMeta ?? {}),
+        p?.trackStock !== false,
+        p?.isActive !== false,
+        p?.appActive !== false,
       ]),
     };
   }, [shopId]);
@@ -438,14 +459,32 @@ function ProductsPageContent() {
                   disabled={products.length === 0}
                   sheetName="المنتجات"
                 />
-                <button
-                  onClick={() => downloadProductTemplate()}
-                  className="h-10 px-4 rounded-full border border-slate-200 bg-white text-[12px] font-bold text-slate-700 hover:bg-slate-50 hidden lg:flex items-center gap-1.5"
-                  title="تنزيل قالب استيراد المنتجات (Excel)"
-                >
-                  <Download size={14} />
-                  قالب
-                </button>
+                <div className="relative hidden lg:block">
+                  <button
+                    onClick={() => setTemplateMenuOpen((v) => !v)}
+                    className="h-10 px-4 rounded-full border border-slate-200 bg-white text-[12px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5"
+                    title="تنزيل قالب استيراد حسب نوع المنتج"
+                  >
+                    <Download size={14} />
+                    قالب حسب النشاط
+                  </button>
+                  {templateMenuOpen && (
+                    <div className="absolute z-30 top-12 left-0 w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                      {(Object.keys(PRODUCT_TEMPLATE_LABELS) as ProductTemplateKind[]).map((kind) => (
+                        <button
+                          key={kind}
+                          onClick={() => {
+                            downloadProductTemplate(kind);
+                            setTemplateMenuOpen(false);
+                          }}
+                          className="w-full rounded-xl px-3 py-2 text-right text-xs font-bold text-slate-700 hover:bg-teal-50 hover:text-teal-700"
+                        >
+                          {PRODUCT_TEMPLATE_LABELS[kind]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className="relative">
                   <button
                     onClick={() => setAddMenuOpen((v) => !v)}

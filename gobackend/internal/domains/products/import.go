@@ -11,21 +11,34 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// maxImportDraftItems caps one bulk-import request. Larger imports are
-// chunked client-side; the limit keeps request bodies and transaction
-// durations bounded.
-const maxImportDraftItems = 2000
+// maxImportDraftItems caps one bulk-import request. The dashboard still sends
+// 500-row chunks by default, but the API can safely accept a larger chunk for
+// trusted clients without making 5000-row imports one database transaction.
+const maxImportDraftItems = 5000
 
 // ImportDraftItem is one product row in a bulk import payload.
 type ImportDraftItem struct {
-	ProductID   string  `json:"productId,omitempty"`
-	Name        string  `json:"name"`
+	ProductID   string `json:"productId,omitempty"`
+	Name        string `json:"name"`
 	Price       float64 `json:"price"`
-	Stock       int     `json:"stock"`
-	Category    string  `json:"category,omitempty"`
+	Stock       int `json:"stock"`
+	Category    string `json:"category,omitempty"`
 	Description *string `json:"description,omitempty"`
 	Unit        *string `json:"unit,omitempty"`
 	ImageURL    *string `json:"imageUrl,omitempty"`
+	TrackStock  *bool `json:"trackStock,omitempty"`
+	IsActive    *bool `json:"isActive,omitempty"`
+	AppActive   *bool `json:"appActive,omitempty"`
+	Images      []any `json:"images,omitempty"`
+	Colors      []any `json:"colors,omitempty"`
+	Sizes       []any `json:"sizes,omitempty"`
+	Addons      []any `json:"addons,omitempty"`
+	MenuVariants []any `json:"menuVariants,omitempty"`
+	PackOptions []any `json:"packOptions,omitempty"`
+	Model3DURL  *string `json:"model3dUrl,omitempty"`
+	SpinImages  []any `json:"spinImages,omitempty"`
+	ExtraData   map[string]any `json:"extraData,omitempty"`
+	FurnitureMeta *FurnitureMeta `json:"furnitureMeta,omitempty"`
 }
 
 // ImportDraftsRequest is the payload for the bulk upsert endpoint.
@@ -183,6 +196,18 @@ func buildImportProduct(r importRow, shopID string, trackStock bool) *Product {
 	if category == "" {
 		category = "عام"
 	}
+	productTrackStock := trackStock
+	if r.item.TrackStock != nil {
+		productTrackStock = *r.item.TrackStock
+	}
+	isActive := true
+	if r.item.IsActive != nil {
+		isActive = *r.item.IsActive
+	}
+	appActive := true
+	if r.item.AppActive != nil {
+		appActive = *r.item.AppActive
+	}
 	return &Product{
 		Name:        r.name,
 		Description: r.item.Description,
@@ -191,9 +216,20 @@ func buildImportProduct(r importRow, shopID string, trackStock bool) *Product {
 		Category:    category,
 		Unit:        r.item.Unit,
 		ImageURL:    r.item.ImageURL,
-		TrackStock:  trackStock,
-		IsActive:    true,
+		TrackStock:  productTrackStock,
+		IsActive:    isActive,
+		AppActive:   appActive,
 		ShopID:      shopID,
+		Images:      r.item.Images,
+		Colors:      r.item.Colors,
+		Sizes:       r.item.Sizes,
+		Addons:      r.item.Addons,
+		MenuVariants: r.item.MenuVariants,
+		PackOptions: r.item.PackOptions,
+		Model3DURL:  r.item.Model3DURL,
+		SpinImages:  r.item.SpinImages,
+		ExtraData:   r.item.ExtraData,
+		FurnitureMeta: r.item.FurnitureMeta,
 	}
 }
 
@@ -233,20 +269,30 @@ func (s *Service) importRowsFast(ctx context.Context, shopID string, trackStock 
 			id = existing[strings.ToLower(r.name)]
 		}
 
-		if id != "" {
-			if _, err := s.repo.UpdateImported(ctx, tx, id, p); err != nil {
-				return nil, errors.Internal("import_update_failed", err)
-			}
-			existing[strings.ToLower(r.name)] = id
+			if id != "" {
+				if _, err := s.repo.UpdateImported(ctx, tx, id, p); err != nil {
+					return nil, errors.Internal("import_update_failed", err)
+				}
+				if p.FurnitureMeta != nil {
+					if _, err := s.repo.upsertFurnitureMetaTx(ctx, tx, id, p.FurnitureMeta); err != nil {
+						return nil, errors.Internal("import_furniture_meta_failed", err)
+					}
+				}
+				existing[strings.ToLower(r.name)] = id
 			out.Updated = append(out.Updated, ImportDraftProduct{ID: id, Name: r.name})
 			continue
 		}
 
 		newID, err := s.repo.CreateImported(ctx, tx, p)
-		if err != nil {
-			return nil, errors.Internal("import_create_failed", err)
-		}
-		existing[strings.ToLower(r.name)] = newID
+			if err != nil {
+				return nil, errors.Internal("import_create_failed", err)
+			}
+			if p.FurnitureMeta != nil {
+				if _, err := s.repo.upsertFurnitureMetaTx(ctx, tx, newID, p.FurnitureMeta); err != nil {
+					return nil, errors.Internal("import_furniture_meta_failed", err)
+				}
+			}
+			existing[strings.ToLower(r.name)] = newID
 		out.Created = append(out.Created, ImportDraftProduct{ID: newID, Name: r.name})
 	}
 
@@ -278,12 +324,18 @@ func (s *Service) importRowsSlow(ctx context.Context, shopID string, trackStock 
 			return nil, errors.Internal("import_lookup_failed", err)
 		}
 
-		if existingID != "" {
-			if _, err := s.repo.UpdateImported(ctx, sp, existingID, p); err != nil {
-				_ = sp.Rollback(ctx)
-				continue
-			}
-			if err := sp.Commit(ctx); err != nil {
+			if existingID != "" {
+				if _, err := s.repo.UpdateImported(ctx, sp, existingID, p); err != nil {
+					_ = sp.Rollback(ctx)
+					continue
+				}
+				if p.FurnitureMeta != nil {
+					if _, err := s.repo.upsertFurnitureMetaTx(ctx, sp, existingID, p.FurnitureMeta); err != nil {
+						_ = sp.Rollback(ctx)
+						continue
+					}
+				}
+				if err := sp.Commit(ctx); err != nil {
 				continue
 			}
 			out.Updated = append(out.Updated, ImportDraftProduct{ID: existingID, Name: r.name})
@@ -291,11 +343,17 @@ func (s *Service) importRowsSlow(ctx context.Context, shopID string, trackStock 
 		}
 
 		newID, err := s.repo.CreateImported(ctx, sp, p)
-		if err != nil {
-			_ = sp.Rollback(ctx)
-			continue
-		}
-		if err := sp.Commit(ctx); err != nil {
+			if err != nil {
+				_ = sp.Rollback(ctx)
+				continue
+			}
+			if p.FurnitureMeta != nil {
+				if _, err := s.repo.upsertFurnitureMetaTx(ctx, sp, newID, p.FurnitureMeta); err != nil {
+					_ = sp.Rollback(ctx)
+					continue
+				}
+			}
+			if err := sp.Commit(ctx); err != nil {
 			continue
 		}
 		out.Created = append(out.Created, ImportDraftProduct{ID: newID, Name: r.name})

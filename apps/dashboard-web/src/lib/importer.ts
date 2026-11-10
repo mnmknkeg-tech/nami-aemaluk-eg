@@ -79,7 +79,80 @@ const PRODUCT_FIELDS: Record<string, string[]> = {
   category: ['category', 'الفئة', 'فئة', 'التصنيف', 'تصنيف', 'القسم'],
   description: ['description', 'الوصف', 'وصف', 'التفاصيل', 'details', 'desc'],
   unit: ['unit', 'الوحدة', 'وحدة', 'وحدة القياس'],
+  imageUrl: ['imageUrl', 'image_url', 'رابط الصورة', 'صورة المنتج'],
+  images: ['images', 'الصور', 'صور المنتج'],
+  colors: ['colors', 'الألوان', 'الالوان'],
+  sizes: ['sizes', 'المقاسات', 'المقاسات/الأحجام', 'الأحجام'],
+  addons: ['addons', 'الإضافات', 'الاضافات'],
+  menuVariants: ['menuVariants', 'متغيرات القائمة', 'أنواع الوجبة'],
+  packOptions: ['packOptions', 'خيارات العبوة', 'الباقات'],
+  model3dUrl: ['model3dUrl', 'model_3d_url', 'رابط نموذج 3d'],
+  spinImages: ['spinImages', 'صور الدوران'],
+  extraData: ['extraData', 'بيانات إضافية', 'بيانات اضافية'],
+  furnitureMeta: ['furnitureMeta', 'بيانات الأثاث', 'بيانات الاثاث'],
+  trackStock: ['trackStock', 'تتبع المخزون'],
+  isActive: ['isActive', 'نشط', 'فعال'],
+  appActive: ['appActive', 'نشط في التطبيق'],
 };
+
+const JSON_FIELDS = new Set([
+  'images',
+  'colors',
+  'sizes',
+  'addons',
+  'menuVariants',
+  'packOptions',
+  'spinImages',
+  'extraData',
+  'furnitureMeta',
+]);
+
+export type ProductTemplateKind =
+  | 'clothing'
+  | 'service'
+  | 'restaurant'
+  | 'digital'
+  | 'giftcard'
+  | 'bundle'
+  | 'bookings';
+
+const TEMPLATE_FIELDS: Record<ProductTemplateKind, string[]> = {
+  clothing: ['name', 'price', 'stock', 'category', 'description', 'unit', 'imageUrl', 'images', 'colors', 'sizes', 'packOptions', 'addons', 'extraData', 'trackStock', 'isActive'],
+  service: ['name', 'price', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'trackStock', 'isActive'],
+  restaurant: ['name', 'price', 'category', 'description', 'unit', 'imageUrl', 'menuVariants', 'addons', 'extraData', 'trackStock', 'isActive'],
+  digital: ['name', 'price', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'isActive'],
+  giftcard: ['name', 'price', 'stock', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'trackStock', 'isActive'],
+  bundle: ['name', 'price', 'stock', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'trackStock', 'isActive'],
+  bookings: ['name', 'price', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'isActive'],
+};
+
+export const PRODUCT_TEMPLATE_LABELS: Record<ProductTemplateKind, string> = {
+  clothing: 'منتج ملابس',
+  service: 'خدمة حسب الطلب',
+  restaurant: 'أكل ومشروبات',
+  digital: 'منتج رقمي',
+  giftcard: 'بطاقة رقمية',
+  bundle: 'مجموعة منتجات',
+  bookings: 'حجوزات',
+};
+
+function parseOptionalJSON(value: unknown, field: string): any {
+  const raw = String(value ?? '').trim();
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(`قيمة ${field} يجب أن تكون JSON صالحًا`);
+  }
+}
+
+function toBoolean(value: unknown): boolean | undefined {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if (!raw) return undefined;
+  if (['true', '1', 'yes', 'نعم', 'مفعل', 'فعال'].includes(raw)) return true;
+  if (['false', '0', 'no', 'لا', 'غير مفعل', 'غير فعال'].includes(raw)) return false;
+  return undefined;
+}
 
 export interface ProductImportRow {
   rowNumber: number;
@@ -89,6 +162,20 @@ export interface ProductImportRow {
   category: string;
   description: string | null;
   unit: string | null;
+  imageUrl?: string | null;
+  images?: any[];
+  colors?: any[];
+  sizes?: any[];
+  addons?: any[];
+  menuVariants?: any[];
+  packOptions?: any[];
+  model3dUrl?: string | null;
+  spinImages?: any[];
+  extraData?: Record<string, any>;
+  furnitureMeta?: Record<string, any>;
+  trackStock?: boolean;
+  isActive?: boolean;
+  appActive?: boolean;
 }
 
 export interface ProductImportInvalidRow {
@@ -146,15 +233,30 @@ export function buildProductImportPreview(table: ParsedTable): ProductImportPrev
     }
     const description = idx.description >= 0 ? String(row[idx.description] ?? '').trim() : '';
     const unit = idx.unit >= 0 ? String(row[idx.unit] ?? '').trim() : '';
-    valid.push({
-      rowNumber,
-      name,
-      price,
-      stock: stockRaw ?? 0,
-      category: idx.category >= 0 ? String(row[idx.category] ?? '').trim() || 'عام' : 'عام',
-      description: description || null,
-      unit: unit || null,
-    });
+    try {
+      const parsed: Record<string, any> = {};
+      for (const field of JSON_FIELDS) {
+        const fieldIdx = idx[field];
+        if (fieldIdx >= 0) parsed[field] = parseOptionalJSON(row[fieldIdx], field);
+      }
+      valid.push({
+        rowNumber,
+        name,
+        price,
+        stock: stockRaw ?? 0,
+        category: idx.category >= 0 ? String(row[idx.category] ?? '').trim() || 'عام' : 'عام',
+        description: description || null,
+        unit: unit || null,
+        imageUrl: idx.imageUrl >= 0 ? String(row[idx.imageUrl] ?? '').trim() || null : null,
+        model3dUrl: idx.model3dUrl >= 0 ? String(row[idx.model3dUrl] ?? '').trim() || null : null,
+        trackStock: idx.trackStock >= 0 ? toBoolean(row[idx.trackStock]) : undefined,
+        isActive: idx.isActive >= 0 ? toBoolean(row[idx.isActive]) : undefined,
+        appActive: idx.appActive >= 0 ? toBoolean(row[idx.appActive]) : undefined,
+        ...parsed,
+      });
+    } catch (err: any) {
+      invalid.push({ rowNumber, name, reason: err?.message || 'بيانات JSON غير صالحة' });
+    }
   });
 
   const columnMap: Record<string, string | null> = {};
@@ -165,18 +267,38 @@ export function buildProductImportPreview(table: ParsedTable): ProductImportPrev
   return { valid, invalid, headers, columnMap, totalRows: rows.length, missingRequired };
 }
 
-/** ينزّل ملف قالب استيراد المنتجات (xlsx مع صفين مثال) */
-export async function downloadProductTemplate() {
+/** ينزّل ملف قالب استيراد المنتجات مع الحقول الأساسية والمتقدمة */
+export async function downloadProductTemplate(kind: ProductTemplateKind = 'clothing') {
+  const headers = TEMPLATE_FIELDS[kind];
+  const defaults: Record<string, any> = {
+    name: 'منتج جديد', price: 100, stock: 0, category: 'عام', description: '', unit: 'قطعة',
+    imageUrl: '', images: '', colors: '', sizes: '', packOptions: '', addons: '', menuVariants: '',
+    extraData: '{}', trackStock: 'true', isActive: 'true',
+  };
+  // Keep the examples aligned with each activity's product unit and payload shape.
+  const unitByKind: Record<ProductTemplateKind, string> = {
+    clothing: 'قطعة', service: 'custom_service', restaurant: 'food', digital: 'digital',
+    giftcard: 'giftcard', bundle: 'bundle', bookings: 'booking',
+  };
+  const example = headers.map((field) => defaults[field] ?? '');
+  const unitIndex = headers.indexOf('unit');
+  if (unitIndex >= 0) example[unitIndex] = unitByKind[kind];
+  const stockIndex = headers.indexOf('stock');
+  if (stockIndex >= 0) example[stockIndex] = kind === 'giftcard' ? 10 : 0;
+  for (const field of ['images', 'colors', 'sizes', 'packOptions', 'addons', 'menuVariants']) {
+    const i = headers.indexOf(field);
+    if (i >= 0) example[i] = '[]';
+  }
+  const extraIndex = headers.indexOf('extraData');
+  if (extraIndex >= 0) example[extraIndex] = JSON.stringify({ activityTemplate: kind });
+  const rows = [example];
   const { exportData } = await import('@/lib/export');
   exportData(
     {
-      filename: 'قالب-استيراد-المنتجات',
+      filename: `قالب-استيراد-${kind}`,
       sheetName: 'المنتجات',
-      headers: ['name', 'price', 'stock', 'category', 'description', 'unit'],
-      rows: [
-        ['تيشيرت قطن', 250, 40, 'ملابس', 'تيشيرت قطن 100% مقاسات متعددة', 'قطعة'],
-        ['قهوة مختصة 250جم', 180, 15, 'مشروبات', '', 'عبوة'],
-      ],
+      headers,
+      rows,
     },
     'xlsx'
   );
@@ -191,6 +313,20 @@ export interface ImportDraftItemPayload {
   category: string;
   description?: string | null;
   unit?: string | null;
+  imageUrl?: string | null;
+  images?: any[];
+  colors?: any[];
+  sizes?: any[];
+  addons?: any[];
+  menuVariants?: any[];
+  packOptions?: any[];
+  model3dUrl?: string | null;
+  spinImages?: any[];
+  extraData?: Record<string, any>;
+  furnitureMeta?: Record<string, any>;
+  trackStock?: boolean;
+  isActive?: boolean;
+  appActive?: boolean;
 }
 
 export interface ImportDraftResult {
@@ -258,6 +394,20 @@ export async function importProductsInChunks(
               category: it.category,
               description: it.description,
               unit: it.unit,
+              imageUrl: it.imageUrl,
+              images: it.images,
+              colors: it.colors,
+              sizes: it.sizes,
+              addons: it.addons,
+              menuVariants: it.menuVariants,
+              packOptions: it.packOptions,
+              model3dUrl: it.model3dUrl,
+              spinImages: it.spinImages,
+              extraData: it.extraData,
+              furnitureMeta: it.furnitureMeta,
+              trackStock: it.trackStock,
+              isActive: it.isActive,
+              appActive: it.appActive,
             })),
           }),
         }
