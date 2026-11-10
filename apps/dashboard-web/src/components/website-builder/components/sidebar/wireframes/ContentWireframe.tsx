@@ -165,6 +165,55 @@ export const ContentWireframe: React.FC<WireframeProps> = ({ template }) => {
     );
   }
 
+  // STEPS WIREFRAME — numbered progress steps
+  if (template.category === 'steps') {
+    return (
+      <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2">
+        <span className="text-[10px] font-bold text-slate-800 block text-center">
+          خطوات العمل معنا
+        </span>
+        <div className="flex items-start justify-between px-1">
+          {[1, 2, 3].map((step, index) => (
+            <div key={step} className="flex flex-col items-center flex-1 relative">
+              <div
+                className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black ${
+                  index === 0 ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-600'
+                }`}
+              >
+                {step}
+              </div>
+              <span className="text-[7px] font-bold text-slate-600 mt-1">خطوة</span>
+              {index < 2 && (
+                <span className="absolute top-2.5 ltr:left-1/2 rtl:right-1/2 w-full h-0.5 bg-slate-200 -z-10" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // LOGOS WIREFRAME — partner/brand strip
+  if (template.category === 'logos') {
+    return (
+      <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2">
+        <span className="text-[9px] font-bold text-slate-500 block text-center">
+          شركاء النجاح وعملاؤنا
+        </span>
+        <div className="flex items-center justify-center gap-1.5">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="w-9 h-5 bg-slate-200/80 border border-slate-200 rounded flex items-center justify-center"
+            >
+              <span className="w-4 h-1.5 bg-slate-300 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   // 12. CONTENT WIREFRAME
   if (template.category === 'content') {
     return (

@@ -58,10 +58,11 @@ export const SectionWireframePreview: React.FC<Props> = ({ template }) => {
       return <HeroWireframe template={template} />;
     case 'features':
     case 'stats':
-    case 'steps':
-    case 'logos':
     case 'gallery':
       return <FeaturesWireframe template={template} />;
+    case 'steps':
+    case 'logos':
+      return <ContentWireframe template={template} />;
     case 'pricing':
       return <PricingWireframe template={template} />;
     case 'team':

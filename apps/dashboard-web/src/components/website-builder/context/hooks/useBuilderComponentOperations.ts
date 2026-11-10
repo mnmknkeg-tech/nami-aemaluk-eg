@@ -428,6 +428,15 @@ export const useBuilderComponentOperations = ({
     (id: string) => {
       const target = websiteRef.current.components[id];
       if (!target) return;
+      // A page without its root cannot render, save or publish — and on reload
+      // a fabricated "recovered" root replaces all content. Deleting sections
+      // inside the root is the correct way to clear a page.
+      if (websiteRef.current.pages.some((page) => page.rootNodeId === id)) {
+        setTemplateError(
+          'لا يمكن حذف جذر الصفحة نفسه — لحذف محتوى الصفحة احذف الأقسام الموجودة داخله.'
+        );
+        return;
+      }
       const parentId = target.parentId;
       recordHistory(`حذف (${target.name})`, (current) => {
         const node = current.components[id];
@@ -460,7 +469,7 @@ export const useBuilderComponentOperations = ({
       });
       setSelectedNodeId(parentId || null);
     },
-    [recordHistory, websiteRef]
+    [recordHistory, setTemplateError, websiteRef]
   );
 
   const duplicateNode = useCallback(
