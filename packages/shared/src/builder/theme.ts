@@ -1,4 +1,5 @@
 import type { DesignTokens, SiteProduct } from './types';
+import { normalizeImageUrl } from '../utils/image-url';
 
 // Mirrors the builder's defaultDesignTokens so a published site without a
 // full theme still renders exactly as it looks in the editor.
@@ -82,7 +83,8 @@ export function getSiteProductImageUrl(product: any): string | undefined {
         : candidate && typeof candidate === 'object'
           ? candidate.url || candidate.imageUrl || candidate.image_url
           : undefined;
-    if (typeof value === 'string' && value.trim()) return value.trim();
+    const normalized = normalizeImageUrl(value);
+    if (normalized) return normalized;
   }
   return undefined;
 }
@@ -96,7 +98,7 @@ export function mapSiteProduct(p: any): SiteProduct {
     description: p?.description || undefined,
     price: typeof p?.price === 'number' ? p.price : Number(p?.price) || (p?.price as string),
     image: getSiteProductImageUrl(p),
-    hoverImage: images[1],
+    hoverImage: images[1] ? getSiteProductImageUrl({ images: [images[1]] }) : undefined,
     badge: p?.badge,
     specs: Array.isArray(p?.specs) ? p.specs : undefined,
     sizes: Array.isArray(p?.sizes) ? p.sizes : undefined,

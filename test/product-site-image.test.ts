@@ -22,6 +22,12 @@ describe('site product image URL mapping', () => {
     ).toBe('https://cdn.example.com/gallery.jpg');
   });
 
+  it('upgrades public HTTP image links so secure storefronts can display them', () => {
+    expect(getSiteProductImageUrl({ imageUrl: 'http://cdn.example.com/product.jpg' })).toBe(
+      'https://cdn.example.com/product.jpg'
+    );
+  });
+
   it('uses the normalized image in the published SiteProduct shape', () => {
     expect(
       mapSiteProduct({

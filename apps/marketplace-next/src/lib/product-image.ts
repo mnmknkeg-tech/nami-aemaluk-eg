@@ -1,4 +1,5 @@
 import type { Product } from './services';
+import { normalizeImageUrl } from '@ray-eg/shared/utils/image-url';
 
 export const PRODUCT_IMAGE_FALLBACK = '/placeholder-product.png';
 
@@ -13,8 +14,5 @@ export function resolveProductImage(
 ): string {
   if (!product) return PRODUCT_IMAGE_FALLBACK;
   const candidates = [product.imageUrl, ...(product.images ?? [])];
-  return (
-    candidates.find((src): src is string => typeof src === 'string' && src.trim() !== '') ??
-    PRODUCT_IMAGE_FALLBACK
-  );
+  return candidates.map(normalizeImageUrl).find((src) => src !== '') ?? PRODUCT_IMAGE_FALLBACK;
 }

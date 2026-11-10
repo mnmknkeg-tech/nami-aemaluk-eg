@@ -13,6 +13,7 @@ import { productHasOptions } from '@/lib/product-options';
 import { resolveCommerce } from '@/lib/commerce';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { ProductCard } from '@/components/ProductCard';
+import { ProductImage } from '@/components/ProductImage';
 import { serializeJsonLd } from '@/lib/jsonld';
 
 // السعر وزرار الشراء هنا بيتحسبوا من قرار التاجر (layoutConfig.commerce)،
@@ -182,10 +183,9 @@ export default async function ProductPage({ params }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
         {/* Image */}
         <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800">
-          <Image
+          <ProductImage
             src={product.imageUrl || product.images?.[0] || '/placeholder-product.png'}
             alt={product.name || 'منتج'}
-            fill
             priority
             sizes="(max-width: 1024px) 100vw, 50vw"
             className="object-cover"

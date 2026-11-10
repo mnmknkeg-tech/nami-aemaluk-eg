@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { ImageOff } from 'lucide-react';
 import { PRODUCT_IMAGE_FALLBACK } from '@/lib/product-image';
 import { cn } from '@/lib/utils';
+import { isExternalImageUrl, normalizeImageUrl } from '@ray-eg/shared/utils/image-url';
 
 /**
  * next/image wrapper that never renders a broken image.
@@ -29,8 +30,13 @@ export function ProductImage({
   className?: string;
   showFallbackLabel?: boolean;
 }) {
-  const [failed, setFailed] = useState(false);
-  const resolved = failed || !src ? PRODUCT_IMAGE_FALLBACK : src;
+  const candidate = normalizeImageUrl(src);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const [directSrc, setDirectSrc] = useState<string | null>(null);
+  const failed = !!candidate && failedSrc === candidate;
+  const resolved = failed || !candidate ? PRODUCT_IMAGE_FALLBACK : candidate;
+  const external = isExternalImageUrl(resolved);
+  const useDirectSource = external && directSrc === candidate;
 
   return (
     <>
@@ -39,8 +45,16 @@ export function ProductImage({
         alt={alt}
         fill
         sizes={sizes}
-        priority={priority}
-        onError={() => setFailed(true)}
+        preload={priority}
+        unoptimized={useDirectSource}
+        onError={() => {
+          if (!candidate || resolved === PRODUCT_IMAGE_FALLBACK) return;
+          if (external && directSrc !== candidate) {
+            setDirectSrc(candidate);
+            return;
+          }
+          setFailedSrc(candidate);
+        }}
         className={cn(failed ? 'object-contain p-6 opacity-70' : 'object-cover', className)}
       />
       {failed && showFallbackLabel && (

@@ -1,4 +1,5 @@
 import { api } from './api';
+import { normalizeImageUrl } from '@ray-eg/shared/utils/image-url';
 
 export interface Shop {
   id: string;
@@ -78,8 +79,8 @@ export interface Product {
 
 function normalizeShop(raw: any): Shop {
   const shop = (raw?.data ?? raw) || {};
-  const logoUrl = shop.logoUrl || shop.logo_url || shop.logo || undefined;
-  return { ...shop, logoUrl, logo: shop.logo || logoUrl } as Shop;
+  const logoUrl = normalizeImageUrl(shop.logoUrl || shop.logo_url || shop.logo) || undefined;
+  return { ...shop, logoUrl, logo: normalizeImageUrl(shop.logo) || logoUrl } as Shop;
 }
 
 function normalizeProduct(raw: any, index = 0): Product {
@@ -87,16 +88,23 @@ function normalizeProduct(raw: any, index = 0): Product {
   const images = Array.isArray(product.images)
     ? product.images
         .map((item: any) =>
-          typeof item === 'string' ? item : item?.url || item?.src || item?.imageUrl || ''
+          typeof item === 'string'
+            ? item
+            : item?.url || item?.src || item?.imageUrl || item?.image_url || ''
         )
+        .map((image: unknown) => normalizeImageUrl(image))
         .filter(Boolean)
     : [];
   const imageUrl =
-    product.imageUrl ||
-    product.image_url ||
-    product.image ||
-    product.thumbnailUrl ||
-    product.thumbnail ||
+    normalizeImageUrl(
+      product.imageUrl ||
+        product.image_url ||
+        product.image ||
+        product.thumbnailUrl ||
+        product.thumbnail ||
+        images[0] ||
+        ''
+    ) ||
     images[0] ||
     '';
   const category =

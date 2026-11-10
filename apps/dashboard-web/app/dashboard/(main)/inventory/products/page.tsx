@@ -44,6 +44,7 @@ import {
   type ProductTemplateKind,
 } from '@/lib/importer';
 import { SectionTabs, useInvSectionTab } from '@/components/inventory/InventoryShell';
+import { normalizeImageUrl } from '@ray-eg/shared/utils/image-url';
 import CategoriesView from '@/components/inventory/views/CategoriesView';
 import VariantsView from '@/components/inventory/views/VariantsView';
 import BrandsView from '@/components/inventory/views/BrandsView';
@@ -708,7 +709,7 @@ function ProductsPageContent() {
                     </div>
                   </div>
                   {paginatedProducts.map((product) => {
-                    const imgSrc = String(product.imageUrl || product.image_url || '').trim();
+                    const imgSrc = normalizeImageUrl(product.imageUrl || product.image_url);
                     const onSite = product.isActive !== false;
                     const onApp = product.appActive !== false;
                     const isHiddenEverywhere = !onSite && !onApp;

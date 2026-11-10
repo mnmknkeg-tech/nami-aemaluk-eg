@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { getOptimizedImageUrl, buildSrcSet, detectImageFormatSupport } from '@/lib/image-utils';
+import React, { useState } from 'react';
+import { getOptimizedImageUrl } from '@/lib/image-utils';
+import { normalizeImageUrl } from '@ray-eg/shared/utils/image-url';
 
 interface SmartImageProps {
   src?: string | null;
@@ -30,44 +31,15 @@ export default function SmartImage({
   style,
   onClick,
 }: SmartImageProps) {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
-
-  const optimizedSrc = src ? getOptimizedImageUrl(src, variant) : fallbackSrc;
-  const { avif, webp } = detectImageFormatSupport();
-
-  useEffect(() => {
-    if (!src) {
-      setHasError(true);
-      return;
-    }
-
-    const img = imgRef.current;
-    if (!img) return;
-
-    const handleLoad = () => {
-      setIsLoaded(true);
-      setHasError(false);
-    };
-
-    const handleError = () => {
-      setHasError(true);
-      setIsLoaded(true);
-    };
-
-    img.addEventListener('load', handleLoad);
-    img.addEventListener('error', handleError);
-
-    return () => {
-      img.removeEventListener('load', handleLoad);
-      img.removeEventListener('error', handleError);
-    };
-  }, [src]);
-
-  const handleImageError = () => {
-    setHasError(true);
-  };
+  const normalizedSrc = normalizeImageUrl(src);
+  const normalizedFallback = normalizeImageUrl(fallbackSrc) || '/placeholder.jpg';
+  const optimizedSrc = normalizedSrc
+    ? getOptimizedImageUrl(normalizedSrc, variant)
+    : normalizedFallback;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const finalSrc = normalizedSrc && failedSrc === normalizedSrc ? normalizedFallback : optimizedSrc;
+  const isLoaded = loadedSrc === finalSrc;
 
   const placeholderStyle: React.CSSProperties = {
     backgroundColor: placeholder === 'solid' ? '#f1f5f9' : 'transparent',
@@ -78,14 +50,6 @@ export default function SmartImage({
     backgroundSize: '200% 100%',
     animation: placeholder === 'blur' ? 'shimmer 1.5s infinite' : 'none',
   };
-
-  if (!src && !fallbackSrc) {
-    return (
-      <div className={`bg-slate-100 ${className}`} style={{ ...placeholderStyle, ...style }} />
-    );
-  }
-
-  const finalSrc = hasError ? fallbackSrc : optimizedSrc;
 
   return (
     <>
@@ -99,46 +63,24 @@ export default function SmartImage({
           }
         }
       `}</style>
-
-      <picture>
-        {avif && (
-          <source
-            srcSet={buildSrcSet(finalSrc, [
-              { width: 400, quality: 80 },
-              { width: 800, quality: 75 },
-              { width: 1200, quality: 70 },
-            ])}
-            type="image/avif"
-          />
-        )}
-        {webp && (
-          <source
-            srcSet={buildSrcSet(finalSrc, [
-              { width: 400, quality: 82 },
-              { width: 800, quality: 80 },
-              { width: 1200, quality: 75 },
-            ])}
-            type="image/webp"
-          />
-        )}
-        <img
-          ref={imgRef}
-          src={finalSrc}
-          alt={alt}
-          className={`transition-opacity duration-300 ${
-            isLoaded ? 'opacity-100' : 'opacity-0'
-          } ${className}`}
-          style={{
-            ...placeholderStyle,
-            ...style,
-          }}
-          loading={loading}
-          fetchPriority={fetchPriority}
-          sizes={sizes}
-          onError={handleImageError}
-          onClick={onClick}
-        />
-      </picture>
+      <img
+        src={finalSrc}
+        alt={alt}
+        className={`transition-opacity duration-300 ${
+          isLoaded ? 'opacity-100' : 'opacity-0'
+        } ${className}`}
+        style={{ ...placeholderStyle, ...style }}
+        loading={loading}
+        decoding="async"
+        fetchPriority={fetchPriority}
+        sizes={sizes}
+        onLoad={() => setLoadedSrc(finalSrc)}
+        onError={() => {
+          setLoadedSrc(normalizedFallback);
+          if (normalizedSrc && finalSrc !== normalizedFallback) setFailedSrc(normalizedSrc);
+        }}
+        onClick={onClick}
+      />
     </>
   );
 }

@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
+import { normalizeImageUrl } from '@ray-eg/shared/utils/image-url';
 
 type SafeProductImageProps = {
   src?: string | null;
@@ -24,22 +25,22 @@ export function SafeProductImage({
   sizes,
   className,
 }: SafeProductImageProps) {
-  const [failed, setFailed] = useState(false);
-  const candidate = typeof src === 'string' ? src.trim() : '';
+  const candidate = normalizeImageUrl(src);
   const fallbackSrc = '/placeholder.jpg';
-  const imageSrc = !candidate || failed ? fallbackSrc : candidate;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const imageSrc = !candidate || failedSrc === candidate ? fallbackSrc : candidate;
 
   return (
     <Image
       src={imageSrc}
       alt={alt}
       {...(fill ? { fill: true } : { width, height })}
-      priority={priority}
+      preload={priority}
       sizes={sizes}
       className={className}
       unoptimized
       onError={() => {
-        if (imageSrc !== fallbackSrc) setFailed(true);
+        if (candidate && imageSrc !== fallbackSrc) setFailedSrc(candidate);
       }}
     />
   );

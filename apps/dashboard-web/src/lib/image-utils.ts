@@ -92,9 +92,13 @@ export async function compressImage(
             return;
           }
 
-          const extension = outputFormat === 'jpeg' ? 'jpg' : outputFormat;
+          // Canvas may fall back to PNG when the requested encoder is not
+          // supported. Keep the stored extension and Content-Type truthful.
+          const mimeType = blob.type || `image/${outputFormat}`;
+          const actualFormat = mimeType.split('/')[1] || outputFormat;
+          const extension = actualFormat === 'jpeg' ? 'jpg' : actualFormat;
           const compressed = new File([blob], file.name.replace(/\.[^.]+$/, `.${extension}`), {
-            type: `image/${outputFormat}`,
+            type: mimeType,
           });
 
           resolve({
@@ -234,9 +238,11 @@ export function getOptimizedImageUrl(
   baseUrl: string,
   variant: 'thumb' | 'md' | 'opt' = 'opt'
 ): string {
-  const url = new URL(baseUrl);
-  url.searchParams.set('variant', variant);
-  return url.toString();
+  // The current storage/CDN contract does not implement the `variant` query.
+  // Keep signed and third-party image URLs byte-for-byte intact rather than
+  // generating URLs that look optimized but return 404s.
+  void variant;
+  return baseUrl;
 }
 
 /**

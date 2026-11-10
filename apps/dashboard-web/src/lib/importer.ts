@@ -3,6 +3,7 @@
  * مطابقة أعمدة عربية/إنجليزية، تحقق صف-بصف، ورفع مجزّأ للباك-إند.
  */
 import * as XLSX from 'xlsx';
+import { normalizeImageUrl } from '@ray-eg/shared/utils/image-url';
 
 export interface ParsedTable {
   headers: string[];
@@ -80,7 +81,7 @@ const PRODUCT_FIELDS: Record<string, string[]> = {
   description: ['description', 'الوصف', 'وصف', 'التفاصيل', 'details', 'desc'],
   unit: ['unit', 'الوحدة', 'وحدة', 'وحدة القياس'],
   imageUrl: ['imageUrl', 'image_url', 'رابط الصورة', 'صورة المنتج'],
-  images: ['images', 'الصور', 'صور المنتج'],
+  images: ['images', 'الصور', 'صور المنتج', 'صور إضافية'],
   colors: ['colors', 'الألوان', 'الالوان'],
   sizes: ['sizes', 'المقاسات', 'المقاسات/الأحجام', 'الأحجام'],
   addons: ['addons', 'الإضافات', 'الاضافات'],
@@ -152,6 +153,25 @@ function parseOptionalJSON(value: unknown, field: string): any {
   } catch {
     throw new Error(`قيمة ${TEMPLATE_HEADERS_AR[field] || field} يجب أن تكون بصيغة JSON صحيحة`);
   }
+}
+
+function normalizeImportedImageValue(value: any): any {
+  if (typeof value === 'string') {
+    if (!value.trim()) return value;
+    const normalized = normalizeImageUrl(value);
+    if (!normalized) {
+      throw new Error('رابط الصورة غير صالح؛ استخدم رابط صورة عامًا يبدأ بـ https://');
+    }
+    return normalized;
+  }
+  if (Array.isArray(value)) return value.map(normalizeImportedImageValue);
+  if (!value || typeof value !== 'object') return value;
+
+  const result = { ...value };
+  for (const key of ['url', 'src', 'imageUrl', 'image_url', 'image']) {
+    if (typeof result[key] === 'string') result[key] = normalizeImportedImageValue(result[key]);
+  }
+  return result;
 }
 
 function toBoolean(value: unknown): boolean | undefined {
@@ -248,6 +268,11 @@ export function buildProductImportPreview(table: ParsedTable): ProductImportPrev
         const fieldIdx = idx[field];
         if (fieldIdx >= 0) parsed[field] = parseOptionalJSON(row[fieldIdx], field);
       }
+      const rawImageUrl = idx.imageUrl >= 0 ? String(row[idx.imageUrl] ?? '').trim() : '';
+      const imageUrl = rawImageUrl ? normalizeImportedImageValue(rawImageUrl) : '';
+      for (const field of ['images', 'spinImages']) {
+        if (parsed[field] !== undefined) parsed[field] = normalizeImportedImageValue(parsed[field]);
+      }
       valid.push({
         rowNumber,
         name,
@@ -256,7 +281,7 @@ export function buildProductImportPreview(table: ParsedTable): ProductImportPrev
         category: idx.category >= 0 ? String(row[idx.category] ?? '').trim() || 'عام' : 'عام',
         description: description || null,
         unit: unit || null,
-        imageUrl: idx.imageUrl >= 0 ? String(row[idx.imageUrl] ?? '').trim() || null : null,
+        imageUrl: imageUrl || null,
         model3dUrl: idx.model3dUrl >= 0 ? String(row[idx.model3dUrl] ?? '').trim() || null : null,
         trackStock: idx.trackStock >= 0 ? toBoolean(row[idx.trackStock]) : undefined,
         isActive: idx.isActive >= 0 ? toBoolean(row[idx.isActive]) : undefined,

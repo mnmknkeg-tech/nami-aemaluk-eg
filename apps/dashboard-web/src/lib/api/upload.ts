@@ -7,6 +7,16 @@
  * a second upload.
  */
 import { apiRequest } from './core';
+import { compressForUpload, type UploadImageKind } from '@/lib/upload-image';
+
+function getUploadImageKind(purpose: string): UploadImageKind {
+  const normalizedPurpose = purpose.toLowerCase();
+  if (/logo|avatar/.test(normalizedPurpose)) return 'logo';
+  if (/banner|hero|cover/.test(normalizedPurpose)) return 'banner';
+  if (/map/.test(normalizedPurpose)) return 'map';
+  if (/gallery|variant|addon/.test(normalizedPurpose)) return 'gallery';
+  return 'product';
+}
 
 function getErrorStatus(error: unknown): number | undefined {
   return (error as Error & { status?: number })?.status;
@@ -34,14 +44,17 @@ export async function uploadMediaFile(
   shopId: string,
   purpose = 'product_image'
 ): Promise<string> {
+  // Presigned uploads bypass server-side image processing, so optimize before
+  // requesting the URL. The helper is best-effort and leaves non-images alone.
+  const uploadFile = await compressForUpload(file, getUploadImageKind(purpose));
   const presign = await apiRequest<any>('/media/presign', {
     method: 'POST',
     body: JSON.stringify({
       shopId,
-      filename: file.name || `upload-${Date.now()}.jpg`,
-      contentType: file.type || 'image/jpeg',
+      filename: uploadFile.name || `upload-${Date.now()}.jpg`,
+      contentType: uploadFile.type || 'image/jpeg',
       purpose,
-      fileSize: file.size,
+      fileSize: uploadFile.size,
     }),
   });
 
@@ -57,8 +70,8 @@ export async function uploadMediaFile(
   try {
     const put = await fetch(uploadUrl, {
       method: 'PUT',
-      headers: { 'Content-Type': file.type || 'image/jpeg' },
-      body: file,
+      headers: { 'Content-Type': uploadFile.type || 'image/jpeg' },
+      body: uploadFile,
     });
     if (!put.ok) throw new Error('فشل رفع الصورة على خادم التخزين');
   } catch (putError) {
@@ -66,7 +79,7 @@ export async function uploadMediaFile(
     // Non-browser callers cannot use the multipart/data-URL fallback safely.
     if (typeof FileReader === 'undefined') throw new Error('فشل رفع الصورة');
     try {
-      const directUrl = await directUpload(file, shopId, purpose);
+      const directUrl = await directUpload(uploadFile, shopId, purpose);
       if (directUrl) return directUrl;
     } catch (directError) {
       console.warn('[media] direct upload failed', directError);
@@ -77,7 +90,7 @@ export async function uploadMediaFile(
       const reader = new FileReader();
       reader.onloadend = () => resolve((reader.result as string) || publicUrl || '');
       reader.onerror = () => resolve(publicUrl || '');
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(uploadFile);
     });
   }
 
@@ -89,9 +102,9 @@ export async function uploadMediaFile(
       body: JSON.stringify({
         shopId,
         key,
-        mimeType: file.type || 'image/jpeg',
+        mimeType: uploadFile.type || 'image/jpeg',
         purpose,
-        fileSize: file.size,
+        fileSize: uploadFile.size,
       }),
     });
     storedUrl = getUploadUrl(completed) || storedUrl;
