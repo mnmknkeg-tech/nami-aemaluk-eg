@@ -739,9 +739,30 @@ function LoyaltyProgramsContent() {
   const copyCardLink = (customerId: string, cardId: string) => {
     if (typeof window === 'undefined') return;
     const link = getCustomerCardUrl(shopId, customerId, cardId);
-    navigator.clipboard.writeText(link);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).catch(() => {
+        // Fallback for non-secure contexts
+        const textArea = document.createElement('textarea');
+        textArea.value = link;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      });
+    } else {
+      const textArea = document.createElement('textarea');
+      textArea.value = link;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
     setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2500);
+    setSaveMessage('تم نسخ رابط بطاقة العميل الرقمية بنجاح 📋');
+    setTimeout(() => {
+      setCopiedLink(false);
+      setSaveMessage('');
+    }, 3000);
   };
 
   // Customer tiers helper

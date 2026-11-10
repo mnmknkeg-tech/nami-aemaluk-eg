@@ -70,21 +70,42 @@ function CustomerLoyaltyCardContent() {
     }
     setLoading(true);
     try {
-      // 1. Fetch loyalty settings
-      const res = await fetch(`/api/v1/customers/shops/${shopId}/loyalty/settings`).catch(
-        () => null
-      );
+      // 1. Fetch public loyalty card data (combines settings, balance, and stamps without requiring merchant auth)
+      const res = await fetch(
+        `/api/v1/public/shops/${shopId}/loyalty/card-data?customerId=${encodeURIComponent(
+          customerId
+        )}&cardId=${encodeURIComponent(cardId)}`
+      ).catch(() => null);
+
+      let data: any = null;
       if (res && res.ok) {
         const json = await res.json();
-        const data = json.data || json;
+        data = json.data?.settings || json.data || json;
+        if (typeof json.data?.balance === 'number') {
+          setPointsBalance(json.data.balance);
+        }
+        if (typeof json.data?.stamps === 'number') {
+          setStampsCount(json.data.stamps);
+        }
+      } else {
+        // Fallback to legacy endpoint if available
+        const legacyRes = await fetch(`/api/v1/shops/${shopId}/loyalty/settings`).catch(() => null);
+        if (legacyRes && legacyRes.ok) {
+          const lJson = await legacyRes.json();
+          data = lJson.data || lJson;
+        }
+      }
 
-        // Check systems active state
+      if (data) {
+        // Check systems active state strictly
         const ptsActive =
           data.rules?.pointsEnabled !== undefined
             ? Boolean(data.rules.pointsEnabled)
-            : Boolean(data.enabled ?? true);
+            : Boolean(data.pointsEnabled ?? data.enabled === true);
         const crdsActive =
-          data.rules?.cardsEnabled !== undefined ? Boolean(data.rules.cardsEnabled) : true;
+          data.rules?.cardsEnabled !== undefined
+            ? Boolean(data.rules.cardsEnabled)
+            : Boolean(data.cardsEnabled ?? true);
 
         setPointsEnabled(ptsActive);
         setCardsEnabled(crdsActive);
@@ -103,17 +124,15 @@ function CustomerLoyaltyCardContent() {
           });
         }
 
-        // Stamps count (only if cards enabled by merchant)
+        // Stamps count fallback from data rules if not returned directly
         if (crdsActive && customerId && data.rules?.customerCardStamps?.[customerId]) {
           const targetCardId = foundCard ? foundCard.id : cardId;
           const count = data.rules.customerCardStamps[customerId]?.[targetCardId] || 0;
           setStampsCount(count);
-        } else {
-          setStampsCount(0);
         }
       }
 
-      // 2. Fetch customer info if points enabled (if merchant disabled points, balance is strictly 0)
+      // 2. Fetch customer info if points enabled and balance wasn't loaded
       if (customerId) {
         const custRes = await fetch(`/api/v1/shops/${shopId}/customers/${customerId}`).catch(
           () => null
@@ -195,7 +214,7 @@ function CustomerLoyaltyCardContent() {
         </div>
 
         {/* ─── SYSTEM STATUS: POINTS BALANCE BADGE ─── */}
-        {pointsEnabled ? (
+        {pointsEnabled && (
           <div className="p-3 bg-gradient-to-r from-amber-500/15 to-yellow-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Coins size={18} className="text-amber-400" />
@@ -208,17 +227,6 @@ function CustomerLoyaltyCardContent() {
             </div>
             <span className="text-[10px] font-bold text-amber-300 bg-amber-400/20 px-2 py-0.5 rounded-full border border-amber-400/30">
               نظام النقاط نشط ✓
-            </span>
-          </div>
-        ) : (
-          <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-between text-xs text-slate-400">
-            <div className="flex items-center gap-1.5">
-              <Coins size={15} className="text-slate-500" />
-              <span className="text-[11px] font-bold">رصيد النقاط:</span>
-              <strong className="text-slate-300">0 نقطة</strong>
-            </div>
-            <span className="text-[10px] font-bold text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
-              نظام النقاط متوقف من المتجر
             </span>
           </div>
         )}

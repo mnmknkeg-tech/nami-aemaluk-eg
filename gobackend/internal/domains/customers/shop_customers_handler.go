@@ -32,6 +32,9 @@ func (h *Handler) RegisterShopCustomerRoutes(app fiber.Router) {
 	loyalty.Put("/settings", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.SaveLoyaltySettingsHandler)
 	loyalty.Get("/ledger", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListLoyaltyLedgerHandler)
 	loyalty.Post("/adjust", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.AdjustLoyaltyHandler)
+
+	// Public loyalty card view for digital wallet page (unauthenticated)
+	app.Get("/public/shops/:shopId/loyalty/card-data", h.GetPublicLoyaltyCardHandler)
 }
 
 func (h *Handler) shopScopeOK(c *fiber.Ctx, shopID string) bool {
@@ -412,4 +415,50 @@ func (h *Handler) AdjustLoyaltyHandler(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "error": "فشل تسجيل حركة النقاط"})
 	}
 	return c.JSON(fiber.Map{"success": true, "data": fiber.Map{"balance": balance}})
+}
+
+// GetPublicLoyaltyCardHandler provides read-only card & balance information for digital wallet view
+func (h *Handler) GetPublicLoyaltyCardHandler(c *fiber.Ctx) error {
+	shopID := c.Params("shopId")
+	customerID := c.Query("customerId")
+	cardID := c.Query("cardId")
+
+	settings, err := h.service.repo.GetLoyaltySettings(c.Context(), shopID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"success": false, "error": "فشل تحميل إعدادات الولاء"})
+	}
+
+	balance := 0
+	if customerID != "" {
+		if cust, err := h.service.repo.GetShopCustomer(c.Context(), shopID, customerID); err == nil && cust != nil {
+			balance = cust.LoyaltyBalance
+		}
+	}
+
+	stamps := 0
+	if customerID != "" && cardID != "" && settings.Rules != nil {
+		if custStamps, ok := settings.Rules["customerCardStamps"].(map[string]any); ok {
+			if cardsMap, ok := custStamps[customerID].(map[string]any); ok {
+				if sVal, ok := cardsMap[cardID]; ok {
+					switch v := sVal.(type) {
+					case float64:
+						stamps = int(v)
+					case int:
+						stamps = v
+					case int64:
+						stamps = int(v)
+					}
+				}
+			}
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"data": fiber.Map{
+			"settings": settings,
+			"balance":  balance,
+			"stamps":   stamps,
+		},
+	})
 }
