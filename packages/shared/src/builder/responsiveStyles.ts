@@ -25,6 +25,7 @@ export function computeWebsiteBackgroundStyles(
   if (!background?.enabled || !background.imageUrl) return {};
   const imageUrl = background.imageUrl.replace(/"/g, '\\"');
   return {
+    position: \'relative\',
     backgroundImage: `url("${imageUrl}")`,
     backgroundSize: background.size || 'cover',
     backgroundPosition: background.position || 'center top',
@@ -76,7 +77,6 @@ export function computeWebsiteRootStyles(
     fontFamily: theme.typography?.fontBody || 'Cairo, sans-serif',
     direction,
     minHeight: '100vh',
-    position: 'relative',
     ...computeWebsiteBackgroundStyles(background),
   };
 }
