@@ -207,6 +207,21 @@ export const useBuilderHistory = (
             }
           }
           writeLocalDraft(builderShopId, safeSnapshot);
+          if (typeof window !== 'undefined' && builderShopId) {
+            const recoveryKey = `ray_builder_site_${builderShopId}_recovery`;
+            try {
+              const rawRecovery = localStorage.getItem(recoveryKey);
+              const recovery = rawRecovery ? JSON.parse(rawRecovery) : null;
+              if (
+                recovery &&
+                JSON.stringify(normalizeWebsiteTree(recovery)) === JSON.stringify(safeSnapshot)
+              ) {
+                localStorage.removeItem(recoveryKey);
+              }
+            } catch {
+              // A recovery copy is safer to keep than to delete on a parse/storage error.
+            }
+          }
           if (
             isCurrentWebsiteRevision(revision, websiteRevisionRef.current) &&
             requestId === saveRequestIdRef.current

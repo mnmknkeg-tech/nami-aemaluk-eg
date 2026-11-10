@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Tag,
   LayoutGrid,
@@ -94,11 +94,14 @@ export const ProductCardSection: React.FC<ProductCardSectionProps> = ({
   toggleAccordion,
   handlePropChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabId>('shape');
   const p = node.props || {};
-  const [categoryImagesDraft, setCategoryImagesDraft] = useState(() =>
-    JSON.stringify(p.categoryImages || {}, null, 2)
-  );
+  const categoryImagesValue = JSON.stringify(p.categoryImages || {}, null, 2);
+  const [activeTab, setActiveTab] = useState<TabId>('shape');
+  const [categoryImagesDraft, setCategoryImagesDraft] = useState(categoryImagesValue);
+
+  useEffect(() => {
+    setCategoryImagesDraft(categoryImagesValue);
+  }, [node.id, categoryImagesValue]);
 
   if (!isProductOrCard) return null;
   const isExpanded = expandedSections?.productCard ?? true;

@@ -7,7 +7,7 @@
  * a second upload.
  */
 import { apiRequest } from './core';
-import { compressForUpload, type UploadImageKind } from '@/lib/upload-image';
+import { compressForUpload, type UploadImageKind } from '../upload-image';
 
 function getUploadImageKind(purpose: string): UploadImageKind {
   const normalizedPurpose = purpose.toLowerCase();

@@ -14,7 +14,12 @@ import { DeveloperModeDrawer } from './components/dev/DeveloperModeDrawer';
 import { MobileBuilderTabBar } from './components/mobile/MobileBuilderTabBar';
 
 const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = false }) => {
-  const { templateError } = useBuilder();
+  const {
+    templateError,
+    localDraftRecoveryAvailable,
+    restoreLocalDraft,
+    dismissLocalDraftRecovery,
+  } = useBuilder();
 
   return (
     <div
@@ -36,6 +41,35 @@ const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = fal
           className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900"
         >
           تعذر تطبيق القالب: {templateError}
+        </div>
+      )}
+
+      {localDraftRecoveryAvailable && (
+        <div
+          role="status"
+          dir="rtl"
+          className="border-b border-amber-200 bg-amber-50 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-sm text-amber-950"
+        >
+          <span>
+            توجد نسخة محلية تختلف عن مسودة الخادم؛ احتفظنا بها ولم نستبدلها. يمكنك استعادتها أو
+            تجاهلها.
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={restoreLocalDraft}
+              className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-800"
+            >
+              استعادة النسخة المحلية
+            </button>
+            <button
+              type="button"
+              onClick={dismissLocalDraftRecovery}
+              className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-100"
+            >
+              تجاهل
+            </button>
+          </div>
         </div>
       )}
 
