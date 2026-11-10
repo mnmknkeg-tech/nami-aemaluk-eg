@@ -7,6 +7,7 @@ export * from './previewViewport';
 export * from './websiteTree';
 export * from './theme';
 export * from './productCard';
+export * from './catalog';
 export * from './sectionUi';
 export * from './PublishedProductCard';
 export { CustomCodeFrame } from './CustomCodeFrame';

@@ -38,6 +38,8 @@ import {
   type WebsiteCartSettings,
   CartIcon,
   isCartVisible,
+  normalizeCatalogProduct,
+  buildCatalogCategories,
 } from '@ray-eg/shared/builder';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -153,8 +155,19 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
   if (node.type === 'heading') {
     const tag = node.props.tag || 'h2';
     const text = node.props.text || '';
+    const storeLogo =
+      node.id.toLowerCase().includes('logo') || node.props?.name?.includes('شعار')
+        ? ctxShop?.logoUrl || ctxShop?.logo
+        : undefined;
     const content = (
       <>
+        {storeLogo && (
+          <img
+            src={storeLogo}
+            alt={ctxShop?.name || 'شعار المتجر'}
+            className="inline-block max-h-12 max-w-[200px] object-contain align-middle ml-2"
+          />
+        )}
         {text}
         {node.props.badgeText && (
           <span
@@ -266,20 +279,19 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
     const liveList = ctxProducts || [];
     const rawList: any[] =
       liveList.length > 0
-        ? liveList.map((p) => ({
-            id: p.id,
-            name: p.name,
-            price: p.price,
-            priceFormatted: p.price != null ? `${p.price}` : '',
-            image: p.imageUrl || p.images?.[0] || '',
-            description: p.description || '',
-            category: p.category || '',
-          }))
-        : bakedItems;
-    const categories: string[] = [
-      'all',
-      ...Array.from(new Set(rawList.map((i: any) => i.category).filter(Boolean))),
-    ];
+        ? liveList.map((p, index) =>
+            normalizeCatalogProduct(
+              {
+                ...p,
+                priceFormatted: p.price != null ? `${p.price}` : '',
+              },
+              index
+            )
+          )
+        : bakedItems.map((item, index) => normalizeCatalogProduct(item, index));
+    const categoryOverrides = (node.props.categoryImages || {}) as Record<string, string>;
+    const categoryCards = buildCatalogCategories(rawList, categoryOverrides);
+    const categories: string[] = ['all', ...categoryCards.map((category) => category.key)];
     const filtered =
       activeCategory === 'all'
         ? rawList
@@ -318,7 +330,7 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
             </div>
           )}
 
-          {/* Category tabs */}
+          {/* Category tabs with automatic cover images; overrides come from builder props. */}
           {categories.length > 1 && (
             <div className="flex flex-wrap gap-2 mb-8 justify-center">
               {categories.map((cat) => (
@@ -336,7 +348,20 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
                       : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
                   }`}
                 >
-                  {cat === 'all' ? 'الكل' : cat}
+                  <span className="inline-flex items-center gap-2">
+                    {cat !== 'all' &&
+                    categoryCards.find((category) => category.key === cat)?.image ? (
+                      <img
+                        src={categoryCards.find((category) => category.key === cat)?.image}
+                        alt=""
+                        className="w-6 h-6 rounded-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : null}
+                    {cat === 'all'
+                      ? 'الكل'
+                      : categoryCards.find((category) => category.key === cat)?.label || cat}
+                  </span>
                 </button>
               ))}
             </div>

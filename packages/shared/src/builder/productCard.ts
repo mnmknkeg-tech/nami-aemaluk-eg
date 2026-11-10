@@ -1,4 +1,5 @@
 import type { ComponentNode } from './types';
+import { getCatalogProductImage } from './catalog';
 
 // ============================================================
 // Product-card shared resolution — single source of truth for
@@ -216,7 +217,7 @@ export function resolveCardDisplay(
     ...(fallbackItem || {}),
     ...((item || {}) as Record<string, any>),
   };
-  const title = String(src.title ?? `منتج ${index + 1}`);
+  const title = String(src.title ?? src.name ?? `منتج ${index + 1}`);
   const { raw, formatted } = parsePriceValue(src.price as any, 100);
   const stockRaw = src.stock;
   const stockNum =
@@ -224,8 +225,8 @@ export function resolveCardDisplay(
   const cardProductId = src.id ?? src.productId ?? '';
   return {
     title,
-    img: String(src.image ?? ''),
-    hoverImg: src.hoverImage || (Array.isArray(src.images) && src.images[1]) || undefined,
+    img: getCatalogProductImage(src, 0),
+    hoverImg: src.hoverImage || getCatalogProductImage(src, 1) || undefined,
     badge: String(src.badge ?? options.badgeText),
     rawPrice: raw,
     formattedPrice: formatted,

@@ -6,6 +6,7 @@ export interface Shop {
   name: string;
   bio?: string;
   logo?: string;
+  logoUrl?: string;
   banner?: string;
   city?: string;
   district?: string;
@@ -73,6 +74,42 @@ export interface Product {
   rating?: number;
   reviewCount?: number;
   tags?: string[];
+}
+
+function normalizeShop(raw: any): Shop {
+  const shop = (raw?.data ?? raw) || {};
+  const logoUrl = shop.logoUrl || shop.logo_url || shop.logo || undefined;
+  return { ...shop, logoUrl, logo: shop.logo || logoUrl } as Shop;
+}
+
+function normalizeProduct(raw: any, index = 0): Product {
+  const product = raw || {};
+  const images = Array.isArray(product.images)
+    ? product.images
+        .map((item: any) =>
+          typeof item === 'string' ? item : item?.url || item?.src || item?.imageUrl || ''
+        )
+        .filter(Boolean)
+    : [];
+  const imageUrl =
+    product.imageUrl ||
+    product.image_url ||
+    product.image ||
+    product.thumbnailUrl ||
+    product.thumbnail ||
+    images[0] ||
+    '';
+  const category =
+    typeof product.category === 'object'
+      ? product.category?.name || product.category?.title || product.category?.label || ''
+      : product.category || product.categoryName || product.category_name || '';
+  return {
+    ...product,
+    name: product.name || product.title || `منتج ${index + 1}`,
+    imageUrl,
+    images: images.length ? images : imageUrl ? [imageUrl] : [],
+    category: String(category).trim(),
+  } as Product;
 }
 
 export interface BlogPost {
@@ -148,7 +185,8 @@ export async function getProducts(
       revalidate: fresh ? 0 : 300,
       tags: [`products:${shopId}`],
     });
-    return Array.isArray(data) ? data : (data?.data ?? data?.items ?? []);
+    const items = Array.isArray(data) ? data : (data?.data ?? data?.items ?? []);
+    return items.map((item: any, index: number) => normalizeProduct(item, index));
   } catch {
     return [];
   }

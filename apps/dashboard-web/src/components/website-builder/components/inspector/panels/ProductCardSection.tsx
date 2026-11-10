@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   Check,
+  Image as ImageIcon,
 } from 'lucide-react';
 import type { InspectorPanelProps } from './types';
 import type { ProductCardShape, BuyButtonMode } from '@ray-eg/shared/builder';
@@ -25,7 +26,7 @@ type ProductCardSectionProps = Pick<
   | 'setShowPresetGallery'
 >;
 
-type TabId = 'shape' | 'price' | 'buttons' | 'stock' | 'grid';
+type TabId = 'shape' | 'price' | 'buttons' | 'stock' | 'grid' | 'categories';
 
 const TABS: Array<{ id: TabId; label: string; Icon: any }> = [
   { id: 'shape', label: 'الشكل', Icon: LayoutGrid },
@@ -33,6 +34,7 @@ const TABS: Array<{ id: TabId; label: string; Icon: any }> = [
   { id: 'buttons', label: 'الأزرار', Icon: MousePointerClick },
   { id: 'stock', label: 'المخزون والمقاسات', Icon: Package },
   { id: 'grid', label: 'الشبكة', Icon: Tag },
+  { id: 'categories', label: 'صور الأقسام', Icon: ImageIcon },
 ];
 
 const SHAPES: Array<{ id: ProductCardShape; label: string; desc: string }> = [
@@ -97,6 +99,9 @@ export const ProductCardSection: React.FC<ProductCardSectionProps> = ({
   if (!isProductOrCard) return null;
 
   const p = node.props || {};
+  const [categoryImagesDraft, setCategoryImagesDraft] = useState(() =>
+    JSON.stringify(p.categoryImages || {}, null, 2)
+  );
   const isExpanded = expandedSections?.productCard ?? true;
 
   const currentShape = (p.cardShape ?? p.shape ?? 'classic') as ProductCardShape;
@@ -309,6 +314,40 @@ export const ProductCardSection: React.FC<ProductCardSectionProps> = ({
                   <option value={2}>عمودين (2)</option>
                 </select>
               </Row>
+            </div>
+          )}
+
+          {/* TAB 6: CATEGORY IMAGES */}
+          {activeTab === 'categories' && (
+            <div className="space-y-2.5">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 block">صور الأقسام</span>
+                <p className="text-[10px] text-slate-500 leading-relaxed mt-1">
+                  يكوّن الموقع الأقسام تلقائياً من منتجاتك ويستخدم صورة أول منتج. ضع روابط بديلة هنا
+                  عند رغبتك في صورة مخصصة لكل قسم.
+                </p>
+              </div>
+              <textarea
+                dir="ltr"
+                value={categoryImagesDraft}
+                onChange={(e) => {
+                  setCategoryImagesDraft(e.target.value);
+                  try {
+                    const parsed = JSON.parse(e.target.value || '{}');
+                    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                      handlePropChange(node.id, 'categoryImages', parsed);
+                    }
+                  } catch {
+                    // Keep the last valid value while the merchant is typing JSON.
+                  }
+                }}
+                placeholder={'{\n  "بيتزا": "https://...",\n  "برجر": "https://..."\n}'}
+                rows={7}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 font-mono text-[10px] text-slate-700 outline-hidden focus:border-blue-500"
+              />
+              <div className="rounded-lg bg-blue-50 border border-blue-100 p-2 text-[10px] text-blue-800">
+                اتركه فارغاً للاعتماد على الصور الموجودة في المنتجات تلقائياً.
+              </div>
             </div>
           )}
         </div>

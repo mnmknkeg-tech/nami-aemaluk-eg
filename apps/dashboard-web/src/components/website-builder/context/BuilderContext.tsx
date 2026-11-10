@@ -55,6 +55,7 @@ import {
   persistTemplateCandidateBeforeCommit,
 } from './builderUtils';
 import { getMergedThemeTokens } from '../data/themes/utils';
+import { normalizeCatalogProduct } from '@ray-eg/shared/builder';
 
 // Types
 import { BuilderContextType } from './types';
@@ -348,7 +349,11 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             ...prev,
             id: shopId,
             name: shop.name,
-            businessInfo: { ...prev.businessInfo, brandName: shop.name },
+            businessInfo: {
+              ...prev.businessInfo,
+              brandName: shop.name,
+              logoUrl: shop.logoUrl || shop.logo || prev.businessInfo.logoUrl,
+            },
             customDomain: `${shop.slug || 'shop'}.mnmknk.com`,
           }));
         }
@@ -358,7 +363,9 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
           .then((res: any) => {
             if (!cancelled && res) {
               const items = Array.isArray(res) ? res : res.data || res.items || [];
-              setShopProducts(items);
+              setShopProducts(
+                items.map((item: any, index: number) => normalizeCatalogProduct(item, index))
+              );
             }
           })
           .catch(() => undefined);
@@ -408,6 +415,16 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             }
           } catch {
             // Invalid or inaccessible local backups are ignored, never trusted.
+          }
+          const shopLogo = shop.logoUrl || shop.logo || '';
+          if (shopLogo) {
+            loadedWebsite.settings = {
+              ...(loadedWebsite.settings || {}),
+              branding: {
+                ...((loadedWebsite.settings as any)?.branding || {}),
+                logoUrl: shopLogo,
+              },
+            } as any;
           }
           setWebsite(loadedWebsite);
           setActivePageId(getHomePageId(loadedWebsite) || 'page_home');
