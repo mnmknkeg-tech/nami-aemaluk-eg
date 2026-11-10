@@ -1140,10 +1140,19 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
       const headingClass = `transition-all ${isNavNode ? 'hover:opacity-80' : ''}`;
       const headingStyle = getComputedStyles();
       const text = node.props.text || 'عنوان المكون';
+      const isStoreLogoNode = node.id === 'rest_logo' || node.id.startsWith('rest_logo__');
 
       const content = (
         <>
-          {text}
+          {isStoreLogoNode && shop?.logoUrl ? (
+            <img
+              src={shop.logoUrl}
+              alt={shop.name || 'شعار المتجر'}
+              className="inline-block max-h-12 max-w-[200px] object-contain align-middle"
+            />
+          ) : (
+            text
+          )}
           {node.props.badgeText && (
             <span
               style={{

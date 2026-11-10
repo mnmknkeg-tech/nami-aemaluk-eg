@@ -94,7 +94,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const homeMeta =
     website?.pages?.find((p) => p.metadata?.isHomePage)?.metadata || website?.pages?.[0]?.metadata;
 
-  const title = homeMeta?.ogTitle || homeMeta?.title || site.shop.name;
+  // The browser tab should identify the merchant, not a copied starter-template title.
+  const title =
+    String(site.shop.name || '').trim() || homeMeta?.ogTitle || homeMeta?.title || 'المتجر';
   const description =
     homeMeta?.ogDescription ||
     homeMeta?.description ||
@@ -106,7 +108,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: { absolute: title },
     description,
-    icons: image ? { icon: image, shortcut: image, apple: image } : undefined,
+    ...(site.shop.logoUrl
+      ? {
+          icons: {
+            icon: site.shop.logoUrl,
+            shortcut: site.shop.logoUrl,
+            apple: site.shop.logoUrl,
+          },
+        }
+      : {}),
     alternates: { canonical: `/site/${site.shop.slug}` },
     openGraph: {
       title,

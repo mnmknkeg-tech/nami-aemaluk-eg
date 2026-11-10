@@ -14,6 +14,7 @@ import {
 } from '../ui';
 import { useToast } from '../ToastProvider';
 import { apiRequest } from '@/lib/auth';
+import { uploadMediaFile } from '@/lib/api/upload';
 
 interface StoreTabProps {
   shop: any;
@@ -33,6 +34,11 @@ export default function StoreTab({ shop, onSaved }: StoreTabProps) {
   const [deliveryDisabled, setDeliveryDisabled] = useState<boolean>(
     Boolean(shop?.deliveryDisabled ?? shop?.delivery_disabled)
   );
+  const [logoUrl, setLogoUrl] = useState(String(shop?.logoUrl || shop?.logo_url || ''));
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState('');
+  const [logoBusy, setLogoBusy] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setIsActive(Boolean(shop?.isActive));
@@ -43,6 +49,18 @@ export default function StoreTab({ shop, onSaved }: StoreTabProps) {
   useEffect(() => {
     setDeliveryDisabled(Boolean(shop?.deliveryDisabled ?? shop?.delivery_disabled));
   }, [shop?.deliveryDisabled, shop?.delivery_disabled]);
+  useEffect(() => {
+    setLogoUrl(String(shop?.logoUrl || shop?.logo_url || ''));
+  }, [shop?.logoUrl, shop?.logo_url]);
+  useEffect(() => {
+    if (!logoFile) {
+      setLogoPreviewUrl('');
+      return;
+    }
+    const previewUrl = URL.createObjectURL(logoFile);
+    setLogoPreviewUrl(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [logoFile]);
 
   const initial = useMemo(
     () => ({
@@ -216,6 +234,81 @@ export default function StoreTab({ shop, onSaved }: StoreTabProps) {
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
   };
 
+  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
+      toast({
+        title: 'صيغة غير مدعومة',
+        description: 'اختر صورة بصيغة PNG أو JPG أو WebP أو AVIF',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'حجم الصورة كبير',
+        description: 'الحد الأقصى لحجم الشعار 5 ميجابايت',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setLogoFile(file);
+  };
+
+  const handleSaveLogo = async () => {
+    if (!logoFile || !shop?.id) return;
+    setLogoBusy(true);
+    try {
+      const uploadedUrl = await uploadMediaFile(logoFile, String(shop.id), 'shop_logo');
+      if (!uploadedUrl || /^data:/i.test(uploadedUrl)) {
+        throw new Error('تعذّر رفع الصورة إلى التخزين، حاول مرة أخرى');
+      }
+      await apiRequest('/shops/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ logoUrl: uploadedUrl }),
+      });
+      setLogoUrl(uploadedUrl);
+      setLogoFile(null);
+      toast({ title: 'تم الحفظ', description: 'تم تحديث شعار المتجر بنجاح' });
+      onSaved();
+    } catch (e: any) {
+      toast({
+        title: 'خطأ',
+        description: e?.message || 'فشل رفع شعار المتجر',
+        variant: 'destructive',
+      });
+    } finally {
+      setLogoBusy(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!logoUrl || !shop?.id) return;
+    setLogoBusy(true);
+    try {
+      await apiRequest('/shops/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ logoUrl: '' }),
+      });
+      setLogoUrl('');
+      setLogoFile(null);
+      toast({ title: 'تم التحديث', description: 'تمت إزالة شعار المتجر' });
+      onSaved();
+    } catch (e: any) {
+      toast({
+        title: 'خطأ',
+        description: e?.message || 'فشل إزالة شعار المتجر',
+        variant: 'destructive',
+      });
+    } finally {
+      setLogoBusy(false);
+    }
+  };
+
   const handleToggleActive = async () => {
     setTogglingActive(true);
     const next = !isActive;
@@ -329,6 +422,77 @@ export default function StoreTab({ shop, onSaved }: StoreTabProps) {
         <h1 className="text-2xl font-bold text-slate-900">إعدادات المتجر</h1>
         <p className="text-slate-500 text-sm mt-1">إدارة حالة المتجر والتواصل والموقع</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>شعار المتجر</CardTitle>
+          <CardDescription>سيظهر الشعار في رأس موقعك وأيقونة المتصفح عند نشره.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center" dir="rtl">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+              {logoPreviewUrl || logoUrl ? (
+                <img
+                  src={logoPreviewUrl || logoUrl}
+                  alt={`شعار ${shop?.name || 'المتجر'}`}
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <span className="px-2 text-center text-xs text-slate-400">لا يوجد شعار</span>
+              )}
+            </div>
+            <div className="space-y-3">
+              <p className="text-sm text-slate-600">ارفع شعارًا واضحًا لمتجرك من جهازك.</p>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/avif"
+                onChange={handleLogoChange}
+                className="sr-only"
+                aria-label="اختيار صورة شعار المتجر"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={logoBusy}
+                  onClick={() => logoInputRef.current?.click()}
+                >
+                  {logoFile ? 'اختيار صورة أخرى' : 'اختيار صورة'}
+                </Button>
+                {logoFile && (
+                  <>
+                    <Button type="button" onClick={handleSaveLogo} disabled={logoBusy}>
+                      {logoBusy ? 'جاري رفع الشعار...' : 'حفظ الشعار'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={logoBusy}
+                      onClick={() => setLogoFile(null)}
+                    >
+                      إلغاء التغيير
+                    </Button>
+                  </>
+                )}
+                {!logoFile && logoUrl && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={logoBusy}
+                    onClick={handleRemoveLogo}
+                  >
+                    {logoBusy ? 'جاري التحديث...' : 'إزالة الشعار'}
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-slate-500">
+                PNG أو JPG أو WebP أو AVIF، بحد أقصى 5 ميجابايت.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
