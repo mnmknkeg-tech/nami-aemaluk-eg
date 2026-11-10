@@ -2,6 +2,7 @@ package chat
 
 import (
         "strconv"
+        "strings"
 
         "github.com/Sayedtaha55/ray-eg/gobackend/internal/config"
         "github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/middleware"
@@ -41,6 +42,7 @@ func (h *Handler) RegisterRoutes(app fiber.Router) {
         chats := app.Group("/chats")
         chats.Post("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateChat)
         chats.Get("/", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListChats)
+        chats.Get("/shop/:shopId", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListChatsByShop)
         chats.Get("/:id", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.GetChat)
         chats.Post("/:id/messages", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.CreateMessage)
         chats.Get("/:id/messages", middleware.RequireAuth(h.config, h.config.Auth.Issuer, h.config.Auth.Audience), h.ListMessages)
@@ -135,6 +137,60 @@ func (h *Handler) ListChats(c *fiber.Ctx) error {
         }
 
         chats, total, err := h.service.ListChats(c.Context(), user.ID, shopID, limit, offset)
+        if err != nil {
+                return c.Status(fiber.StatusInternalServerError).JSON(ChatsListResponse{
+                        Success: false,
+                        Error:   "Failed to retrieve chats",
+                })
+        }
+
+        return c.JSON(ChatsListResponse{
+                Success: true,
+                Data:    chats,
+                Total:   total,
+        })
+}
+
+// ListChatsByShop handles GET /chats/shop/:shopId — the dashboard CRM chats
+// page lists every customer chat of one shop. Merchants may only read their
+// own shop; admins may read any shop.
+func (h *Handler) ListChatsByShop(c *fiber.Ctx) error {
+        user, ok := middleware.AuthUserFromContext(c)
+        if !ok {
+                return c.Status(fiber.StatusUnauthorized).JSON(ChatsListResponse{
+                        Success: false,
+                        Error:   "Unauthorized",
+                })
+        }
+
+        shopID := c.Params("shopId")
+        if shopID == "" {
+                return c.Status(fiber.StatusBadRequest).JSON(ChatsListResponse{
+                        Success: false,
+                        Error:   "shopId is required",
+                })
+        }
+        if !strings.EqualFold(user.Role, "ADMIN") && user.ShopID != shopID {
+                return c.Status(fiber.StatusForbidden).JSON(ChatsListResponse{
+                        Success: false,
+                        Error:   "ليس لديك صلاحية للوصول إلى محادثات هذا المتجر",
+                })
+        }
+
+        limit := 20
+        offset := 0
+        if limitStr := c.Query("limit"); limitStr != "" {
+                if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+                        limit = l
+                }
+        }
+        if offsetStr := c.Query("offset"); offsetStr != "" {
+                if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+                        offset = o
+                }
+        }
+
+        chats, total, err := h.service.ListChatsByShop(c.Context(), shopID, limit, offset)
         if err != nil {
                 return c.Status(fiber.StatusInternalServerError).JSON(ChatsListResponse{
                         Success: false,

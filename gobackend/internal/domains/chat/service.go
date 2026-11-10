@@ -93,3 +93,17 @@ func (s *Service) DeleteChat(ctx context.Context, id string) error {
 func (s *Service) BulkDeleteChats(ctx context.Context, ids []string) (int64, error) {
 	return s.repo.BulkDeleteChats(ctx, ids)
 }
+
+// ListChatsByShop lists every chat of one shop (dashboard CRM view).
+func (s *Service) ListChatsByShop(ctx context.Context, shopID string, limit, offset int) ([]Chat, int64, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return s.repo.ListChatsByShop(ctx, shopID, limit, offset)
+}

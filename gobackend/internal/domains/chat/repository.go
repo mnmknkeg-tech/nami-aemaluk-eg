@@ -277,3 +277,54 @@ func (r *Repository) BulkDeleteChats(ctx context.Context, ids []string) (int64, 
 	}
 	return tag.RowsAffected(), nil
 }
+
+// ListChatsByShop lists every chat belonging to one shop regardless of
+// participants. The dashboard CRM chats page uses it so merchants can see all
+// customer chats of their shop (merchants are not always chat participants).
+func (r *Repository) ListChatsByShop(ctx context.Context, shopID string, limit, offset int) ([]Chat, int64, error) {
+	countQuery := `SELECT COUNT(*) FROM chats WHERE shop_id = $1`
+	var total int64
+	if err := r.pool.QueryRow(ctx, countQuery, shopID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count shop chats: %w", err)
+	}
+
+	query := `
+		SELECT id, participants, type, shop_id, order_id, last_message, last_message_at, created_at, updated_at
+		FROM chats
+		WHERE shop_id = $1
+		ORDER BY last_message_at DESC NULLS LAST, created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+	rows, err := r.pool.Query(ctx, query, shopID, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query shop chats: %w", err)
+	}
+	defer rows.Close()
+
+	chats := []Chat{}
+	for rows.Next() {
+		var chat Chat
+		var participantsJSON []byte
+		var lastMessage, lastMessageAt sql.NullString
+
+		if err := rows.Scan(
+			&chat.ID, &participantsJSON, &chat.Type, &chat.ShopID, &chat.OrderID,
+			&lastMessage, &lastMessageAt, &chat.CreatedAt, &chat.UpdatedAt,
+		); err != nil {
+			continue
+		}
+
+		json.Unmarshal(participantsJSON, &chat.Participants)
+
+		if lastMessage.Valid {
+			chat.LastMessage = &lastMessage.String
+		}
+		if lastMessageAt.Valid {
+			chat.LastMessageAt = &lastMessageAt.String
+		}
+
+		chats = append(chats, chat)
+	}
+
+	return chats, total, nil
+}

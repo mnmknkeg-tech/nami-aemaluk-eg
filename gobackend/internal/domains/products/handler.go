@@ -32,6 +32,9 @@ func (h *Handler) RegisterRoutes(r fiber.Router) {
 
 	g.Get("/manage/by-shop/:shopId", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ListManage)
 	g.Post("/manage/by-shop/:shopId/import-drafts", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ImportDrafts)
+	// Dashboard compatibility alias: the POS page loads its selling grid with
+	// GET /shops/:shopId/products. Same data and ownership rules as ListManage.
+	r.Get("/shops/:shopId/products", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.ListManage)
 
 	g.Post("/", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Create)
 	g.Patch("/:id", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience), h.Update)
