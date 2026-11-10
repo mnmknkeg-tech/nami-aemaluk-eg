@@ -220,12 +220,17 @@ export default function ComplaintsPage() {
     if (selectedIds.size === 0) return;
     if (!confirm(`هل أنت متأكد من حذف ${selectedIds.size} شكوى؟`)) return;
     try {
-      // TODO: Implement bulk delete API call
-      alert(`تم حذف ${selectedIds.size} شكوى`);
+      const ids = Array.from(selectedIds);
+      await apiRequest('/complaints/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      });
       setSelectedIds(new Set());
-      loadComplaints();
+      await loadComplaints();
+      alert(`تم حذف ${ids.length} شكوى`);
     } catch (error) {
-      alert('حدث خطأ أثناء الحذف');
+      const message = error instanceof Error ? error.message : 'حدث خطأ أثناء الحذف';
+      alert(message);
     }
   }, [selectedIds, loadComplaints]);
 

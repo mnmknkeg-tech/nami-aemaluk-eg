@@ -106,7 +106,11 @@ export const ProductCardSection: React.FC<ProductCardSectionProps> = ({
   if (!isProductOrCard) return null;
   const isExpanded = expandedSections?.productCard ?? true;
 
-  const currentShape = (p.cardShape ?? p.shape ?? 'classic') as ProductCardShape;
+  // Canonical field is `cardShape`. The legacy `shape` alias is handled by
+  // `resolveProductCardOptions` in @ray-eg/shared/builder for old data; once
+  // scripts/migrate-shape-to-cardShape.js has been run against existing drafts,
+  // this Inspector no longer needs to read `shape` at all.
+  const currentShape = (p.cardShape as ProductCardShape) || 'classic';
   const currentBuyMode = (p.buyButtonMode as BuyButtonMode) || 'full';
   const showPrice = p.showPrice !== false;
   const showOriginalPrice = Boolean(p.showOriginalPrice);

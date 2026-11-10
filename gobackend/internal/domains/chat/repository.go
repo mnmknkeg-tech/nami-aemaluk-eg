@@ -255,3 +255,25 @@ func (r *Repository) UpdateMessageStatus(ctx context.Context, messageID string, 
 	)
 	return err
 }
+
+// DeleteChat removes a chat along with its messages.
+func (r *Repository) DeleteChat(ctx context.Context, id string) error {
+	if _, err := r.pool.Exec(ctx, `DELETE FROM messages WHERE chat_id = $1`, id); err != nil {
+		return err
+	}
+	_, err := r.pool.Exec(ctx, `DELETE FROM chats WHERE id = $1`, id)
+	return err
+}
+
+// BulkDeleteChats removes many chats (with their messages) and reports how
+// many chats were removed. Used by the dashboard CRM chats page bulk-delete.
+func (r *Repository) BulkDeleteChats(ctx context.Context, ids []string) (int64, error) {
+	if _, err := r.pool.Exec(ctx, `DELETE FROM messages WHERE chat_id = ANY($1::text[])`, ids); err != nil {
+		return 0, err
+	}
+	tag, err := r.pool.Exec(ctx, `DELETE FROM chats WHERE id = ANY($1::text[])`, ids)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}

@@ -204,12 +204,17 @@ export default function TicketsPage() {
     if (selectedIds.size === 0) return;
     if (!confirm(`هل أنت متأكد من حذف ${selectedIds.size} تذكرة؟`)) return;
     try {
-      // TODO: Implement bulk delete API call
-      alert(`تم حذف ${selectedIds.size} تذكرة`);
+      const ids = Array.from(selectedIds);
+      await apiRequest('/tickets/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      });
       setSelectedIds(new Set());
-      loadTickets();
+      await loadTickets();
+      alert(`تم حذف ${ids.length} تذكرة`);
     } catch (error) {
-      alert('حدث خطأ أثناء الحذف');
+      const message = error instanceof Error ? error.message : 'حدث خطأ أثناء الحذف';
+      alert(message);
     }
   }, [selectedIds, loadTickets]);
 

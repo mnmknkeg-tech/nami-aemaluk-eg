@@ -52,6 +52,57 @@ export const updateNodeStyleReducer =
     };
   };
 
+/**
+ * When a node is dragged from one parent to another (e.g. Grid → Hero),
+ * positional styles authored in the old context — `position: absolute`,
+ * `top/right/bottom/left`, `zIndex`, percentage `width` — would otherwise
+ * persist and render the node visually misplaced in the new parent.
+ *
+ * This normalizer is called after `parentId`/`childrenIds` are updated but
+ * before the new node is committed. It:
+ *   • clears absolute/fixed positioning and offsets
+ *   • clears zIndex (keeps it only for elements that legitimately stack)
+ *   • clears percentage-based width (Grid columns use %, but a Hero child
+ *     should size from its own content/flex)
+ *   • leaves non-positional styles (colors, typography, padding) untouched
+ *
+ * Header/footer are excluded because their transparent-overlay logic is
+ * handled centrally in `responsiveStyles.ts` and depends on `position`.
+ */
+const POSITIONAL_STYLE_KEYS = [
+  'position',
+  'top',
+  'right',
+  'bottom',
+  'left',
+  'zIndex',
+  'inset',
+  'insetInlineStart',
+  'insetInlineEnd',
+] as const;
+
+function normalizeNodeStylesAfterMove(node: ComponentNode): ComponentNode {
+  const styles = { ...node.styles };
+  for (const bp of ['desktop', 'tablet', 'mobile'] as const) {
+    const block = styles[bp];
+    if (!block) continue;
+    const cleaned: Record<string, any> = { ...block };
+    for (const key of POSITIONAL_STYLE_KEYS) {
+      if (key in cleaned) delete cleaned[key];
+    }
+    // Drop percentage widths authored for a grid column context.
+    if (typeof cleaned.width === 'string' && cleaned.width.endsWith('%')) {
+      delete cleaned.width;
+    }
+    // `display: absolute`-style leftovers shouldn't survive a move either.
+    if (cleaned.display === 'absolute' || cleaned.display === 'fixed') {
+      delete cleaned.display;
+    }
+    styles[bp] = cleaned;
+  }
+  return { ...node, styles };
+}
+
 const replaceNode = (
   website: Website,
   id: string,
@@ -429,7 +480,19 @@ export const useBuilderComponentOperations = ({
           nextChildren.splice(position === 'before' ? targetIndex : targetIndex + 1, 0, draggedId);
         }
         components[destination.id] = { ...destination, childrenIds: nextChildren };
-        components[draggedId] = { ...node, parentId: destination.id };
+        // ── Normalize stale layout styles when a node moves between parents ──
+        // A card authored as position:absolute / width:50% / zIndex:999 inside
+        // a Grid would otherwise keep those styles after being dropped into a
+        // Hero or Section, leaving it visually misplaced. We reset positional
+        // styles only when the parent actually changes, and only for non-fixed
+        // elements (header/footer keep their own transparent-overlay logic in
+        // responsiveStyles.ts).
+        const parentChanged = previousParent.id !== destination.id;
+        const isFixedNode = node.type === 'header' || node.type === 'footer';
+        const cleanedNode = parentChanged && !isFixedNode
+          ? normalizeNodeStylesAfterMove(node)
+          : node;
+        components[draggedId] = { ...cleanedNode, parentId: destination.id };
         return { ...latest, components };
       });
       setSelectedNodeId(draggedId);

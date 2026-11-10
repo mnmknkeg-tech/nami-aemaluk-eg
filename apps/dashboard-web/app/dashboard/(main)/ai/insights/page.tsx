@@ -334,11 +334,13 @@ export default function AiInsightsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [featureUnavailable, setFeatureUnavailable] = useState(false);
 
   const { shop } = useShop();
 
   const loadInsights = useCallback(async () => {
     setLoading(true);
+    setFeatureUnavailable(false);
     try {
       const shopData = await apiRequest('/shops/me');
       const sid = shopData?.id;
@@ -347,12 +349,14 @@ export default function AiInsightsPage() {
         return;
       }
 
-      // TODO: Replace with actual API call
-      // const data = await apiRequest(`/ai/insights/shop/${sid}`);
-      // setInsights(Array.isArray(data) ? data : []);
+      const data = await apiRequest(`/ai/insights/shop/${sid}`);
+      setInsights(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      // Backend hasn't shipped the /ai/insights endpoint yet (404) or the
+      // request failed. Surface a clear "feature in development" state
+      // instead of silently showing an empty list.
       setInsights([]);
-    } catch {
-      setInsights([]);
+      setFeatureUnavailable(true);
     } finally {
       setLoading(false);
     }
@@ -586,6 +590,16 @@ export default function AiInsightsPage() {
       {loading ? (
         <div className="flex items-center justify-center min-h-[40vh]">
           <div className="w-10 h-10 border-4 border-slate-200 border-t-[#00E5FF] rounded-full animate-spin" />
+        </div>
+      ) : featureUnavailable ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <Sparkles size={32} className="mx-auto mb-3 text-slate-300" />
+          <p className="text-slate-400 font-bold text-sm">لا توجد رؤى</p>
+          <p className="text-slate-400 text-xs mt-2">
+            ميزة رؤى AI قيد التطوير — سيتم تفعيلها عند إضافة نقطة نهاية
+            <code className="mx-1 px-1 py-0.5 bg-slate-100 rounded font-mono">/ai/insights/shop/:id</code>
+            في الخادم.
+          </p>
         </div>
       ) : paginatedData.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">

@@ -188,12 +188,17 @@ export default function ChatsPage() {
     if (selectedIds.size === 0) return;
     if (!confirm(`هل أنت متأكد من حذف ${selectedIds.size} محادثة؟`)) return;
     try {
-      // TODO: Implement bulk delete API call
-      alert(`تم حذف ${selectedIds.size} محادثة`);
+      const ids = Array.from(selectedIds);
+      await apiRequest('/chats/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      });
       setSelectedIds(new Set());
-      loadChats();
+      await loadChats();
+      alert(`تم حذف ${ids.length} محادثة`);
     } catch (error) {
-      alert('حدث خطأ أثناء الحذف');
+      const message = error instanceof Error ? error.message : 'حدث خطأ أثناء الحذف';
+      alert(message);
     }
   }, [selectedIds, loadChats]);
 

@@ -83,3 +83,13 @@ func (s *Service) MarkMessagesAsRead(ctx context.Context, chatID, userID string)
 	)
 	return err
 }
+
+// DeleteChat removes a chat and its messages.
+func (s *Service) DeleteChat(ctx context.Context, id string) error {
+	return s.repo.DeleteChat(ctx, id)
+}
+
+// BulkDeleteChats removes many chats and returns the deleted count.
+func (s *Service) BulkDeleteChats(ctx context.Context, ids []string) (int64, error) {
+	return s.repo.BulkDeleteChats(ctx, ids)
+}
