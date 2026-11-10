@@ -13,7 +13,7 @@
 // failure degrades gracefully to the original file — uploads must never break
 // because of this module.
 
-import { compressImage } from '@/lib/image-utils';
+import { compressImage } from './image-utils';
 
 export type UploadImageKind =
   | 'product' // main product photo

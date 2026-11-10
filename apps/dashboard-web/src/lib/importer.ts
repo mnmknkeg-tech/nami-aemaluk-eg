@@ -326,7 +326,7 @@ export async function downloadProductTemplate(kind: ProductTemplateKind = 'cloth
   const extraIndex = headers.indexOf('extraData');
   if (extraIndex >= 0) example[extraIndex] = JSON.stringify({ activityTemplate: kind });
   const rows = [example];
-  const { exportData } = await import('@/lib/export');
+  const { exportData } = await import('./export');
   exportData(
     {
       filename: `قالب-استيراد-${PRODUCT_TEMPLATE_LABELS[kind]}`,
