@@ -78,7 +78,6 @@ const FEATURE_ALIASES: Record<string, string> = {
 };
 
 const MODULE_ALIASES: Record<string, string> = {
-  customers: 'crm',
   reservations: 'bookings',
 };
 
@@ -198,9 +197,11 @@ export default function useVisibleSections() {
       });
     }
     if (hasFeatures) {
-      Object.keys(savedFeatures).forEach((k) => {
-        const norm = (MODULE_ALIASES[k.toLowerCase()] || k).toLowerCase();
-        modSet.add(norm);
+      Object.entries(savedFeatures).forEach(([k, v]) => {
+        if (Array.isArray(v) && v.length > 0) {
+          const norm = (MODULE_ALIASES[k.toLowerCase()] || k).toLowerCase();
+          modSet.add(norm);
+        }
       });
     }
 
@@ -265,19 +266,17 @@ export default function useVisibleSections() {
           MODULE_ALIASES[section.moduleId.toLowerCase()] || section.moduleId
         ).toLowerCase();
 
-        // If the merchant configured their modules during signup, show all sections
-        // but keep disabled (deselected) modules visible on the board as "closed"
-        // — they must appear in the board (closed) so the merchant can re-enable
-        // them by clicking, instead of being silently removed.
+        const activeFeatures = enabledFeatures[moduleId];
+
+        // If the merchant configured their modules, hide modules that are not enabled
         if (hasExplicitConfig) {
           const isModEnabled =
-            enabledModulesSet.has(moduleId) || Boolean(enabledFeatures[moduleId]);
+            enabledModulesSet.has(moduleId) || (Boolean(activeFeatures) && activeFeatures.size > 0);
           if (!isModEnabled) {
-            return { ...section, disabled: true };
+            return null;
           }
         }
 
-        const activeFeatures = enabledFeatures[moduleId];
         // If features are configured for this module, filter items accordingly;
         // if no specific sub-features are restricted, show all items for this enabled module.
         const items = section.items.filter((item) => {
@@ -286,7 +285,7 @@ export default function useVisibleSections() {
             if (
               hasExplicitConfig &&
               !enabledModulesSet.has('subscriptions') &&
-              !enabledFeatures['subscriptions']
+              (!enabledFeatures['subscriptions'] || enabledFeatures['subscriptions'].size === 0)
             ) {
               return false;
             }
@@ -298,16 +297,23 @@ export default function useVisibleSections() {
             for (const [mod, tab] of Object.entries(SETTINGS_TAB_MODULES)) {
               if (item.href.includes(`tab=${tab}`) || item.id.toLowerCase().includes(mod)) {
                 const norm = (MODULE_ALIASES[mod.toLowerCase()] || mod).toLowerCase();
-                if (hasExplicitConfig && !enabledModulesSet.has(norm) && !enabledFeatures[norm]) {
+                const targetModFeatures = enabledFeatures[norm];
+                const isItemModActive =
+                  enabledModulesSet.has(norm) ||
+                  (Boolean(targetModFeatures) && targetModFeatures.size > 0);
+                if (hasExplicitConfig && !isItemModActive) {
                   return false;
                 }
               }
             }
             return true;
           }
-          if (!activeFeatures || activeFeatures.size === 0) return true;
-          const featureId = (FEATURE_ALIASES[item.id] || item.id).toLowerCase();
-          return activeFeatures.has(featureId);
+          if (!activeFeatures || activeFeatures.size === 0) return false;
+          const featureId = item.id.toLowerCase();
+          const aliasId = (FEATURE_ALIASES[featureId] || featureId).toLowerCase();
+          // Check both the item's own ID and its legacy alias (e.g. sidebar item
+          // 'sales' may be stored as 'orders' by the old onboarding wizard).
+          return activeFeatures.has(featureId) || activeFeatures.has(aliasId);
         });
 
         if (items.length === 0) return null;

@@ -96,6 +96,17 @@ for (const [k, v] of Object.entries(RAW_REGISTRY_FEATURES)) {
   REGISTRY_FEATURES[k] = v.filter((f) => !HIDE_UNPUBLISHED || f.published);
 }
 
+const FEATURE_ALIASES: Record<string, string> = {
+  orders: 'sales',
+  addProduct: 'products',
+  promotions: 'campaigns',
+  reservations: 'bookingsSchedule',
+  bookingsOverview: 'bookingsSchedule',
+  website: 'website_themes',
+  discounts: 'offers',
+  coupons: 'offers',
+};
+
 export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -111,9 +122,10 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
     const initial: Record<string, Set<string>> = {};
     const hasAnySaved = savedFeatures && Object.keys(savedFeatures).length > 0;
     for (const modId of Object.keys(REGISTRY_FEATURES)) {
-      const saved = savedFeatures?.[modId];
+      const saved =
+        savedFeatures?.[modId] || (modId === 'sales' ? savedFeatures?.['orders'] : undefined);
       if (Array.isArray(saved)) {
-        initial[modId] = new Set(saved);
+        initial[modId] = new Set(saved.map((f) => FEATURE_ALIASES[f] || f));
       } else if (!hasAnySaved) {
         initial[modId] = new Set(
           REGISTRY_FEATURES[modId].filter((f) => f.defaultEnabled).map((f) => f.id)
@@ -171,7 +183,6 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
           })
         );
 
-        toast({ title: 'تم الحفظ', description: 'تم تحديث إعدادات اللوحة بنجاح' });
         onSaved?.();
       } catch (e: any) {
         opts?.onError?.();
@@ -187,10 +198,51 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
     [shop, toast, onSaved]
   );
 
+  const toggleModule = (moduleId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const current = moduleFeatures[moduleId] || new Set<string>();
+    const isModuleActive = current.size > 0;
+    const groupDef = MODULE_GROUPS.find((g) => g.id === moduleId);
+    const groupFeatures = REGISTRY_FEATURES[moduleId] || [];
+
+    const revert = () => {
+      setModuleFeatures((prev) => ({ ...prev, [moduleId]: current }));
+    };
+
+    if (isModuleActive) {
+      setModuleFeatures((prev) => {
+        const nextState = { ...prev, [moduleId]: new Set<string>() };
+        setTogglingFeature(moduleId);
+        persistFeatures(nextState, { onError: revert }).finally(() => setTogglingFeature(null));
+        return nextState;
+      });
+      toast({
+        title: 'تم الإيقاف',
+        description: `تم إيقاف قسم ${groupDef?.label || ''} بنجاح`,
+      });
+    } else {
+      const featuresToEnable = groupFeatures.filter((f) => f.defaultEnabled).map((f) => f.id);
+      const toAdd = featuresToEnable.length > 0 ? featuresToEnable : groupFeatures.map((f) => f.id);
+      setModuleFeatures((prev) => {
+        const nextState = { ...prev, [moduleId]: new Set<string>(toAdd) };
+        setTogglingFeature(moduleId);
+        persistFeatures(nextState, { onError: revert }).finally(() => setTogglingFeature(null));
+        return nextState;
+      });
+      toast({
+        title: 'تم التفعيل',
+        description: `تم تفعيل قسم ${groupDef?.label || ''} بنجاح`,
+      });
+    }
+  };
+
   const toggleFeature = (moduleId: string, featureId: string) => {
     const current = moduleFeatures[moduleId] || new Set<string>();
     const isCurrentlyEnabled = current.has(featureId);
     const featureKey = `${moduleId}:${featureId}`;
+    const featureDef = (REGISTRY_FEATURES[moduleId] || []).find((f) => f.id === featureId);
+    const featureName = featureDef?.labelAr || 'الميزة';
+
     const revert = () => {
       setModuleFeatures((prev) => {
         const next = new Set(prev[moduleId] || new Set<string>());
@@ -199,6 +251,7 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
         return { ...prev, [moduleId]: next };
       });
     };
+
     if (isCurrentlyEnabled) {
       setModuleFeatures((prev) => {
         const next = new Set(prev[moduleId] || new Set<string>());
@@ -207,6 +260,10 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
         setTogglingFeature(featureKey);
         persistFeatures(nextState, { onError: revert }).finally(() => setTogglingFeature(null));
         return nextState;
+      });
+      toast({
+        title: 'تم الإيقاف',
+        description: `تم إيقاف ${featureName} بنجاح`,
       });
     } else {
       setModuleFeatures((prev) => {
@@ -217,7 +274,10 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
         persistFeatures(nextState, { onError: revert }).finally(() => setTogglingFeature(null));
         return nextState;
       });
-      toast({ title: 'تم التفعيل', description: 'تم تفعيل الميزة فوراً في لوحتك' });
+      toast({
+        title: 'تم التفعيل',
+        description: `تم تفعيل ${featureName} فوراً في لوحتك`,
+      });
     }
   };
 
@@ -329,10 +389,9 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
                 key={group.id}
                 className="rounded-[2rem] border border-slate-100 overflow-hidden transition-all bg-white"
               >
-                <button
-                  type="button"
+                <div
                   onClick={() => toggleGroup(group.id)}
-                  className="w-full flex items-center gap-4 p-5 hover:bg-slate-50 transition-all"
+                  className="w-full flex items-center gap-4 p-5 hover:bg-slate-50 transition-all cursor-pointer select-none"
                 >
                   <div
                     className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm text-white shrink-0"
@@ -341,23 +400,63 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
                     <GroupIcon size={24} />
                   </div>
                   <div className="flex-1 min-w-0 text-right">
-                    <h4 className="font-black text-slate-900 text-base">{group.label}</h4>
+                    <div className="flex items-center gap-2.5">
+                      <h4 className="font-black text-slate-900 text-base">{group.label}</h4>
+                      <span
+                        className={`text-[10px] font-black rounded-full px-2 py-0.5 border ${
+                          activeCount > 0
+                            ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                            : 'text-slate-500 bg-slate-100 border-slate-200'
+                        }`}
+                      >
+                        {activeCount > 0 ? 'مفعّل' : 'موقوف'}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[11px] font-black text-slate-400">
                         {features.length} ميزة
                       </span>
                       {activeCount > 0 && (
                         <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
-                          {activeCount} مفعل
+                          {activeCount} مفعّلة
                         </span>
                       )}
                     </div>
                   </div>
+
+                  {/* Master Module Toggle */}
+                  <div
+                    className="flex items-center gap-2 shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => toggleModule(group.id, e)}
+                      disabled={saving || togglingFeature === group.id}
+                      title={
+                        activeCount > 0 ? `إيقاف قسم ${group.label}` : `تفعيل قسم ${group.label}`
+                      }
+                      className={`w-12 h-6.5 rounded-full transition-colors flex items-center p-0.5 shrink-0 focus:outline-none disabled:opacity-50 ${
+                        activeCount > 0
+                          ? 'bg-emerald-500 justify-end'
+                          : 'bg-slate-200 justify-start'
+                      }`}
+                    >
+                      {togglingFeature === group.id ? (
+                        <div className="w-5.5 h-5.5 rounded-full bg-white flex items-center justify-center shadow-md">
+                          <Loader2 size={12} className="animate-spin text-slate-500" />
+                        </div>
+                      ) : (
+                        <span className="w-5.5 h-5.5 rounded-full bg-white shadow-md transition-all block" />
+                      )}
+                    </button>
+                  </div>
+
                   <ChevronDown
-                    size={24}
+                    size={22}
                     className={`text-slate-400 transition-transform duration-300 shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
                   />
-                </button>
+                </div>
 
                 {isExpanded && (
                   <div className="p-4 pt-2 bg-slate-50/50 border-t border-slate-100 space-y-2">
@@ -365,6 +464,7 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
                       const featureEnabled = (moduleFeatures[group.id] || new Set()).has(
                         feature.id
                       );
+                      const isFeatureToggling = togglingFeature === `${group.id}:${feature.id}`;
                       return (
                         <div
                           key={feature.id}
@@ -394,30 +494,37 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
                             <div className="text-xs font-black text-slate-900">
                               {feature.labelAr}
                             </div>
-                            <div className="text-[10px] text-slate-400 font-bold mt-0.5">
+                            <div
+                              className={`text-[10px] font-bold mt-0.5 ${
+                                featureEnabled ? 'text-emerald-600' : 'text-slate-400'
+                              }`}
+                            >
                               {featureEnabled ? 'مفعّلة' : 'موقوفة'}
                             </div>
                           </div>
+
+                          {/* Sub-feature Toggle Switch */}
                           <button
                             type="button"
                             onClick={() => toggleFeature(group.id, feature.id)}
-                            disabled={saving || togglingFeature === `${group.id}:${feature.id}`}
-                            aria-label={
-                              featureEnabled ? `قفل ${feature.labelAr}` : `فتح ${feature.labelAr}`
-                            }
-                            title={featureEnabled ? 'إيقاف الوحدة' : 'تفعيل الوحدة'}
-                            className={`w-10 h-10 rounded-xl transition-all flex items-center justify-center shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
+                            disabled={saving || isFeatureToggling}
+                            title={
                               featureEnabled
-                                ? 'bg-white border border-red-100 text-red-600 hover:bg-red-50'
-                                : 'bg-cyan-500 text-white hover:brightness-110 shadow-sm shadow-cyan-100'
+                                ? `إيقاف ${feature.labelAr}`
+                                : `تفعيل ${feature.labelAr}`
+                            }
+                            className={`w-11 h-6 rounded-full transition-colors flex items-center p-0.5 shrink-0 focus:outline-none disabled:opacity-50 ${
+                              featureEnabled
+                                ? 'bg-emerald-500 justify-end'
+                                : 'bg-slate-200 justify-start'
                             }`}
                           >
-                            {togglingFeature === `${group.id}:${feature.id}` ? (
-                              <Loader2 size={17} className="animate-spin" />
-                            ) : featureEnabled ? (
-                              <LockKeyhole size={17} />
+                            {isFeatureToggling ? (
+                              <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-sm">
+                                <Loader2 size={11} className="animate-spin text-slate-500" />
+                              </div>
                             ) : (
-                              <UnlockKeyhole size={17} />
+                              <span className="w-5 h-5 rounded-full bg-white shadow-sm transition-all block" />
                             )}
                           </button>
                         </div>

@@ -392,19 +392,43 @@ export function specialtiesFromAnswers(
  * dashboard really shows only what the merchant picked.
  */
 const DASHBOARD_FEATURE_MAP: Record<string, string[]> = {
-  sales: ['orders'],
-  pos: ['posCheckout'],
-  inventory: ['products'],
-  finance: ['invoice'],
-  bookings: ['reservations'],
+  // Keys = onboarding module id, values = sidebar item ids (from sidebar.ts)
+  sales: ['sales', 'salesOrders', 'deliveryNotes'],
+  pos: ['posCheckout', 'posShifts', 'posReports'],
+  inventory: [
+    'inventoryOverview',
+    'products',
+    'purchaseOrders',
+    'warehouses',
+    'stocktake',
+    'suppliers',
+  ],
+  finance: [
+    'invoice',
+    'collections',
+    'wallets',
+    'expenses',
+    'receivables',
+    'payables',
+    'settlements',
+    'eta',
+  ],
+  bookings: ['bookingsSchedule'],
   subscriptions: ['subscriptionsOverview', 'subscriptionPlans', 'subscriptionRenewals'],
   hr: ['employees'],
-  website: ['website'],
-  marketing: ['campaigns'],
-  crm: ['customers'],
+  website: ['website_themes', 'website_builder'],
+  marketing: ['marketingHub', 'campaigns', 'offers', 'messages', 'loyaltyPrograms'],
+  crm: [
+    'customers',
+    'customerStatements',
+    'creditLimits',
+    'wholesalePricing',
+    'customerSegments',
+    'customerTags',
+  ],
   customers: ['customers'],
-  accounting: ['accounts'],
-  analytics: ['reports'],
+  accounting: ['accounts', 'journal', 'ledger', 'trialBalance', 'financialReports', 'taxes'],
+  analytics: ['analyticsOverview', 'analyticsInsights', 'analyticsPerformance'],
 };
 
 export function dashboardEnabledFeatures(moduleIds: ModuleId[]): Record<string, string[]> {
