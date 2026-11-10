@@ -566,7 +566,7 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
             >
               <span className="flex items-center gap-2 text-sm">
                 {added ? <Check className="h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />}
-                {added ? 'تمت الإضافة بنجاح!' : 'إضافة إلى السلة'}
+                {added ? 'تمت الإضافة للسلة' : 'إضافة إلى السلة'}
               </span>
               <span className="text-base font-black tabular-nums">{formatPrice(grandTotal)}</span>
             </button>

@@ -93,6 +93,7 @@ const PRODUCT_FIELDS: Record<string, string[]> = {
   trackStock: ['trackStock', 'تتبع المخزون'],
   isActive: ['isActive', 'نشط', 'فعال'],
   appActive: ['appActive', 'نشط في التطبيق'],
+  isDemo: ['isDemo', 'صف تجريبي', 'هل هذا صف تجريبي؟', 'تجريبي'],
 };
 
 const JSON_FIELDS = new Set([
@@ -117,13 +118,20 @@ export type ProductTemplateKind =
   | 'bookings';
 
 const TEMPLATE_FIELDS: Record<ProductTemplateKind, string[]> = {
-  clothing: ['name', 'price', 'stock', 'category', 'description', 'unit', 'imageUrl', 'images', 'colors', 'sizes', 'packOptions', 'addons', 'extraData', 'trackStock', 'isActive'],
-  service: ['name', 'price', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'trackStock', 'isActive'],
-  restaurant: ['name', 'price', 'category', 'description', 'unit', 'imageUrl', 'menuVariants', 'addons', 'extraData', 'trackStock', 'isActive'],
-  digital: ['name', 'price', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'isActive'],
-  giftcard: ['name', 'price', 'stock', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'trackStock', 'isActive'],
-  bundle: ['name', 'price', 'stock', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'trackStock', 'isActive'],
-  bookings: ['name', 'price', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'isActive'],
+  clothing: ['name', 'price', 'stock', 'category', 'description', 'unit', 'imageUrl', 'images', 'colors', 'sizes', 'packOptions', 'addons', 'extraData', 'trackStock', 'isActive', 'isDemo'],
+  service: ['name', 'price', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'trackStock', 'isActive', 'isDemo'],
+  restaurant: ['name', 'price', 'category', 'description', 'unit', 'imageUrl', 'menuVariants', 'addons', 'extraData', 'trackStock', 'isActive', 'isDemo'],
+  digital: ['name', 'price', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'isActive', 'isDemo'],
+  giftcard: ['name', 'price', 'stock', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'trackStock', 'isActive', 'isDemo'],
+  bundle: ['name', 'price', 'stock', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'trackStock', 'isActive', 'isDemo'],
+  bookings: ['name', 'price', 'category', 'description', 'unit', 'imageUrl', 'extraData', 'isActive', 'isDemo'],
+};
+
+const TEMPLATE_HEADERS_AR: Record<string, string> = {
+  name: 'اسم المنتج', price: 'السعر', stock: 'المخزون', category: 'التصنيف', description: 'الوصف',
+  unit: 'الوحدة', imageUrl: 'رابط الصورة', images: 'صور إضافية', colors: 'الألوان', sizes: 'المقاسات',
+  packOptions: 'خيارات العبوة', addons: 'الإضافات', menuVariants: 'متغيرات القائمة', extraData: 'بيانات إضافية',
+  trackStock: 'تتبع المخزون؟', isActive: 'نشط؟', isDemo: 'صف تجريبي؟',
 };
 
 export const PRODUCT_TEMPLATE_LABELS: Record<ProductTemplateKind, string> = {
@@ -142,7 +150,7 @@ function parseOptionalJSON(value: unknown, field: string): any {
   try {
     return JSON.parse(raw);
   } catch {
-    throw new Error(`قيمة ${field} يجب أن تكون JSON صالحًا`);
+    throw new Error(`قيمة ${TEMPLATE_HEADERS_AR[field] || field} يجب أن تكون بصيغة JSON صحيحة`);
   }
 }
 
@@ -204,8 +212,8 @@ export function buildProductImportPreview(table: ParsedTable): ProductImportPrev
   }
 
   const missingRequired: string[] = [];
-  if (idx.name < 0) missingRequired.push('الاسم (name)');
-  if (idx.price < 0) missingRequired.push('السعر (price)');
+  if (idx.name < 0) missingRequired.push('اسم المنتج');
+  if (idx.price < 0) missingRequired.push('السعر');
 
   const valid: ProductImportRow[] = [];
   const invalid: ProductImportInvalidRow[] = [];
@@ -233,6 +241,7 @@ export function buildProductImportPreview(table: ParsedTable): ProductImportPrev
     }
     const description = idx.description >= 0 ? String(row[idx.description] ?? '').trim() : '';
     const unit = idx.unit >= 0 ? String(row[idx.unit] ?? '').trim() : '';
+    if (idx.isDemo >= 0 && toBoolean(row[idx.isDemo]) === true) return;
     try {
       const parsed: Record<string, any> = {};
       for (const field of JSON_FIELDS) {
@@ -271,9 +280,9 @@ export function buildProductImportPreview(table: ParsedTable): ProductImportPrev
 export async function downloadProductTemplate(kind: ProductTemplateKind = 'clothing') {
   const headers = TEMPLATE_FIELDS[kind];
   const defaults: Record<string, any> = {
-    name: 'منتج جديد', price: 100, stock: 0, category: 'عام', description: '', unit: 'قطعة',
+    name: 'مثال فقط - لا يتم رفعه', price: 100, stock: 0, category: 'عام', description: 'هذا صف تجريبي للشرح فقط', unit: 'قطعة',
     imageUrl: '', images: '', colors: '', sizes: '', packOptions: '', addons: '', menuVariants: '',
-    extraData: '{}', trackStock: 'true', isActive: 'true',
+    extraData: '{}', trackStock: 'true', isActive: 'true', isDemo: 'true',
   };
   // Keep the examples aligned with each activity's product unit and payload shape.
   const unitByKind: Record<ProductTemplateKind, string> = {
@@ -295,10 +304,23 @@ export async function downloadProductTemplate(kind: ProductTemplateKind = 'cloth
   const { exportData } = await import('@/lib/export');
   exportData(
     {
-      filename: `قالب-استيراد-${kind}`,
+      filename: `قالب-استيراد-${PRODUCT_TEMPLATE_LABELS[kind]}`,
       sheetName: 'المنتجات',
-      headers,
+      headers: headers.map((field) => TEMPLATE_HEADERS_AR[field] || field),
       rows,
+      additionalSheets: [{
+        sheetName: 'تعليمات الاستخدام',
+        headers: ['البند', 'الشرح'],
+        rows: [
+          ['مهم', 'الصف الموجود في ورقة المنتجات تجريبي للشرح فقط ولن يتم رفعه لأن صف تجريبي؟ قيمته نعم.'],
+          ['الصفوف الجديدة', 'أضف منتجاتك في صفوف أسفل المثال، واجعل صف تجريبي؟ فارغًا أو اكتب لا.'],
+          ['السعر والمخزون', 'اكتب أرقامًا فقط. في البطاقة الرقمية يمثل المخزون عدد الأكواد المتاحة.'],
+          ['الصور والقوائم', 'ضع رابط الصورة المباشر. الحقول التي تحتوي أكثر من قيمة تكتب بصيغة JSON.'],
+          ['مثال JSON', 'الألوان: [{"name":"أسود","value":"#000000"}]، وإذا لم تستخدم الحقل اتركه فارغًا.'],
+          ['البيانات الإضافية', 'استخدم JSON صالحًا فقط، ولا تضع نصًا عاديًا داخل هذه الخانة.'],
+          ['طريقة الرفع', 'بعد حفظ الملف اختر استيراد من لوحة المنتجات، راجع المعاينة، ثم اضغط تأكيد الاستيراد.'],
+        ],
+      }],
     },
     'xlsx'
   );

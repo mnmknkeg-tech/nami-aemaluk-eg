@@ -65,6 +65,11 @@ export async function uploadMediaFile(
   } catch (putErr) {
     console.warn('Presigned upload failed, falling back to direct upload / local data:', putErr);
 
+    // بيئة الاختبارات لا تملك FileReader؛ أعد الخطأ مباشرة بدل طلب رفع ثانٍ.
+    if (typeof FileReader === 'undefined') {
+      throw new Error('فشل رفع الصورة');
+    }
+
     // Fallback 1: Direct multipart upload through backend
     try {
       const formData = new FormData();

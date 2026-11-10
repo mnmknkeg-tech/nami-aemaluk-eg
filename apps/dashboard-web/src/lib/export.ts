@@ -17,6 +17,8 @@ export interface ExportPayload {
   rows: ExportCell[][];
   /** اسم ورقة Excel */
   sheetName?: string;
+  /** أوراق إضافية اختيارية لملفات Excel */
+  additionalSheets?: Array<Pick<ExportPayload, 'headers' | 'rows'> & { sheetName: string }>;
 }
 
 export const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
@@ -74,7 +76,7 @@ function autoColumnWidths(headers: string[], rows: ExportCell[][]): { wch: numbe
 
 /** يبني Blob جاهز للتنزيل بالصيغة المطلوبة */
 export function buildExportBlob(payload: ExportPayload, format: ExportFormat): Blob {
-  const { headers, rows, sheetName } = payload;
+  const { headers, rows, sheetName, additionalSheets } = payload;
 
   if (format === 'json') {
     const objects = rows.map((r) => {
@@ -107,6 +109,12 @@ export function buildExportBlob(payload: ExportPayload, format: ExportFormat): B
     const safeSheet =
       (sheetName || 'البيانات').replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'Sheet1';
     XLSX.utils.book_append_sheet(wb, ws, safeSheet);
+    for (const sheet of additionalSheets || []) {
+      const extra = XLSX.utils.aoa_to_sheet([sheet.headers, ...sheet.rows.map((r) => r.map(sanitizeCell))]);
+      extra['!cols'] = autoColumnWidths(sheet.headers, sheet.rows);
+      const extraName = sheet.sheetName.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31) || 'تعليمات';
+      XLSX.utils.book_append_sheet(wb, extra, extraName);
+    }
     const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     return new Blob([out], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

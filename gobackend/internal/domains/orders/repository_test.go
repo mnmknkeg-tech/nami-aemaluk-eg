@@ -16,8 +16,8 @@ func TestOrderInsertColumnsAndArgumentsMatch(t *testing.T) {
 		t.Fatal("order insert has no ON CONFLICT clause")
 	}
 	values := insertOrderQuery[valuesStart : valuesStart+valuesEnd]
-	if countSQLExpressions(values) != 24 {
-		t.Fatalf("order insert has %d values, want 24", countSQLExpressions(values))
+	if countSQLExpressions(values) != 25 {
+		t.Fatalf("order insert has %d values, want 25", countSQLExpressions(values))
 	}
 
 	id, source, shiftID, key, requestHash := "user-1", "website", "shift-1", "request-1", "hash-1"
