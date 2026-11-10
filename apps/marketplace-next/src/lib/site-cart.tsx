@@ -138,6 +138,7 @@ export function SiteCartProvider({ children }: { children: React.ReactNode }) {
 
         const effectiveProduct: SiteProduct & { addons?: any; variantSelection?: any } = {
           ...product,
+          title: (product as any).title || (product as any).name || 'منتج',
           price: resolvedPrice,
           addons: options?.addons || (product as any)?.addons,
           variantSelection: options?.variantSelection || (product as any)?.variantSelection,

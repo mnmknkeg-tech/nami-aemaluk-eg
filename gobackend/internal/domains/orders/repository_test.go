@@ -33,8 +33,8 @@ func TestOrderInsertColumnsAndArgumentsMatch(t *testing.T) {
 		RequestHash:    &requestHash,
 	}
 	args := orderInsertArgs(order)
-	if len(args) != 19 {
-		t.Fatalf("order insert has %d arguments, want 19", len(args))
+	if len(args) != 20 {
+		t.Fatalf("order insert has %d arguments, want 20", len(args))
 	}
 	if args[13] != id || args[14] != order.ShopID || args[15] != source ||
 		args[16] != &shiftID || args[17] != &key || args[18] != &requestHash {
