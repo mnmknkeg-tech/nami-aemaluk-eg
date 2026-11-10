@@ -1,19 +1,32 @@
 /**
  * Central media upload for the dashboard.
  *
- * Every image upload goes through here so the request shape stays the same
- * everywhere.
- *
- * The bytes go straight to R2 through a presigned URL instead of riding
- * through the API as multipart form-data. That is not a style choice: the
- * dashboard is served from Vercel and proxies /api/* through a Next.js
- * rewrite, and that proxy cannot carry a multipart file part — it answers
- * 500 for a file part with a content type and 415 without one. The
- * presign flow never sends the bytes through the proxy at all: the API
- * hands out a signed PUT URL, the browser uploads to R2 directly, and the
- * API is only told the upload finished.
+ * The object upload and the media bookkeeping request are intentionally kept
+ * separate. Once the bytes are safely in object storage, a temporary failure in
+ * /media/complete must never make the merchant lose the editor session or force
+ * a second upload.
  */
 import { apiRequest } from './core';
+
+function getErrorStatus(error: unknown): number | undefined {
+  return (error as Error & { status?: number })?.status;
+}
+
+function getUploadUrl(value: any): string {
+  return value?.originalUrl || value?.data?.originalUrl || value?.url || value?.data?.url || '';
+}
+
+async function directUpload(file: File, shopId: string, purpose: string): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('shopId', shopId);
+  formData.append('purpose', purpose);
+  const direct = await apiRequest<any>('/media/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  return getUploadUrl(direct);
+}
 
 /** Uploads one file and returns the public URL it is served from. */
 export async function uploadMediaFile(
@@ -34,22 +47,43 @@ export async function uploadMediaFile(
 
   const uploadUrl = presign?.url || presign?.data?.url;
   const key = presign?.key || presign?.data?.key;
-  const publicUrl = presign?.publicUrl || presign?.data?.publicUrl;
+  const publicUrl = presign?.publicUrl || presign?.data?.publicUrl || '';
 
   if (!uploadUrl || !key) {
     throw new Error('تعذّر تجهيز رابط رفع الصورة');
   }
 
+  let storedUrl = publicUrl;
   try {
     const put = await fetch(uploadUrl, {
       method: 'PUT',
       headers: { 'Content-Type': file.type || 'image/jpeg' },
       body: file,
     });
-    if (!put.ok) {
-      throw new Error('فشل رفع الصورة على خادم التخزين');
+    if (!put.ok) throw new Error('فشل رفع الصورة على خادم التخزين');
+  } catch (putError) {
+    console.warn('[media] presigned PUT failed; trying direct upload once', putError);
+    // Non-browser callers cannot use the multipart/data-URL fallback safely.
+    if (typeof FileReader === 'undefined') throw new Error('فشل رفع الصورة');
+    try {
+      const directUrl = await directUpload(file, shopId, purpose);
+      if (directUrl) return directUrl;
+    } catch (directError) {
+      console.warn('[media] direct upload failed', directError);
     }
 
+    // Keep the old offline-safe behavior, but only after both real upload paths fail.
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string) || publicUrl || '');
+      reader.onerror = () => resolve(publicUrl || '');
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // The bytes are already stored. Bookkeeping is idempotent and best-effort;
+  // retry once, then keep the permanent object URL instead of starting over.
+  try {
     const completed = await apiRequest<any>('/media/complete', {
       method: 'POST',
       body: JSON.stringify({
@@ -60,40 +94,16 @@ export async function uploadMediaFile(
         fileSize: file.size,
       }),
     });
-
-    return completed?.originalUrl || completed?.data?.originalUrl || publicUrl || '';
-  } catch (putErr) {
-    console.warn('Presigned upload failed, falling back to direct upload / local data:', putErr);
-
-    // بيئة الاختبارات لا تملك FileReader؛ أعد الخطأ مباشرة بدل طلب رفع ثانٍ.
-    if (typeof FileReader === 'undefined') {
-      throw new Error('فشل رفع الصورة');
-    }
-
-    // Fallback 1: Direct multipart upload through backend
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('shopId', shopId);
-      formData.append('purpose', purpose);
-
-      const direct = await apiRequest<any>('/media/upload', {
-        method: 'POST',
-        body: formData,
-      });
-      const directUrl =
-        direct?.originalUrl || direct?.data?.originalUrl || direct?.url || direct?.data?.url;
-      if (directUrl) return directUrl;
-    } catch (directErr) {
-      console.warn('Direct upload also failed, using data URL fallback:', directErr);
-    }
-
-    // Fallback 2: Data URL so user work is never lost
-    return new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve((reader.result as string) || publicUrl || '');
-      reader.onerror = () => resolve(publicUrl || '');
-      reader.readAsDataURL(file);
-    });
+    storedUrl = getUploadUrl(completed) || storedUrl;
+  } catch (completeError) {
+    console.warn(
+      '[media] upload completed in storage but bookkeeping failed; keeping permanent URL',
+      { status: getErrorStatus(completeError), error: completeError }
+    );
   }
+
+  if (!storedUrl || !/^https:\/\//i.test(storedUrl) || /^blob:/i.test(storedUrl)) {
+    throw new Error('لم يُرجع التخزين رابط صورة دائمًا وآمنًا.');
+  }
+  return storedUrl;
 }

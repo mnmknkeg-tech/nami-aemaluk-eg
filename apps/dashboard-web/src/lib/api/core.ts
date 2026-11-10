@@ -126,6 +126,12 @@ function isAuthPath(path: string): boolean {
   return AUTH_PATHS.some((p) => path.startsWith(p));
 }
 
+/** Media completion is best-effort: a finished object must not log the merchant
+ * out when the bookkeeping request briefly loses auth or the API is restarting. */
+function isMediaPath(path: string): boolean {
+  return path.startsWith('/media/');
+}
+
 // ---------------------------------------------------------------------------
 // Single-flight silent refresh
 // ---------------------------------------------------------------------------
@@ -289,7 +295,7 @@ async function execute(
     if (fresh || hadBridgeToken) {
       result = await performRequest(path, options);
     } else {
-      if (result.res.status === 401) {
+      if (result.res.status === 401 && !isMediaPath(path)) {
         dispatchSessionExpired();
         const err = new Error('انتهت الجلسة، من فضلك سجل الدخول من جديد') as Error & {
           status?: number;
