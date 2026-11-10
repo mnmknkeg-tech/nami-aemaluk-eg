@@ -18,6 +18,7 @@ import (
         "github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/auth"
         "github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/bookings"
         "github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/breach"
+        "github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/ai"
         "github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/complaints"
         "github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/cartevent"
         "github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/chat"
@@ -103,6 +104,7 @@ type App struct {
         customersHandler         *customers.Handler
         galleryHandler           *gallery.Handler
         feedbackHandler          *feedback.Handler
+        aiHandler                *ai.Handler
         complaintsHandler        *complaints.Handler
         publicInboxHandler       *publicinbox.Handler
         financeHandler           *finance.Handler
@@ -207,6 +209,7 @@ func New(cfg *config.Config) (*App, error) {
                 customersHandler         *customers.Handler
                 galleryHandler           *gallery.Handler
                 feedbackHandler          *feedback.Handler
+                aiHandler                *ai.Handler
                 complaintsHandler        *complaints.Handler
                 publicInboxHandler       *publicinbox.Handler
                 financeHandler           *finance.Handler
@@ -393,6 +396,11 @@ func New(cfg *config.Config) (*App, error) {
                 complaintsSvc := complaints.NewService(complaintsRepo)
                 complaintsHandler = complaints.NewHandler(complaintsSvc, cfg)
 
+                // Initialize AI insights service (dashboard AI pages)
+                aiRepo := ai.NewRepository(pool)
+                aiSvc := ai.NewService(aiRepo)
+                aiHandler = ai.NewHandler(aiSvc, cfg)
+
                 publicInboxRepo := publicinbox.NewRepository(pool)
                 publicInboxSvc := publicinbox.NewService(publicInboxRepo, log)
                 publicInboxHandler = publicinbox.NewHandler(publicInboxSvc, cfg)
@@ -517,6 +525,7 @@ func New(cfg *config.Config) (*App, error) {
                 customersHandler:         customersHandler,
                 galleryHandler:           galleryHandler,
                 feedbackHandler:          feedbackHandler,
+                aiHandler:                aiHandler,
                 complaintsHandler:        complaintsHandler,
                 publicInboxHandler:       publicInboxHandler,
                 reviewsHandler:           reviewsHandler,
@@ -739,6 +748,11 @@ func (a *App) registerRoutes() {
         // Complaints domain routes (dashboard CRM complaints page).
         if a.complaintsHandler != nil {
                 a.complaintsHandler.RegisterRoutes(api)
+        }
+
+        // AI insights routes (dashboard AI pages: analysis/insights/seo/images/automations).
+        if a.aiHandler != nil {
+                a.aiHandler.RegisterRoutes(api)
         }
 
         // Public inbox: contact + suggestions (public submit, admin inbox).
