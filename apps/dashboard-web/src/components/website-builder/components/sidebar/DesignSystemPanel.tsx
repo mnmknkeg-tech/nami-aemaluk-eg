@@ -1,5 +1,15 @@
-import React, { useState } from 'react';
-import { Palette, Sparkles, Check, Eye, CheckCircle2, LayoutTemplate, Search } from 'lucide-react';
+import React from 'react';
+import Link from 'next/link';
+import {
+  Palette,
+  Sparkles,
+  Check,
+  Eye,
+  CheckCircle2,
+  LayoutTemplate,
+  ArrowLeft,
+  ExternalLink,
+} from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
 import { normalizeThemeTokens } from '../../data/defaultTheme';
 import { getThemePresetRecords } from '../../data/registry';
@@ -7,14 +17,7 @@ import { getThemePresetRecords } from '../../data/registry';
 const registeredThemePresets = getThemePresetRecords();
 
 export const DesignSystemPanel: React.FC = () => {
-  const {
-    theme: rawTheme,
-    updateThemeToken,
-    applyThemePreset,
-    allTemplatesList,
-    activeTemplateId,
-    switchWebsite,
-  } = useBuilder();
+  const { theme: rawTheme, updateThemeToken, applyThemePreset, allTemplatesList } = useBuilder();
 
   const theme = normalizeThemeTokens(rawTheme);
 
@@ -46,18 +49,6 @@ export const DesignSystemPanel: React.FC = () => {
     { name: 'وردي بنفسجي', color: '#c084fc' },
   ];
 
-  const [templateSearch, setTemplateSearch] = useState('');
-
-  const filteredTemplates = allTemplatesList.filter((tpl) => {
-    if (!templateSearch.trim()) return true;
-    const q = templateSearch.toLowerCase();
-    return (
-      tpl.name.toLowerCase().includes(q) ||
-      (tpl.category && tpl.category.toLowerCase().includes(q)) ||
-      (tpl.badge && tpl.badge.toLowerCase().includes(q))
-    );
-  });
-
   return (
     <div className="p-3.5 space-y-5 text-right" dir="rtl">
       {/* Header Bar */}
@@ -76,84 +67,37 @@ export const DesignSystemPanel: React.FC = () => {
         </span>
       </div>
 
-      {/* Full Activity Ready-Made Templates */}
-      <div className="space-y-3 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 p-3.5 rounded-2xl border border-blue-200 shadow-2xs">
+      {/* Banner / Shortcut to Dedicated Full Themes Page */}
+      <div className="bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 p-3.5 rounded-2xl border border-blue-200/80 shadow-2xs space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-            <LayoutTemplate className="w-4 h-4 text-blue-600" />
-            <span>قوالب وثيمات الأنشطة الجاهزة</span>
-          </span>
-          <span className="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded-full">
-            {allTemplatesList.length} نشاط جاهز
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+              <LayoutTemplate className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black text-slate-900">مكتبة قوالب الثيمات</h3>
+              <p className="text-[10px] text-slate-500 font-medium">
+                {allTemplatesList.length} قالب جاهز لكافة الأنشطة التجارية
+              </p>
+            </div>
+          </div>
+          <span className="text-[9px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">
+            صفحة كاملة
           </span>
         </div>
+
         <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-          اختر نشاطك التجاري ليتم تطبيق الثيم واستبدال كامل الموقع (الصفحات، القائمة، الأقسام، نماذج
-          الحجز) فوراً.
+          لاستعراض جميع القوالب مع المعاينة الحية المباشرة وتطبيق قالب جديد متكامل لموقعك، انتقل
+          لصفحة قوالب الثيمات.
         </p>
 
-        {/* Search input for templates */}
-        <div className="relative">
-          <input
-            type="text"
-            value={templateSearch}
-            onChange={(e) => setTemplateSearch(e.target.value)}
-            placeholder="ابحث عن قالب أو نشاط (مطعم، كافيه، عيادة...)"
-            className="w-full text-xs px-3 py-1.5 pl-8 rounded-xl border border-blue-200 bg-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-800"
-          />
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-        </div>
-
-        {/* Scrollable / Grid of activities */}
-        <div className="space-y-1.5 max-h-64 overflow-y-auto pr-0.5">
-          {filteredTemplates.length === 0 ? (
-            <p className="text-[11px] text-slate-400 text-center py-4 font-medium">
-              لا توجد قوالب مطابقة للبحث
-            </p>
-          ) : (
-            filteredTemplates.map((tpl) => {
-              const isSelected = tpl.id === activeTemplateId;
-              return (
-                <button
-                  key={tpl.id}
-                  onClick={() => switchWebsite(tpl.id)}
-                  className={`w-full p-2.5 rounded-xl border text-right transition-all flex items-center justify-between gap-2 cursor-pointer ${
-                    isSelected
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm font-bold ring-2 ring-blue-400/40'
-                      : 'bg-white hover:bg-blue-50/70 border-slate-200 hover:border-blue-300 text-slate-800 shadow-2xs'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-lg shrink-0 p-1 rounded-lg bg-slate-50 border border-slate-100">
-                      {tpl.icon}
-                    </span>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-black truncate">{tpl.name}</span>
-                      <span
-                        className={`text-[9px] truncate ${
-                          isSelected ? 'text-blue-100' : 'text-slate-400'
-                        }`}
-                      >
-                        {tpl.badge || tpl.category}
-                      </span>
-                    </div>
-                  </div>
-                  {isSelected ? (
-                    <span className="text-[10px] bg-white text-blue-700 px-2.5 py-0.5 rounded-full font-black shrink-0 shadow-2xs">
-                      مطبق حالياً ✓
-                    </span>
-                  ) : (
-                    <span
-                      style={{ backgroundColor: tpl.primaryColor }}
-                      className="w-3 h-3 rounded-full border-2 border-white shadow-xs shrink-0"
-                      title="اللون الأساسي"
-                    />
-                  )}
-                </button>
-              );
-            })
-          )}
-        </div>
+        <Link
+          href="/dashboard/website/themes"
+          className="w-full py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs"
+        >
+          <span>فتح معرض القوالب الشامل</span>
+          <ExternalLink className="w-3.5 h-3.5" />
+        </Link>
       </div>
 
       {/* Theme Presets Grid */}
