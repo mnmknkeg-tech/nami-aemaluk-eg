@@ -114,7 +114,7 @@ const searchableTemplateText = (template: SectionTemplate) =>
     .toLocaleLowerCase();
 
 export const SectionLibraryPanel: React.FC = () => {
-  const { insertSectionTemplate, website, activePage } = useBuilder();
+  const { insertSectionTemplate, website, activePage, selectedNodeId } = useBuilder();
   const [selectedCategory, setSelectedCategory] = useState<SectionCategory | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>('all');
@@ -122,7 +122,24 @@ export const SectionLibraryPanel: React.FC = () => {
   const [previewTemplate, setPreviewTemplate] = useState<SectionTemplate | null>(null);
 
   const handleInsert = (template: SectionTemplate) => {
-    if (!insertSectionTemplate(template.id)) return;
+    // When the merchant has a top-level section selected, the new section lands
+    // RIGHT AFTER it instead of always being appended above the footer — the
+    // merchant stays in control of where new sections go.
+    let targetIndex: number | undefined;
+    const root = website.components[activePage.rootNodeId];
+    if (root && selectedNodeId && selectedNodeId !== root.id) {
+      const selected = website.components[selectedNodeId];
+      if (
+        selected &&
+        selected.parentId === root.id &&
+        selected.type !== 'footer' &&
+        selected.type !== 'header'
+      ) {
+        const idx = root.childrenIds.indexOf(selectedNodeId);
+        if (idx >= 0) targetIndex = idx + 1;
+      }
+    }
+    if (!insertSectionTemplate(template.id, targetIndex)) return;
     setInsertedId(template.id);
     setTimeout(() => setInsertedId(null), 2000);
   };

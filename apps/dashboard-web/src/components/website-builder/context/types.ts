@@ -45,6 +45,8 @@ export interface BuilderContextType {
   updatePageMetadata: (pageId: string, meta: Partial<PageMetadata>, pageName?: string) => void;
   /** Atomically make one page the site home page (unset all others). */
   setHomePage: (pageId: string) => void;
+  /** Move a page up/down in the site page order (drives fallback nav order). */
+  movePage: (pageId: string, direction: 'up' | 'down') => void;
   updatePagePlacement: (
     pageId: string,
     options: {

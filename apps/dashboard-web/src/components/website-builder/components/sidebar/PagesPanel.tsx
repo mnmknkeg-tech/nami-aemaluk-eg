@@ -10,6 +10,8 @@ import {
   EyeOff,
   Globe,
   ChevronLeft,
+  ChevronUp,
+  ChevronDown,
   Copy,
   Sparkles,
   X,
@@ -27,6 +29,7 @@ import type { WebsiteLinkDestination } from '@ray-eg/shared/builder';
 export const PagesPanel: React.FC = () => {
   const {
     website,
+    activePage,
     activePageId,
     switchPage,
     addPage,
@@ -34,6 +37,7 @@ export const PagesPanel: React.FC = () => {
     updatePageMetadata,
     updatePagePlacement,
     setHomePage,
+    movePage,
     getHeaderDropdownNavItems,
     updateNodeProps,
   } = useBuilder();
@@ -55,17 +59,33 @@ export const PagesPanel: React.FC = () => {
   const [newNavigationPageId, setNewNavigationPageId] = useState('');
 
   const availableDropdowns = getHeaderDropdownNavItems();
-  const navigationNode =
-    Object.values(website.components).find((component) =>
-      Array.isArray(component.props.navigationItems)
-    ) ||
-    Object.values(website.components).find(
-      (component) =>
-        component.type === 'paragraph' &&
-        typeof component.props.text === 'string' &&
-        component.props.text.includes('•') &&
-        /nav|روابط/i.test(`${component.id} ${component.name}`)
-    );
+  // Deterministic nav-node resolution (same contract as HeaderRenderer):
+  // prefer a candidate on the active page, then the smallest stable ID —
+  // never the component-map key order (JSONB re-sorts keys server-side).
+  const isNavCandidate = (component: any) =>
+    Array.isArray(component.props.navigationItems) ||
+    (component.type === 'paragraph' &&
+      typeof component.props.text === 'string' &&
+      component.props.text.includes('•') &&
+      /nav|روابط/i.test(`${component.id} ${component.name}`));
+  const activeRootId = activePage?.rootNodeId;
+  const isOnActivePage = (componentId: string): boolean => {
+    let curr = website.components[componentId];
+    const seen = new Set<string>();
+    while (curr?.parentId && !seen.has(curr.id)) {
+      seen.add(curr.id);
+      if (activeRootId && curr.parentId === activeRootId) return true;
+      curr = website.components[curr.parentId];
+    }
+    return false;
+  };
+  const navigationNode = Object.values(website.components)
+    .filter(isNavCandidate)
+    .sort(
+      (a, b) =>
+        (isOnActivePage(a.id) ? 0 : 1) - (isOnActivePage(b.id) ? 0 : 1) ||
+        a.id.localeCompare(b.id)
+    )[0];
   const navigationItems: Array<{
     id?: string;
     label?: string;
@@ -624,7 +644,7 @@ export const PagesPanel: React.FC = () => {
 
       {/* Pages List */}
       <div className="space-y-2">
-        {website.pages.map((p) => {
+        {website.pages.map((p, pageIndex) => {
           const isActive = p.id === activePageId;
           return (
             <div
@@ -663,6 +683,32 @@ export const PagesPanel: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-1">
+                {/* Page order up/down — pages order drives the fallback nav */}
+                <div className="flex flex-col">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      movePage(p.id, 'up');
+                    }}
+                    disabled={pageIndex === 0}
+                    title="نقل الصفحة لأعلى"
+                    className="p-0.5 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded transition-colors cursor-pointer disabled:opacity-25 disabled:cursor-default"
+                  >
+                    <ChevronUp className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      movePage(p.id, 'down');
+                    }}
+                    disabled={pageIndex === website.pages.length - 1}
+                    title="نقل الصفحة لأسفل"
+                    className="p-0.5 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded transition-colors cursor-pointer disabled:opacity-25 disabled:cursor-default"
+                  >
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                </div>
+
                 {/* Duplicate page */}
                 <button
                   onClick={(e) => handleDuplicatePage(p, e)}

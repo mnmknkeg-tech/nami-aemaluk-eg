@@ -21,8 +21,8 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
   const items = matchedDetail?.items || [
     {
       id: `${meta.id}_item_1`,
-      title: `الباقة المتميزة الأولى من ${meta.name}`,
-      subtitle: `خيار مثالي يلبي أعلى تطلعات عملائنا مع ضمان وخدمة ما بعد البيع`,
+      title: `باقة ${meta.tags[0] || 'الخدمات الأساسية'} من ${meta.name}`,
+      subtitle: `خيار مثالي يلبي احتياجات عملائنا في ${meta.category} مع ضمان وخدمة ما بعد البيع`,
       price: 'السعر حسب الطلب',
       badge: 'الأكثر طلباً',
       imageUrl: heroImg,
@@ -31,24 +31,24 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
     },
     {
       id: `${meta.id}_item_2`,
-      title: `الباقة الفاخرة VIP المتكاملة`,
-      subtitle: `حل شامل ومخصص للمشاريع والفلل والمؤسسات بأعلى المواصفات`,
+      title: meta.tags[1] ? `عرض ${meta.tags[1]} المتكامل` : 'الباقة الفاخرة المتكاملة',
+      subtitle: `حل شامل ومخصص للمشاريع والمؤسسات في ${meta.category} بأعلى المواصفات`,
       price: 'عرض سعر مخصص',
-      badge: 'VIP متكامل',
+      badge: 'متكامل',
       imageUrl:
         'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800&auto=format&fit=crop&q=80',
       features: [
         'شامل التركيب والمواد',
         'مواصفات حصرية',
-        'إشراف هندسي وفني',
+        'إشراف فني متخصص',
         'خصم خاص على الكميات',
       ],
-      buttonText: 'طلب تسعير VIP',
+      buttonText: 'طلب تسعير',
     },
     {
       id: `${meta.id}_item_3`,
-      title: `الخدمة الاقتصادية السريعة`,
-      subtitle: `خدمة سريعة في نفس اليوم بجودة عالية وأسعار تنافسية`,
+      title: meta.tags[2] ? `خدمة ${meta.tags[2]} السريعة` : 'الخدمة الاقتصادية السريعة',
+      subtitle: 'خدمة سريعة في نفس اليوم بجودة عالية وأسعار تنافسية',
       price: 'استفسر عن السعر',
       badge: 'عرض خاص',
       imageUrl:
@@ -56,6 +56,17 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       features: ['إنجاز في نفس اليوم', 'فنيين معتمدين', 'فاتورة وضمان رسمي', 'دفع عند الاستلام'],
       buttonText: 'حجز فوري',
     },
+  ];
+
+  // Real header navigation: bullet labels are resolved by the renderers against
+  // this array, so every generated template gets CLICKABLE page links in the
+  // canvas, on the published site, in the mobile drawer, and in the PagesPanel
+  // nav editor — instead of a dead text paragraph.
+  const generatedNavItems = [
+    { label: 'الرئيسية', destination: { type: 'page' as const, pageId: 'page_home' } },
+    { label: 'الخدمات والمنتجات', destination: { type: 'page' as const, pageId: 'page_services' } },
+    { label: 'من نحن وقصتنا', destination: { type: 'page' as const, pageId: 'page_about' } },
+    { label: 'تواصل معنا والحجز', destination: { type: 'page' as const, pageId: 'page_contact' } },
   ];
 
   const components: Record<string, ComponentNode> = {
@@ -168,10 +179,13 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       id: 'gen_nav_items',
       name: 'روابط الترويسة',
       type: 'paragraph',
-      category: 'typography',
+      category: 'navigation',
       parentId: 'gen_header_inner',
       childrenIds: [],
-      props: { text: 'الرئيسية • الخدمات والمنتجات • من نحن وقصتنا • تواصل معنا والحجز' },
+      props: {
+        text: 'الرئيسية • الخدمات والمنتجات • من نحن وقصتنا • تواصل معنا والحجز',
+        navigationItems: generatedNavItems,
+      },
       styles: {
         desktop: { fontSize: '14px', fontWeight: '600', textColor: '#475569' },
         mobile: { display: 'none' },
@@ -228,10 +242,12 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
         secondaryCtaText: 'طلب استشارة فورية',
         secondaryCtaLink: '#contact',
         imageUrl: heroImg,
+        // Service commitments — NOT fabricated numbers. Generated sites used to
+        // publish fake "‎+5,000 عميل" / "4.9 ★" stats for brand-new stores.
         stats: [
-          { label: 'عميل وخدمة منفذة', value: '+5,000' },
-          { label: 'نسبة الرضا والتقييم', value: '4.9 ★' },
-          { label: 'ضمان ودعم معتمد', value: '100% موثوق' },
+          { label: 'تأكيد الحجوزات', value: 'فوري' },
+          { label: 'الضمان وجودة العمل', value: 'معتمد' },
+          { label: 'خدمة العملاء', value: 'يوميًا' },
         ],
       },
       styles: {
@@ -264,11 +280,11 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       childrenIds: [],
       props: {
         title: `لماذا يختارنا عملاء ${meta.name}؟`,
-        subtitle: 'نلتزم بأعلى معايير الحرفية، الدقة في المواعيد، وخدمات ما بعد البيع المعتمدة',
+        subtitle: `التزامنا في ${meta.category}: دقة في المواعيد، حرفية في التنفيذ، وخدمة ما بعد البيع`,
         features: [
           {
             title: 'جودة وضمان معتمد رسمي',
-            description: 'شهادات فحص وضمانات موثقة تضمن حقك وراحة بالك التامة.',
+            description: `شهادات فحص وضمانات موثقة على كل ${meta.tags[0] || 'خدمة'} نقدمها.`,
             iconName: 'ShieldCheck',
           },
           {
@@ -397,8 +413,10 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       props: {
         brandName: meta.name,
         description: `${meta.name} - حلول وخدمات موثوقة مصممة لتلبية احتياجات عملائك.`,
+        // Empty by default: a placeholder email the merchant does not own must
+        // never be published (was contact@<slug>.com).
         phone: '',
-        email: `contact@${meta.id.replace('site_', '')}.com`,
+        email: '',
         address: '',
       },
       styles: {

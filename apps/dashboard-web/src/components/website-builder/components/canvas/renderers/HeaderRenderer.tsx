@@ -63,13 +63,32 @@ export const HeaderRenderer: React.FC<HeaderRendererProps> = ({
   const phoneNumber = String(node.props.phoneNumber || '01000000000');
 
   const activePage = website.pages.find((p) => p.id === activePageId) || website.pages[0];
-  const navNode = Object.values(website.components).find(
-    (component) =>
-      (component.id.includes('nav') || component.category === 'navigation') &&
-      component.type === 'paragraph' &&
-      (Array.isArray(component.props.navigationItems) ||
-        (typeof component.props.text === 'string' && component.props.text.includes('•')))
-  );
+  // Deterministic nav-node resolution: prefer a candidate inside the current
+  // page tree, then the smallest stable ID. Relying on Object.values order made
+  // the editor canvas and the published site (JSONB re-sorts keys) pick
+  // different nav nodes when a config contained more than one match.
+  const isNavCandidate = (component: any) =>
+    (component.id.includes('nav') || component.category === 'navigation') &&
+    component.type === 'paragraph' &&
+    (Array.isArray(component.props.navigationItems) ||
+      (typeof component.props.text === 'string' && component.props.text.includes('•')));
+  const isOnActivePage = (componentId: string): boolean => {
+    let curr = website.components[componentId];
+    const seen = new Set<string>();
+    while (curr?.parentId && !seen.has(curr.id)) {
+      seen.add(curr.id);
+      if (curr.parentId === activePage.rootNodeId) return true;
+      curr = website.components[curr.parentId];
+    }
+    return false;
+  };
+  const navNode = Object.values(website.components)
+    .filter(isNavCandidate)
+    .sort(
+      (a, b) =>
+        (isOnActivePage(a.id) ? 0 : 1) - (isOnActivePage(b.id) ? 0 : 1) ||
+        a.id.localeCompare(b.id)
+    )[0];
   const hasExplicitNavigation = Array.isArray(navNode?.props.navigationItems);
   const navSectionLinks: Array<{ label: string; destination?: WebsiteLinkDestination }> =
     hasExplicitNavigation

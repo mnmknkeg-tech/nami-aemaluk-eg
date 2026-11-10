@@ -659,6 +659,29 @@ export const useBuilderPageOperations = ({
     [website, websiteRef, recordHistory]
   );
 
+  /**
+   * Move a page up/down in the site's page order. The pages array order drives
+   * the fallback header nav and the PagesPanel list, and new nav links append
+   * in that order — so this is the only way merchants control page ordering.
+   */
+  const movePage = useCallback(
+    (pageId: string, direction: 'up' | 'down') => {
+      const currentWebsite = websiteRef?.current ?? website;
+      const index = currentWebsite.pages.findIndex((page) => page.id === pageId);
+      const nextIndex = direction === 'up' ? index - 1 : index + 1;
+      if (index < 0 || nextIndex < 0 || nextIndex >= currentWebsite.pages.length) return;
+      const pages = [...currentWebsite.pages];
+      const moved = pages[index];
+      pages[index] = pages[nextIndex];
+      pages[nextIndex] = moved;
+      recordHistory(
+        `إعادة ترتيب الصفحات: نقل (${moved.name}) ${direction === 'up' ? 'لأعلى' : 'لأسفل'}`,
+        { ...currentWebsite, pages }
+      );
+    },
+    [website, websiteRef, recordHistory]
+  );
+
   const updatePagePlacement = useCallback(
     (
       pageId: string,
@@ -947,5 +970,6 @@ export const useBuilderPageOperations = ({
     deletePage,
     updatePageMetadata,
     setHomePage,
+    movePage,
   };
 };
