@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   computeThemeResponsiveNodeStyles,
+  computeWebsiteBackgroundStyles,
   resolveWebsiteLinkDestination,
 } from '@ray-eg/shared/builder';
 import { useBuilder } from '../../context/BuilderContext';
@@ -118,8 +119,12 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
   const isHovered = hoveredNodeId === node.id && !isSelected && !isInteractivePreview;
 
   // Compute responsive styles merged by current breakpoint
-  const getComputedStyles = (): React.CSSProperties =>
-    computeThemeResponsiveNodeStyles(node, currentViewport, website.theme?.typography);
+  const getComputedStyles = (): React.CSSProperties => ({
+    ...computeThemeResponsiveNodeStyles(node, currentViewport, website.theme?.typography),
+    ...(node.id === activePage?.rootNodeId
+      ? { position: 'relative', ...computeWebsiteBackgroundStyles(website.settings?.background) }
+      : {}),
+  });
 
   // Smart Navigation and Action handler for preview mode
   const handleInteraction = (

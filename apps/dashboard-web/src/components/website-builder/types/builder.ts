@@ -41,5 +41,6 @@ export type {
   WebsiteFloatingActionsSettings,
   WebsiteSeoSettings,
   WebsiteBrandingSettings,
+  WebsiteBackgroundSettings,
   WebsiteCartSettings,
 } from '@ray-eg/shared/builder';

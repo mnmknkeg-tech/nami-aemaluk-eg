@@ -278,7 +278,8 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
         className="published-site-renderer min-h-screen"
         style={computeWebsiteRootStyles(
           theme,
-          safeWebsite.defaultDirection === 'rtl' ? 'rtl' : 'ltr'
+          safeWebsite.defaultDirection === 'rtl' ? 'rtl' : 'ltr',
+          safeWebsite.settings?.background
         )}
       >
         {hasContent && rootNodeId ? (

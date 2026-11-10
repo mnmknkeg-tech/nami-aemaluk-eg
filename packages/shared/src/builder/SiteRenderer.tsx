@@ -8,6 +8,7 @@ import { NodeView, NodeViewContext } from './NodeView';
 import { SiteSubscriptionModal } from './SiteSubscriptionModal';
 import { SiteCartDrawer, type SiteCartItem } from './SiteCartDrawer';
 import { useResponsiveViewport } from './responsiveViewport';
+import { computeWebsiteRootStyles } from './responsiveStyles';
 import { CartIcon } from './CartIcon';
 import { isCartVisible } from './cartPolicy';
 
@@ -191,8 +192,11 @@ export const SiteRenderer: React.FC<SiteRendererProps> = ({
       dir={website.defaultDirection || 'rtl'}
       className="pub-site min-h-screen relative overflow-x-hidden w-full max-w-full"
       style={{
-        backgroundColor: theme.colors.background,
-        color: theme.colors.textPrimary,
+        ...computeWebsiteRootStyles(
+          theme,
+          website.defaultDirection === 'rtl' ? 'rtl' : 'ltr',
+          website.settings?.background
+        ),
         opacity: pageChanging ? 0.5 : 1,
         transition: 'opacity 0.12s ease',
       }}

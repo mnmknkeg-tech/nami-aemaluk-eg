@@ -20,6 +20,7 @@ import {
   FooterSection,
   FaqSection,
 } from './panels';
+import { BackgroundSettingsSection } from '../sidebar/settings/BackgroundSettingsSection';
 
 export const IntegratedSectionEditor: React.FC = () => {
   const {
@@ -228,6 +229,8 @@ export const IntegratedSectionEditor: React.FC = () => {
   const isCta = sectionType === 'cta' || parentSection.id === 'comp_cta_banner';
   const isTestimonials = sectionType === 'testimonials' || parentSection.id === 'comp_testimonials';
   const isFooter = sectionType === 'footer' || parentSection.id === 'comp_footer';
+  const isPageRootSelected =
+    isSectionSelected && parentSection.type === 'container' && !parentSection.parentId;
   const isFaq =
     sectionType === 'faq' || parentSection.id === 'comp_faq' || parentSection.id.includes('faq');
 
@@ -430,11 +433,12 @@ export const IntegratedSectionEditor: React.FC = () => {
 
       {/* ACCORDION PANELS */}
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+        {isPageRootSelected && <BackgroundSettingsSection />}
         <ContentSection {...sharedProps} />
         {isFooter && <FooterSection {...sharedProps} />}
         {isFaq && <FaqSection {...sharedProps} />}
         {isHeader && <HeaderSettingsSection {...sharedProps} />}
-        {(isHero || isHeader || isProductOrCard || isCta || isTestimonials) && (
+        {(isHero || isHeader || isFooter || isProductOrCard || isCta || isTestimonials) && (
           <MediaSection {...sharedProps} />
         )}
         {isProductOrCard && <ProductCardSection {...sharedProps} />}

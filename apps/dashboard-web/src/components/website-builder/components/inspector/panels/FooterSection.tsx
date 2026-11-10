@@ -11,6 +11,7 @@ export const FooterSection: React.FC<InspectorPanelProps> = ({
 }) => {
   const targetNode = node.type === 'footer' ? node : parentSection;
   const props = targetNode.props || {};
+  const transparentFooter = Boolean(props.transparent);
 
   const handleUpdate = (key: string, value: any) => {
     handlePropChange(targetNode.id, key, value);
@@ -53,6 +54,21 @@ export const FooterSection: React.FC<InspectorPanelProps> = ({
 
       {expandedSections.footerSettings && (
         <div className="space-y-4 pt-3">
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+            <span className="text-xs font-bold text-slate-800">شفاف</span>
+            <button
+              type="button"
+              aria-pressed={transparentFooter}
+              onClick={() => handleUpdate('transparent', !transparentFooter)}
+              className={`rounded-lg border px-3 py-1.5 text-[10px] font-bold transition-colors cursor-pointer ${
+                transparentFooter
+                  ? 'border-blue-600 bg-blue-600 text-white'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              شفاف
+            </button>
+          </div>
           {/* Brand Info */}
           <div className="space-y-2 p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl">
             <span className="text-[11px] font-bold text-slate-700 block">الهوية والوصف</span>

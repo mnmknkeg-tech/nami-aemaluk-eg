@@ -28,6 +28,9 @@ export const mergeWebsiteSettings = (
         : current.floatingActions,
       seo: patch.seo ? { ...current.seo, ...patch.seo } : current.seo,
       branding: patch.branding ? { ...current.branding, ...patch.branding } : current.branding,
+      background: patch.background
+        ? { ...current.background, ...patch.background }
+        : current.background,
     } as WebsiteSettings,
   };
 };

@@ -114,6 +114,7 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
   const showPhone = Boolean(parentSection.props?.showPhone ?? node.props?.showPhone);
   const phoneNumber = (parentSection.props?.phoneNumber || node.props?.phoneNumber || '') as string;
   const stickyHeader = Boolean(parentSection.props?.sticky ?? node.props?.sticky);
+  const transparentHeader = Boolean(parentSection.props?.transparent ?? node.props?.transparent);
 
   const updateProp = (key: string, val: any) => {
     handlePropChange(parentSection.id, key, val);
@@ -339,7 +340,24 @@ export const HeaderSettingsSection: React.FC<HeaderSettingsSectionProps> = ({
             )}
           </div>
 
-          {/* 5. Sticky Header Toggle */}
+          {/* 5. Transparent Header Toggle */}
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+            <span className="text-xs font-bold text-slate-800">شفاف</span>
+            <button
+              type="button"
+              aria-pressed={transparentHeader}
+              onClick={() => updateProp('transparent', !transparentHeader)}
+              className={`rounded-lg border px-3 py-1.5 text-[10px] font-bold transition-colors cursor-pointer ${
+                transparentHeader
+                  ? 'border-blue-600 bg-blue-600 text-white'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              شفاف
+            </button>
+          </div>
+
+          {/* 6. Sticky Header Toggle */}
           <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
             <div className="flex items-center justify-between">
               <div>

@@ -9,6 +9,30 @@ export interface ResponsiveStyleMap<T extends object> {
   mobile?: Partial<T>;
 }
 
+export interface WebsiteBackgroundStyleInput {
+  enabled?: boolean;
+  imageUrl?: string;
+  size?: string;
+  position?: string;
+  repeat?: string;
+  attachment?: string;
+}
+
+/** CSS for the optional long page background configured in the builder. */
+export function computeWebsiteBackgroundStyles(
+  background?: WebsiteBackgroundStyleInput
+): CSSProperties {
+  if (!background?.enabled || !background.imageUrl) return {};
+  const imageUrl = background.imageUrl.replace(/"/g, '\\"');
+  return {
+    backgroundImage: `url("${imageUrl}")`,
+    backgroundSize: background.size || 'cover',
+    backgroundPosition: background.position || 'center top',
+    backgroundRepeat: background.repeat || 'no-repeat',
+    backgroundAttachment: background.attachment || 'scroll',
+  };
+}
+
 /** Merge a component's desktop styles with its active responsive overrides. */
 export function mergeResponsiveStyles<T extends object>(
   styles: ResponsiveStyleMap<T> | undefined,
@@ -43,7 +67,8 @@ export function computeWebsiteRootStyles(
     colors?: { background?: string; textPrimary?: string };
     typography?: { fontBody?: string };
   },
-  direction: CSSProperties['direction']
+  direction: CSSProperties['direction'],
+  background?: WebsiteBackgroundStyleInput
 ): CSSProperties {
   return {
     backgroundColor: theme.colors?.background || '#ffffff',
@@ -51,6 +76,8 @@ export function computeWebsiteRootStyles(
     fontFamily: theme.typography?.fontBody || 'Cairo, sans-serif',
     direction,
     minHeight: '100vh',
+    position: 'relative',
+    ...computeWebsiteBackgroundStyles(background),
   };
 }
 
@@ -92,6 +119,24 @@ export function computeResponsiveNodeStyles(
   // breakpoint; authored desktop widths should not be clipped on small laptops.
   if (node.type === 'header' || node.category === 'section' || node.type === 'container') {
     css.maxWidth = '100%';
+  }
+
+  // Transparent headers overlay the first visual section (usually the hero).
+  // If the hero is removed, the page root's long background remains underneath.
+  // Footers stay in normal flow while allowing that same background to show.
+  if ((node.type === 'header' || node.type === 'footer') && node.props?.transparent) {
+    css.backgroundColor = 'transparent';
+    css.backgroundImage = 'none';
+    css.boxShadow = 'none';
+    css.borderColor = 'transparent';
+    if (node.type === 'header') {
+      css.position = 'absolute';
+      css.top = '0px';
+      css.left = '0px';
+      css.right = '0px';
+      css.width = '100%';
+      css.zIndex = 50;
+    }
   }
 
   // Responsive Tablet Safeguards:

@@ -505,7 +505,14 @@ export interface WebsiteBrandingSettings {
   faviconUrl?: string;
   customCss?: string;
 }
-
+export interface WebsiteBackgroundSettings {
+  enabled?: boolean;
+  imageUrl?: string;
+  size?: 'cover' | 'contain' | 'auto' | string;
+  position?: string;
+  repeat?: 'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y' | string;
+  attachment?: 'scroll' | 'fixed' | 'local' | string;
+}
 export type CartIconType = 'ShoppingBag' | 'ShoppingCart' | 'Store' | 'Package' | 'CreditCard';
 export type HeaderCartVisibilityOverride = 'inherit' | 'show' | 'hide';
 
@@ -526,6 +533,7 @@ export interface WebsiteSettings {
   floatingActions?: WebsiteFloatingActionsSettings;
   seo?: WebsiteSeoSettings;
   branding?: WebsiteBrandingSettings;
+  background?: WebsiteBackgroundSettings;
   cart?: WebsiteCartSettings;
 }
 

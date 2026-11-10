@@ -7,16 +7,19 @@ import { AnnouncementSettingsSection } from './settings/AnnouncementSettingsSect
 import { FloatingActionsSection } from './settings/FloatingActionsSection';
 import { SeoSettingsSection } from './settings/SeoSettingsSection';
 import { CartSettingsSection } from './settings/CartSettingsSection';
+import { BackgroundSettingsSection } from './settings/BackgroundSettingsSection';
 
 export const SiteSettingsPanel: React.FC = () => {
   const { website } = useBuilder();
   const settings: WebsiteSettings = website.settings || {};
 
   const [activeSection, setActiveSection] = useState<
-    'cart' | 'auth' | 'announcement' | 'floating' | 'seo' | null
+    'cart' | 'auth' | 'announcement' | 'floating' | 'seo' | 'background' | null
   >('cart');
 
-  const toggleSection = (sec: 'cart' | 'auth' | 'announcement' | 'floating' | 'seo') => {
+  const toggleSection = (
+    sec: 'cart' | 'auth' | 'announcement' | 'floating' | 'seo' | 'background'
+  ) => {
     setActiveSection(activeSection === sec ? null : sec);
   };
 
@@ -69,6 +72,13 @@ export const SiteSettingsPanel: React.FC = () => {
       <SeoSettingsSection
         isOpen={activeSection === 'seo'}
         onToggle={() => toggleSection('seo')}
+        settings={settings}
+      />
+
+      {/* 6. الخلفية الطويلة للصفحة */}
+      <BackgroundSettingsSection
+        isOpen={activeSection === 'background'}
+        onToggle={() => toggleSection('background')}
         settings={settings}
       />
     </div>

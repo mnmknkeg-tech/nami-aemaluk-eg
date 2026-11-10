@@ -36,6 +36,7 @@ import {
   type ResponsiveViewport,
   type StyleProperties,
   type WebsiteCartSettings,
+  type WebsiteBackgroundSettings,
   CartIcon,
   isCartVisible,
   normalizeCatalogProduct,
@@ -80,7 +81,7 @@ interface BuilderWebsite {
     typography?: { fontBody?: string; fontHeading?: string };
     radius?: { sm?: string; md?: string; lg?: string; full?: string };
   };
-  settings?: { cart?: WebsiteCartSettings };
+  settings?: { cart?: WebsiteCartSettings; background?: WebsiteBackgroundSettings };
   defaultDirection?: string;
 }
 
@@ -1177,7 +1178,11 @@ export function BuilderTreeRenderer({ website, shop, products }: BuilderTreeRend
       <div
         ref={rootRef}
         className="merchant-site-builder"
-        style={computeWebsiteRootStyles(safeWebsite.theme, direction)}
+        style={computeWebsiteRootStyles(
+          safeWebsite.theme,
+          direction,
+          safeWebsite.settings?.background
+        )}
       >
         <NodeRenderer nodeId={activePage.rootNodeId} website={safeWebsite} />
       </div>
