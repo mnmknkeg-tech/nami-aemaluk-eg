@@ -47,7 +47,20 @@ export default function NotificationsPage() {
       }
       try {
         const data = await jsonRequest<any>('/notifications/me');
-        setNotifications(Array.isArray(data) ? data : (data?.items ?? []));
+        const list = Array.isArray(data) ? data : (data?.items ?? []);
+        // Backend sends snake_case ({content, is_read, created_at}); the page
+        // renders camelCase — normalize here so bodies/dates/unread states show.
+        setNotifications(
+          (Array.isArray(list) ? list : []).map((n: any) => ({
+            id: String(n?.id ?? ''),
+            type: String(n?.type ?? 'SYSTEM'),
+            title: String(n?.title ?? ''),
+            body: String(n?.content ?? n?.body ?? ''),
+            link: n?.metadata?.link ?? n?.link ?? undefined,
+            read: Boolean(n?.read ?? n?.is_read ?? false),
+            createdAt: String(n?.createdAt ?? n?.created_at ?? ''),
+          }))
+        );
       } catch {}
       setLoading(false);
     })();

@@ -75,6 +75,8 @@ export interface Product {
   rating?: number;
   reviewCount?: number;
   tags?: string[];
+  /** Optional override for the card link (e.g. shop-level offers). */
+  href?: string;
 }
 
 function normalizeShop(raw: any): Shop {
@@ -251,11 +253,74 @@ export async function getProductById(id: string): Promise<Product | null> {
   }
 }
 
+/** Slug → backend shop-category enum (offers pages use friendly slugs). */
+const OFFER_CATEGORY_MAP: Record<string, string> = {
+  restaurants: 'RESTAURANT',
+  restaurant: 'RESTAURANT',
+  cafe: 'RESTAURANT',
+  cafes: 'RESTAURANT',
+  supermarket: 'RETAIL',
+  market: 'RETAIL',
+  grocery: 'RETAIL',
+  retail: 'RETAIL',
+  fashion: 'FASHION',
+  electronics: 'ELECTRONICS',
+  services: 'SERVICE',
+  service: 'SERVICE',
+  food: 'FOOD',
+  foods: 'FOOD',
+  health: 'HEALTH',
+  pharmacy: 'HEALTH',
+  other: 'OTHER',
+};
+
+/**
+ * Backend OfferResponse → Product card shape.
+ *
+ * Offers carry `newPrice/oldPrice/title/imageUrl` (not the product fields the
+ * cards read), so without this mapping every offer card rendered without a
+ * price and linked to a non-existent `/product/{offerId}` page.
+ */
+function normalizeOfferToProduct(raw: any): Product {
+  const offer = raw || {};
+  const num = (v: any): number | undefined => {
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    if (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v))) return Number(v);
+    return undefined;
+  };
+  const oldPrice = num(offer.oldPrice ?? offer.old_price);
+  const newPrice = num(offer.newPrice ?? offer.new_price);
+  const productId = String(offer.productId ?? offer.product_id ?? '').trim();
+  const shopSlug = String(offer.shopSlug ?? offer.shop_slug ?? '').trim();
+  const image = normalizeImageUrl(offer.imageUrl || offer.image_url || '');
+  return {
+    ...offer,
+    // Linked to the real product when the offer is tied to one; legacy
+    // shop-level offers (no product) point to the shop page instead.
+    id: productId || offer.id,
+    href: productId ? undefined : shopSlug ? `/shop/${shopSlug}` : undefined,
+    shopId: offer.shopId ?? offer.shop_id ?? '',
+    shopName: offer.shopName ?? offer.shop_name ?? undefined,
+    shopSlug: shopSlug || undefined,
+    name: offer.title || offer.name || 'عرض خاص',
+    description: offer.description || undefined,
+    price: newPrice ?? oldPrice,
+    oldPrice: oldPrice != null && newPrice != null && oldPrice > newPrice ? oldPrice : undefined,
+    imageUrl: image || undefined,
+    images: image ? [image] : undefined,
+    category: offer.category || undefined,
+  } as Product;
+}
+
 export async function getOffers(category?: string): Promise<Product[]> {
   try {
-    const path = category ? `/offers?category=${category}` : '/offers';
+    const enumCategory = category
+      ? (OFFER_CATEGORY_MAP[category.toLowerCase()] ?? category.toUpperCase())
+      : '';
+    const path = enumCategory ? `/offers?shopCategory=${enumCategory}` : '/offers';
     const data = await api.get<any>(path, { revalidate: 300, tags: ['offers'] });
-    return Array.isArray(data) ? data : (data?.data ?? data?.items ?? []);
+    const list = Array.isArray(data) ? data : (data?.data ?? data?.items ?? []);
+    return Array.isArray(list) ? list.map(normalizeOfferToProduct) : [];
   } catch {
     return [];
   }

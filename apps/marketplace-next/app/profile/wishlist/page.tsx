@@ -34,7 +34,12 @@ export default function ProfileWishlistPage() {
     const loadData = async () => {
       try {
         const userData = await api.get('/auth/me');
-        setUser((userData as any)?.user ?? (userData as any)?.data?.user ?? userData);
+        // /auth/me returns {success, data: User} and api.get does NOT unwrap —
+        // so the user object lives at `.data` (never `.data.user`).
+        setUser(
+          ((userData as any)?.data?.user ?? (userData as any)?.user ?? (userData as any)?.data ??
+            userData) as any
+        );
       } catch (error) {
         console.error('Failed to fetch profile:', error);
       } finally {

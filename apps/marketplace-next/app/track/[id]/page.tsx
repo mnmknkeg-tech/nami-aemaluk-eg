@@ -98,7 +98,9 @@ export default function TrackOrderPage() {
     (async () => {
       setLoading(true);
       try {
-        const data = await jsonRequest<OrderData>(`/orders/${orderId}`);
+        // Public tracking endpoint — works for guests (no login) and shows a
+        // limited PII-free view. The authed /orders/:id stays owner-only.
+        const data = await jsonRequest<OrderData>(`/orders/public/${orderId}`);
         setOrder(data);
       } catch (err: any) {
         setError(err?.message || 'فشل تحميل الطلب');

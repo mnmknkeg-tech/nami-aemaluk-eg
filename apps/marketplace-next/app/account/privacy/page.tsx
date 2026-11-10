@@ -90,7 +90,7 @@ export default function PrivacySettingsPage() {
     setConsents(readConsents());
 
     // Load DSR requests
-    fetch('/api/v1/dsr', {
+    fetch('/api/v1/dsr/me', {
       credentials: 'include',
       headers: { 'X-App-Scope': APP_SCOPE },
     })
@@ -141,7 +141,7 @@ export default function PrivacySettingsPage() {
         body: JSON.stringify({ type }),
       });
       // Refresh list
-      const res = await fetch('/api/v1/dsr', {
+      const res = await fetch('/api/v1/dsr/me', {
         credentials: 'include',
         headers: { 'X-App-Scope': APP_SCOPE },
       });

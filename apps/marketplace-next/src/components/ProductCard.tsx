@@ -46,7 +46,10 @@ export function ProductCard({
     <div className="card-contain group relative flex flex-col h-full bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 hover:border-brand-cyan/40 hover:shadow-lg dark:hover:shadow-cyan-950/20 transition-all duration-300">
       {/* Clickable link over the whole card */}
       <Link
-        href={siteSlug ? `/site/${siteSlug}/product/${product.id}` : `/product/${product.id}`}
+        href={
+          product.href ||
+          (siteSlug ? `/site/${siteSlug}/product/${product.id}` : `/product/${product.id}`)
+        }
         className="absolute inset-0 z-0"
         aria-label={product.name || 'تفاصيل المنتج'}
       >

@@ -95,9 +95,10 @@ export default function ProfileSettingsPage() {
 
       // Update password if provided
       if (form.newPassword) {
+        // Backend DTO expects camelCase {currentPassword, newPassword}.
         await api.post('/auth/change-password', {
-          current_password: form.currentPassword,
-          new_password: form.newPassword,
+          currentPassword: form.currentPassword,
+          newPassword: form.newPassword,
         });
       }
 

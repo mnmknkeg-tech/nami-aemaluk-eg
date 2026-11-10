@@ -44,7 +44,11 @@ export default function ProfileOrdersPage() {
     const loadData = async () => {
       try {
         const userData = await api.get('/auth/me');
-        setUser((userData as any)?.user ?? (userData as any)?.data?.user ?? userData);
+        // /auth/me returns {success, data: User} — the user object is `.data`.
+        setUser(
+          ((userData as any)?.data?.user ?? (userData as any)?.user ?? (userData as any)?.data ??
+            userData) as any
+        );
 
         const ordersData = await api.get('/orders/me');
         setOrders(((ordersData as any)?.data ?? ordersData ?? []) as Order[]);
@@ -64,10 +68,11 @@ export default function ProfileOrdersPage() {
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
+    switch (String(status || '').toUpperCase()) {
+      case 'DELIVERED':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'cancelled':
+      case 'CANCELLED':
+      case 'REFUNDED':
         return <XCircle className="w-5 h-5 text-red-500" />;
       default:
         return <Clock className="w-5 h-5 text-amber-500" />;
@@ -75,27 +80,37 @@ export default function ProfileOrdersPage() {
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case 'completed':
+    // Backend statuses are uppercase: PENDING/CONFIRMED/PREPARING/READY/
+    // OUT_FOR_DELIVERY/DELIVERED/CANCELLED/REFUNDED.
+    switch (String(status || '').toUpperCase()) {
+      case 'PENDING':
+        return 'قيد المراجعة';
+      case 'CONFIRMED':
+        return 'تم التأكيد';
+      case 'PREPARING':
+        return 'جاري التجهيز';
+      case 'READY':
+        return 'جاهز';
+      case 'OUT_FOR_DELIVERY':
+        return 'في الطريق';
+      case 'DELIVERED':
         return 'مكتمل';
-      case 'cancelled':
+      case 'CANCELLED':
         return 'ملغي';
-      case 'pending':
-        return 'قيد المعالجة';
-      case 'processing':
-        return 'جاري التحضير';
-      case 'shipped':
-        return 'قيد الشحن';
+      case 'REFUNDED':
+        return 'تم الإرجاع';
       default:
         return status;
     }
   };
 
   const filteredOrders = orders.filter((o) => {
+    const s = String(o.status || '').toUpperCase();
     if (filter === 'all') return true;
-    if (filter === 'completed') return o.status === 'completed';
-    if (filter === 'cancelled') return o.status === 'cancelled';
-    if (filter === 'pending') return o.status === 'pending' || o.status === 'processing';
+    if (filter === 'completed') return s === 'DELIVERED';
+    if (filter === 'cancelled') return s === 'CANCELLED' || s === 'REFUNDED';
+    if (filter === 'pending')
+      return s === 'PENDING' || s === 'CONFIRMED' || s === 'PREPARING' || s === 'READY';
     return true;
   });
 

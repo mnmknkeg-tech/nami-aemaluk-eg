@@ -45,7 +45,11 @@ export default function ProfilePage() {
   const fetchUserData = async () => {
     try {
       const userData = await api.get('/auth/me');
-      setUser((userData as any)?.user ?? (userData as any)?.data?.user ?? userData);
+      // /auth/me returns {success, data: User} — the user object is `.data`.
+      setUser(
+        ((userData as any)?.data?.user ?? (userData as any)?.user ?? (userData as any)?.data ??
+          userData) as any
+      );
 
       const ordersData = await api.get('/orders/me');
       setOrders(((ordersData as any)?.data ?? ordersData ?? []) as Order[]);
