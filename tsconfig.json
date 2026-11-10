@@ -15,12 +15,12 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "paths": {
-      "@ray-eg/shared": ["packages/shared/src/index.ts"],
-      "@ray-eg/shared/*": ["packages/shared/src/*"],
-      "@/*": ["packages/shared/src/*"],
-      "@shared/*": ["packages/shared/src/*"],
-      "@assets/*": ["packages/shared/src/assets/*"],
-      "@marketplace-lib/*": ["apps/marketplace-next/src/lib/*"]
+      "@ray-eg/shared": ["./packages/shared/src/index.ts"],
+      "@ray-eg/shared/*": ["./packages/shared/src/*"],
+      "@/*": ["./packages/shared/src/*"],
+      "@shared/*": ["./packages/shared/src/*"],
+      "@assets/*": ["./packages/shared/src/assets/*"],
+      "@marketplace-lib/*": ["./apps/marketplace-next/src/lib/*"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
