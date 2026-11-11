@@ -52,11 +52,11 @@ type DBConfig struct {
 	// MaxOpenConns is the maximum number of open (in-use) connections in the
 	// pgxpool. This is a hard per-process cap; it is NOT the application-wide
 	// session budget.
-	MaxOpenConns int `env:"DB_MAX_OPEN_CONNS" envDefault:"10"`
+	MaxOpenConns int `env:"DB_MAX_OPEN_CONNS" envDefault:"8"`
 	// MaxIdleConns is the maximum number of idle connections kept open in the
 	// pool. Idle connections consume a session from the pooler just like open
 	// connections, so they count against the Supabase Session Pooler limit too.
-	MaxIdleConns int `env:"DB_MAX_IDLE_CONNS" envDefault:"3"`
+	MaxIdleConns int `env:"DB_MAX_IDLE_CONNS" envDefault:"2"`
 	// ConnMaxLifetime is the maximum amount of time a connection may be reused.
 	ConnMaxLifetime time.Duration `env:"DB_CONN_MAX_LIFETIME" envDefault:"30m"`
 	// ConnMaxIdleTime is the maximum amount of time a connection may remain

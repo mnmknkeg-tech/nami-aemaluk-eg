@@ -36,6 +36,14 @@ func main() {
 	}
 	logger.SetGlobal(logr)
 
+	// The worker shares the Supabase Session Pooler's 15-client session budget
+	// with the API process. Unless the operator explicitly sized this service,
+	// keep its pool small so api + worker together stay under the pooler limit.
+	if os.Getenv("DB_MAX_OPEN_CONNS") == "" && os.Getenv("DB_POOL_MAX_CONNS") == "" {
+		cfg.DB.MaxOpenConns = 3
+		cfg.DB.MaxIdleConns = 1
+	}
+
 	redisClient := redis.New(cfg.Redis, logr)
 
 	var pool *db.Pool

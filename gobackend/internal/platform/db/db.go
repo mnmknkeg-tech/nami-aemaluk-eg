@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"strings"
 	"time"
@@ -124,6 +125,12 @@ func New(ctx context.Context, cfg config.DBConfig, log *zap.Logger) (*Pool, erro
 	if cfg.MigrateOnBoot {
 		if err := p.MigrateUp(); err != nil {
 			log.Error("migration failed", zap.Error(err))
+			// Release every pooled session before returning. Idle pool
+			// connections count against the Supabase Session Pooler's
+			// 15-client budget, so a leaked pool gets multiplied by each
+			// retry attempt until the pooler rejects even the ping
+			// (EMAXCONNSESSION) and the service crash-loops.
+			pool.Close()
 			return nil, err
 		}
 	}
@@ -258,13 +265,21 @@ func (p *Pool) MigrateUp() error {
 }
 
 // toMigrateURL rewrites postgres/postgresql schemes to the pgx5 driver scheme
-// expected by golang-migrate.
+// expected by golang-migrate. It also points transaction-pooler URLs (:6543)
+// at the session pooler (:5432) of the same project: golang-migrate relies on
+// prepared statements, which Supabase's Supavisor transaction mode cannot
+// keep across transactions.
 func toMigrateURL(raw string) string {
 	if strings.HasPrefix(raw, "postgresql://") {
-		return "pgx5" + strings.TrimPrefix(raw, "postgresql")
+		raw = "pgx5" + strings.TrimPrefix(raw, "postgresql")
+	} else if strings.HasPrefix(raw, "postgres://") {
+		raw = "pgx5" + strings.TrimPrefix(raw, "postgres")
 	}
-	if strings.HasPrefix(raw, "postgres://") {
-		return "pgx5" + strings.TrimPrefix(raw, "postgres")
+	if u, err := url.Parse(raw); err == nil && u.Port() == "6543" {
+		if host, _, splitErr := net.SplitHostPort(u.Host); splitErr == nil {
+			u.Host = net.JoinHostPort(host, "5432")
+			raw = u.String()
+		}
 	}
 	return raw
 }

@@ -155,6 +155,22 @@ nslookup -type=NS ray.eg 193.227.1.1   # سيرفر نطاق .eg المصري
 ```
 لازم ترجع NS records. لو رجّعت NXDOMAIN، خلّص تسجيل الدومين وربطه عند المسجّل.
 
+### 7. `FATAL: (EMAXCONNSESSION) max clients reached in session mode — pool_size: 15`
+
+كل الـ 15 اتصال اللي بيسمح بيهم Supabase Session Pooler محجوزين. أشهر سببين:
+
+1. **ملف migration مكرر بنفس الرقم** — بيفشل الـ boot، وكل إعادة تشغيل كانت
+   بتسرّب اتصالات الـ pool (اتصلّحت: `db.New` بيقفل الـ pool لو الـ migration
+   فشل). اتأكد:
+   ```bash
+   ls migrations/*.up.sql | cut -c1-6 | sort | uniq -d   # لازم يرجّع فاضي
+   ```
+2. **أكثر من عملية بياكلوا من نفس الميزانية** — API + worker + تشغيل محلي +
+   بيئات معاينة، كلهم على نفس مشروع Supabase. الميزانية الجديدة الافتراضية:
+   API حتى 8+2، worker 3+1 تلقائيًا. وتأكد إن:
+   - `DB_MIGRATE_ON_BOOT=true` على خدمة الـ API **فقط** — مش على الـ worker
+   - اقفل أي preview environments قديمة بتتصل بنفس قاعدة البيانات
+
 ---
 
 ## لو عايز تشغل محلياً
