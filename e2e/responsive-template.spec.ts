@@ -200,3 +200,18 @@ for (const template of [
     });
   }
 }
+
+test.describe('published background parity', () => {
+  // Regression guard for the "background shows in the editor but disappears
+  // after publishing" class of bugs: a section background authored in the
+  // builder template must reach the live DOM with its exact authored value.
+  test('hero keeps its authored background color after publishing', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await page.goto('/site/responsive-restaurant');
+    const hero = page.locator('#rest_hero');
+    await expect(hero).toBeVisible();
+    // Authored desktop style in sampleActivities/restaurant.ts: #fffbeb.
+    await expect(hero).toHaveCSS('background-color', 'rgb(255, 251, 235)');
+    await expect(hero).toHaveCSS('border-bottom-color', 'rgb(254, 243, 199)');
+  });
+});
