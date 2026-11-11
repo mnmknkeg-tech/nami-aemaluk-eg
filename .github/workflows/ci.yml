@@ -53,7 +53,33 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        # ubuntu-latest runners intermittently fail to resolve the Ubuntu
+        # archives (runner DNS flake), which kills `install-deps` even though
+        # every library is already present. Retry apt a few times; if it still
+        # fails, verify the required libraries via dpkg instead of failing CI.
+        run: |
+          npx playwright install chromium
+          ok=0
+          for attempt in 1 2 3; do
+            if sudo npx playwright install-deps chromium; then
+              ok=1
+              break
+            fi
+            echo "apt attempt $attempt failed (likely runner DNS flake); retrying in 15s..."
+            sleep 15
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "::warning::playwright install-deps kept failing; verifying required libraries are already installed"
+            missing=0
+            for pkg in libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64 libatspi2.0-0t64 libcairo2 libcups2t64 libdbus-1-3 libdrm2 libgbm1 libglib2.0-0t64 libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1 libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 xvfb fonts-noto-color-emoji libfontconfig1 libfreetype6; do
+              if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+                echo "Missing Playwright system dependency: $pkg"
+                missing=1
+              fi
+            done
+            [ "$missing" -eq 0 ] || exit 1
+            echo "All required libraries are already installed — continuing."
+          fi
       - name: Test smoke and responsive published fixtures
         # commerce.spec.ts is intentionally excluded: it mutates a dev merchant
         # through a dev-login API instead of using an isolated test fixture.
