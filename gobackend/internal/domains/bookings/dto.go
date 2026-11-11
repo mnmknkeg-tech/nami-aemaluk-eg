@@ -1,6 +1,7 @@
 package bookings
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 )
@@ -69,6 +70,13 @@ type UpdateBookingStatusRequest struct {
 	Status string `json:"status" validate:"required"`
 }
 
+// RescheduleBookingRequest is the payload for moving a booking to a new
+// Cairo wall-clock time. The time is interpreted in Africa/Cairo, not UTC.
+type RescheduleBookingRequest struct {
+	BookingDate string `json:"bookingDate" validate:"required"`
+	BookingTime string `json:"bookingTime" validate:"required"`
+}
+
 // BookingResponse is the serialized booking response.
 type BookingResponse struct {
 	ID                   string    `json:"id"`
@@ -118,7 +126,104 @@ func normalizeBookingStatus(s string) string {
 		return "COMPLETED"
 	case "CANCELLED":
 		return "CANCELLED"
+	case "NO_SHOW":
+		return "NO_SHOW"
 	default:
 		return ""
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Booking services (bookable offerings) — CRUD + public contracts.
+// ---------------------------------------------------------------------------
+
+// BookingService is a bookable offering owned by a shop (a clinic visit, a
+// hotel night, a table, a consultation...).
+type BookingService struct {
+	ID              string          `json:"id"`
+	ShopID          string          `json:"shopId"`
+	Name            string          `json:"name"`
+	NameAr          *string         `json:"nameAr,omitempty"`
+	ActivityType    *string         `json:"activityType,omitempty"`
+	Description     *string         `json:"description,omitempty"`
+	DurationMinutes int             `json:"durationMinutes"`
+	Price           float64         `json:"price"`
+	Currency        string          `json:"currency"`
+	Capacity        int             `json:"capacity"`
+	IsActive        bool            `json:"isActive"`
+	ProductID       string          `json:"productId,omitempty"`
+	Metadata        json.RawMessage `json:"-"`
+	CreatedAt       time.Time       `json:"createdAt"`
+	UpdatedAt       time.Time       `json:"updatedAt"`
+}
+
+// CreateBookingServiceRequest is the merchant payload to add a bookable service.
+type CreateBookingServiceRequest struct {
+	Name            string  `json:"name" validate:"required"`
+	NameAr          string  `json:"nameAr,omitempty"`
+	ActivityType    string  `json:"activityType,omitempty"`
+	Description     string  `json:"description,omitempty"`
+	DurationMinutes int     `json:"durationMinutes,omitempty"`
+	Price           float64 `json:"price" validate:"min=0"`
+	Capacity        int     `json:"capacity,omitempty"`
+	IsActive        *bool   `json:"isActive,omitempty"`
+}
+
+// UpdateBookingServiceRequest is the merchant payload to edit a bookable service.
+// Zero-value fields are left untouched.
+type UpdateBookingServiceRequest struct {
+	Name            *string  `json:"name,omitempty"`
+	NameAr          *string  `json:"nameAr,omitempty"`
+	ActivityType    *string  `json:"activityType,omitempty"`
+	Description     *string  `json:"description,omitempty"`
+	DurationMinutes *int     `json:"durationMinutes,omitempty"`
+	Price           *float64 `json:"price,omitempty"`
+	Capacity        *int     `json:"capacity,omitempty"`
+	IsActive        *bool    `json:"isActive,omitempty"`
+}
+
+// PublicBookingServiceResponse is the visitor-safe projection of a bookable
+// service shown on the public booking page (no shop-internal bookkeeping).
+type PublicBookingServiceResponse struct {
+	ID              string  `json:"id"`
+	Name            string  `json:"name"`
+	Description     string  `json:"description,omitempty"`
+	DurationMinutes int     `json:"durationMinutes"`
+	Price           float64 `json:"price"`
+	Currency        string  `json:"currency"`
+	Capacity        int     `json:"capacity"`
+	ProductID       string  `json:"productId,omitempty"`
+}
+
+// PublicBookingLookupResponse is the limited guest-safe projection returned by
+// the track-by-number lookup. It intentionally exposes no internal ids.
+type PublicBookingLookupResponse struct {
+	BookingNumber string    `json:"bookingNumber"`
+	Status        string    `json:"status"`
+	ServiceName   string    `json:"serviceName,omitempty"`
+	ShopName      string    `json:"shopName,omitempty"`
+	BookingDate   string    `json:"bookingDate,omitempty"`
+	BookingTime   string    `json:"bookingTime,omitempty"`
+	CreatedAt     time.Time `json:"createdAt"`
+}
+
+// ShopBookingSettings carries the merchant's booking rules stored in
+// shops.page_design (written by the dashboard BookingSettingsTab).
+type ShopBookingSettings struct {
+	WorkStart         string // "09:00"
+	WorkEnd           string // "21:00"
+	SlotDuration      int    // minutes, fallback slot grid step
+	AdvanceDays       int    // how far ahead booking is open
+	AutoConfirm       bool
+	MaxPerSlot        int
+	PreventDuplicates bool
+}
+
+// BookingListFilter narrows the merchant dashboard list by time range
+// (Cairo dates, inclusive) and status, with an explicit ordering.
+type BookingListFilter struct {
+	From   string
+	To     string
+	Status string
+	Order  string // "asc" | "desc" (created_at / start_at aware)
 }

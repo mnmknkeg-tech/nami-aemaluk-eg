@@ -7,6 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	// Embed tzdata so Africa/Cairo reminder scheduling works in minimal images.
+	_ "time/tzdata"
 
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/config"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/domains/media"

@@ -2,6 +2,9 @@ package main
 
 import (
 	"log"
+	// Embed tzdata so Africa/Cairo booking times resolve even in
+	// scratch/alpine runtime images without the OS tz database.
+	_ "time/tzdata"
 
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/app"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/config"
