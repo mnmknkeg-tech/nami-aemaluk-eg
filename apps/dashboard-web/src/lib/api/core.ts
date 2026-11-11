@@ -14,7 +14,7 @@
  * Signatures match the old apiRequest/apiRequestWithMeta, so the 674
  * existing call sites keep working untouched.
  */
-import { clearToken, readToken, readUserJSON, writeUserJSON } from '../session-keys';
+import { clearToken, readToken, writeUserJSON } from '../session-keys';
 
 const API_BASE = '/api/v1';
 const APP_SCOPE = 'dashboard';
@@ -146,11 +146,6 @@ let refreshInFlight: Promise<string | null> | null = null;
 export async function refreshSession(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
   if (refreshInFlight) return refreshInFlight;
-
-  // No cached user, no bridge token and no tracked expiry → there is no
-  // ray_session cookie worth exchanging (e.g. a fresh visitor on /signup or
-  // /login). Skipping avoids a guaranteed 401 refresh call in the console.
-  if (!readUserJSON() && !readToken() && accessExpiresAt === 0) return null;
 
   refreshInFlight = (async () => {
     try {
