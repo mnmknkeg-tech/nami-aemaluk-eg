@@ -9,7 +9,6 @@ import { ActivityStories } from '@/components/ActivityStories';
 import { ProductRail } from '@/components/ProductRail';
 
 import { HeroSearch } from '@/components/HeroSearch';
-import { AppDownloadBanner } from '@/components/AppDownloadBanner';
 import { WelcomeToast } from '@/components/WelcomeToast';
 import { serializeJsonLd } from '@/lib/jsonld';
 
@@ -152,46 +151,6 @@ export default async function HomePage() {
     })),
   };
 
-  // FAQ structured data — أسئلة شائعة عن المنصة.
-  const faqJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: [
-      {
-        '@type': 'Question',
-        name: 'إيه هي منصة من مكانك؟',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'من مكانك منصة مصرية بتجمع التسوّق والمطاعم والحجوزات والخدمات في مكان واحد — تقدر تطلب منتجات بالسعر والسلة، تطلب من مطاعمك المفضلة، تحجز مواعيد عياداتك وجيمك، وتطلب أي خدمة لحد باب البيت.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'أقدر أطلب من أنهي أقسام؟',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'كل الأقسام متوفرة: مطاعم وكافيهات، سوبر ماركت، مخابز وحلويات، ملابس وأزياء، إلكترونيات وموبايلات، أثاث وديكور، صيدلية ومستحضرات، عيادات ومراكز طبية، جيم ولياقة، سيارات، عقارات، مقاولات وتشطيبات، خدمات مهنية، خدمات منزلية، وزراعة.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'أزاي أطلب أو أحجز؟',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'اختار القسم من صفحة الأقسام، صفّ المنتجات أو الخدمات، بعدين اختار طريقة الطلب المناسبة: اطلب بالسلة لو فيه سعر، احجز موعد لو القسم حجوزات، أو اطلب عرض سعر لو الخدمة بتعتمد على التفاصيل.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'هل التوصيل متاح في كل مصر؟',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'من مكانك بتغطّي محافظات مصر الكبرى — اختر محافظتك من أعلى الموقع عشان تشوف المتاجر والخدمات المتاحة في منطقتك.',
-        },
-      },
-    ],
-  };
-
   return (
     <div className="overflow-hidden">
       <script
@@ -205,10 +164,6 @@ export default async function HomePage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(featuredListJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }}
       />
 
       {/* Welcome toast after login/signup */}
@@ -404,67 +359,6 @@ export default async function HomePage() {
           </div>
         </section>
       )}
-
-      {/* ===== أسئلة شائعة — لتحسين SEO + تجربة المستخدم ===== */}
-      <section aria-label="أسئلة شائعة" className="py-10 md:py-16 bg-white dark:bg-brand-black">
-        <div className="max-w-[900px] mx-auto px-4 md:px-6">
-          <SectionHeader
-            kicker="معلومات"
-            title="أسئلة شائعة عن من مكانك"
-            subtitle="كل اللي محتاج تعرفه قبل ما تبدأ تطلب أو تحجز"
-            icon={<Store className="w-5 h-5" />}
-            accent="#F97316"
-            align="center"
-          />
-          <div className="mt-4 md:mt-6 space-y-3">
-            {[
-              {
-                q: 'إيه هي منصة من مكانك؟',
-                a: 'من مكانك منصة مصرية بتجمع التسوّق والمطاعم والحجوزات والخدمات في مكان واحد. تقدر تطلب منتجات بالسعر والسلة، تطلب من مطاعمك المفضلة، تحجز مواعيد عياداتك وجيمك، وتطلب أي خدمة لحد باب البيت.',
-              },
-              {
-                q: 'أقدر أطلب من أنهي أقسام؟',
-                a: 'كل الأقسام متوفرة: مطاعم وكافيهات، سوبر ماركت، مخابز وحلويات، ملابس وأزياء، إلكترونيات وموبايلات، أثاث وديكور، صيدلية ومستحضرات، عيادات ومراكز طبية، جيم ولياقة، سيارات، عقارات، مقاولات وتشطيبات، خدمات مهنية، خدمات منزلية، وزراعة.',
-              },
-              {
-                q: 'أزاي أطلب أو أحجز؟',
-                a: 'اختار القسم من صف الأقسام فوق، صفّ المنتجات أو الخدمات، بعدين اختار طريقة الطلب المناسبة: اطلب بالسلة لو فيه سعر، احجز موعد لو القسم حجوزات، أو اطلب عرض سعر لو الخدمة بتعتمد على التفاصيل.',
-              },
-              {
-                q: 'هل التوصيل متاح في كل مصر؟',
-                a: 'من مكانك بتغطّي محافظات مصر الكبرى — اختر محافظتك من أعلى الموقع عشان تشوف المتاجر والخدمات المتاحة في منطقتك.',
-              },
-              {
-                q: 'أقدر أسجّل متجري على المنصة؟',
-                a: 'نعم — أي تاجر يقدر يسجّل متجره مجاناً من رابط الأعمال في الفوتر، ويظهر متجره لكل العملاء في منطقته مع إمكانية التحكم في الأسعار والمنيو والحجوزات.',
-              },
-            ].map((item, i) => (
-              <details
-                key={i}
-                className="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 overflow-hidden"
-              >
-                <summary className="flex items-center justify-between gap-3 p-4 md:p-5 cursor-pointer list-none font-black text-sm md:text-base text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors">
-                  <span className="flex items-center gap-3">
-                    <span className="w-7 h-7 shrink-0 rounded-lg bg-brand-orange/10 text-brand-orange flex items-center justify-center text-xs">
-                      {i + 1}
-                    </span>
-                    {item.q}
-                  </span>
-                  <span className="text-brand-orange transition-transform group-open:rotate-45 text-xl font-light">
-                    +
-                  </span>
-                </summary>
-                <p className="px-4 md:px-5 pb-4 md:pb-5 -mt-1 text-[12.5px] md:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed pr-12 md:pr-14">
-                  {item.a}
-                </p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* App Download Banner */}
-      <AppDownloadBanner />
     </div>
   );
 }
