@@ -30,6 +30,32 @@ export function Footer() {
   // أكورديون الموبايل: قسم واحد مفتوح في المرة — على الديسكتوب الأعمدة مفتوحة دايماً
   const [openSection, setOpenSection] = useState<string | null>(null);
 
+  // تواصل سريع: أيقونات بس — ميل يفتح الإرسال، تليفون يفتح الاتصال، مكان يفتح الخريطة
+  // (سهلة التوسعة: هنضيف واتساب وغيرها هنا بعدين)
+  const contactActions = [
+    {
+      icon: Mail,
+      href: 'mailto:mnmknk.eg@gmail.com',
+      labelAr: 'راسلنا — mnmknk.eg@gmail.com',
+      labelEn: 'Email us — mnmknk.eg@gmail.com',
+      external: false,
+    },
+    {
+      icon: Phone,
+      href: 'tel:+201067461059',
+      labelAr: 'اتصل بنا — 1059 746 106 20+',
+      labelEn: 'Call us — +20 106 746 1059',
+      external: false,
+    },
+    {
+      icon: MapPin,
+      href: 'https://www.google.com/maps/search/?api=1&query=Cairo%2C%20Egypt',
+      labelAr: 'مقرنا في القاهرة، مصر — افتح الخريطة',
+      labelEn: 'Located in Cairo, Egypt — open map',
+      external: true,
+    },
+  ];
+
   const linkSections = [
     {
       id: 'explore',
@@ -206,42 +232,20 @@ export function Footer() {
               })}
             </div>
 
-            {/* Bottom Info Grid */}
-            <div className="mt-12 pt-8 border-t border-white/5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="flex items-center gap-4 text-white/50 hover:text-brand-cyan transition-colors cursor-default group justify-end">
-                <div className="flex flex-col text-right">
-                  <span className="text-xs font-semibold">{ar ? 'راسلنا' : 'Email Us'}</span>
-                  <span className="text-sm font-semibold text-white">mnmknk.eg@gmail.com</span>
-                </div>
-                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-brand-cyan/10 transition-all">
-                  <Mail className="w-5 h-5" />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 text-white/50 hover:text-brand-cyan transition-colors cursor-default group justify-end">
-                <div className="flex flex-col text-right">
-                  <span className="text-xs font-semibold">{ar ? 'اتصل بنا' : 'Call Us'}</span>
-                  {/* dir=ltr عشان الـ RTL ميقلبش رقم التليفون */}
-                  <span dir="ltr" className="text-sm font-semibold text-white">
-                    +20 106 746 1059
-                  </span>
-                </div>
-                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-brand-cyan/10 transition-all">
-                  <Phone className="w-5 h-5" />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 text-white/50 hover:text-brand-cyan transition-colors cursor-default group justify-end">
-                <div className="flex flex-col text-right">
-                  <span className="text-xs font-semibold">{ar ? 'مقرنا' : 'Location'}</span>
-                  <span className="text-sm font-semibold text-white">
-                    {ar ? 'القاهرة، مصر' : 'Cairo, Egypt'}
-                  </span>
-                </div>
-                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-brand-cyan/10 transition-all">
-                  <MapPin className="w-5 h-5" />
-                </div>
-              </div>
+            {/* تواصل سريع — أيقونات فقط: دوس والإيميل/التليفون/الخريطة تفتح على طول */}
+            <div className="mt-12 pt-8 border-t border-white/5 flex items-center gap-3 justify-end">
+              {contactActions.map((c, i) => (
+                <a
+                  key={i}
+                  href={c.href}
+                  aria-label={ar ? c.labelAr : c.labelEn}
+                  title={ar ? c.labelAr : c.labelEn}
+                  {...(c.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                  className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-brand-cyan hover:border-brand-cyan hover:bg-brand-cyan/10 hover:-translate-y-0.5 active:scale-95 transition-all"
+                >
+                  <c.icon className="w-5 h-5" />
+                </a>
+              ))}
             </div>
           </div>
         </div>
