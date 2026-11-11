@@ -51,7 +51,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const site = await getWebsite(slug);
   if (!site) return { title: 'المنتج غير موجود', robots: { index: false } };
 
-  const productDetails = await getProductById(id);
+  // جلب فريش عشان قرار الإخفاء يشتغل فورًا، مش من كاش قديم.
+  const productDetails = await getProductById(id, { fresh: true });
+  // كل سطح ليه علم مستقل: منتج مخفي من الموقع مينفعش يظهر هنا
+  // حتى لو لسه معروض في التطبيق (appActive) — والفallback من قائمة
+  // سطح الموقع أصلاً مش هيلاقيه مخفي لأن الـ API بيفلتره.
+  if (productDetails && (productDetails as any).isActive === false) {
+    return { title: 'المنتج غير موجود', robots: { index: false } };
+  }
   const product =
     productDetails ||
     (await getProducts(site.shop.id, 100, 'site', true)).find(
@@ -101,7 +108,9 @@ export default async function MerchantProductPage({ params }: Props) {
   if (!site) notFound();
 
   // جلب تفاصيل المنتج العميقة لضمان وجود menuVariants, addons, extraData كاملة
-  const productDetails = await getProductById(id);
+  const productDetails = await getProductById(id, { fresh: true });
+  // الظهور مستقل لكل سطح: مخفي من الموقع = 404 هنا حتى لو معروض في التطبيق.
+  if (productDetails && (productDetails as any).isActive === false) notFound();
   const products = await getProducts(site.shop.id, 100, 'site', true);
   const product = productDetails || products.find((item: any) => String(item.id) === String(id));
   if (!product) notFound();

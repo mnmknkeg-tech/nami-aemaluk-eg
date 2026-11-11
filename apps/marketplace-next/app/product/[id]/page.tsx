@@ -27,8 +27,12 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const product = await getProductById(id);
-  if (!product) return { title: 'منتج غير موجود' };
+  const product = await getProductById(id, { fresh: true });
+  // كل سطح ليه علم مستقل: منتج مخفي من التطبيق مينفعش يظهر هنا
+  // حتى لو لسه معروض على موقع التاجر (isActive) — وممنوع يتفهرس.
+  if (!product || (product as any).appActive === false) {
+    return { title: 'منتج غير موجود', robots: { index: false } };
+  }
 
   const extra = (product as any)?.extraData || {};
   const seoTitle = extra.seoTitle || product.name;
@@ -64,8 +68,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductPage({ params }: Props) {
   const { id } = await params;
-  const product = await getProductById(id);
-  if (!product) notFound();
+  const product = await getProductById(id, { fresh: true });
+  // الظهور مستقل لكل سطح: مخفي من التطبيق = 404 هنا حتى لو معروض على الموقع.
+  if (!product || (product as any).appActive === false) notFound();
 
   // مفيش shopSlug في payload بتاع المنتج، فبنلاقي المتجر من فهرس المتاجر بنفسه
   // (نفس مصدر بيانات الكارت) عشان قرار التاجر في layoutConfig.commerce يتطبّق هنا كمان.

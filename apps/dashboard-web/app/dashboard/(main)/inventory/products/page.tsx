@@ -24,7 +24,6 @@ import {
   Upload,
   ArrowUpDown,
   MoreHorizontal,
-  Lock,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
 import { useShop } from '@/hooks/useShop';
@@ -352,9 +351,26 @@ function ProductsPageContent() {
     return {
       sheetName: 'المنتجات',
       headers: [
-        'name', 'price', 'stock', 'category', 'description', 'unit', 'imageUrl', 'images',
-        'colors', 'sizes', 'addons', 'menuVariants', 'packOptions', 'model3dUrl', 'spinImages',
-        'extraData', 'furnitureMeta', 'trackStock', 'isActive', 'appActive',
+        'name',
+        'price',
+        'stock',
+        'category',
+        'description',
+        'unit',
+        'imageUrl',
+        'images',
+        'colors',
+        'sizes',
+        'addons',
+        'menuVariants',
+        'packOptions',
+        'model3dUrl',
+        'spinImages',
+        'extraData',
+        'furnitureMeta',
+        'trackStock',
+        'isActive',
+        'appActive',
       ],
       rows: all.map((p: any) => [
         String(p?.name ?? ''),
@@ -471,18 +487,20 @@ function ProductsPageContent() {
                   </button>
                   {templateMenuOpen && (
                     <div className="absolute z-30 top-12 left-0 w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
-                      {(Object.keys(PRODUCT_TEMPLATE_LABELS) as ProductTemplateKind[]).map((kind) => (
-                        <button
-                          key={kind}
-                          onClick={() => {
-                            downloadProductTemplate(kind);
-                            setTemplateMenuOpen(false);
-                          }}
-                          className="w-full rounded-xl px-3 py-2 text-right text-xs font-bold text-slate-700 hover:bg-teal-50 hover:text-teal-700"
-                        >
-                          {PRODUCT_TEMPLATE_LABELS[kind]}
-                        </button>
-                      ))}
+                      {(Object.keys(PRODUCT_TEMPLATE_LABELS) as ProductTemplateKind[]).map(
+                        (kind) => (
+                          <button
+                            key={kind}
+                            onClick={() => {
+                              downloadProductTemplate(kind);
+                              setTemplateMenuOpen(false);
+                            }}
+                            className="w-full rounded-xl px-3 py-2 text-right text-xs font-bold text-slate-700 hover:bg-teal-50 hover:text-teal-700"
+                          >
+                            {PRODUCT_TEMPLATE_LABELS[kind]}
+                          </button>
+                        )
+                      )}
                     </div>
                   )}
                 </div>
@@ -1295,8 +1313,8 @@ function ProductsPageContent() {
         (() => {
           const p = products.find((x) => x.id === visibilityMenu.productId);
           if (!p) return null;
-          const onSite = p.isActive ?? false;
-          const onApp = p.appActive ?? false;
+          const onSite = p.isActive !== false;
+          const onApp = p.appActive !== false;
           const isHiddenEverywhere = !onSite && !onApp;
           const isBusy = togglingId === p.id;
 
@@ -1342,16 +1360,29 @@ function ProductsPageContent() {
                   />
                 </button>
 
-                {/* App toggle — locked (coming soon) */}
-                <div className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-right opacity-50 cursor-not-allowed select-none">
-                  <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
-                    <Lock size={13} />
+                {/* App toggle — حقيقي: نفس علم app_active اللي بيفلترته الـ API والتطبيق */}
+                <button
+                  onClick={() => {
+                    handleVisibility(p, { appActive: !onApp });
+                    setVisibilityMenu(null);
+                  }}
+                  disabled={isBusy}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-right hover:bg-slate-50 transition-colors disabled:opacity-50"
+                >
+                  <span
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                      onApp ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
+                    }`}
+                  >
+                    {onApp ? <Eye size={13} /> : <EyeOff size={13} />}
                   </span>
-                  <span className="flex-1">التطبيق — قريباً</span>
-                  <span className="text-[9px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-md">
-                    قريباً
-                  </span>
-                </div>
+                  <span className="flex-1">{onApp ? 'مرئي في التطبيق' : 'مخفي من التطبيق'}</span>
+                  <span
+                    className={`w-2 h-2 rounded-full shrink-0 ${
+                      onApp ? 'bg-emerald-400' : 'bg-slate-300'
+                    }`}
+                  />
+                </button>
 
                 <div className="border-t border-slate-100" />
 

@@ -241,10 +241,15 @@ export function normalizeProductDetailResponse(response: any, expectedId: string
   return product as Product;
 }
 
-export async function getProductById(id: string): Promise<Product | null> {
+export async function getProductById(
+  id: string,
+  opts?: { fresh?: boolean }
+): Promise<Product | null> {
   try {
     const data = await api.get<any>(`/products/${id}`, {
-      revalidate: 300,
+      // fresh=true لصفحات التفاصيل: قرار الظهور عند التاجر لازم يشتغل فورًا —
+      // منتج اتخفى من سطح ما لا يُسمح له بيفضل ظاهر من كاش قديم 5 دقايق.
+      revalidate: opts?.fresh ? 0 : 300,
       tags: [`product:${id}`],
     });
     return normalizeProductDetailResponse(data, id);
