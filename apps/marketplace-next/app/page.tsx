@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { Tag, TrendingUp, Sparkles, Store, ArrowLeft, LayoutGrid } from 'lucide-react';
+import { Tag, TrendingUp, Sparkles, Store, ArrowLeft } from 'lucide-react';
 import { getOffers, getSeasonalOffers, getLatestProducts, getShops } from '@/lib/services';
 import { VISIBLE_ACTIVITIES, siteConfig } from '@/lib/config';
 import { getActivityTheme } from '@/lib/activity-catalog';
@@ -230,32 +230,12 @@ export default async function HomePage() {
         <h1 className="sr-only">من مكانك - المنصة الأولى للتجارة الذكية في مصر</h1>
       </section>
 
-      {/* ===== تسوّق حسب القسم — ستوريز دائرية أفقي ===== */}
-      <section aria-label="الأقسام" className="pt-4 md:pt-6 pb-2">
+      {/* ===== الأقسام — ستوريز دائرية مباشرة تحت الهيدر =====
+          (من غير عنوان ولا subtitle — الصف نفسه هو البطل، وآخر دايرة = تصفح الكل) */}
+      <section aria-label="الأقسام" className="pt-2 md:pt-3 pb-2">
         <div className="max-w-[1400px] mx-auto px-4 md:px-6">
-          {/* عنوان صغير للقسم — مش بطاقات كبيرة */}
-          <div className="flex items-end justify-between mb-3 md:mb-4">
-            <div>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-orange/10 text-brand-orange text-[10px] md:text-[11px] font-black mb-1.5">
-                <LayoutGrid className="w-3.5 h-3.5" />
-                الأقسام
-              </span>
-              <h2 className="text-lg md:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-                تصفّح حسب القسم
-              </h2>
-              <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
-                كل الأقسام في صف واحد — اختار اللي يناسبك
-              </p>
-            </div>
-            <Link
-              href="/dalil"
-              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] md:text-xs font-black text-brand-orange border border-brand-orange/20 bg-brand-orange/5 hover:gap-2.5 transition-all"
-            >
-              الكل
-              <ArrowLeft className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-          {/* الستوريز الدائرية — زي تطبيقات مصر الكبيرة (Instagram/Talabat style) */}
+          {/* sr-only title for SEO */}
+          <h2 className="sr-only">الأقسام — تصفّح كل الأقسام والمتاجر</h2>
           <ActivityStories
             activities={VISIBLE_ACTIVITIES}
             shopCountByActivity={shopCountByActivity}

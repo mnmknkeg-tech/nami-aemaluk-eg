@@ -158,21 +158,24 @@ export function ActivityStories({
           );
         })}
 
-        {/* الدائرة الأخيرة = "الكل" → /dalil */}
+        {/* الدائرة الأخيرة = "تصفح الكل" → /dalil */}
         <Link
           href="/dalil"
           className="group snap-start shrink-0 flex flex-col items-center gap-1.5 w-[72px] md:w-[88px] focus-visible:outline-none"
-          aria-label="كل الأقسام والمتاجر"
+          aria-label="تصفح كل الأقسام والمتاجر"
         >
           <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-full p-[2.5px] bg-gradient-to-br from-brand-orange to-brand-amber transition-transform duration-300 group-hover:scale-105 group-active:scale-95">
             <div className="absolute inset-0 rounded-full p-[3px] bg-white dark:bg-slate-900">
-              <div className="w-full h-full rounded-full bg-gradient-to-br from-brand-orange-light/20 to-brand-amber/20 flex items-center justify-center ring-1 ring-black/5 dark:ring-white/10">
-                <LayoutGrid className="w-6 h-6 md:w-7 md:h-7 text-brand-orange group-hover:scale-110 transition-transform" />
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-brand-orange/15 to-brand-amber/15 flex items-center justify-center ring-1 ring-black/5 dark:ring-white/10">
+                <LayoutGrid
+                  className="w-6 h-6 md:w-7 md:h-7 text-brand-orange group-hover:scale-110 transition-transform"
+                  strokeWidth={2.4}
+                />
               </div>
             </div>
           </div>
           <span className="text-center text-[10.5px] md:text-[12px] font-black text-brand-orange dark:text-brand-amber leading-tight w-full">
-            الكل
+            تصفح الكل
           </span>
         </Link>
       </div>
