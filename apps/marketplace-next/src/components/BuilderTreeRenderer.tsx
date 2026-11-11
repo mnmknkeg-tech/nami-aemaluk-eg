@@ -42,6 +42,11 @@ import {
   isCartVisible,
   normalizeCatalogProduct,
   buildCatalogCategories,
+  followPublishedDestination,
+  isBrandHeadingNode,
+  resolveAnnouncementBar,
+  resolveBrandLogoUrl,
+  resolvePublishedLinkDestination,
 } from '@ray-eg/shared/builder';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -60,6 +65,8 @@ interface ComponentNode {
   };
   customCode?: { tsxSnippet?: string; cssSnippet?: string };
   isHidden?: boolean;
+  /** Canonical link destination (page/section/order/external) set by the builder. */
+  destination?: Record<string, any>;
 }
 
 interface BuilderWebsite {
@@ -68,7 +75,7 @@ interface BuilderWebsite {
     rootNodeId: string;
     name?: string;
     slug?: string;
-    metadata?: { isHomePage?: boolean };
+    metadata?: { isHomePage?: boolean; placement?: string; headerTitle?: string };
   }>;
   components: Record<string, ComponentNode>;
   theme: {
@@ -82,7 +89,19 @@ interface BuilderWebsite {
     typography?: { fontBody?: string; fontHeading?: string };
     radius?: { sm?: string; md?: string; lg?: string; full?: string };
   };
-  settings?: { cart?: WebsiteCartSettings; background?: WebsiteBackgroundSettings };
+  settings?: {
+    cart?: WebsiteCartSettings;
+    background?: WebsiteBackgroundSettings;
+    announcement?: {
+      enabled?: boolean;
+      text?: string;
+      link?: string;
+      bgColor?: string;
+      textColor?: string;
+    };
+    branding?: { logoUrl?: string; faviconUrl?: string };
+    auth?: { enabled?: boolean; headerButton?: { show?: boolean } };
+  };
   defaultDirection?: string;
 }
 
@@ -92,7 +111,9 @@ const ShopDataContext = React.createContext<{
   shop?: Shop;
   products?: Product[];
   viewport: ResponsiveViewport;
-}>({ viewport: 'desktop' });
+  activePageId: string;
+  onNavigatePage?: (pageId: string) => void;
+}>({ viewport: 'desktop', activePageId: '' });
 
 // ─── getComputedStyles ────────────────────────────────────────────────────────
 
@@ -108,8 +129,14 @@ function getComputedStyles(
 
 function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWebsite }) {
   const node = website.components[nodeId];
-  const { addItem } = useCart();
-  const { shop: ctxShop, products: ctxProducts, viewport } = React.useContext(ShopDataContext);
+  const { addItem, setCartOpen } = useCart();
+  const {
+    shop: ctxShop,
+    products: ctxProducts,
+    viewport,
+    activePageId,
+    onNavigatePage,
+  } = React.useContext(ShopDataContext);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -150,6 +177,20 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
+  /** Resolve a node/link click the same way the published /site handler does
+   *  (destination → page switch/section scroll/cart/external) so links and
+   *  buttons configured in the builder stop being dead on /shop. */
+  const followLink = (source: Record<string, any>, opts?: { inferFromLabel?: boolean }) => {
+    const destination = resolvePublishedLinkDestination(website as any, source, opts);
+    return followPublishedDestination(destination, {
+      website: website as any,
+      activePageId: activePageId || '',
+      onNavigatePage: (pageId) => onNavigatePage?.(pageId),
+      onOpenCart: () => setCartOpen(true),
+      scrollToSection: scrollTo,
+    });
+  };
+
   // ── custom-code ────────────────────────────────────────────────────────────
   if (node.type === 'custom-code') {
     const html = node.customCode?.tsxSnippet || node.props?.html || '';
@@ -165,10 +206,17 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
   if (node.type === 'heading') {
     const tag = node.props.tag || 'h2';
     const text = node.props.text || '';
+    // Editor parity: brand headings (id/name referencing brand/logo/شعار)
+    // show the merchant logo instead of plain text after publishing too.
     const storeLogo =
-      node.id.toLowerCase().includes('logo') || node.props?.name?.includes('شعار')
-        ? ctxShop?.logoUrl || ctxShop?.logo
-        : undefined;
+      node.id.toLowerCase().includes('logo') || String(node.props?.name || '').includes('شعار')
+        ? ctxShop?.logoUrl ||
+          ctxShop?.logo ||
+          resolveBrandLogoUrl(website as any, node) ||
+          undefined
+        : isBrandHeadingNode(node as any)
+          ? resolveBrandLogoUrl(website as any, node) || undefined
+          : undefined;
     const content = (
       <>
         {storeLogo && (
@@ -220,6 +268,85 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
   // ── paragraph ─────────────────────────────────────────────────────────────
   if (node.type === 'paragraph') {
     const text = node.props.text || '';
+
+    // Editor parity: navigation bars are paragraph nodes carrying explicit
+    // navigationItems (label + destination) — render them as real links.
+    const navItems = Array.isArray(node.props.navigationItems)
+      ? (node.props.navigationItems as Array<Record<string, any>>).filter(
+          (item) => item?.label && !item.hidden
+        )
+      : null;
+    if (navItems && navItems.length > 0) {
+      return (
+        <div id={node.id} style={computed} className="flex flex-wrap items-center gap-2">
+          {navItems.map((item, index) => (
+            <span
+              key={`${item.label}-${index}`}
+              onClick={() => followLink(item, { inferFromLabel: true })}
+              className="cursor-pointer transition-colors hover:opacity-80"
+            >
+              {item.label}
+            </span>
+          ))}
+        </div>
+      );
+    }
+
+    // Editor parity: bullet-separated nav text is split into clickable items
+    // that match navigationItems by label.
+    if (typeof text === 'string' && (text.includes(' • ') || text.includes(' | '))) {
+      const delimiter = text.includes(' • ') ? ' • ' : ' | ';
+      const items = text.split(delimiter).map((item) => item.trim());
+      return (
+        <p id={node.id} style={computed} className="flex flex-wrap items-center gap-2">
+          {items.map((item, index) => {
+            const navigationItem = (node.props.navigationItems || []).find(
+              (candidate: { label?: string }) => candidate.label?.trim() === item
+            );
+            return (
+              <React.Fragment key={index}>
+                <span
+                  onClick={() =>
+                    followLink(
+                      { ...node.props, destination: navigationItem?.destination },
+                      { inferFromLabel: true }
+                    )
+                  }
+                  className="cursor-pointer transition-colors hover:opacity-80"
+                >
+                  {item}
+                </span>
+                {index < items.length - 1 && <span className="opacity-40 select-none">•</span>}
+              </React.Fragment>
+            );
+          })}
+        </p>
+      );
+    }
+
+    // Nav links created by the page operations (url/pageId/destination on a
+    // plain paragraph) were dead text on /shop — make them clickable.
+    const isLinkLike = Boolean(
+      node.destination ||
+      node.props.destination ||
+      node.props.pageId ||
+      node.props.targetPageId ||
+      String(node.props.url || node.props.href || node.props.link || '').trim() ||
+      node.props.allowLegacyLabelNavigation === true
+    );
+    if (isLinkLike && String(text).trim()) {
+      return (
+        <p
+          id={node.id}
+          style={computed}
+          onClick={() => followLink({ ...node.props }, { inferFromLabel: true })}
+          className="cursor-pointer transition-opacity hover:opacity-80"
+        >
+          {text}
+        </p>
+      );
+    }
+
     return (
       <p id={node.id} style={computed}>
         {text}
@@ -255,12 +382,23 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
 
   // ── button ────────────────────────────────────────────────────────────────
   if (node.type === 'button') {
-    const url = node.props.url || node.props.href || node.props.link || '';
+    const url = String(node.props.url || node.props.href || node.props.link || '');
     const handleClick = () => {
+      // Editor parity: destinations (page/section/whatsapp/order/external)
+      // configured in the builder are followed exactly like on /site —
+      // buttons with page targets used to be completely dead here.
+      if (
+        followLink(
+          { ...node.props, url },
+          { inferFromLabel: node.props.allowLegacyLabelNavigation === true }
+        )
+      ) {
+        return;
+      }
       if (url.startsWith('#')) {
         scrollTo(url.slice(1));
-      } else if (url.startsWith('http')) {
-        window.open(url, '_blank', 'noopener');
+      } else if (/^(?:https?:|tel:|mailto:|\/\/)/i.test(url)) {
+        window.open(url, '_blank', 'noopener,noreferrer');
       }
     };
     return (
@@ -1037,10 +1175,42 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
             <nav aria-label="روابط الموقع" className="flex flex-wrap gap-x-4 gap-y-2 py-5 text-xs">
               {links.map((item: any, index: number) => {
                 const label = typeof item === 'string' ? item : item.label || item.title || '';
-                const url = typeof item === 'string' ? '#' : item.url || item.href || '#';
                 if (!label) return null;
+                // Editor parity: resolve object links AND plain labels to
+                // real pages/sections instead of hard-coded '#'.
+                const destination = resolvePublishedLinkDestination(
+                  website as any,
+                  typeof item === 'object' ? item : { text: label },
+                  { inferFromLabel: true, label }
+                );
+                const rawUrl = typeof item === 'object' ? String(item.url || item.href || '') : '';
+                if (destination) {
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => followLink(typeof item === 'object' ? item : { text: label })}
+                      className={`${linkHover} transition-colors cursor-pointer text-right`}
+                    >
+                      {label}
+                    </button>
+                  );
+                }
+                if (rawUrl && !rawUrl.startsWith('#')) {
+                  return (
+                    <a
+                      key={index}
+                      href={rawUrl}
+                      target={/^https?:/i.test(rawUrl) ? '_blank' : undefined}
+                      rel="noopener noreferrer"
+                      className={`${linkHover} transition-colors`}
+                    >
+                      {label}
+                    </a>
+                  );
+                }
                 return (
-                  <a key={index} href={url} className={`${linkHover} transition-colors`}>
+                  <a key={index} href={rawUrl || '#'} className={`${linkHover} transition-colors`}>
                     {label}
                   </a>
                 );
@@ -1276,10 +1446,28 @@ export function BuilderTreeRenderer({ website, shop, products }: BuilderTreeRend
     } as BuilderWebsite;
   }, [website]);
   const viewport = useResponsiveViewport();
+  // Multi-page parity with /site: pages can navigate client-side (buttons,
+  // nav links, footer links with page destinations) instead of being pinned
+  // to the home page forever.
+  const [activePageId, setActivePageId] = useState<string | null>(null);
   const activePage =
+    (activePageId && safeWebsite.pages?.find((page) => page.id === activePageId)) ||
     safeWebsite.pages?.find((page) => page.metadata?.isHomePage) ||
     safeWebsite.pages?.find((page) => page.id === 'page_home') ||
     safeWebsite.pages?.[0];
+  const handleNavigatePage = (pageId: string) => {
+    if (safeWebsite.pages?.some((page) => page.id === pageId)) setActivePageId(pageId);
+  };
+  // Jump back to the top whenever the rendered page changes (skip first mount).
+  const currentPageId = activePage?.id;
+  const mountedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [currentPageId]);
   const rootRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -1306,7 +1494,15 @@ export function BuilderTreeRenderer({ website, shop, products }: BuilderTreeRend
   const direction = (safeWebsite.defaultDirection || 'rtl') as React.CSSProperties['direction'];
 
   return (
-    <ShopDataContext.Provider value={{ shop, products, viewport }}>
+    <ShopDataContext.Provider
+      value={{
+        shop,
+        products,
+        viewport,
+        activePageId: activePage?.id || '',
+        onNavigatePage: handleNavigatePage,
+      }}
+    >
       <div
         ref={rootRef}
         className="merchant-site-builder"
@@ -1316,6 +1512,32 @@ export function BuilderTreeRenderer({ website, shop, products }: BuilderTreeRend
           safeWebsite.settings?.background
         )}
       >
+        {/* Editor parity: the announcement bar configured in the builder now
+            shows on the published shop page too. */}
+        {(() => {
+          const announcement = resolveAnnouncementBar(safeWebsite as any);
+          if (!announcement) return null;
+          return (
+            <aside
+              aria-label="شريط الإعلانات الترويجي"
+              style={{
+                backgroundColor: announcement.bgColor || safeWebsite.theme.colors.primary,
+                color: announcement.textColor || '#ffffff',
+              }}
+              className="w-full py-2 px-3 text-xs font-bold text-center relative z-50 flex items-center justify-center gap-2 shadow-xs"
+            >
+              <span>{announcement.text}</span>
+              {announcement.link && (
+                <a
+                  href={announcement.link}
+                  className="underline text-[11px] font-extrabold hover:opacity-80 transition-opacity mr-2"
+                >
+                  التفاصيل &larr;
+                </a>
+              )}
+            </aside>
+          );
+        })()}
         <NodeRenderer nodeId={activePage.rootNodeId} website={safeWebsite} />
       </div>
     </ShopDataContext.Provider>

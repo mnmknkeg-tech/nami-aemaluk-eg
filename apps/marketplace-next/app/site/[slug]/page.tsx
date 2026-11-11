@@ -105,9 +105,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     `${site.shop.name} - الموقع الرسمي`;
   const image = homeMeta?.ogImage || c.bannerUrl || site.shop.logoUrl;
 
+  // Editor parity: a page the merchant marked noindex/nofollow (or gave a
+  // canonical URL to) must not be published as fully indexable.
+  const robotsDirective = typeof homeMeta?.robots === 'string' ? homeMeta.robots : '';
+  const noIndex = /noindex/i.test(robotsDirective);
+  const noFollow = /nofollow/i.test(robotsDirective);
+
   return {
     title: { absolute: title },
     description,
+    ...(noIndex || noFollow
+      ? { robots: { index: noIndex ? false : undefined, follow: noFollow ? false : undefined } }
+      : {}),
     ...(site.shop.logoUrl
       ? {
           icons: {
@@ -117,7 +126,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           },
         }
       : {}),
-    alternates: { canonical: `/site/${site.shop.slug}` },
+    alternates: { canonical: homeMeta?.canonicalUrl || `/site/${site.shop.slug}` },
     openGraph: {
       title,
       description,

@@ -43,7 +43,16 @@ import type {
   ViewportBreakpoint,
   Website,
 } from './types';
-import { resolveWebsiteLinkDestination } from './linkDestinations';
+import {
+  resolveWebsiteLinkDestination,
+  inferWebsiteLinkDestinationFromLabel,
+} from './linkDestinations';
+import {
+  getMobileDrawerPages,
+  isBrandHeadingNode,
+  resolveBrandLogoUrl,
+  shouldShowHeaderLoginButton,
+} from './publishedParity';
 import { formatPrice, resolveTheme, withAlpha } from './theme';
 import {
   productGridClass as productGridClassName,
@@ -115,7 +124,15 @@ function handleInteraction(e: React.MouseEvent, node: ComponentNode, ctx: NodeVi
     resolveWebsiteLinkDestination(website, {
       ...node.props,
       targetPageId: node.props.targetPageId,
-    });
+    }) ||
+    // Legacy text-only links the editor preview still navigates (only when
+    // the node opts in) must not go dead after publishing.
+    (node.props.allowLegacyLabelNavigation === true
+      ? inferWebsiteLinkDestinationFromLabel(
+          website,
+          String(node.props.text || node.props.title || '')
+        )
+      : undefined);
   if (destination?.type === 'none') return;
   if (destination) {
     e.preventDefault();
@@ -771,8 +788,8 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
       });
       const iconType = resolveCartIconType(cartSettings?.iconType, node.props.cartIcon);
 
-      const showLogin =
-        node.props.showLogin !== false && website.settings?.auth?.headerButton?.show !== false;
+      // Editor parity: no dead account button when auth is disabled.
+      const showLogin = shouldShowHeaderLoginButton(website, node);
       const loginText = (node.props.loginText as string) || 'حسابي';
       const showLoginText = Boolean(node.props.showLoginText);
 
@@ -933,7 +950,8 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
                           صفحات الموقع
                         </span>
-                        {website.pages.map((p) => {
+                        {/* Editor parity: standalone/hidden pages stay out of the menu. */}
+                        {getMobileDrawerPages(website).map((p) => {
                           const isActive = p.id === activePage.id;
                           return (
                             <button
@@ -1151,6 +1169,9 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
       const headingStyle = getComputedStyles();
       const text = node.props.text || 'عنوان المكون';
       const isStoreLogoNode = node.id === 'rest_logo' || node.id.startsWith('rest_logo__');
+      // Editor parity: brand headings show the merchant logo, not plain text.
+      const brandLogoUrl =
+        !isStoreLogoNode && isBrandHeadingNode(node) ? resolveBrandLogoUrl(website, node) : null;
 
       const content = (
         <>
@@ -1159,6 +1180,12 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
               src={shop.logoUrl}
               alt={shop.name || 'شعار المتجر'}
               className="inline-block max-h-12 max-w-[200px] object-contain align-middle"
+            />
+          ) : brandLogoUrl ? (
+            <img
+              src={brandLogoUrl}
+              alt={shop?.name || 'شعار المنشأة'}
+              className="inline-block h-8 sm:h-9 w-auto max-w-[130px] object-contain rounded-lg align-middle"
             />
           ) : (
             text

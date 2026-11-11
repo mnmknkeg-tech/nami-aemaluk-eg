@@ -502,6 +502,8 @@ export interface WebsiteSeoSettings {
 }
 
 export interface WebsiteBrandingSettings {
+  /** Merchant logo shown on brand headings and the mobile drawer. */
+  logoUrl?: string;
   faviconUrl?: string;
   customCss?: string;
 }

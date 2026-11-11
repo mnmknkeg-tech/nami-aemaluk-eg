@@ -30,7 +30,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ contained = false }) => 
     clearCart,
     cartMode,
     setCartMode,
-    currentTenant,
     switchPage,
     isRtl,
   } = useBuilder();
@@ -88,7 +87,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ contained = false }) => 
                   {cartCount}
                 </span>
               </div>
-              <p className="text-xs text-slate-500">{currentTenant.businessInfo.brandName}</p>
+              <p className="text-xs text-slate-500">{website.name}</p>
             </div>
           </div>
 
@@ -152,10 +151,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ contained = false }) => 
         ) : (
           <div className="px-4 py-1.5 bg-emerald-50/70 border-b border-emerald-100 text-[11px] text-emerald-800 flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>
-              سلة مستقلة وبوابة مبيعات حصرية لمتجر{' '}
-              {currentTenant.businessInfo?.brandName || website.name}.
-            </span>
+            <span>سلة مستقلة وبوابة مبيعات حصرية لمتجر {website.name}.</span>
           </div>
         )}
 

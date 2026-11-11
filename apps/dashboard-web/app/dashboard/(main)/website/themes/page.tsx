@@ -57,34 +57,33 @@ export interface ThemeItem {
  * Used by handleApplyTheme to pass both the template and its initial preset to the editor.
  */
 const SITE_TO_PRESET_MAP: Record<string, string> = {
+  // Flagship template ids (raw ids as declared below) — the map is read with
+  // the raw id first and the canonical registry id second, so both are kept.
   site_restaurant_cafe: 'restaurantWarm',
   site_fashion_boutique: 'fashionChic',
   site_dental_clinic: 'clinicalClean',
+  site_beauty_salon: 'beautyBlush',
+  site_lotus_beauty: 'beautyBlush',
+  site_electronics_store: 'techCyan',
+  site_techzone_store: 'techCyan',
+  site_law_firm: 'legalNavy',
+  // Catalog template ids that exist in the template registry.
   site_salon_beauty: 'beautyBlush',
   site_gym_fitness: 'gymEnergetic',
   site_grocery_supermarket: 'groceryFresh',
-  site_electronics: 'techCyan',
   site_gold_jewelry: 'goldRoyalty',
+  site_afaq_real_estate: 'realEstateEmerald',
   site_real_estate: 'realEstateEmerald',
   site_al_majd_auto: 'automotiveSpeed',
   site_car_rental: 'rentalAmber',
-  site_furniture_home: 'furnitureWarm',
+  site_furniture_decor: 'furnitureWarm',
   site_travel_tourism: 'travelAzure',
-  site_law_firm: 'legalNavy',
+  site_ofok_travel: 'travelAzure',
   site_accounting: 'accountingSlate',
   site_nursery_plants: 'nurseryGreen',
   site_flowers_gifts: 'flowerRose',
   site_home_services: 'homeServiceOrange',
-  site_factory: 'factoryIndustrial',
   site_academy_education: 'academyIndigo',
-  site_luxury: 'luxuryGold',
-  site_royal_purple: 'royalPurple',
-  site_modern_blue: 'modernBlue',
-  // Egyptian regional presets
-  site_nile_blue: 'egyptianNile',
-  site_papyrus: 'egyptianPapyrus',
-  site_saudi_heritage: 'saudiHeritage',
-  site_saudi_modern: 'saudiModern',
 };
 
 const FLAGSHIP_THEMES: ThemeItem[] = [

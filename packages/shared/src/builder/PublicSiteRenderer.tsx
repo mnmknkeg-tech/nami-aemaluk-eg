@@ -15,6 +15,7 @@ import { SiteSubscriptionModal } from './SiteSubscriptionModal';
 import { SiteCartDrawer, type SiteCartItem } from './SiteCartDrawer';
 import { useResponsiveViewport } from './responsiveViewport';
 import { computeWebsiteRootStyles } from './responsiveStyles';
+import { resolveAnnouncementBar } from './publishedParity';
 import { inspectWebsiteTree, normalizeWebsiteTree } from './websiteTree';
 import { CartIcon } from './CartIcon';
 import { isCartVisible } from './cartPolicy';
@@ -290,6 +291,32 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
           safeWebsite.settings?.background
         )}
       >
+        {/* Global announcement bar — was edited in the builder but never
+            painted on the published site; parity with the editor. */}
+        {(() => {
+          const announcement = resolveAnnouncementBar(safeWebsite);
+          if (!announcement) return null;
+          return (
+            <aside
+              aria-label="شريط الإعلانات الترويجي"
+              style={{
+                backgroundColor: announcement.bgColor || theme.colors.primary,
+                color: announcement.textColor || '#ffffff',
+              }}
+              className="w-full py-2 px-3 text-xs font-bold text-center relative z-50 flex items-center justify-center gap-2 shadow-xs"
+            >
+              <span>{announcement.text}</span>
+              {announcement.link && (
+                <a
+                  href={announcement.link}
+                  className="underline text-[11px] font-extrabold hover:opacity-80 transition-opacity mr-2"
+                >
+                  التفاصيل &larr;
+                </a>
+              )}
+            </aside>
+          );
+        })()}
         {hasContent && rootNodeId ? (
           <NodeView
             nodeId={rootNodeId}

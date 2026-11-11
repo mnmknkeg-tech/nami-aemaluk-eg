@@ -233,6 +233,17 @@ export const resolveWebsiteLinkDestination = (
   source: Record<string, any>
 ): WebsiteLinkDestination | undefined => legacyDestination(website, source, '', false);
 
+/**
+ * Label-only link inference (Arabic/English keyword intents) used by the
+ * editor's interactive preview for legacy text links and — when the node
+ * opts in via `allowLegacyLabelNavigation` — by the published /site handler,
+ * so links that navigate in the editor do not go dead after publishing.
+ */
+export const inferWebsiteLinkDestinationFromLabel = (
+  website: Website,
+  label: string
+): WebsiteLinkDestination | undefined => inferDestinationFromLabel(website, label);
+
 const validDestination = (
   website: Website,
   destination: WebsiteLinkDestination | undefined

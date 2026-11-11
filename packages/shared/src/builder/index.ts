@@ -1,6 +1,7 @@
 export * from './types';
 export * from './linkDestinations';
 export * from './responsiveStyles';
+export * from './publishedParity';
 export * from './cartPolicy';
 export * from './responsiveViewport';
 export * from './previewViewport';

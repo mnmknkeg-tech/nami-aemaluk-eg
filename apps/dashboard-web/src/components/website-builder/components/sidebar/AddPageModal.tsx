@@ -35,7 +35,9 @@ export const AddPageModal: React.FC<AddPageModalProps> = ({ isOpen, onClose }) =
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
-  const [placement, setPlacement] = useState<PagePlacementMode>('header_direct');
+  // Standalone matches the default landing_page template below; choosing
+  // another template updates the placement explicitly.
+  const [placement, setPlacement] = useState<PagePlacementMode>('standalone');
   const [headerTitle, setHeaderTitle] = useState('');
   const [parentNavId, setParentNavId] = useState('');
   const [dropdownDescription, setDropdownDescription] = useState('');

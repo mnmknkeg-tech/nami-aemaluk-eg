@@ -512,12 +512,18 @@ export const TopBar: React.FC = () => {
 
             <button
               onClick={() => {
-                setIsLivePreviewOpen(true);
+                // The real published site (was a duplicate of the editor
+                // preview button above).
+                if (liveWebsiteUrl) {
+                  window.open(liveWebsiteUrl, '_blank', 'noopener,noreferrer');
+                } else {
+                  setIsLivePreviewOpen(true);
+                }
                 setIsMobileMenuOpen(false);
               }}
               className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800"
             >
-              <Play className="w-4 h-4 text-blue-600" />
+              <Globe className="w-4 h-4 text-emerald-600" />
               <span>معاينة حية</span>
             </button>
 
