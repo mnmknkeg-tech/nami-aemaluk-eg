@@ -4,13 +4,10 @@ import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSiteCart } from '@/lib/site-cart';
 import { jsonRequest } from '@/lib/api';
-import {
-  normalizeWebsiteTree,
-  PublicSiteRenderer,
-  SiteCartDrawer,
-} from '@ray-eg/shared/builder';
+import { normalizeWebsiteTree, PublicSiteRenderer, SiteCartDrawer } from '@ray-eg/shared/builder';
 import type {
   SiteProduct,
+  SiteBookingService,
   SiteShopContext,
   SiteSubscriptionPlan,
   Website,
@@ -21,6 +18,8 @@ interface SiteCartBridgeProps {
   shop: SiteShopContext;
   products: SiteProduct[];
   subscriptionPlans?: SiteSubscriptionPlan[];
+  /** Real bookable services from the shop's booking catalog (optional). */
+  realServices?: SiteBookingService[];
 }
 
 /**
@@ -41,6 +40,7 @@ export function SiteCartBridge({
   shop,
   products,
   subscriptionPlans = [],
+  realServices,
 }: SiteCartBridgeProps) {
   const router = useRouter();
   const safeWebsite = useMemo(() => normalizeWebsiteTree(website), [website]);
@@ -74,6 +74,7 @@ export function SiteCartBridge({
         shop={shop}
         products={products}
         subscriptionPlans={subscriptionPlans}
+        realServices={realServices}
         cartCount={totalItems}
         onAddToCart={(p) => {
           addItem(p, shop);

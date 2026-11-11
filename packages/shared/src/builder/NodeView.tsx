@@ -2,6 +2,7 @@
 
 import React, { Fragment, useState } from 'react';
 import {
+  CalendarCheck,
   Sparkles,
   ShieldCheck,
   Truck,
@@ -37,6 +38,7 @@ import type {
   ComponentNode,
   PageMetadata,
   SiteProduct,
+  SiteBookingService,
   SiteShopContext,
   SiteSubscriptionPlan,
   StyleProperties,
@@ -78,6 +80,8 @@ export interface NodeViewContext {
   shop: SiteShopContext;
   /** Real products from the shop catalog — bound into products/grid sections. */
   realProducts: SiteProduct[];
+  /** Real bookable services — bound into services-grid sections with real booking CTAs. */
+  realServices?: SiteBookingService[];
   /** Real subscription plans from the shop memberships system. */
   realSubscriptionPlans?: SiteSubscriptionPlan[];
   /** Switch the published site to another page (client-side navigation). */
@@ -3035,7 +3039,10 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
     // ---------------------------------------------------------- services-grid
     case 'services':
     case 'services-grid': {
-      const servicesList = node.props.services || node.props.items || [];
+      // Real bookable services win over baked template items — the "احجز"
+      // CTA opens the shop's public booking page with real availability.
+      const realServices = !ctx.previewMode && ctx.realServices?.length ? ctx.realServices : null;
+      const servicesList = realServices ? [] : node.props.services || node.props.items || [];
       return (
         <section id={node.id} style={getComputedStyles()} className="transition-all">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
@@ -3064,7 +3071,64 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                 )}
               </div>
             )}
-            {servicesList.length > 0 && (
+            {realServices && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {realServices.map((svc) => {
+                  const href = ctx.shop.slug
+                    ? `/site/${ctx.shop.slug}/book?service=${encodeURIComponent(svc.id)}`
+                    : null;
+                  return (
+                    <div
+                      key={svc.id}
+                      className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-lg transition-all space-y-4 flex flex-col group"
+                    >
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center"
+                        style={{
+                          backgroundColor: withAlpha(theme.colors.primary, '15'),
+                          color: theme.colors.primary,
+                        }}
+                      >
+                        <CalendarCheck className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-base font-bold text-slate-900 mb-1">{svc.name}</h3>
+                        {svc.description && (
+                          <p className="text-xs text-slate-500 leading-relaxed">
+                            {svc.description}
+                          </p>
+                        )}
+                        <div className="mt-2 flex items-center gap-3 text-xs font-bold text-slate-400">
+                          {svc.durationMinutes > 0 && <span>{svc.durationMinutes} دقيقة</span>}
+                          {svc.capacity > 1 && <span>حتى {svc.capacity} أفراد</span>}
+                        </div>
+                        {svc.price > 0 && (
+                          <div
+                            className="mt-2 font-extrabold text-sm font-mono"
+                            style={{ color: theme.colors.primary }}
+                          >
+                            {svc.price.toLocaleString('en-US')} {svc.currency || 'EGP'}
+                          </div>
+                        )}
+                      </div>
+                      {href ? (
+                        <a
+                          href={href}
+                          style={{
+                            backgroundColor: theme.colors.primary,
+                            borderRadius: theme.radius.lg,
+                          }}
+                          className="block w-full py-2.5 text-white font-bold text-xs text-center hover:opacity-90 active:scale-98 transition-all"
+                        >
+                          احجز الآن
+                        </a>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {!realServices && servicesList.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {servicesList.map((svc: any, idx: number) => {
                   const href = waLink(`مرحبًا، أريد الاستفسار عن خدمة: ${svc.title || ''}`) || '#';

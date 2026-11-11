@@ -95,6 +95,7 @@ export function CommerceAction({
         shopId={shopId}
         shopName={shopName}
         product={product}
+        shopSlug={product.shopSlug}
       />
     </>
   );

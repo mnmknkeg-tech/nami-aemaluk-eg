@@ -611,3 +611,17 @@ export interface SiteSubscriptionPlan {
   isFeatured?: boolean;
   color?: string;
 }
+
+// A real bookable service (booking_services) bound into services sections —
+// its "احجز" CTA opens the shop's public booking page /site/[slug]/book.
+export interface SiteBookingService {
+  id: string;
+  name: string;
+  description?: string;
+  durationMinutes: number;
+  price: number;
+  currency: string;
+  capacity: number;
+  /** Catalog product backing this service (product cards link by product id). */
+  productId?: string;
+}

@@ -10,6 +10,7 @@ import {
   mapSiteProduct,
   type SiteProduct,
   type SiteSubscriptionPlan,
+  type SiteBookingService,
   type Website,
   normalizeWebsiteTree,
 } from '@ray-eg/shared/builder';
@@ -76,6 +77,32 @@ async function getSubscriptionPlans(shopId: string): Promise<SiteSubscriptionPla
     }
   } catch {
     // API offline or error — fallback gracefully
+  }
+  return [];
+}
+
+/** Real bookable services (booking_services) — feed the services section's real CTAs. */
+async function getRealBookingServices(slug: string): Promise<SiteBookingService[]> {
+  try {
+    const res = await api.get<any>(`/bookings/public/services?slug=${encodeURIComponent(slug)}`, {
+      revalidate: 0,
+      tags: [`booking-services:${slug}`],
+    });
+    const services = res?.data?.services;
+    if (Array.isArray(services)) {
+      return services.map((s: any) => ({
+        id: String(s.id),
+        name: s.name,
+        description: s.description || undefined,
+        durationMinutes: Number(s.durationMinutes) || 0,
+        price: Number(s.price) || 0,
+        currency: s.currency || 'EGP',
+        capacity: Number(s.capacity) || 1,
+        productId: s.productId || undefined,
+      }));
+    }
+  } catch {
+    // No bookable services yet — services sections fall back to baked items.
   }
   return [];
 }
@@ -155,10 +182,11 @@ export default async function PublishedSitePage({ params }: Props) {
   // writing repaired data back to storage.
   const website = rawWebsite ? normalizeWebsiteTree(rawWebsite) : undefined;
 
-  // Fetch products + subscription plans in parallel for best performance
-  const [products, subscriptionPlans] = await Promise.all([
+  // Fetch products + subscription plans + bookable services in parallel
+  const [products, subscriptionPlans, realServices] = await Promise.all([
     getProducts(site.shop.id, 100, 'site', true),
     getSubscriptionPlans(site.shop.id),
+    getRealBookingServices(slug),
   ]);
 
   // عرض المنتجات النشطة فقط والتي لم يقم التاجر بإخفائها من صفحة المنتجات
@@ -193,6 +221,7 @@ export default async function PublishedSitePage({ params }: Props) {
         shop={shopCtx}
         products={siteProducts}
         subscriptionPlans={subscriptionPlans}
+        realServices={realServices}
       />
     );
   }

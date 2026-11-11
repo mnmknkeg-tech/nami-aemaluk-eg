@@ -1,11 +1,20 @@
 import React from 'react';
-import { CheckCircle, ShoppingBag, ShoppingCart, Zap, Sparkles, Tag } from 'lucide-react';
+import {
+  CalendarCheck,
+  CheckCircle,
+  ShoppingBag,
+  ShoppingCart,
+  Zap,
+  Sparkles,
+  Tag,
+} from 'lucide-react';
 import {
   resolveProductCardOptions,
   normalizeProductSizes,
   parsePriceValue,
   resolveCardDisplay,
 } from './productCard';
+import { isBookableProduct } from './theme';
 
 const BUY_ICONS: Record<string, any> = { ShoppingBag, ShoppingCart, Zap, Sparkles, Tag };
 
@@ -81,7 +90,21 @@ export const CardActions: React.FC<{
     >
       {options.showBuyButton &&
         !prod.hideBuyBtn &&
-        (ctx.onAddToCart ? (
+        // Bookable offerings (clinic visits, tables, sessions…) go into the
+        // real booking flow — /site/[slug]/book?service=<productId> — instead
+        // of silently pushing visitors into the order cart.
+        (isBookableProduct(prod) && ctx.siteSlug ? (
+          <a
+            href={`/site/${ctx.siteSlug}/book?service=${encodeURIComponent(String(prod.id ?? ''))}`}
+            style={{ backgroundColor: theme.colors.primary }}
+            title="احجز الآن"
+            aria-label="احجز الآن"
+            className={buyCls}
+          >
+            <CalendarCheck className="w-3.5 h-3.5" />
+            {options.buyButtonMode === 'full' && <span>احجز الآن</span>}
+          </a>
+        ) : ctx.onAddToCart ? (
           <button
             type="button"
             onClick={() => ctx.onAddToCart?.(prod)}

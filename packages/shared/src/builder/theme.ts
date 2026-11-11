@@ -108,7 +108,20 @@ export function mapSiteProduct(p: any): SiteProduct {
     isAvailable: p?.isAvailable !== false && p?.is_available !== false,
     shopId: p?.shopId || p?.shop_id,
     shopSlug: p?.shopSlug || p?.shop_slug,
-  };
+    // Booking products (unit = 'booking' or extraData.booking) carry their
+    // commerce mode through so published cards can link into the real
+    // booking flow instead of the order cart.
+    unit: p?.unit,
+    extraData: p?.extraData,
+  } as SiteProduct & { unit?: string; extraData?: Record<string, any> };
+}
+
+/** True when a catalog product is a bookable offering (clinic visit, table, session…). */
+export function isBookableProduct(p: any): boolean {
+  if (!p) return false;
+  return (
+    p.unit === 'booking' || Boolean(p.extraData?.booking) || Boolean(p.extraData?.bookingDetails)
+  );
 }
 
 /** Build a wa.me link from an Egyptian phone number with a prefilled text. */

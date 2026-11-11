@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Check,
   Minus,
@@ -11,6 +12,7 @@ import {
   Scale,
   FileDown,
   Calendar,
+  CalendarCheck,
   Sparkles,
   Layers,
   Utensils,
@@ -532,6 +534,17 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
           >
             المنتج غير متوفر حالياً
           </p>
+        ) : isBooking && shop?.slug ? (
+          /* المنتج القابل للحجز بيمشي في تدفق الحجز الحقيقي (المواعيد المتاحة
+             بتوقيت القاهرة) بدل السلة — نفس مسار صفحة /site/[slug]/book */
+          <Link
+            href={`/site/${shop.slug}/book?service=${encodeURIComponent(String(product.id ?? ''))}`}
+            className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl px-6 font-black text-white shadow-lg transition hover:-translate-y-0.5 active:translate-y-0"
+            style={{ backgroundColor: 'var(--site-primary, #7c3aed)' }}
+          >
+            <CalendarCheck className="h-5 w-5" />
+            احجز موعدك الآن
+          </Link>
         ) : (
           <div className="flex flex-wrap items-center gap-3">
             {/* عداد الكمية */}

@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type {
   SiteProduct,
+  SiteBookingService,
   SiteShopContext,
   SiteSubscriptionPlan,
   ViewportBreakpoint,
@@ -25,6 +26,8 @@ export interface PublicSiteRendererProps {
   shop: SiteShopContext;
   products?: SiteProduct[];
   subscriptionPlans?: SiteSubscriptionPlan[];
+  /** Real bookable services — powers real "احجز" CTAs on services sections. */
+  realServices?: SiteBookingService[];
   onAddToCart?: (product: SiteProduct) => void;
   onOpenCart?: () => void;
   cartCount?: number;
@@ -71,6 +74,7 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
   shop,
   products = [],
   subscriptionPlans = [],
+  realServices,
   onAddToCart,
   onOpenCart,
   cartCount,
@@ -327,6 +331,7 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
               theme,
               shop,
               realProducts: previewMode ? [] : products,
+              realServices: previewMode ? undefined : realServices,
               realSubscriptionPlans: previewMode ? [] : subscriptionPlans,
               onNavigatePage: handleNavigatePage,
               waLink,
