@@ -310,4 +310,182 @@ describe('addPage', () => {
       )
     ).toBe(true);
   });
+
+  it('seeds a full landing page (hero, features, stats, testimonials, CTA) in one click', () => {
+    const website = {
+      id: 'site',
+      name: 'Store',
+      pages: [{ id: 'home', name: 'Home', slug: '', rootNodeId: 'home_root' }],
+      components: {
+        home_root: node('home_root', ['comp_header', 'comp_footer']),
+        comp_header: { ...node('comp_header'), type: 'header' },
+        comp_footer: { ...node('comp_footer'), type: 'footer' },
+      },
+    } as any;
+    let nextWebsite: any;
+    let operations: ReturnType<typeof useBuilderPageOperations> | undefined;
+    const recordHistory = jest.fn((_label: string, result: any) => {
+      nextWebsite = result;
+    });
+    const Probe = () => {
+      operations = useBuilderPageOperations({
+        website,
+        websiteRef: { current: website },
+        activePageId: 'home',
+        setActivePageId: jest.fn(),
+        setSelectedNodeId: jest.fn(),
+        recordHistory,
+      });
+      return null;
+    };
+
+    renderToString(React.createElement(Probe));
+    operations!.addPage({
+      name: 'عرض ترويجي',
+      slug: 'promo',
+      placement: 'standalone',
+      pageTemplate: 'landing_page',
+    });
+
+    const landingPage = nextWebsite.pages[1];
+    const root = nextWebsite.components[landingPage.rootNodeId];
+    const sectionTypes = root.childrenIds.map((id: string) => nextWebsite.components[id]?.type);
+    // header + hero + features + stats + testimonials + cta + footer
+    expect(sectionTypes[0]).toBe('header');
+    expect(sectionTypes[sectionTypes.length - 1]).toBe('footer');
+    const contentTypes = sectionTypes.slice(1, -1);
+    expect(contentTypes).toContain('hero');
+    expect(contentTypes).toContain('features');
+    expect(contentTypes).toContain('stats');
+    expect(contentTypes).toContain('testimonials');
+    expect(contentTypes).toContain('cta');
+    expect(contentTypes.length).toBeGreaterThanOrEqual(5);
+    // The generic gray hero must NOT be seeded — the template hero replaces it.
+    expect(contentTypes.filter((type: string) => type === 'hero')).toHaveLength(1);
+    // Every SEEDED template-section node has mobile styles generated (header/
+    // footer clones keep their own original styles).
+    const seededSectionIds = root.childrenIds.slice(1, -1);
+    const seededNodeIds: string[] = [];
+    const visit = (id: string) => {
+      seededNodeIds.push(id);
+      nextWebsite.components[id]?.childrenIds?.forEach(visit);
+    };
+    seededSectionIds.forEach(visit);
+    expect(seededNodeIds.every((id: string) => nextWebsite.components[id]?.styles?.mobile)).toBe(
+      true
+    );
+  });
+
+  it('no longer leaves hero_services and contact_form as hero-only stubs', () => {
+    const website = {
+      id: 'site',
+      name: 'Store',
+      pages: [{ id: 'home', name: 'Home', slug: '', rootNodeId: 'home_root' }],
+      components: { home_root: node('home_root') },
+    } as any;
+    let operations: ReturnType<typeof useBuilderPageOperations> | undefined;
+    const results: any[] = [];
+    const recordHistory = jest.fn((_label: string, result: any) => {
+      results.push(result);
+    });
+    const Probe = () => {
+      operations = useBuilderPageOperations({
+        website,
+        websiteRef: { current: website },
+        activePageId: 'home',
+        setActivePageId: jest.fn(),
+        setSelectedNodeId: jest.fn(),
+        recordHistory,
+      });
+      return null;
+    };
+
+    renderToString(React.createElement(Probe));
+    operations!.addPage({
+      name: 'خدماتنا',
+      slug: 'services',
+      pageTemplate: 'hero_services',
+    });
+    operations!.addPage({
+      name: 'اتصل بنا',
+      slug: 'contact',
+      pageTemplate: 'contact_form',
+    });
+
+    const servicesPage = results[0].pages.find((p: any) => p.slug === 'services');
+    const servicesRoot = results[0].components[servicesPage.rootNodeId];
+    const servicesTypes = servicesRoot.childrenIds.map(
+      (id: string) => results[0].components[id]?.type
+    );
+    expect(servicesTypes).toContain('features');
+    expect(servicesTypes).toContain('stats');
+
+    const contactPage = results[1].pages.find((p: any) => p.slug === 'contact');
+    const contactRoot = results[1].components[contactPage.rootNodeId];
+    const contactTypes = contactRoot.childrenIds.map(
+      (id: string) => results[1].components[id]?.type
+    );
+    expect(contactTypes).toContain('contact');
+  });
+
+  it('duplicatePage clones the full subtree and never marks the copy as home', () => {
+    const website = {
+      id: 'site',
+      name: 'Store',
+      pages: [
+        {
+          id: 'promo',
+          name: 'عرض خاص',
+          slug: 'promo',
+          rootNodeId: 'promo_root',
+          metadata: {
+            title: 'عرض خاص',
+            description: 'صفحة ترويجية',
+            slug: 'promo',
+            isHomePage: false,
+            placement: 'standalone',
+          },
+        },
+      ],
+      components: {
+        promo_root: node('promo_root', ['hero_a', 'features_a']),
+        hero_a: node('hero_a', [], { title: 'خصم 30%' }),
+        features_a: node('features_a'),
+      },
+    } as any;
+    let nextWebsite: any;
+    let operations: ReturnType<typeof useBuilderPageOperations> | undefined;
+    const recordHistory = jest.fn((_label: string, result: any) => {
+      nextWebsite = result;
+    });
+    const Probe = () => {
+      operations = useBuilderPageOperations({
+        website,
+        websiteRef: { current: website },
+        activePageId: 'promo',
+        setActivePageId: jest.fn(),
+        setSelectedNodeId: jest.fn(),
+        recordHistory,
+      });
+      return null;
+    };
+
+    renderToString(React.createElement(Probe));
+    operations!.duplicatePage('promo');
+
+    const copy = nextWebsite.pages.find((p: any) => p.slug === 'promo-copy');
+    expect(copy).toBeDefined();
+    expect(copy.name).toBe('عرض خاص (نسخة)');
+    expect(copy.metadata.isHomePage).toBe(false);
+    const copyRoot = nextWebsite.components[copy.rootNodeId];
+    const copyChildIds = copyRoot.childrenIds;
+    expect(copyChildIds).toHaveLength(2);
+    // Children are fresh clones with the SAME props, not the source nodes.
+    const copyHero = nextWebsite.components[copyChildIds[0]];
+    expect(copyHero.id).not.toBe('hero_a');
+    expect(copyHero.props.title).toBe('خصم 30%');
+    expect(copyHero.parentId).toBe(copy.rootNodeId);
+    // Source page remains untouched.
+    expect(nextWebsite.components.promo_root.childrenIds).toEqual(['hero_a', 'features_a']);
+  });
 });

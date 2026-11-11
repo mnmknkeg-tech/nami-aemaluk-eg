@@ -42,6 +42,8 @@ export interface BuilderContextType {
     options?: Partial<AddPageOptions>
   ) => void;
   deletePage: (pageId: string) => void;
+  /** True duplicate: clones the page's entire subtree into a new page. */
+  duplicatePage: (pageId: string) => void;
   updatePageMetadata: (pageId: string, meta: Partial<PageMetadata>, pageName?: string) => void;
   /** Atomically make one page the site home page (unset all others). */
   setHomePage: (pageId: string) => void;

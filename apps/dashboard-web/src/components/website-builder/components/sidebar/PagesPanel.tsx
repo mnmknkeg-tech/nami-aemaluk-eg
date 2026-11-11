@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Building2,
   ShoppingBag,
+  Rocket,
 } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
 import { Page, PagePlacementMode } from '../../types/builder';
@@ -33,6 +34,7 @@ export const PagesPanel: React.FC = () => {
     activePageId,
     switchPage,
     addPage,
+    duplicatePage,
     deletePage,
     updatePageMetadata,
     updatePagePlacement,
@@ -83,8 +85,7 @@ export const PagesPanel: React.FC = () => {
     .filter(isNavCandidate)
     .sort(
       (a, b) =>
-        (isOnActivePage(a.id) ? 0 : 1) - (isOnActivePage(b.id) ? 0 : 1) ||
-        a.id.localeCompare(b.id)
+        (isOnActivePage(a.id) ? 0 : 1) - (isOnActivePage(b.id) ? 0 : 1) || a.id.localeCompare(b.id)
     )[0];
   const navigationItems: Array<{
     id?: string;
@@ -177,22 +178,24 @@ export const PagesPanel: React.FC = () => {
 
   const handleDuplicatePage = (page: Page, e: React.MouseEvent) => {
     e.stopPropagation();
-    const duplicatedName = `${page.name} (نسخة)`;
-    const duplicatedSlug = `${page.slug}-copy`;
-    addPage({
-      name: duplicatedName,
-      slug: duplicatedSlug,
-      placement: page.metadata.placement || 'standalone',
-      headerTitle: duplicatedName,
-      includeHeaderFooter: true,
-      pageTemplate: 'blank',
-    });
+    // True duplicate now: clones the page's entire subtree (was a blank page).
+    duplicatePage(page.id);
   };
 
   const handleQuickAddPreset = (
-    type: 'contact' | 'login' | 'privacy' | 'about' | 'catalog' | 'blank'
+    type: 'landing' | 'contact' | 'login' | 'privacy' | 'about' | 'catalog' | 'blank'
   ) => {
     switch (type) {
+      case 'landing':
+        addPage({
+          name: 'عرض ترويجي خاص',
+          slug: 'promo',
+          placement: 'standalone',
+          headerTitle: 'عرض خاص',
+          includeHeaderFooter: true,
+          pageTemplate: 'landing_page',
+        });
+        break;
       case 'contact':
         addPage({
           name: 'اتصل بنا وفروعنا',
@@ -365,6 +368,28 @@ export const PagesPanel: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-1.5">
+          {/* One-click landing page — full-width, top: the owner's biggest ask */}
+          <button
+            type="button"
+            onClick={() => handleQuickAddPreset('landing')}
+            className="col-span-2 flex items-center gap-2.5 p-2.5 bg-gradient-to-l from-violet-50 to-blue-50 hover:from-violet-100 hover:to-blue-100 border border-violet-300 hover:border-violet-400 rounded-xl text-right transition-all cursor-pointer group shadow-2xs"
+          >
+            <div className="w-8 h-8 rounded-lg bg-violet-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Rocket className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-bold text-violet-950 block truncate">
+                صفحة هبوط جاهزة — بنقرة واحدة
+              </span>
+              <span className="text-[9px] text-violet-600 block truncate">
+                هيرو + مميزات + أرقام موثوقية + آراء عملاء + زر طلب
+              </span>
+            </div>
+            <span className="text-[9px] bg-violet-600 text-white font-bold px-1.5 py-0.5 rounded-full shrink-0">
+              جديد
+            </span>
+          </button>
+
           <button
             type="button"
             onClick={() => handleQuickAddPreset('contact')}

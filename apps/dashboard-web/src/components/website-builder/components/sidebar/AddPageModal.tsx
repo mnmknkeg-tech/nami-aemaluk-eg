@@ -20,6 +20,7 @@ import {
   User,
   UserCheck,
   Lock,
+  Rocket,
 } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
 import { PagePlacementMode, AddPageOptions } from '../../types/builder';
@@ -49,7 +50,7 @@ export const AddPageModal: React.FC<AddPageModalProps> = ({ isOpen, onClose }) =
     | 'product_page'
     | 'login_page'
     | 'register_page'
-  >('catalog_grid');
+  >('landing_page');
 
   const availableDropdowns = getHeaderDropdownNavItems();
 
@@ -371,6 +372,36 @@ export const AddPageModal: React.FC<AddPageModalProps> = ({ isOpen, onClose }) =
             </label>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* Landing page — first and default: a complete page in one click */}
+              <div
+                onClick={() => {
+                  setPageTemplate('landing_page');
+                  // Landing pages live on direct links (ads, campaigns), so
+                  // standalone is the sensible default placement for them.
+                  setPlacement('standalone');
+                  if (!name || name === 'صفحة جديدة') {
+                    setName('عرض ترويجي خاص');
+                    setSlug('promo');
+                    setHeaderTitle('عرض خاص');
+                  }
+                }}
+                className={`p-2.5 rounded-xl border text-center cursor-pointer transition-all col-span-2 sm:col-span-2 bg-gradient-to-l ${
+                  pageTemplate === 'landing_page'
+                    ? 'from-violet-50 to-blue-50 border-violet-500 text-violet-950 font-bold ring-1 ring-violet-500/20'
+                    : 'from-violet-50/40 to-blue-50/40 border-slate-200 hover:border-violet-300 text-slate-700'
+                }`}
+              >
+                <Rocket
+                  className={`w-5 h-5 mx-auto mb-1 ${
+                    pageTemplate === 'landing_page' ? 'text-violet-600' : 'text-violet-400'
+                  }`}
+                />
+                <span className="text-[11px] block">صفحة هبوط جاهزة بنقرة واحدة</span>
+                <span className="text-[9px] block text-slate-500 mt-0.5">
+                  هيرو + مميزات + أرقام + آراء عملاء + زر طلب
+                </span>
+              </div>
+
               <div
                 onClick={() => setPageTemplate('catalog_grid')}
                 className={`p-2.5 rounded-xl border text-center cursor-pointer transition-all ${

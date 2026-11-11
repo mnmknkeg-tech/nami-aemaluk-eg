@@ -13,7 +13,8 @@ import {
   PagePlacementMode,
   Website,
 } from '../../types/builder';
-import { createUniqueBuilderId } from '../builderUtils';
+import { loadSectionTemplate } from '../../data/registry';
+import { createTemplateMobileStyles, createUniqueBuilderId } from '../builderUtils';
 
 export interface UseBuilderPageOperationsProps {
   website: Website;
@@ -23,6 +24,101 @@ export interface UseBuilderPageOperationsProps {
   setSelectedNodeId: (id: string | null) => void;
   recordHistory: (actionDesc: string, newWebsite: Website) => void;
 }
+
+/**
+ * Shared navigation-placement machinery for addPage / duplicatePage. Adds a nav
+ * link (or dropdown item) pointing at the new page inside every navigation
+ * container across ALL page roots — including the new page's own cloned
+ * header — so the page is reachable from the published site immediately.
+ */
+const applyNavigationPlacement = (
+  components: Record<string, ComponentNode>,
+  pageRootIds: string[],
+  opts: {
+    newPageId: string;
+    navText: string;
+    slug: string;
+    placement: PagePlacementMode;
+    parentNavId?: string;
+    dropdownDescription?: string;
+    dropdownBadge?: string;
+  }
+) => {
+  const usedIds = new Set(Object.keys(components));
+  if (opts.placement === 'header_direct' || opts.placement === 'header_and_footer') {
+    const navContainerIds = new Set<string>();
+    const visitForNavigation = (id: string, seen = new Set<string>()) => {
+      if (seen.has(id)) return;
+      seen.add(id);
+      const candidate = components[id];
+      if (!candidate) return;
+      if (
+        Array.isArray(candidate.childrenIds) &&
+        (id === 'header_nav' ||
+          id.toLowerCase().includes('nav') ||
+          candidate.category === 'navigation')
+      ) {
+        navContainerIds.add(id);
+      }
+      candidate.childrenIds?.forEach((childId: string) => visitForNavigation(childId, seen));
+    };
+    pageRootIds.forEach((pageRootId) => visitForNavigation(pageRootId));
+    if (navContainerIds.size === 0 && components['header_nav']) navContainerIds.add('header_nav');
+    for (const navContainerId of navContainerIds) {
+      const navLinkId = createUniqueBuilderId('nav_link', usedIds);
+      const headerNav = components[navContainerId];
+      if (!headerNav) continue;
+      components[navLinkId] = {
+        id: navLinkId,
+        name: `رابط ${opts.navText}`,
+        type: 'paragraph',
+        category: 'typography',
+        parentId: 'header_nav',
+        childrenIds: [],
+        props: {
+          text: opts.navText,
+          url: `/${opts.slug}`,
+          pageId: opts.newPageId,
+          destination: { type: 'page', pageId: opts.newPageId },
+        },
+        styles: {
+          desktop: {
+            fontSize: '15px',
+            fontWeight: '500',
+            textColor: '#475569',
+          },
+        },
+      };
+      components[navContainerId] = {
+        ...headerNav,
+        childrenIds: [...headerNav.childrenIds, navLinkId],
+      };
+    }
+  } else if (opts.placement === 'header_dropdown') {
+    const targetParentNavId = opts.parentNavId || 'nav_link_2';
+    const targetNavNode = components[targetParentNavId];
+    if (targetNavNode) {
+      const existingDropdownItems: DropdownSubItem[] = targetNavNode.props.dropdownItems || [];
+      const newDropdownItem: DropdownSubItem = {
+        id: createUniqueBuilderId('sub', usedIds),
+        title: opts.navText,
+        description: opts.dropdownDescription || `تصفح تفاصيل ومحتوى ${opts.navText}`,
+        url: `/${opts.slug}`,
+        pageId: opts.newPageId,
+        destination: { type: 'page', pageId: opts.newPageId },
+        badge: opts.dropdownBadge || undefined,
+      };
+      components[targetParentNavId] = {
+        ...targetNavNode,
+        props: {
+          ...targetNavNode.props,
+          hasDropdown: true,
+          dropdownItems: [...existingDropdownItems, newDropdownItem],
+        },
+      };
+    }
+  }
+};
 
 const collectReachableIds = (website: Website, roots: string[]): Set<string> => {
   const reachable = new Set<string>();
@@ -236,7 +332,36 @@ export const useBuilderPageOperations = ({
       // A blank page must contain no content sections. Non-blank templates opt
       // into their initial sections below.
       const pageSectionIds: string[] = [];
-      if (pageTemplate !== 'blank') {
+
+      // Clones a library section template into the new page with fresh ids and
+      // generated mobile styles — the same machinery insertSectionTemplate
+      // uses, so one-click pages start with real, professionally structured
+      // sections instead of a bare gray hero. A missing template never blocks
+      // page creation.
+      const appendTemplateSection = (templateId: string) => {
+        try {
+          const tmpl = loadSectionTemplate(templateId).template;
+          const idMap: Record<string, string> = {};
+          Object.keys(tmpl.nodes).forEach((origId) => {
+            idMap[origId] = createUniqueBuilderId('pg_sec', usedIds);
+          });
+          Object.values(tmpl.nodes).forEach((node) => {
+            const newId = idMap[node.id];
+            newComponents[newId] = {
+              ...node,
+              id: newId,
+              parentId: node.parentId ? idMap[node.parentId] : rootId,
+              childrenIds: node.childrenIds.map((childId) => idMap[childId]),
+              styles: { ...node.styles, mobile: createTemplateMobileStyles(node) },
+            };
+          });
+          pageSectionIds.push(idMap[tmpl.rootNodeId]);
+        } catch {
+          // Template missing → skip it; the rest of the page still builds.
+        }
+      };
+
+      if (pageTemplate !== 'blank' && pageTemplate !== 'landing_page') {
         const heroId = createUniqueBuilderId('hero', usedIds);
         pageSectionIds.push(heroId);
 
@@ -403,6 +528,31 @@ export const useBuilderPageOperations = ({
         };
       }
 
+      // Landing page: a complete ready-to-edit promotional page in one click
+      // — hero, feature grid, trust stats, testimonials and a closing CTA.
+      // This was previously dead code (typed but never implemented), which is
+      // exactly why merchants could not assemble landing pages by themselves.
+      if (pageTemplate === 'landing_page') {
+        appendTemplateSection('hero-minimal-saas');
+        appendTemplateSection('features-grid-3');
+        appendTemplateSection('stats-counter-bar');
+        appendTemplateSection('testimonials-cards-stars');
+        appendTemplateSection('cta-banner-gradient');
+      }
+
+      // Services page: capabilities + trust numbers (the modal card previously
+      // promised this but silently produced a lone hero).
+      if (pageTemplate === 'hero_services') {
+        appendTemplateSection('features-bento-grid');
+        appendTemplateSection('stats-counter-bar');
+      }
+
+      // Contact page: quick contact form with business info + WhatsApp
+      // (previously also silently produced a lone hero).
+      if (pageTemplate === 'contact_form') {
+        appendTemplateSection('contact-form-with-info');
+      }
+
       // If login page template selected
       if (pageTemplate === 'login_page') {
         const authSectionId = createUniqueBuilderId('auth_section', usedIds);
@@ -511,84 +661,21 @@ export const useBuilderPageOperations = ({
         },
       };
 
-      // Apply Navigation Placement
+      // Apply Navigation Placement (shared with duplicatePage)
       const navText = headerTitle || name;
-      if (placement === 'header_direct' || placement === 'header_and_footer') {
-        const navContainerIds = new Set<string>();
-        const visitForNavigation = (id: string, seen = new Set<string>()) => {
-          if (seen.has(id)) return;
-          seen.add(id);
-          const candidate = newComponents[id];
-          if (!candidate) return;
-          if (
-            Array.isArray(candidate.childrenIds) &&
-            (id === 'header_nav' ||
-              id.toLowerCase().includes('nav') ||
-              candidate.category === 'navigation')
-          ) {
-            navContainerIds.add(id);
-          }
-          candidate.childrenIds?.forEach((childId: string) => visitForNavigation(childId, seen));
-        };
-        [...currentWebsite.pages.map((page) => page.rootNodeId), rootId].forEach((root) =>
-          visitForNavigation(root)
-        );
-        if (navContainerIds.size === 0 && newComponents['header_nav'])
-          navContainerIds.add('header_nav');
-        for (const navContainerId of navContainerIds) {
-          const navLinkId = createUniqueBuilderId('nav_link', usedIds);
-          const headerNav = newComponents[navContainerId];
-          if (!headerNav) continue;
-          newComponents[navLinkId] = {
-            id: navLinkId,
-            name: `رابط ${navText}`,
-            type: 'paragraph',
-            category: 'typography',
-            parentId: 'header_nav',
-            childrenIds: [],
-            props: {
-              text: navText,
-              url: `/${cleanSlug}`,
-              pageId: newPageId,
-              destination: { type: 'page', pageId: newPageId },
-            },
-            styles: {
-              desktop: {
-                fontSize: '15px',
-                fontWeight: '500',
-                textColor: '#475569',
-              },
-            },
-          };
-          newComponents[navContainerId] = {
-            ...headerNav,
-            childrenIds: [...headerNav.childrenIds, navLinkId],
-          };
+      applyNavigationPlacement(
+        newComponents,
+        [...currentWebsite.pages.map((page) => page.rootNodeId), rootId],
+        {
+          newPageId,
+          navText,
+          slug: cleanSlug,
+          placement,
+          parentNavId,
+          dropdownDescription,
+          dropdownBadge,
         }
-      } else if (placement === 'header_dropdown') {
-        const targetParentNavId = parentNavId || 'nav_link_2';
-        const targetNavNode = newComponents[targetParentNavId];
-        if (targetNavNode) {
-          const existingDropdownItems: DropdownSubItem[] = targetNavNode.props.dropdownItems || [];
-          const newDropdownItem: DropdownSubItem = {
-            id: createUniqueBuilderId('sub', usedIds),
-            title: navText,
-            description: dropdownDescription || `تصفح تفاصيل ومحتوى ${name}`,
-            url: `/${cleanSlug}`,
-            pageId: newPageId,
-            destination: { type: 'page', pageId: newPageId },
-            badge: dropdownBadge || undefined,
-          };
-          newComponents[targetParentNavId] = {
-            ...targetNavNode,
-            props: {
-              ...targetNavNode.props,
-              hasDropdown: true,
-              dropdownItems: [...existingDropdownItems, newDropdownItem],
-            },
-          };
-        }
-      }
+      );
 
       const newPage: Page = {
         id: newPageId,
@@ -651,10 +738,10 @@ export const useBuilderPageOperations = ({
           updatedAt: new Date().toISOString(),
         };
       });
-      recordHistory(
-        `تعيين (${target.name}) كصفحة رئيسية للموقع`,
-        { ...currentWebsite, pages: newPages }
-      );
+      recordHistory(`تعيين (${target.name}) كصفحة رئيسية للموقع`, {
+        ...currentWebsite,
+        pages: newPages,
+      });
     },
     [website, websiteRef, recordHistory]
   );
@@ -680,6 +767,97 @@ export const useBuilderPageOperations = ({
       );
     },
     [website, websiteRef, recordHistory]
+  );
+
+  /**
+   * True duplicate: clones the source page's ENTIRE subtree — sections,
+   * props, header/footer clones and all — into a new page. Previously
+   * "تكرار الصفحة" seeded a blank page, so merchants had no copy-existing-
+   * page path at all. The home flag never carries over (renderer invariant:
+   * exactly one home page) and the copy inherits the source's nav placement.
+   */
+  const duplicatePage = useCallback(
+    (pageId: string) => {
+      const currentWebsite = websiteRef?.current ?? website;
+      const source = currentWebsite.pages.find((page) => page.id === pageId);
+      if (!source) return;
+
+      const usedIds = new Set([
+        ...currentWebsite.pages.map((page) => page.id),
+        ...Object.keys(currentWebsite.components),
+      ]);
+      const newPageId = createUniqueBuilderId('page', usedIds);
+      const rootId = createUniqueBuilderId('root', usedIds);
+      const baseSlug = `${source.slug || 'page'}-copy`;
+      let cleanSlug = baseSlug;
+      let suffix = 2;
+      while (currentWebsite.pages.some((page) => page.slug === cleanSlug)) {
+        cleanSlug = `${baseSlug}-${suffix++}`;
+      }
+      const newName = `${source.name} (نسخة)`;
+
+      const newComponents = { ...currentWebsite.components };
+      const cloneNode = (srcId: string, parentId: string | null): string | null => {
+        const src = currentWebsite.components[srcId];
+        if (!src) return null;
+        const cid =
+          srcId === source.rootNodeId ? rootId : createUniqueBuilderId('page_component', usedIds);
+        const cloned: ComponentNode = {
+          ...src,
+          id: cid,
+          parentId,
+          childrenIds: [],
+          props: { ...(src.props || {}) },
+        };
+        newComponents[cid] = cloned;
+        for (const childId of src.childrenIds || []) {
+          const childCid = cloneNode(childId, cid);
+          if (childCid) cloned.childrenIds.push(childCid);
+        }
+        return cid;
+      };
+      cloneNode(source.rootNodeId, null);
+
+      const placement = source.metadata.placement || 'standalone';
+      applyNavigationPlacement(
+        newComponents,
+        [...currentWebsite.pages.map((page) => page.rootNodeId), rootId],
+        {
+          newPageId,
+          navText: source.metadata.headerTitle || newName,
+          slug: cleanSlug,
+          placement,
+          parentNavId: source.metadata.parentNavId,
+        }
+      );
+
+      const newPage: Page = {
+        id: newPageId,
+        name: newName,
+        slug: cleanSlug,
+        rootNodeId: rootId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        metadata: {
+          ...source.metadata,
+          title: source.metadata.title
+            ? `${source.metadata.title} - نسخة`
+            : `${newName} | ${currentWebsite.name}`,
+          description: source.metadata.description || `نسخة من صفحة ${source.name}`,
+          slug: cleanSlug,
+          isHomePage: false,
+        },
+      };
+
+      recordHistory(`تكرار الصفحة (${source.name}) مع كامل محتواها`, {
+        ...currentWebsite,
+        pages: [...currentWebsite.pages, newPage],
+        components: newComponents,
+      });
+      setActivePageId(newPageId);
+      setSelectedNodeId(rootId);
+    },
+    [website, websiteRef, recordHistory, setActivePageId, setSelectedNodeId]
   );
 
   const updatePagePlacement = useCallback(
@@ -966,6 +1144,7 @@ export const useBuilderPageOperations = ({
     switchPage,
     getHeaderDropdownNavItems,
     addPage,
+    duplicatePage,
     updatePagePlacement,
     deletePage,
     updatePageMetadata,
