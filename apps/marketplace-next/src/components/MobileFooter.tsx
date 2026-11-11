@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, BadgePercent, LayoutGrid, User, ShoppingBag } from 'lucide-react';
+import { Home, BadgePercent, LayoutGrid, User, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/lib/cart';
+import { QuickActionsDock } from './QuickActionsDock';
 
 interface FooterItem {
   href: string;
@@ -15,8 +17,11 @@ interface FooterItem {
 
 export function MobileFooter() {
   const pathname = usePathname();
-  const { totalItems, setCartOpen } = useCart();
+  const { totalItems } = useCart();
+  const [dockOpen, setDockOpen] = useState(false);
 
+  // الفوتر السفلي للموبايل — بعد ما شلنا زر السلة من الوسط (نقلناه للهيدر):
+  //   الرئيسية | العروض | [dock] | الأقسام | حسابي
   const navItems: FooterItem[] = [
     { href: '/', icon: Home, label: 'الرئيسية' },
     { href: '/offers', icon: BadgePercent, label: 'العروض' },
@@ -45,31 +50,39 @@ export function MobileFooter() {
   };
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-[100] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)]">
-      <div className="flex items-center justify-around py-2">
-        {navItems.slice(0, 2).map(renderItem)}
+    <>
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-[100] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)]">
+        <div className="flex items-center justify-around py-2 relative">
+          {navItems.slice(0, 2).map(renderItem)}
 
-        {/* Cart center button */}
-        <button
-          type="button"
-          onClick={() => setCartOpen(true)}
-          aria-label="السلة"
-          title="السلة"
-          className="relative flex items-center justify-center w-12 h-12 rounded-full bg-brand-gradient -mt-6 shadow-lg"
-        >
-          <ShoppingBag className="w-6 h-6 text-white" />
-          {totalItems > 0 && (
-            <span
-              key={totalItems}
-              className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-cart-pop"
-            >
-              {totalItems > 9 ? '9+' : totalItems}
-            </span>
-          )}
-        </button>
+          {/* زر الوسط = QuickActionsDock trigger
+              (بدل ما كان زر السلة المباشر — السلة اتنقلت للهيدر) */}
+          <button
+            type="button"
+            onClick={() => setDockOpen(true)}
+            aria-label="إجراءات سريعة"
+            title="إجراءات سريعة"
+            className="relative flex items-center justify-center w-14 h-14 rounded-full bg-brand-gradient -mt-7 shadow-lg shadow-brand-orange/30 active:scale-95 transition-transform"
+          >
+            <Sparkles className="w-6 h-6 text-white" strokeWidth={2.4} />
+            {/* عدّاد السلة بيتحط على زر الوسط عشان المستخدم يشوف لو فيه حاجة في السلة
+                (السلة نفسها بقت في الهيدر، بس العدّاد دلوقتي على زر الإجراءات) */}
+            {totalItems > 0 && (
+              <span
+                key={totalItems}
+                className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-cart-pop ring-2 ring-white dark:ring-slate-900"
+              >
+                {totalItems > 9 ? '9+' : totalItems}
+              </span>
+            )}
+          </button>
 
-        {navItems.slice(2).map(renderItem)}
+          {navItems.slice(2).map(renderItem)}
+        </div>
       </div>
-    </div>
+
+      {/* المنيوي الدائري — 4 أزرار سريعة (احجز / اتفرج / اشارك / اطلب) */}
+      <QuickActionsDock open={dockOpen} onClose={() => setDockOpen(false)} />
+    </>
   );
 }

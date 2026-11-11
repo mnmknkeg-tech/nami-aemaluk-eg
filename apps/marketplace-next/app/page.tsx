@@ -1,11 +1,11 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { Tag, TrendingUp, Sparkles, LayoutGrid, Store, ArrowLeft } from 'lucide-react';
+import { Tag, TrendingUp, Sparkles, Store, ArrowLeft, LayoutGrid } from 'lucide-react';
 import { getOffers, getSeasonalOffers, getLatestProducts, getShops } from '@/lib/services';
 import { VISIBLE_ACTIVITIES, siteConfig } from '@/lib/config';
 import { getActivityTheme } from '@/lib/activity-catalog';
 import { SectionHeader } from '@/components/SectionHeader';
-import { ActivityTile } from '@/components/ActivityTile';
+import { ActivityStories } from '@/components/ActivityStories';
 import { ProductRail } from '@/components/ProductRail';
 
 import { HeroSearch } from '@/components/HeroSearch';
@@ -16,8 +16,54 @@ import { serializeJsonLd } from '@/lib/jsonld';
 export const metadata: Metadata = {
   title: 'من مكانك | كل حاجة من مكانك — تسوق، منيو، حجوزات وخدمات في مصر',
   description:
-    'من مكانك: أول منصة مصرية بتجمع كل حاجة في مكان واحد — تسوّق منتجات بالسعر والسلة، اطلب من مطاعمك المفضلة، احجز مواعيد عياداتك وجيمك، واطلب أي خدمة لحد باب البيت.',
-  alternates: { canonical: '/' },
+    'من مكانك: أول منصة مصرية بتجمع كل حاجة في مكان واحد — تسوّق منتجات بالسعر والسلة، اطلب من مطاعمك المفضلة، احجز مواعيد عياداتك وجيمك، واطلب أي خدمة لحد باب البيت. مطاعم، سوبر ماركت، إلكترونيات، عيادات، جيم، سيارات، عقارات، مقاولات وخدمات منزلية في مكان واحد.',
+  keywords: [
+    'من مكانك',
+    'mnmknk',
+    'تسوق في مصر',
+    'مطاعم مصر',
+    'حجز عيادة',
+    'حجز جيم',
+    'سوبر ماركت',
+    'إلكترونيات',
+    'سيارات مستعملة',
+    'عقارات مصر',
+    'مقاولات وتشطيبات',
+    'خدمات منزلية',
+    'اطلب اونلاين',
+    'توصيل في مصر',
+    'بقالة اونلاين',
+  ],
+  alternates: {
+    canonical: '/',
+    languages: {
+      ar: '/',
+      'x-default': '/',
+    },
+  },
+  openGraph: {
+    title: 'من مكانك — كل حاجة من مكانك',
+    description:
+      'منصة مصرية بتجمع التسوّق والمطاعم والحجوزات والخدمات في مكان واحد. اطلب، احجز، اتفرج — من مكانك.',
+    url: siteConfig.url,
+    siteName: siteConfig.name,
+    locale: 'ar_EG',
+    type: 'website',
+    images: [
+      {
+        url: siteConfig.ogImage,
+        width: 1200,
+        height: 630,
+        alt: 'من مكانك — كل حاجة من مكانك',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'من مكانك — كل حاجة من مكانك',
+    description: 'تسوّق، اطلب من المطاعم، احجز عيادة أو جيم — كل حاجة من مكانك في مصر.',
+    images: [siteConfig.ogImage],
+  },
 };
 
 export const revalidate = 300;
@@ -55,14 +101,12 @@ export default async function HomePage() {
     .filter((s) => s.status === 'active' || new Date(s.endDate) >= new Date())
     .slice(0, 3);
 
-  // عدد المتاجر لكل قسم — بيظهر تحت اسم القسم في كروت الرئيسية.
+  // عدد المتاجر لكل قسم — بيظهر كشارة صغيرة على دائرة الستوري.
   const shopCountByActivity = new Map<string, number>();
   for (const shop of shops) {
     if (!shop.activity) continue;
     shopCountByActivity.set(shop.activity, (shopCountByActivity.get(shop.activity) ?? 0) + 1);
   }
-  const countShopsFor = (query: string) =>
-    query.split(',').reduce((n, q) => n + (shopCountByActivity.get(q.trim()) ?? 0), 0) || undefined;
 
   const websiteJsonLd = {
     '@context': 'https://schema.org',
@@ -89,6 +133,65 @@ export default async function HomePage() {
     sameAs: ['https://www.facebook.com/MNMKNK'],
   };
 
+  // ItemList للمنتجات المميزة — بتاع SEO عشان جوجل يفهرس المنتجات.
+  const featuredListJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'مختارات مميزة من من مكانك',
+    itemListElement: featuredProducts.slice(0, 10).map((p, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: p.name || 'منتج',
+      url: `${siteConfig.url}${p.href || `/product/${p.id}`}`,
+      ...(p.price != null
+        ? {
+            price: p.price,
+            priceCurrency: p.currency || 'EGP',
+          }
+        : {}),
+    })),
+  };
+
+  // FAQ structured data — أسئلة شائعة عن المنصة.
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'إيه هي منصة من مكانك؟',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'من مكانك منصة مصرية بتجمع التسوّق والمطاعم والحجوزات والخدمات في مكان واحد — تقدر تطلب منتجات بالسعر والسلة، تطلب من مطاعمك المفضلة، تحجز مواعيد عياداتك وجيمك، وتطلب أي خدمة لحد باب البيت.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'أقدر أطلب من أنهي أقسام؟',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'كل الأقسام متوفرة: مطاعم وكافيهات، سوبر ماركت، مخابز وحلويات، ملابس وأزياء، إلكترونيات وموبايلات، أثاث وديكور، صيدلية ومستحضرات، عيادات ومراكز طبية، جيم ولياقة، سيارات، عقارات، مقاولات وتشطيبات، خدمات مهنية، خدمات منزلية، وزراعة.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'أزاي أطلب أو أحجز؟',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'اختار القسم من صفحة الأقسام، صفّ المنتجات أو الخدمات، بعدين اختار طريقة الطلب المناسبة: اطلب بالسلة لو فيه سعر، احجز موعد لو القسم حجوزات، أو اطلب عرض سعر لو الخدمة بتعتمد على التفاصيل.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'هل التوصيل متاح في كل مصر؟',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'من مكانك بتغطّي محافظات مصر الكبرى — اختر محافظتك من أعلى الموقع عشان تشوف المتاجر والخدمات المتاحة في منطقتك.',
+        },
+      },
+    ],
+  };
+
   return (
     <div className="overflow-hidden">
       <script
@@ -98,6 +201,14 @@ export default async function HomePage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(orgJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(featuredListJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }}
       />
 
       {/* Welcome toast after login/signup */}
@@ -119,30 +230,36 @@ export default async function HomePage() {
         <h1 className="sr-only">من مكانك - المنصة الأولى للتجارة الذكية في مصر</h1>
       </section>
 
-      {/* ===== تسوّق حسب القسم — كل قسم بلونه ===== */}
-      <section aria-label="الأقسام" className="pt-6 md:pt-10 pb-2">
+      {/* ===== تسوّق حسب القسم — ستوريز دائرية أفقي ===== */}
+      <section aria-label="الأقسام" className="pt-4 md:pt-6 pb-2">
         <div className="max-w-[1400px] mx-auto px-4 md:px-6">
-          <SectionHeader
-            kicker="الأقسام"
-            title="تسوّق حسب القسم"
-            subtitle="كل الأقسام الـ 15 في مكان واحد — من الأكل لحد الفني اللي بيركّبلك البيت"
-            icon={<LayoutGrid className="w-5 h-5" />}
-            viewAllHref="/dalil"
-            viewAllLabel="كل الأقسام والمتاجر"
-            accent="#00B8D4"
-          />
-          {/* بلاطات صغيرة بصور حقيقية — زي تطبيقات مصر الكبيرة:
-              4 أعمدة موبايل ← 8 ديسكتوب، وكل الأقسام الـ 15 ظاهرة */}
-          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-8 gap-x-3 gap-y-4 md:gap-x-4 md:gap-y-5">
-            {VISIBLE_ACTIVITIES.map((a, i) => (
-              <ActivityTile
-                key={a.id}
-                activity={a}
-                shopCount={countShopsFor(a.query)}
-                priority={i < 4}
-              />
-            ))}
+          {/* عنوان صغير للقسم — مش بطاقات كبيرة */}
+          <div className="flex items-end justify-between mb-3 md:mb-4">
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-orange/10 text-brand-orange text-[10px] md:text-[11px] font-black mb-1.5">
+                <LayoutGrid className="w-3.5 h-3.5" />
+                الأقسام
+              </span>
+              <h2 className="text-lg md:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                تصفّح حسب القسم
+              </h2>
+              <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
+                كل الأقسام في صف واحد — اختار اللي يناسبك
+              </p>
+            </div>
+            <Link
+              href="/dalil"
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] md:text-xs font-black text-brand-orange border border-brand-orange/20 bg-brand-orange/5 hover:gap-2.5 transition-all"
+            >
+              الكل
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </Link>
           </div>
+          {/* الستوريز الدائرية — زي تطبيقات مصر الكبيرة (Instagram/Talabat style) */}
+          <ActivityStories
+            activities={VISIBLE_ACTIVITIES}
+            shopCountByActivity={shopCountByActivity}
+          />
         </div>
       </section>
 
@@ -307,6 +424,64 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ===== أسئلة شائعة — لتحسين SEO + تجربة المستخدم ===== */}
+      <section aria-label="أسئلة شائعة" className="py-10 md:py-16 bg-white dark:bg-brand-black">
+        <div className="max-w-[900px] mx-auto px-4 md:px-6">
+          <SectionHeader
+            kicker="معلومات"
+            title="أسئلة شائعة عن من مكانك"
+            subtitle="كل اللي محتاج تعرفه قبل ما تبدأ تطلب أو تحجز"
+            icon={<Store className="w-5 h-5" />}
+            accent="#F97316"
+            align="center"
+          />
+          <div className="mt-4 md:mt-6 space-y-3">
+            {[
+              {
+                q: 'إيه هي منصة من مكانك؟',
+                a: 'من مكانك منصة مصرية بتجمع التسوّق والمطاعم والحجوزات والخدمات في مكان واحد. تقدر تطلب منتجات بالسعر والسلة، تطلب من مطاعمك المفضلة، تحجز مواعيد عياداتك وجيمك، وتطلب أي خدمة لحد باب البيت.',
+              },
+              {
+                q: 'أقدر أطلب من أنهي أقسام؟',
+                a: 'كل الأقسام متوفرة: مطاعم وكافيهات، سوبر ماركت، مخابز وحلويات، ملابس وأزياء، إلكترونيات وموبايلات، أثاث وديكور، صيدلية ومستحضرات، عيادات ومراكز طبية، جيم ولياقة، سيارات، عقارات، مقاولات وتشطيبات، خدمات مهنية، خدمات منزلية، وزراعة.',
+              },
+              {
+                q: 'أزاي أطلب أو أحجز؟',
+                a: 'اختار القسم من صف الأقسام فوق، صفّ المنتجات أو الخدمات، بعدين اختار طريقة الطلب المناسبة: اطلب بالسلة لو فيه سعر، احجز موعد لو القسم حجوزات، أو اطلب عرض سعر لو الخدمة بتعتمد على التفاصيل.',
+              },
+              {
+                q: 'هل التوصيل متاح في كل مصر؟',
+                a: 'من مكانك بتغطّي محافظات مصر الكبرى — اختر محافظتك من أعلى الموقع عشان تشوف المتاجر والخدمات المتاحة في منطقتك.',
+              },
+              {
+                q: 'أقدر أسجّل متجري على المنصة؟',
+                a: 'نعم — أي تاجر يقدر يسجّل متجره مجاناً من رابط الأعمال في الفوتر، ويظهر متجره لكل العملاء في منطقته مع إمكانية التحكم في الأسعار والمنيو والحجوزات.',
+              },
+            ].map((item, i) => (
+              <details
+                key={i}
+                className="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 overflow-hidden"
+              >
+                <summary className="flex items-center justify-between gap-3 p-4 md:p-5 cursor-pointer list-none font-black text-sm md:text-base text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors">
+                  <span className="flex items-center gap-3">
+                    <span className="w-7 h-7 shrink-0 rounded-lg bg-brand-orange/10 text-brand-orange flex items-center justify-center text-xs">
+                      {i + 1}
+                    </span>
+                    {item.q}
+                  </span>
+                  <span className="text-brand-orange transition-transform group-open:rotate-45 text-xl font-light">
+                    +
+                  </span>
+                </summary>
+                <p className="px-4 md:px-5 pb-4 md:pb-5 -mt-1 text-[12.5px] md:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed pr-12 md:pr-14">
+                  {item.a}
+                </p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* App Download Banner */}
       <AppDownloadBanner />

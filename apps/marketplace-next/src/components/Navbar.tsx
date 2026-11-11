@@ -199,18 +199,20 @@ export function Navbar() {
             ))}
           </nav>
 
-          {/* Cart — desktop; on mobile the fixed footer bar carries it */}
+          {/* Cart — في الهيدر على الموبايل والديسكتوب.
+              (الموبايل كان بيرفع السلة لزر الوسط في الفوتر، بس دلوقتي زر الوسط بقى
+              QuickActionsDock، فالسلة بقت هنا على كل أحجام الشاشة.) */}
           <button
             type="button"
             onClick={openCart}
             aria-label={lang === 'ar' ? 'السلة' : 'Cart'}
-            className="hidden lg:flex relative w-10 h-10 rounded-full items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+            className="relative w-10 h-10 rounded-full flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
           >
             <ShoppingBag className="w-5 h-5" />
             {totalItems > 0 && (
               <span
                 key={totalItems}
-                className="absolute -top-0.5 -left-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-cyan text-black text-[10px] font-black flex items-center justify-center animate-cart-pop"
+                className="absolute -top-0.5 -left-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-cyan text-black text-[10px] font-black flex items-center justify-center animate-cart-pop ring-2 ring-white dark:ring-slate-900"
               >
                 {totalItems > 9 ? '9+' : totalItems}
               </span>
