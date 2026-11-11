@@ -2,18 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarCheck, Eye, Share2, ShoppingBag, X } from 'lucide-react';
+import { CalendarCheck, Images, ShoppingBag, X } from 'lucide-react';
 import { useCart } from '@/lib/cart';
 import { cn } from '@/lib/utils';
 
 /**
- * QuickActionsDock — منيوي دائري بـ 4 أزرار سريعة بيظهر فوق الفوتر السفلي.
+ * QuickActionsDock — منيوي دائري بـ 3 أزرار فقط (زي ما اتفقنا في نظام الأوضاع):
  *
- * تصميمه مطابق للبروتوتايب اللي بعتو المستخدم:
- *   - احجز (Calendar)
- *   - اتفرج (Eye) → يفتح السلة
- *   - اشارك (Share)
- *   - اطلب (Bag) → يفتح السلة
+ *   1. اطلب  → المنتجات اللي بتنطلب بالسعر والسلة (mode = products/menu)
+ *   2. احجز  → الحجوزات والمواعيد (mode = booking)
+ *   3. عرض   → الصور فقط / طلب عرض سعر (mode = request_quote)
  *
  * بيفتح بضغطة على زر الوسط في الفوتر السفلي للموبايل، ويقفل بـ X أو
  * الضغط خارج المنيو.
@@ -26,7 +24,6 @@ export function QuickActionsDock({ open, onClose }: { open: boolean; onClose: ()
   useEffect(() => {
     if (open) {
       setMounted(true);
-      // اقفل الـ scroll على البودي لما المنيو يفتح
       const prev = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       return () => {
@@ -37,7 +34,6 @@ export function QuickActionsDock({ open, onClose }: { open: boolean; onClose: ()
     }
   }, [open]);
 
-  // اقفل بـ Esc
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -49,7 +45,23 @@ export function QuickActionsDock({ open, onClose }: { open: boolean; onClose: ()
 
   if (!open) return null;
 
+  // 3 أزرار فقط — كل واحد بيعكس وضع تجاري من نظام "العوالم":
+  //   اطلب = products (سعر + سلة)         → /offers (كل المنتجات اللي بتنطلب)
+  //   احجز = booking (مواعيد)             → /activity/clinics (مثال على الحجز)
+  //   عرض  = request_quote (صور/عرض سعر)  → /activity/furniture (مثال على "صور بس")
   const actions = [
+    {
+      key: 'order',
+      label: 'اطلب',
+      desc: 'منتجات بالسعر',
+      icon: ShoppingBag,
+      color: '#F97316',
+      bg: '#FEF0DD',
+      onClick: () => {
+        onClose();
+        router.push('/offers');
+      },
+    },
     {
       key: 'book',
       label: 'احجز',
@@ -64,48 +76,14 @@ export function QuickActionsDock({ open, onClose }: { open: boolean; onClose: ()
     },
     {
       key: 'view',
-      label: 'اتفرج',
-      desc: 'تصفّح السلة',
-      icon: Eye,
+      label: 'عرض',
+      desc: 'صور وطلب عرض سعر',
+      icon: Images,
       color: '#7C3AED',
       bg: '#F5F3FF',
       onClick: () => {
         onClose();
-        setCartOpen(true);
-      },
-    },
-    {
-      key: 'share',
-      label: 'اشارك',
-      desc: 'شارك التطبيق',
-      icon: Share2,
-      color: '#16A34A',
-      bg: '#F0FDF4',
-      onClick: async () => {
-        onClose();
-        try {
-          if (navigator.share) {
-            await navigator.share({
-              title: 'من مكانك',
-              text: 'كل حاجة من مكانك — تسوّق، منيو، حجوزات وخدمات',
-              url: window.location.origin,
-            });
-          } else {
-            await navigator.clipboard.writeText(window.location.origin);
-          }
-        } catch {}
-      },
-    },
-    {
-      key: 'order',
-      label: 'اطلب',
-      desc: 'السلة والدفع',
-      icon: ShoppingBag,
-      color: '#F97316',
-      bg: '#FEF0DD',
-      onClick: () => {
-        onClose();
-        setCartOpen(true);
+        router.push('/activity/furniture');
       },
     },
   ];
@@ -129,7 +107,7 @@ export function QuickActionsDock({ open, onClose }: { open: boolean; onClose: ()
         <div className="flex items-center justify-between mb-3 px-1">
           <span className="text-xs font-black text-white/90 inline-flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-brand-orange animate-ping" />
-            إجراءات سريعة
+            اختار طريقتك
           </span>
           <button
             type="button"
@@ -141,8 +119,8 @@ export function QuickActionsDock({ open, onClose }: { open: boolean; onClose: ()
           </button>
         </div>
 
-        {/* شبكة الـ 4 أزرار الدائرية */}
-        <div className="grid grid-cols-4 gap-2.5 p-3 rounded-3xl bg-white dark:bg-slate-900 shadow-2xl ring-1 ring-black/5">
+        {/* شبكة الـ 3 أزرار الدائرية — أزرار أكبر شوية عشان 3 بس */}
+        <div className="grid grid-cols-3 gap-3 p-4 rounded-3xl bg-white dark:bg-slate-900 shadow-2xl ring-1 ring-black/5">
           {actions.map((a) => {
             const Icon = a.icon;
             return (
@@ -150,22 +128,22 @@ export function QuickActionsDock({ open, onClose }: { open: boolean; onClose: ()
                 key={a.key}
                 type="button"
                 onClick={a.onClick}
-                className="group flex flex-col items-center gap-1.5 py-1 active:scale-95 transition-transform"
+                className="group flex flex-col items-center gap-2 py-1 active:scale-95 transition-transform"
               >
                 <span
-                  className="relative w-14 h-14 rounded-full flex items-center justify-center ring-2 transition-all group-hover:scale-105"
+                  className="relative w-16 h-16 rounded-full flex items-center justify-center ring-2 transition-all group-hover:scale-105"
                   style={{
                     backgroundColor: a.bg,
                     color: a.color,
-                    boxShadow: `0 6px 16px -4px ${a.color}40`,
+                    boxShadow: `0 6px 18px -4px ${a.color}40`,
                   }}
                 >
-                  <Icon className="w-6 h-6" strokeWidth={2.2} />
+                  <Icon className="w-7 h-7" strokeWidth={2.2} />
                 </span>
-                <span className="text-[11px] font-black text-slate-800 dark:text-slate-100 leading-tight">
+                <span className="text-[12px] font-black text-slate-800 dark:text-slate-100 leading-tight">
                   {a.label}
                 </span>
-                <span className="text-[8.5px] font-semibold text-slate-400 dark:text-slate-500 leading-tight -mt-1">
+                <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 leading-tight -mt-1 text-center">
                   {a.desc}
                 </span>
               </button>
