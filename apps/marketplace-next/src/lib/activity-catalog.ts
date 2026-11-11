@@ -85,7 +85,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'restaurant',
     label: { ar: 'مطاعم وكافيهات', en: 'Restaurants & Cafes' },
-    image: '/images/activities/restaurant.svg',
+    image: '/images/activities/restaurant.jpg',
     query:
       'RESTAURANT,مطعم / كافيه,المطعم,مطعم للوجبات السريعة,مطعم الوجبات الجاهزة,عربات بيع الطعام',
     mode: 'menu',
@@ -95,7 +95,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'supermarket',
     label: { ar: 'سوبر ماركت', en: 'Supermarket' },
-    image: '/images/activities/supermarket.svg',
+    image: '/images/activities/supermarket.jpg',
     query: 'FOOD,سوبر ماركت / بقالة / عطارة',
     mode: 'products',
     group: 'food',
@@ -103,7 +103,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'bakery',
     label: { ar: 'مخابز وحلويات', en: 'Bakery & Sweets' },
-    image: '/images/activities/bakery.svg',
+    image: '/images/activities/bakery.jpg',
     query: 'RESTAURANT,مخبز,متجر حلويات',
     mode: 'menu',
     group: 'food',
@@ -114,7 +114,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'fashion',
     label: { ar: 'ملابس وأزياء', en: 'Fashion' },
-    image: '/images/activities/fashion.svg',
+    image: '/images/activities/fashion.jpg',
     query: 'FASHION,ملابس / أحذية / إكسسوارات,أقمشة وخامات وتفصيل',
     mode: 'products',
     group: 'retail',
@@ -122,7 +122,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'electronics',
     label: { ar: 'إلكترونيات وموبايلات', en: 'Electronics' },
-    image: '/images/activities/electronics.svg',
+    image: '/images/activities/electronics.jpg',
     query: 'ELECTRONICS,كمبيوترات وموبايلات',
     mode: 'products',
     group: 'retail',
@@ -130,7 +130,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'furniture',
     label: { ar: 'أثاث وديكور', en: 'Furniture & Decor' },
-    image: '/images/activities/furniture.svg',
+    image: '/images/activities/furniture.jpg',
     query:
       'أثاث / معارض / ديكور,كنب وانتريهات وتنجيد,مفروشات وسجاد وستائر,ستاير وبرقع وبلاك أوت,مراتب وملايات ومستلزمات نوم,مستلزمات المنزل',
     mode: 'request_quote',
@@ -143,7 +143,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'health',
     label: { ar: 'صيدلية ومستحضرات', en: 'Pharmacy & Care' },
-    image: '/images/activities/health.svg',
+    image: '/images/activities/health.jpg',
     query: 'HEALTH,صيدلية / مستحضرات',
     mode: 'products',
     group: 'health',
@@ -151,7 +151,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'clinics',
     label: { ar: 'عيادات ومراكز طبية', en: 'Clinics' },
-    image: '/images/activities/clinic.svg',
+    image: '/images/activities/clinic.jpg',
     query: 'حجوزات ومواعيد',
     mode: 'booking',
     group: 'health',
@@ -161,7 +161,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'gyms',
     label: { ar: 'جيم ولياقة', en: 'Gyms & Fitness' },
-    image: '/images/activities/gym.svg',
+    image: '/images/activities/gym.jpg',
     query: 'الاشتراكات,برنامج إدارة الجيم والنوادي,برنامج إدارة الاشتراكات',
     mode: 'booking',
     group: 'health',
@@ -173,7 +173,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'cars',
     label: { ar: 'سيارات', en: 'Cars' },
-    image: '/images/activities/cars.svg',
+    image: '/images/activities/cars.jpg',
     query: 'معارض سيارات,ورشة وصيانة سيارات,قطع غيار سيارات',
     mode: 'classifieds',
     group: 'vehicles',
@@ -184,7 +184,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'real-estate',
     label: { ar: 'عقارات', en: 'Real Estate' },
-    image: '/images/activities/real-estate.svg',
+    image: '/images/activities/real-estate.jpg',
     query: 'عقارات بيع وإيجار,أراضي وبيع وشراء',
     mode: 'classifieds',
     group: 'property',
@@ -195,7 +195,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'construction',
     label: { ar: 'مقاولات وتشطيبات', en: 'Construction' },
-    image: '/images/activities/construction.svg',
+    image: '/images/activities/construction.jpg',
     query: 'مقاولات وتشطيبات,مواد بناء وأدوات',
     mode: 'services',
     group: 'services',
@@ -205,7 +205,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'professional',
     label: { ar: 'خدمات مهنية', en: 'Professional' },
-    image: '/images/activities/professional.svg',
+    image: '/images/activities/professional.jpg',
     query: 'خدمات مهنية,شركات خدمات,شركات تجارية,مصانع وإنتاج,طاقة ومحطات',
     mode: 'services',
     group: 'services',
@@ -215,7 +215,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'home',
     label: { ar: 'خدمات منزلية', en: 'Home Services' },
-    image: '/images/activities/home.svg',
+    image: '/images/activities/home.jpg',
     query: 'خدمات منزلية,فنيين مستقلين,ورش صناعية',
     mode: 'services',
     group: 'services',
@@ -227,7 +227,7 @@ export const MARKET_ACTIVITIES: MarketActivity[] = [
   define({
     id: 'agriculture',
     label: { ar: 'زراعة', en: 'Agriculture' },
-    image: '/images/activities/agriculture.svg',
+    image: '/images/activities/agriculture.jpg',
     query: 'مستلزمات زراعية,مشتل وتنسيق حدائق,ثروة حيوانية,ثروة سمكية',
     mode: 'products',
     group: 'agri',

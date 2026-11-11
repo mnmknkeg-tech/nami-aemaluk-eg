@@ -4,7 +4,8 @@ import { getShops } from '@/lib/services';
 import { DalilClient } from '@/components/DalilClient';
 import { getActivityGroupSections, siteConfig } from '@/lib/config';
 import { ACTIVITY_GROUP_LABELS, getActivityTheme } from '@/lib/activity-catalog';
-import { SectionHeader, ActivityCard } from '@/components/SectionHeader';
+import { SectionHeader } from '@/components/SectionHeader';
+import { ActivityTile } from '@/components/ActivityTile';
 import { serializeJsonLd } from '@/lib/jsonld';
 
 export const metadata: Metadata = {
@@ -108,10 +109,10 @@ export default async function DalilPage() {
                     {section.activities.length} قسم
                   </span>
                 </div>
-                {/* عمودين على الموبايل بدل تلاتة عشان الكروت تبقى مقروءة والأسماء ما تتكسرش */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 md:gap-4 items-stretch">
+                {/* بلاطات صغيرة بصور حقيقية — موبايل 4 أعمدة لحد 8 على الديسكتوب */}
+                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-8 gap-x-3 gap-y-4 md:gap-x-4 md:gap-y-5">
                   {section.activities.map((a) => (
-                    <ActivityCard key={a.id} activity={a} shopCount={countShopsFor(a.query)} />
+                    <ActivityTile key={a.id} activity={a} shopCount={countShopsFor(a.query)} />
                   ))}
                 </div>
               </div>

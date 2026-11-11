@@ -2,7 +2,8 @@ export const siteConfig = {
   name: 'mnmknk',
   nameArabic: 'من مكانك',
   nameBusiness: 'MNMKNK Business',
-  description: 'منصة تسويق ومبيعات للأنشطة التجارية - اكتشف المتاجر والمنتجات والعروض',
+  description:
+    'من مكانك: أول منصة مصرية بتجمع كل حاجة في مكان واحد — تسوّق منتجات بالسعر والسلة، اطلب من مطاعمك المفضلة، احجز مواعيد عياداتك وجيمك، واطلب أي خدمة لحد باب البيت.',
   url: process.env.NEXT_PUBLIC_MARKETPLACE_URL || 'https://nami-aemaluk-marketplace-eg.vercel.app',
   ogImage: '/og-image.png',
   locale: 'ar',

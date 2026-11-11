@@ -4,7 +4,8 @@ import { Tag, TrendingUp, Sparkles, LayoutGrid, Store, ArrowLeft } from 'lucide-
 import { getOffers, getSeasonalOffers, getLatestProducts, getShops } from '@/lib/services';
 import { VISIBLE_ACTIVITIES, siteConfig } from '@/lib/config';
 import { getActivityTheme } from '@/lib/activity-catalog';
-import { SectionHeader, ActivityCard } from '@/components/SectionHeader';
+import { SectionHeader } from '@/components/SectionHeader';
+import { ActivityTile } from '@/components/ActivityTile';
 import { ProductRail } from '@/components/ProductRail';
 
 import { HeroSearch } from '@/components/HeroSearch';
@@ -13,8 +14,9 @@ import { WelcomeToast } from '@/components/WelcomeToast';
 import { serializeJsonLd } from '@/lib/jsonld';
 
 export const metadata: Metadata = {
-  title: `${siteConfig.name} - ${siteConfig.nameArabic}`,
-  description: siteConfig.description,
+  title: 'من مكانك | كل حاجة من مكانك — تسوق، منيو، حجوزات وخدمات في مصر',
+  description:
+    'من مكانك: أول منصة مصرية بتجمع كل حاجة في مكان واحد — تسوّق منتجات بالسعر والسلة، اطلب من مطاعمك المفضلة، احجز مواعيد عياداتك وجيمك، واطلب أي خدمة لحد باب البيت.',
   alternates: { canonical: '/' },
 };
 
@@ -123,16 +125,22 @@ export default async function HomePage() {
           <SectionHeader
             kicker="الأقسام"
             title="تسوّق حسب القسم"
-            subtitle="كل قسم ليه طريقته: سعر وسلة، منيو، حجز موعد، أو احجز واحنا نكلمك"
+            subtitle="كل الأقسام الـ 15 في مكان واحد — من الأكل لحد الفني اللي بيركّبلك البيت"
             icon={<LayoutGrid className="w-5 h-5" />}
             viewAllHref="/dalil"
             viewAllLabel="كل الأقسام والمتاجر"
             accent="#00B8D4"
           />
-          {/* عمودين على الموبايل بدل تلاتة عشان الكروت تبقى مقروءة والأسماء ما تتكسرش */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 md:gap-4 items-stretch">
-            {VISIBLE_ACTIVITIES.slice(0, 8).map((a) => (
-              <ActivityCard key={a.id} activity={a} shopCount={countShopsFor(a.query)} />
+          {/* بلاطات صغيرة بصور حقيقية — زي تطبيقات مصر الكبيرة:
+              4 أعمدة موبايل ← 8 ديسكتوب، وكل الأقسام الـ 15 ظاهرة */}
+          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-8 gap-x-3 gap-y-4 md:gap-x-4 md:gap-y-5">
+            {VISIBLE_ACTIVITIES.map((a, i) => (
+              <ActivityTile
+                key={a.id}
+                activity={a}
+                shopCount={countShopsFor(a.query)}
+                priority={i < 4}
+              />
             ))}
           </div>
         </div>
