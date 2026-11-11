@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useApp } from './AppProvider';
@@ -14,6 +15,7 @@ import {
   Phone,
   MapPin,
   ArrowRight,
+  ChevronDown,
   ShieldCheck,
   Smartphone,
   CreditCard,
@@ -25,6 +27,60 @@ import {
 export function Footer() {
   const { lang } = useApp();
   const ar = lang === 'ar';
+  // أكورديون الموبايل: قسم واحد مفتوح في المرة — على الديسكتوب الأعمدة مفتوحة دايماً
+  const [openSection, setOpenSection] = useState<string | null>(null);
+
+  const linkSections = [
+    {
+      id: 'explore',
+      title: ar ? 'استكشف' : 'Explore',
+      dot: 'bg-brand-cyan',
+      links: [
+        { label: ar ? 'الدليل التجاري' : 'Business Directory', href: '/dalil' },
+        { label: ar ? 'الخريطة التفاعلية' : 'Interactive Map', href: '/map' },
+        { label: ar ? 'أحدث العروض' : 'Latest Offers', href: '/offers' },
+        { label: ar ? 'المفضلة' : 'Wishlist', href: '/wishlist' },
+        { label: ar ? 'المدونة' : 'Our Blog', href: '/blog' },
+        { label: ar ? 'عن المنصة' : 'About Us', href: '/about' },
+      ],
+    },
+    {
+      id: 'business',
+      title: ar ? 'للأعمال' : 'For Business',
+      dot: 'bg-brand-purple',
+      links: [
+        {
+          label: ar ? 'سجل كتاجر' : 'Register as Merchant',
+          href: `${siteConfig.businessUrl}/signup`,
+        },
+        {
+          label: ar ? 'بناء موقعك' : 'Website Builder',
+          href: `${siteConfig.businessUrl}/builder`,
+        },
+        {
+          label: ar ? 'نظام الـ POS' : 'POS System',
+          href: `${siteConfig.dashboardUrl}/login`,
+        },
+        { label: ar ? 'كن مندوب توصيل' : 'Be a Courier', href: '/courier' },
+        {
+          label: ar ? 'حلول الشركات' : 'Enterprise Solutions',
+          href: siteConfig.businessUrl,
+        },
+      ],
+    },
+    {
+      id: 'support',
+      title: ar ? 'الدعم' : 'Support',
+      dot: 'bg-green-400',
+      links: [
+        { label: ar ? 'مركز المساعدة' : 'Help Center', href: '/support' },
+        { label: ar ? 'تواصل معنا' : 'Contact Us', href: '/contact' },
+        { label: ar ? 'سياسة الخصوصية' : 'Privacy Policy', href: '/privacy' },
+        { label: ar ? 'شروط الاستخدام' : 'Terms of Service', href: '/terms' },
+        { label: ar ? 'سياسة الاسترجاع' : 'Return Policy', href: '/return-policy' },
+      ],
+    },
+  ];
 
   return (
     <footer className="bg-brand-black text-white pt-20 pb-10 border-t border-white/5 overflow-hidden">
@@ -94,99 +150,60 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Links Grid */}
+          {/* Links Grid — أكورديون في الموبايل، أعمدة مفتوحة في الديسكتوب */}
           <div className="lg:col-span-8">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-12">
-              {/* Explore */}
-              <div className="space-y-6">
-                <h3 className="font-semibold text-xs text-white/40 flex items-center gap-2 justify-end">
-                  {ar ? 'استكشف' : 'Explore'}
-                  <div className="w-1 h-1 bg-brand-cyan rounded-full" />
-                </h3>
-                <nav className="flex flex-col gap-4 items-end">
-                  {[
-                    { label: ar ? 'الدليل التجاري' : 'Business Directory', href: '/dalil' },
-                    { label: ar ? 'الخريطة التفاعلية' : 'Interactive Map', href: '/map' },
-                    { label: ar ? 'أحدث العروض' : 'Latest Offers', href: '/offers' },
-                    { label: ar ? 'المفضلة' : 'Wishlist', href: '/wishlist' },
-                    { label: ar ? 'المدونة' : 'Our Blog', href: '/blog' },
-                    { label: ar ? 'عن المنصة' : 'About Us', href: '/about' },
-                  ].map((link, i) => (
-                    <Link
-                      key={i}
-                      href={link.href}
-                      className="text-white/60 hover:text-white font-semibold text-sm transition-colors flex items-center gap-2 group"
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-0 md:gap-12">
+              {linkSections.map((section, si) => {
+                const isOpen = openSection === section.id;
+                return (
+                  <div
+                    key={section.id}
+                    className={`animate-fade-up py-1 md:py-0 ${
+                      si < linkSections.length - 1 ? 'border-b border-white/5 md:border-0' : ''
+                    }`}
+                    style={{ animationDelay: `${120 + si * 90}ms` }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenSection(isOpen ? null : section.id)}
+                      aria-expanded={isOpen}
+                      aria-controls={`footer-section-${section.id}`}
+                      className="w-full flex items-center justify-between py-4 md:py-0 lg:pointer-events-none lg:cursor-default text-right"
                     >
-                      {link.label}
-                      <ArrowRight className="w-3 h-3 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all rotate-180" />
-                    </Link>
-                  ))}
-                </nav>
-              </div>
-
-              {/* For Business */}
-              <div className="space-y-6">
-                <h3 className="font-semibold text-xs text-white/40 flex items-center gap-2 justify-end">
-                  {ar ? 'للأعمال' : 'For Business'}
-                  <div className="w-1 h-1 bg-brand-purple rounded-full" />
-                </h3>
-                <nav className="flex flex-col gap-4 items-end">
-                  {[
-                    {
-                      label: ar ? 'سجل كتاجر' : 'Register as Merchant',
-                      href: `${siteConfig.businessUrl}/signup`,
-                    },
-                    {
-                      label: ar ? 'بناء موقعك' : 'Website Builder',
-                      href: `${siteConfig.businessUrl}/builder`,
-                    },
-                    {
-                      label: ar ? 'نظام الـ POS' : 'POS System',
-                      href: `${siteConfig.dashboardUrl}/login`,
-                    },
-                    { label: ar ? 'كن مندوب توصيل' : 'Be a Courier', href: '/courier' },
-                    {
-                      label: ar ? 'حلول الشركات' : 'Enterprise Solutions',
-                      href: siteConfig.businessUrl,
-                    },
-                  ].map((link, i) => (
-                    <Link
-                      key={i}
-                      href={link.href}
-                      className="text-white/60 hover:text-white font-semibold text-sm transition-colors flex items-center gap-2 group"
+                      <h3 className="font-semibold text-xs text-white/40 flex items-center gap-2">
+                        {section.title}
+                        <span className={`w-1 h-1 rounded-full ${section.dot}`} />
+                      </h3>
+                      <ChevronDown
+                        className={`w-4 h-4 text-white/40 transition-transform duration-300 lg:hidden ${
+                          isOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                    <div
+                      id={`footer-section-${section.id}`}
+                      className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+                        isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                      } lg:grid-rows-[1fr]`}
                     >
-                      {link.label}
-                      <ArrowRight className="w-3 h-3 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all rotate-180" />
-                    </Link>
-                  ))}
-                </nav>
-              </div>
-
-              {/* Support */}
-              <div className="space-y-6">
-                <h3 className="font-semibold text-xs text-white/40 flex items-center gap-2 justify-end">
-                  {ar ? 'الدعم' : 'Support'}
-                  <div className="w-1 h-1 bg-green-400 rounded-full" />
-                </h3>
-                <nav className="flex flex-col gap-4 items-end">
-                  {[
-                    { label: ar ? 'مركز المساعدة' : 'Help Center', href: '/support' },
-                    { label: ar ? 'تواصل معنا' : 'Contact Us', href: '/contact' },
-                    { label: ar ? 'سياسة الخصوصية' : 'Privacy Policy', href: '/privacy' },
-                    { label: ar ? 'شروط الاستخدام' : 'Terms of Service', href: '/terms' },
-                    { label: ar ? 'سياسة الاسترجاع' : 'Return Policy', href: '/return-policy' },
-                  ].map((link, i) => (
-                    <Link
-                      key={i}
-                      href={link.href}
-                      className="text-white/60 hover:text-white font-semibold text-sm transition-colors flex items-center gap-2 group"
-                    >
-                      {link.label}
-                      <ArrowRight className="w-3 h-3 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all rotate-180" />
-                    </Link>
-                  ))}
-                </nav>
-              </div>
+                      <div className="overflow-hidden min-h-0">
+                        <nav className="flex flex-col gap-4 items-end pb-5 md:pb-0 md:mt-6">
+                          {section.links.map((link, i) => (
+                            <Link
+                              key={i}
+                              href={link.href}
+                              className="text-white/60 hover:text-white font-semibold text-sm transition-colors flex items-center gap-2 group"
+                            >
+                              {link.label}
+                              <ArrowRight className="w-3 h-3 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all rotate-180" />
+                            </Link>
+                          ))}
+                        </nav>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Bottom Info Grid */}
@@ -204,7 +221,10 @@ export function Footer() {
               <div className="flex items-center gap-4 text-white/50 hover:text-brand-cyan transition-colors cursor-default group justify-end">
                 <div className="flex flex-col text-right">
                   <span className="text-xs font-semibold">{ar ? 'اتصل بنا' : 'Call Us'}</span>
-                  <span className="text-sm font-semibold text-white">+20 106 746 1059</span>
+                  {/* dir=ltr عشان الـ RTL ميقلبش رقم التليفون */}
+                  <span dir="ltr" className="text-sm font-semibold text-white">
+                    +20 106 746 1059
+                  </span>
                 </div>
                 <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-brand-cyan/10 transition-all">
                   <Phone className="w-5 h-5" />

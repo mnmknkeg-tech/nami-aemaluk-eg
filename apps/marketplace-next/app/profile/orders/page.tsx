@@ -28,6 +28,18 @@ interface Order {
   items: { name: string; quantity: number; price?: number }[];
 }
 
+/**
+ * خط سير الطلب — نفس ترتيب صفحة التتبع (/track/[id]) عشان التجربة موحّدة.
+ * بنستخدمه في شريط التقدم المصغر جوّه كارت الطلب.
+ */
+const ORDER_STEPS: { key: string; label: string }[] = [
+  { key: 'PENDING', label: 'تم إنشاء الطلب' },
+  { key: 'CONFIRMED', label: 'تم التأكيد' },
+  { key: 'PREPARING', label: 'جاري التجهيز' },
+  { key: 'OUT_FOR_DELIVERY', label: 'في الطريق إليك' },
+  { key: 'DELIVERED', label: 'تم التوصيل' },
+];
+
 export default function ProfileOrdersPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -46,7 +58,9 @@ export default function ProfileOrdersPage() {
         const userData = await api.get('/auth/me');
         // /auth/me returns {success, data: User} — the user object is `.data`.
         setUser(
-          ((userData as any)?.data?.user ?? (userData as any)?.user ?? (userData as any)?.data ??
+          ((userData as any)?.data?.user ??
+            (userData as any)?.user ??
+            (userData as any)?.data ??
             userData) as any
         );
 
@@ -237,10 +251,11 @@ export default function ProfileOrdersPage() {
 
               {filteredOrders.length > 0 ? (
                 <div className="space-y-4">
-                  {filteredOrders.map((order) => (
+                  {filteredOrders.map((order, oi) => (
                     <div
                       key={order.id}
-                      className="p-4 md:p-5 bg-white dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 hover:border-brand-cyan/40 hover:shadow-lg dark:hover:shadow-cyan-950/20 transition-all duration-300"
+                      className="animate-fade-up p-4 md:p-5 bg-white dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 hover:border-brand-cyan/40 hover:shadow-lg dark:hover:shadow-cyan-950/20 transition-all duration-300"
+                      style={{ animationDelay: `${Math.min(oi, 5) * 70}ms` }}
                     >
                       <div className="flex items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700/60 pb-3 mb-3">
                         <div className="flex items-center gap-3">
@@ -265,6 +280,34 @@ export default function ProfileOrdersPage() {
                           </span>
                         </div>
                       </div>
+
+                      {/* شريط التقدم المصغر — نفس خط سير صفحة التتبع */}
+                      {(() => {
+                        const s = String(order.status || '').toUpperCase();
+                        const stepIdx = ORDER_STEPS.findIndex((st) => st.key === s);
+                        if (stepIdx < 0) return null; // ملغي/مرجّع — الحالة ظاهرة بالنص والأيقونة فوق
+                        return (
+                          <div className="mt-3 mb-1" aria-hidden>
+                            <div className="flex items-center gap-1">
+                              {ORDER_STEPS.map((st, i) => (
+                                <div
+                                  key={st.key}
+                                  title={st.label}
+                                  className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                                    i <= stepIdx
+                                      ? 'bg-brand-gradient'
+                                      : 'bg-slate-200 dark:bg-slate-700'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1.5">
+                              الخطوة {stepIdx + 1} من {ORDER_STEPS.length} —{' '}
+                              {ORDER_STEPS[stepIdx].label}
+                            </p>
+                          </div>
+                        );
+                      })()}
 
                       {order.items && order.items.length > 0 && (
                         <div className="space-y-1.5">
