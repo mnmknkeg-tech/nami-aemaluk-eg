@@ -21,14 +21,14 @@ type ReturnItem struct {
 
 // CreateReturnInput is the body of POST /shops/:shopId/orders/:orderId/returns.
 type CreateReturnInput struct {
-	OrderID          string       `json:"-"`
-	ShopID           string       `json:"-"`
-	CreatedByID      string       `json:"-"`
-	Reason           *string      `json:"reason"`
-	ReturnToStock    bool         `json:"returnToStock"`
-	TotalAmount      float64      `json:"totalAmount"`
-	Items            []ReturnItem `json:"items"`
-	MarkOrderReturned bool        `json:"markReturned"`
+	OrderID           string       `json:"-"`
+	ShopID            string       `json:"-"`
+	CreatedByID       string       `json:"-"`
+	Reason            *string      `json:"reason"`
+	ReturnToStock     bool         `json:"returnToStock"`
+	TotalAmount       float64      `json:"totalAmount"`
+	Items             []ReturnItem `json:"items"`
+	MarkOrderReturned bool         `json:"markReturned"`
 }
 
 // OrderReturn is the API representation of a return.

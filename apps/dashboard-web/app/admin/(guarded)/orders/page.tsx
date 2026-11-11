@@ -208,7 +208,10 @@ export default function AdminOrdersPage() {
     const courierId = String(raw).split('::')[0].trim();
     if (!courierId) return;
     try {
-      const updated = await apiRequest(`/orders/${order.id}/courier`, {
+      // تعيين المندوب يتم عبر /orders/:id/assign-courier (صلاحية ADMIN).
+      // المسار /orders/:id/courier مخصص للمندوب نفسه لتحديث حالة الطلب
+      // (DELIVERED/CANCELLED) — إرسال courierId عليه كان يفشل دائماً بـ 403.
+      const updated = await apiRequest(`/orders/${order.id}/assign-courier`, {
         method: 'PATCH',
         body: JSON.stringify({ courierId }),
       });

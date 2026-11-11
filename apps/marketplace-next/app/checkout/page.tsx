@@ -43,6 +43,31 @@ async function getCheckoutIdempotencyKey(shopId: string, payload: Record<string,
   }
 }
 
+/** تحويل أرقام الهاتف العربي (٠-٩ / ۰-۹) والأرقام غير الرقمية لرقم لاتيني مجرد. */
+function toEgyptianPhoneDigits(raw: string): string {
+  const arabic = '٠١٢٣٤٥٦٧٨٩';
+  const eastern = '۰۱۲۳۴۵۶۷۸۹';
+  let s = '';
+  for (const ch of raw) {
+    if (/[0-9]/.test(ch)) s += ch;
+    else if (ch === '+') s += '+';
+    else if (arabic.includes(ch)) s += String(arabic.indexOf(ch));
+    else if (eastern.includes(ch)) s += String(eastern.indexOf(ch));
+  }
+  s = s.replace(/^\+/, '');
+  if (s.startsWith('0020')) s = '0' + s.slice(4);
+  else if ((s.length === 13 || s.length === 12) && s.startsWith('20')) s = '0' + s.slice(2);
+  if (s.length === 10 && s.startsWith('1')) s = '0' + s;
+  return s;
+}
+
+/** نفس قاعدة السيرفر: موبايل 11 رقم (01[0125]xxxxxxxx) أو أرضي 10 أرقام (0xx). */
+function isValidEgyptianPhoneClient(p: string): boolean {
+  if (p.length === 11 && p.startsWith('01') && ['0', '1', '2', '5'].includes(p[2])) return true;
+  if (p.length === 10 && p.startsWith('0') && !p.startsWith('01')) return true;
+  return false;
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -209,6 +234,20 @@ export default function CheckoutPage() {
     setLoading(true);
     setError('');
 
+    // تحقق من رقم الهاتف المصري قبل الإرسال — نفس قاعدة التحقق على السيرفر،
+    // مع تطبيع الأرقام العربية ومقدمة +20 عشان مايبانش خطأ غامض بعد الرفع.
+    const normalizedPhone = toEgyptianPhoneDigits(phone);
+    if (!isValidEgyptianPhoneClient(normalizedPhone)) {
+      setError('رقم الهاتف غير صحيح — اكتب رقم موبايل مصري مثل 010xxxxxxxx');
+      setLoading(false);
+      return;
+    }
+
+    // أسماء المتاجر اللي اتبنى لها طلب بنجاح — تظهر في رسالة الخطأ لو فشل
+    // متجر من متاجر متعددة بعد ما الأول كان خلص، بدل ما المستخدم يتصور إن
+    // مفيش أي طلب اتبنى ويعيد الطلب فيتكرر.
+    const succeededShops: string[] = [];
+
     try {
       // Guest checkout: visitors without an account order via the public endpoint.
       const isGuest = !isSessionActive();
@@ -230,7 +269,7 @@ export default function CheckoutPage() {
           customerName: customerName.trim() || undefined,
           customer: {
             name: customerName.trim() || undefined,
-            phone: phone || undefined,
+            phone: normalizedPhone || undefined,
             city: city || undefined,
             district: district || undefined,
             address: address || undefined,
@@ -259,6 +298,7 @@ export default function CheckoutPage() {
 
         orders.push(order);
         if (requestKey.storageKey) completedRequestKeys.push(requestKey.storageKey);
+        succeededShops.push(shopItems[0]?.shopName || shopId);
       }
 
       for (const storageKey of completedRequestKeys) {
@@ -290,7 +330,11 @@ export default function CheckoutPage() {
       });
       playOrderNotifSound();
     } catch (err: any) {
-      setError(err?.message || 'فشل إنشاء الطلب');
+      const partialNote =
+        succeededShops.length > 0
+          ? `تم إنشاء طلب من ${succeededShops.join('، ')} بنجاح ولن يتكرر عند إعادة المحاولة. `
+          : '';
+      setError(partialNote + (err?.message || 'فشل إنشاء الطلب'));
     } finally {
       setLoading(false);
     }

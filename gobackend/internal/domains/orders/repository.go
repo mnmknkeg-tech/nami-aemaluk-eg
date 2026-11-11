@@ -18,14 +18,16 @@ type Repository struct {
 }
 
 type OrderProduct struct {
-	ID         string
-	Name       string
-	Price      float64
-	Stock      int
-	TrackStock bool
-	IsActive   bool
-	AppActive  bool
-	ShopID     string
+	ID           string
+	Name         string
+	Price        float64
+	Stock        int
+	TrackStock   bool
+	IsActive     bool
+	AppActive    bool
+	ShopID       string
+	MenuVariants any
+	AddonsJSON   any
 }
 
 // Pool exposes the underlying pool (used by cross-domain helpers like customers.LinkOrderCustomer).
@@ -404,8 +406,12 @@ func (r *Repository) CreateOrder(ctx context.Context, order *Order, couponID str
 	return created, false, err
 }
 
-// UpdateStatus updates order status and timestamps.
-func (r *Repository) UpdateStatus(ctx context.Context, id string, status OrderStatus, notes *string) (*Order, error) {
+// UpdateStatus updates order status and timestamps. When expectedCurrent is
+// non-nil the update only applies if the stored status still matches it —
+// closing the read-then-write race where two concurrent transitions (e.g.
+// CONFIRMED vs CANCELLED) both pass validation and the last write wins.
+// If the row no longer matches, no rows are returned (caller surfaces a 409).
+func (r *Repository) UpdateStatus(ctx context.Context, id string, status OrderStatus, notes *string, expectedCurrent *OrderStatus) (*Order, error) {
 	set := []string{"status = $1", "updated_at = NOW()"}
 	args := []any{status}
 	idx := 2
@@ -421,6 +427,11 @@ func (r *Repository) UpdateStatus(ctx context.Context, id string, status OrderSt
 		set = append(set, "delivered_at = NOW()")
 	case OrderStatusPending, OrderStatusConfirmed, OrderStatusPreparing:
 		// No automatic timestamp.
+	}
+	if expectedCurrent != nil {
+		set = append(set, fmt.Sprintf("status = $%d", idx))
+		args = append(args, *expectedCurrent)
+		idx++
 	}
 
 	args = append(args, id)
@@ -456,8 +467,11 @@ func (r *Repository) AssignCourier(ctx context.Context, id, courierID string) (*
 	return scanOrder(row)
 }
 
-// CourierUpdate allows a courier to update status and COD collection.
-func (r *Repository) CourierUpdate(ctx context.Context, id string, status *OrderStatus, codCollected *bool) (*Order, error) {
+// CourierUpdate allows a courier to update status and COD collection. When
+// expectedCurrent is non-nil the update only applies if the stored status
+// still matches — preventing a courier from overriding a state that changed
+// concurrently (e.g. the merchant refunded the order mid-delivery).
+func (r *Repository) CourierUpdate(ctx context.Context, id string, status *OrderStatus, codCollected *bool, expectedCurrent *OrderStatus) (*Order, error) {
 	set := []string{"updated_at = NOW()"}
 	args := []any{}
 	idx := 1
@@ -472,7 +486,12 @@ func (r *Repository) CourierUpdate(ctx context.Context, id string, status *Order
 	if codCollected != nil && *codCollected {
 		set = append(set, "cod_collected_at = NOW()")
 	}
-	if len(args) == 0 {
+	if expectedCurrent != nil {
+		set = append(set, fmt.Sprintf("status = $%d", idx))
+		args = append(args, *expectedCurrent)
+		idx++
+	}
+	if len(set) == 1 && expectedCurrent == nil {
 		return r.FindByID(ctx, id)
 	}
 	args = append(args, id)
@@ -485,16 +504,18 @@ func (r *Repository) CourierUpdate(ctx context.Context, id string, status *Order
 func (r *Repository) GetProductForOrder(ctx context.Context, productID, shopID string) (*OrderProduct, error) {
 	var p OrderProduct
 	row := r.pool.QueryRow(ctx,
-		`SELECT id, name, price, stock, track_stock, is_active, app_active, shop_id FROM products WHERE id = $1 AND shop_id = $2`,
+		`SELECT id, name, price, stock, track_stock, is_active, app_active, shop_id, menu_variants, addons FROM products WHERE id = $1 AND shop_id = $2`,
 		productID, shopID,
 	)
-	err := row.Scan(&p.ID, &p.Name, &p.Price, &p.Stock, &p.TrackStock, &p.IsActive, &p.AppActive, &p.ShopID)
-	if err != nil {
+	var menuVariants, addonsJSON any
+	if err := row.Scan(&p.ID, &p.Name, &p.Price, &p.Stock, &p.TrackStock, &p.IsActive, &p.AppActive, &p.ShopID, &menuVariants, &addonsJSON); err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, nil
 		}
 		return nil, err
 	}
+	p.MenuVariants = menuVariants
+	p.AddonsJSON = addonsJSON
 	return &p, nil
 }
 
