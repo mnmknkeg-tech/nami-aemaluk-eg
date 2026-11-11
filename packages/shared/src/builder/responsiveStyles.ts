@@ -388,6 +388,23 @@ function isCssGradient(value: unknown): value is string {
   );
 }
 
+/**
+ * Combine an authored background image with an authored gradient instead of
+ * letting one silently erase the other. CSS paints the FIRST layer on top, so
+ * the image sits above the gradient: opaque images look unchanged, while
+ * semi-transparent overlay images keep the gradient visible underneath —
+ * matching what the editor canvas shows for the same node.
+ */
+function composeBackgroundImage(
+  image: StyleProperties['backgroundImage'],
+  gradient: StyleProperties['backgroundGradient']
+): string | undefined {
+  const layers = [image, gradient].filter(
+    (layer): layer is string => typeof layer === 'string' && layer.trim() !== ''
+  );
+  return layers.length > 0 ? layers.join(', ') : undefined;
+}
+
 export function stylePropertiesToCss(
   styles: StyleProperties,
   fallbackFontFamily?: string
@@ -433,10 +450,11 @@ export function stylePropertiesToCss(
 
     objectFit: styles.objectFit,
     backgroundColor: isCssGradient(styles.backgroundColor) ? undefined : styles.backgroundColor,
-    backgroundImage:
+    backgroundImage: composeBackgroundImage(
+      styles.backgroundImage,
       styles.backgroundGradient ||
-      styles.backgroundImage ||
-      (isCssGradient(styles.backgroundColor) ? styles.backgroundColor : undefined),
+        (isCssGradient(styles.backgroundColor) ? styles.backgroundColor : undefined)
+    ),
     backgroundSize: styles.backgroundSize,
     backgroundPosition: styles.backgroundPosition,
 

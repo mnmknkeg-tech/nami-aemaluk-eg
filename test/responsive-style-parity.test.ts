@@ -200,6 +200,37 @@ describe('shared style conversion for theme backgrounds and typography', () => {
       backgroundImage: 'radial-gradient(circle, #fff, #000)',
     });
   });
+  it('composes an authored background image above an authored gradient instead of dropping one', () => {
+    const css = stylePropertiesToCss({
+      backgroundImage: 'url("https://cdn.example.com/bg.webp")',
+      backgroundGradient: 'linear-gradient(90deg, #111, #222)',
+    } as any);
+    expect(css.backgroundImage).toBe(
+      'url("https://cdn.example.com/bg.webp"), linear-gradient(90deg, #111, #222)'
+    );
+  });
+  it('composes an image above a legacy gradient stored in backgroundColor', () => {
+    const css = stylePropertiesToCss({
+      backgroundColor: 'linear-gradient(135deg, #000 0%, #fff 100%)',
+      backgroundImage: 'url("https://cdn.example.com/bg.webp")',
+    } as any);
+    expect(css.backgroundColor).toBeUndefined();
+    expect(css.backgroundImage).toBe(
+      'url("https://cdn.example.com/bg.webp"), linear-gradient(135deg, #000 0%, #fff 100%)'
+    );
+  });
+  it('keeps a lone background image or gradient untouched by the composer', () => {
+    const image = stylePropertiesToCss({
+      backgroundImage: 'url("https://cdn.example.com/bg.webp")',
+    } as any);
+    expect(image.backgroundImage).toBe('url("https://cdn.example.com/bg.webp")');
+    const gradient = stylePropertiesToCss({
+      backgroundGradient: 'linear-gradient(90deg, #111, #222)',
+    } as any);
+    expect(gradient.backgroundImage).toBe('linear-gradient(90deg, #111, #222)');
+    const neither = stylePropertiesToCss({ backgroundColor: '#ffffff' } as any);
+    expect(neither.backgroundImage).toBeUndefined();
+  });
 });
 
 describe('theme typography font selection', () => {

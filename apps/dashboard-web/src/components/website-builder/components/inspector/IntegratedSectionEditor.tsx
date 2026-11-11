@@ -160,6 +160,16 @@ export const IntegratedSectionEditor: React.FC = () => {
         handleStyleChange(targetNodeId, 'backgroundImage', `url("${url}")`);
         handleStyleChange(targetNodeId, 'backgroundSize', 'cover');
         handleStyleChange(targetNodeId, 'backgroundPosition', 'center');
+        // A gradient palette baked into backgroundColor would sit under the new
+        // image and silently disappear on opaque uploads — clear it so the
+        // uploaded image is the single, predictable section background.
+        const targetSectionStyles = website.components[targetNodeId]?.styles?.[viewport] || {};
+        if (
+          typeof targetSectionStyles.backgroundColor === 'string' &&
+          /gradient\s*\(/i.test(targetSectionStyles.backgroundColor)
+        ) {
+          handleStyleChange(targetNodeId, 'backgroundColor', undefined);
+        }
       } else if (isHero && targetNodeId === parentSection.id) {
         handlePropChange(parentSection.id, 'mediaType', 'image');
         handlePropChange(parentSection.id, 'imageUrl', url);

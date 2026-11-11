@@ -114,6 +114,10 @@ export const ColorsSection: React.FC<ColorsSectionProps> = ({
                   onClick={() => {
                     handlePropChange(parentSection.id, 'transparent', false);
                     handleStyleChange(parentSection.id, 'backgroundColor', pal.bg);
+                    // The palette owns the section background: drop a stale
+                    // background image so gradient palettes visibly apply
+                    // instead of hiding behind the previous image.
+                    handleStyleChange(parentSection.id, 'backgroundImage', undefined);
                     handleStyleChange(parentSection.id, 'textColor', pal.text);
                     if (heroTitleNode) handleStyleChange(heroTitleNode.id, 'textColor', pal.text);
                     if (heroSubtitleNode)
@@ -137,9 +141,7 @@ export const ColorsSection: React.FC<ColorsSectionProps> = ({
 
           {/* CUSTOM BACKGROUND COLOR PICKER */}
           <div className="p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-600 block">
-              لون خلفية مخصص
-            </label>
+            <label className="text-[10px] font-bold text-slate-600 block">لون خلفية مخصص</label>
             <div className="flex items-center gap-2">
               <input
                 type="color"
