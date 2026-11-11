@@ -48,7 +48,7 @@ func TestPostgresOrderIntegration(t *testing.T) {
         var dirty bool
         require.NoError(t, pool.QueryRow(ctx, "SELECT version, dirty FROM schema_migrations LIMIT 1").
                 Scan(&migrationVersion, &dirty))
-        require.EqualValues(t, 90, migrationVersion)
+        require.EqualValues(t, 91, migrationVersion)
         require.False(t, dirty)
         t.Logf("isolated PostgreSQL schema migrated to version %d", migrationVersion)
 

@@ -155,7 +155,7 @@ func (h *Handler) PatchShopOrder(c *fiber.Ctx) error {
         }
         if req.Status != nil && *req.Status != "" {
                 // The dashboard POS sends RETURNED (added to the OrderStatus enum
-                // in migration 000090). Any other unknown value must be rejected
+                // in migration 000091). Any other unknown value must be rejected
                 // here — it used to be written raw and fail with SQLSTATE 22P02.
                 next := OrderStatus(strings.ToUpper(strings.TrimSpace(*req.Status)))
                 if !isValidOrderStatus(next) {
