@@ -8,7 +8,7 @@ export const siteConfig = {
   locale: 'ar',
   locales: ['ar', 'en'],
   defaultLocale: 'ar',
-  themeColor: '#1A1A1A',
+  themeColor: '#F97316',
   keywords: ['تسويق', 'متاجر', 'منتجات', 'عروض', 'من مكانك', 'mnmknk', 'مصر', 'تجارة الكترونية'],
   businessUrl: process.env.NEXT_PUBLIC_BUSINESS_URL || 'https://business-blond-psi.vercel.app',
   dashboardUrl:

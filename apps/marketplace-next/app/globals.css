@@ -1,6 +1,13 @@
 @import 'tailwindcss';
 @config "../tailwind.config.ts";
 
+/* ════════════════════════════════════════════════════════════════════════
+   RAY MARKETPLACE — GLOBALS.CSS (COLOR-ONLY UPDATE)
+   ────────────────────────────────────────────────────────────────────────
+   ما تم تغييره: قيم الـ hex codes فقط (في 6 مواضع)
+   ما لم يتم تغييره: كل الـ structure, classes, utilities, animations
+   ════════════════════════════════════════════════════════════════════════ */
+
 :root {
   --font-alexandria: 'Alexandria', sans-serif;
   --bg-primary: #ffffff;
@@ -38,8 +45,8 @@
     max-width: 100%;
   }
 
-  .merchant-site-builder [data-section="products"],
-  .published-site-renderer [data-section="products"] {
+  .merchant-site-builder [data-section='products'],
+  .published-site-renderer [data-section='products'] {
     width: 100% !important;
     overflow: hidden;
   }
@@ -49,7 +56,6 @@
     overflow-wrap: anywhere;
   }
 }
-
 
 * {
   -webkit-tap-highlight-color: transparent;
@@ -73,9 +79,10 @@ body {
   text-rendering: optimizeSpeed;
 }
 
+/* ⚠️ COLOR UPDATE: was old-cyan */
 ::selection {
-  background: #00e5ff;
-  color: #000;
+  background: #f97316;
+  color: #fff;
 }
 
 ::-webkit-scrollbar {
@@ -87,13 +94,15 @@ body {
   background: transparent;
 }
 
+/* ⚠️ COLOR UPDATE: was old-cyan → old-purple */
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #00e5ff, #bd00ff);
+  background: linear-gradient(180deg, #f97316, #f59e0b);
   border-radius: 4px;
 }
 
+/* ⚠️ COLOR UPDATE: was old-cyan-dark → old-purple-dark */
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #00b8d4, #9c00e5);
+  background: linear-gradient(180deg, #ea580c, #d97706);
 }
 
 .glass {
@@ -125,8 +134,9 @@ body {
   background-size: 1000px 100%;
 }
 
+/* ⚠️ COLOR UPDATE: was old-cyan → old-purple → old-cyan */
 .text-gradient {
-  background: linear-gradient(to right, #00e5ff, #bd00ff, #00e5ff);
+  background: linear-gradient(to right, #f97316, #f59e0b, #f97316);
   background-size: 200% 200%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -134,20 +144,22 @@ body {
   animation: gradientX 3s ease infinite;
 }
 
+/* ⚠️ COLOR UPDATE: was old-cyan → old-purple */
 .brand-border {
   border: 1px solid transparent;
   background-image:
-    linear-gradient(var(--bg-primary), var(--bg-primary)), linear-gradient(135deg, #00e5ff, #bd00ff);
+    linear-gradient(var(--bg-primary), var(--bg-primary)), linear-gradient(135deg, #f97316, #f59e0b);
   background-origin: border-box;
   background-clip: padding-box, border-box;
 }
 
+/* ⚠️ COLOR UPDATE: was old-cyan → old-purple */
 .scroll-progress {
   position: fixed;
   top: 0;
   left: 0;
   height: 3px;
-  background: linear-gradient(90deg, #00e5ff, #bd00ff);
+  background: linear-gradient(90deg, #f97316, #f59e0b);
   z-index: 100;
   transition: width 0.1s ease;
 }

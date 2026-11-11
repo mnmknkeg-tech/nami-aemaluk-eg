@@ -9,8 +9,8 @@ export function escapeHtml(input: string) {
   });
 }
 
-// ثيم الماركرات مطابق للوحة التحكم: أبيض/سليت داكن + سماوي #00e5ff
-const CYAN = '#00e5ff';
+// ثيم الماركرات مطابق للوحة التحكم: أبيض/سليت داكن + برتقالي #F97316
+const CYAN = '#F97316';
 const DARK = '#0f172a';
 
 export function buildShopMarkerHtml(name: string, city: string) {
@@ -28,7 +28,7 @@ export function buildShopMarkerHtml(name: string, city: string) {
 
 export function buildListingMarkerHtml(name: string, city: string) {
   return `<div dir="rtl" style="display:flex; flex-direction:column; align-items:center; gap:7px; transform:translateZ(0);">
-    <div style="display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.97); border:1px solid rgba(0,229,255,0.55); border-radius:12px; padding:8px 12px; box-shadow:0 10px 24px rgba(15,23,42,0.14); cursor:pointer; user-select:none; transition:transform 160ms ease, box-shadow 160ms ease;">
+    <div style="display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.97); border:1px solid rgba(249,115,22,0.55); border-radius:12px; padding:8px 12px; box-shadow:0 10px 24px rgba(15,23,42,0.14); cursor:pointer; user-select:none; transition:transform 160ms ease, box-shadow 160ms ease;">
       <div style="display:flex; flex-direction:column; text-align:right; line-height:1.2; min-width:0;">
         <div style="font-weight:900; font-size:12px; color:${DARK}; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${name}</div>
         <div style="font-weight:700; font-size:10px; color:#64748b; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${city}</div>

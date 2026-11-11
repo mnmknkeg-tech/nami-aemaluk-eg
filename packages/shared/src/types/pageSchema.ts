@@ -234,15 +234,15 @@ export interface ActivityPageTemplate {
 
 export const DEFAULT_DESIGN_TOKENS: DesignTokens = {
   colors: {
-    primary: '#00E5FF',
-    secondary: '#BD00FF',
-    accent: '#0F172A',
+    primary: '#F97316',
+    secondary: '#F59E0B',
+    accent: '#1E293B',
     background: '#FFFFFF',
-    surface: '#F8FAFC',
-    text: '#0F172A',
+    surface: '#F7F8FA',
+    text: '#1E293B',
     textMuted: '#64748B',
     headerBg: '#FFFFFF',
-    headerText: '#0F172A',
+    headerText: '#1E293B',
     footerBg: '#0F172A',
     footerText: '#CBD5E1',
   },

@@ -102,8 +102,8 @@ class AiServiceImpl implements AiService {
   private fallbackTheme(params: ThemeGenerationParams): ThemeGenerationResult {
     const presets: Record<string, any> = {
       modern: {
-        primary: '#00E5FF',
-        secondary: '#BD00FF',
+        primary: '#F97316',
+        secondary: '#F59E0B',
         accent: '#0F172A',
         background: '#FFFFFF',
         surface: '#F8FAFC',
@@ -123,15 +123,15 @@ class AiServiceImpl implements AiService {
         surface: '#F8FAFC',
       },
       glass: {
-        primary: '#00E5FF',
-        secondary: '#BD00FF',
+        primary: '#F97316',
+        secondary: '#F59E0B',
         accent: '#FFFFFF',
         background: '#F0F4F8',
         surface: 'rgba(255,255,255,0.7)',
       },
       dark: {
-        primary: '#00E5FF',
-        secondary: '#BD00FF',
+        primary: '#F97316',
+        secondary: '#F59E0B',
         accent: '#FFFFFF',
         background: '#0A0A0A',
         surface: '#141414',

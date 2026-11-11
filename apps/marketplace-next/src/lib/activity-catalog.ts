@@ -316,10 +316,10 @@ export type ActivityTheme = {
 };
 
 const DEFAULT_THEME: ActivityTheme = {
-  accent: '#00B8D4',
-  from: '#00E5FF',
-  to: '#BD00FF',
-  soft: '#ECFEFF',
+  accent: '#F97316',
+  from: '#F97316',
+  to: '#F59E0B',
+  soft: '#FEF0DD',
 };
 
 const ACTIVITY_THEMES: Record<string, ActivityTheme> = {
