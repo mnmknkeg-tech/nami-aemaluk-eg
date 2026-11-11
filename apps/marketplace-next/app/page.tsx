@@ -9,8 +9,6 @@ import { ActivityStories } from '@/components/ActivityStories';
 import { ProductRail } from '@/components/ProductRail';
 
 import { HeroSearch } from '@/components/HeroSearch';
-import { HeroSlider } from '@/components/HeroSlider';
-import { WelcomeBanner } from '@/components/WelcomeBanner';
 import { AppDownloadBanner } from '@/components/AppDownloadBanner';
 import { WelcomeToast } from '@/components/WelcomeToast';
 import { serializeJsonLd } from '@/lib/jsonld';
@@ -226,15 +224,7 @@ export default async function HomePage() {
           <HeroSearch />
         </div>
 
-        {/* Rounded welcome banner */}
-        <div className="px-4 md:px-6 pb-2">
-          <div className="relative max-w-[1400px] mx-auto rounded-3xl md:rounded-[2.5rem] overflow-hidden shadow-xl shadow-slate-200/60 dark:shadow-black/40">
-            <div className="relative w-full aspect-[5/4] sm:aspect-[2/1] overflow-hidden">
-              <HeroSlider />
-            </div>
-            <WelcomeBanner />
-          </div>
-        </div>
+        {/* البنر الكبير اتشال — الهوم مباشرة: بحث ثم الأقسام (ستايل التطبيقات الكبيرة) */}
 
         {/* Screen-reader only title for SEO */}
         <h1 className="sr-only">من مكانك - المنصة الأولى للتجارة الذكية في مصر</h1>
