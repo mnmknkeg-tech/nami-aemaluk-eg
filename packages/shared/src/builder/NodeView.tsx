@@ -53,7 +53,10 @@ import {
 } from './productCard';
 import { CustomCodeFrame } from './CustomCodeFrame';
 import { PublishedProductCard } from './PublishedProductCard';
-import { computeThemeResponsiveNodeStyles } from './responsiveStyles';
+import {
+  applyWebsiteBackgroundToPageRoot,
+  computeThemeResponsiveNodeStyles,
+} from './responsiveStyles';
 import { isCompleteChildBasedHero, resolveHeroContent } from './heroCompatibility';
 import { CartIcon } from './CartIcon';
 import { isCartVisible, resolveCartIconType } from './cartPolicy';
@@ -681,8 +684,15 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
   const isCompactHeader = viewport !== 'desktop';
 
   // Compute responsive styles merged by current breakpoint (faithful port).
+  // The long page background is painted on the page root itself — exactly like
+  // the editor canvas — so an opaque root background cannot hide it after
+  // publishing.
   const getComputedStyles = (): React.CSSProperties =>
-    computeThemeResponsiveNodeStyles(node, viewport, theme.typography);
+    applyWebsiteBackgroundToPageRoot(
+      computeThemeResponsiveNodeStyles(node, viewport, theme.typography),
+      node.id === activePage.rootNodeId,
+      website.settings?.background
+    );
 
   const interactiveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -2484,7 +2494,9 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
       return (
         <footer id={node.id} style={getComputedStyles()} className="transition-all">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-12 text-right">
-            <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 pb-8 border-b ${borderDivider}`}>
+            <div
+              className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 pb-8 border-b ${borderDivider}`}
+            >
               <div className="space-y-2.5">
                 <h3 className={`text-base sm:text-lg font-black ${headingClass} break-words`}>
                   {brandName}
@@ -2529,7 +2541,9 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
               </div>
             </div>
 
-            <div className={`pt-6 pb-2 text-center flex flex-col sm:flex-row items-center justify-center gap-2 text-xs ${bodyTextClass} select-none border-t ${bottomBorder} mt-6`}>
+            <div
+              className={`pt-6 pb-2 text-center flex flex-col sm:flex-row items-center justify-center gap-2 text-xs ${bodyTextClass} select-none border-t ${bottomBorder} mt-6`}
+            >
               <span>
                 {node.props.copyright ||
                   `جميع الحقوق محفوظة © ${new Date().getFullYear()} ${brandName}`}

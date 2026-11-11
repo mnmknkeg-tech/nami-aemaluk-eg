@@ -34,6 +34,26 @@ export function computeWebsiteBackgroundStyles(
   };
 }
 
+/**
+ * Mirror the editor canvas when rendering a published site: the long page
+ * background is painted on the PAGE ROOT node itself, not only on an outer
+ * wrapper div. Otherwise an opaque root background (e.g. white) renders on top
+ * of the wrapper and hides the background completely after publishing, while
+ * the editor canvas (which merges it onto the root) shows it.
+ */
+export function applyWebsiteBackgroundToPageRoot(
+  base: CSSProperties,
+  isPageRoot: boolean,
+  background?: WebsiteBackgroundStyleInput
+): CSSProperties {
+  if (!isPageRoot) return base;
+  return {
+    ...base,
+    position: 'relative',
+    ...computeWebsiteBackgroundStyles(background),
+  };
+}
+
 /** Merge a component's desktop styles with its active responsive overrides. */
 export function mergeResponsiveStyles<T extends object>(
   styles: ResponsiveStyleMap<T> | undefined,

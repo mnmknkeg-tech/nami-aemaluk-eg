@@ -24,6 +24,7 @@ import { sanitizeHtml } from '@/lib/sanitize';
 import { useCart } from '@/lib/cart';
 import type { Shop, Product } from '@/lib/services';
 import {
+  applyWebsiteBackgroundToPageRoot,
   computeWebsiteRootStyles,
   computeThemeResponsiveNodeStyles,
   normalizeWebsiteTree,
@@ -127,7 +128,15 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
   }
 
   const theme = website.theme;
-  const computed = getComputedStyles(node, theme, viewport);
+  // Mirror the editor canvas: paint the long page background on the page root
+  // itself so an opaque root background (e.g. white) cannot hide it on the
+  // published site.
+  const isPageRoot = website.pages?.some((page) => page.rootNodeId === node.id) ?? false;
+  const computed = applyWebsiteBackgroundToPageRoot(
+    getComputedStyles(node, theme, viewport),
+    isPageRoot,
+    website.settings?.background
+  );
 
   const renderChildren = () =>
     (node.childrenIds || []).map((cid) => (
@@ -955,7 +964,9 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
     const bodyTextClass = isDarkText ? 'text-slate-600' : 'text-slate-400';
     const borderDivider = isDarkText ? 'border-slate-300/80' : 'border-slate-800';
     const bottomBorder = isDarkText ? 'border-slate-300/60' : 'border-slate-800/60';
-    const linkHover = isDarkText ? 'text-slate-700 hover:text-slate-950' : 'text-slate-300 hover:text-white';
+    const linkHover = isDarkText
+      ? 'text-slate-700 hover:text-slate-950'
+      : 'text-slate-300 hover:text-white';
     const badgeStyle = isDarkText
       ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700'
       : 'bg-slate-800/80 hover:bg-slate-800 border-slate-700/60 text-slate-300 hover:text-white';
@@ -968,10 +979,14 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
     return (
       <footer id={node.id} style={computed} className="transition-all">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-12 text-right">
-          <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 pb-8 border-b ${borderDivider}`}>
+          <div
+            className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 pb-8 border-b ${borderDivider}`}
+          >
             {/* Brand Col */}
             <div className="space-y-2.5">
-              <h3 className={`text-base sm:text-lg font-black ${headingClass} break-words`}>{brandName}</h3>
+              <h3 className={`text-base sm:text-lg font-black ${headingClass} break-words`}>
+                {brandName}
+              </h3>
               <p className={`text-xs ${bodyTextClass} leading-relaxed max-w-sm break-words`}>
                 {description}
               </p>
@@ -1025,11 +1040,7 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
                 const url = typeof item === 'string' ? '#' : item.url || item.href || '#';
                 if (!label) return null;
                 return (
-                  <a
-                    key={index}
-                    href={url}
-                    className={`${linkHover} transition-colors`}
-                  >
+                  <a key={index} href={url} className={`${linkHover} transition-colors`}>
                     {label}
                   </a>
                 );
@@ -1038,7 +1049,9 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
           )}
 
           {/* Copyright row */}
-          <div className={`pt-6 pb-2 text-center flex flex-col sm:flex-row items-center justify-center gap-2 text-xs ${bodyTextClass} select-none border-t ${bottomBorder} mt-6`}>
+          <div
+            className={`pt-6 pb-2 text-center flex flex-col sm:flex-row items-center justify-center gap-2 text-xs ${bodyTextClass} select-none border-t ${bottomBorder} mt-6`}
+          >
             <span>
               {node.props.copyright ||
                 `جميع الحقوق محفوظة © ${new Date().getFullYear()} ${brandName}`}
