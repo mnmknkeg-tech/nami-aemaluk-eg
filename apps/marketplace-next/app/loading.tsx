@@ -4,11 +4,10 @@ export default function Loading() {
   return (
     <div className="min-h-screen bg-white dark:bg-brand-black" aria-busy>
       <span className="sr-only">جاري التحميل...</span>
-      <div className="max-w-[1400px] mx-auto px-4 md:px-6 pt-4 md:pt-6 pb-4 space-y-4">
+      {/* الهيكل مطابق للصفحة الحالية: بحث ← الأقسام ← صفوف المنتجات (من غير بنر) */}
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 pt-1 md:pt-2 pb-4 md:pb-6 space-y-3">
         {/* Hero search */}
         <Skeleton className="h-14 md:h-16 rounded-2xl" />
-        {/* Welcome banner */}
-        <Skeleton className="aspect-[5/4] sm:aspect-[2/1] rounded-3xl md:rounded-[2.5rem]" />
         {/* Category strip */}
         <div className="flex gap-2.5 overflow-hidden">
           {Array.from({ length: 7 }).map((_, i) => (

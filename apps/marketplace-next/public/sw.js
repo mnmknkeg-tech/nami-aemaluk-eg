@@ -1,9 +1,10 @@
-const VERSION = 'mnmknk-v2';
+const VERSION = 'mnmknk-v3';
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES_CACHE = `${VERSION}-pages`;
 
+// من غير الصفحات — الـ HTML بيتخزن في PAGES_CACHE من استراتيجية network-first،
+// وprecache للرئيسية كان بيثبّت نسخة قديمة من التصميم للـ offline fallback.
 const PRECACHE_URLS = [
-  '/',
   '/brand/logo.png',
   '/favicon.ico',
   '/manifest.json',
