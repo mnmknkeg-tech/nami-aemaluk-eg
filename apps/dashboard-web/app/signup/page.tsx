@@ -52,6 +52,43 @@ import './signup.css';
 
 const MotionDiv = motion.div as any;
 
+// كود الدولة — مصر هو الافتراضي، والتاجر يقدر يغيّره من القائمة
+// (الباك اند بيشترط صيغة E.164: +20XXXXXXXXXX)
+const DIAL_CODES = [
+  { code: '+20', country: 'مصر' },
+  { code: '+966', country: 'السعودية' },
+  { code: '+971', country: 'الإمارات' },
+  { code: '+965', country: 'الكويت' },
+  { code: '+974', country: 'قطر' },
+  { code: '+973', country: 'البحرين' },
+  { code: '+968', country: 'عُمان' },
+  { code: '+962', country: 'الأردن' },
+  { code: '+961', country: 'لبنان' },
+  { code: '+218', country: 'ليبيا' },
+  { code: '+212', country: 'المغرب' },
+  { code: '+216', country: 'تونس' },
+  { code: '+90', country: 'تركيا' },
+];
+
+/**
+ * يحوّل رقم الموبايل المدخل إلى صيغة E.164 المطلوبة من الباك اند.
+ * يدعم: الرقم المحلي (01012345678)، الرقم بكود الدولة (201012345678)،
+ * البادئة الدولية (00201012345678)، والصيغة الدولية (+201012345678).
+ */
+function toE164(dialCode: string, raw: string): string {
+  const dial = dialCode.replace(/\D/g, '');
+  const trimmed = (raw || '').trim();
+  let digits = trimmed.replace(/\D/g, '');
+  if (!digits) return '';
+  if (trimmed.startsWith('+')) return '+' + digits; // مكتوب بصيغة دولية بالفعل
+  if (digits.startsWith('00')) return '+' + digits.slice(2); // بادئة دولية 00...
+  digits = digits.replace(/^0+/, ''); // نشيل الصفر في أول الرقم المحلي
+  if (dial && digits.startsWith(dial)) return '+' + digits; // المستخدم كتب كود الدولة نفسه
+  return '+' + dial + digits;
+}
+
+const isValidE164 = (v: string) => /^\+[1-9]\d{7,14}$/.test(v);
+
 // أيقونة خاصة بكل نشاط
 const ACTIVITY_ICONS: Record<string, string> = {
   restaurant: '🍽️',
@@ -131,6 +168,8 @@ function SignupContent() {
   });
   /** Shop coordinates picked on the map — sent with the shop payload. */
   const [shopCoords, setShopCoords] = useState<{ lat: number; lng: number } | null>(null);
+  /** كود الدولة المختار لرقم الموبايل (و هاتف المتجر) */
+  const [dialCode, setDialCode] = useState('+20');
 
   const handleLocationResolved = (loc: ResolvedShopLocation) => {
     setShopCoords({ lat: loc.lat, lng: loc.lng });
@@ -143,6 +182,20 @@ function SignupContent() {
   };
 
   const selectedActivity = useMemo(() => ACTIVITIES.find((a) => a.id === activityId), [activityId]);
+
+  // فحوصات كلمة المرور — نفس سياسة الباك اند بالظبط
+  // (8 أحرف+ / حرف كبير / حرف صغير / رقم / رمز خاص)
+  const passwordChecks = useMemo(
+    () => [
+      { ok: formData.password.length >= 8, label: '8 أحرف على الأقل' },
+      { ok: /[A-Z]/.test(formData.password), label: 'حرف إنجليزي كبير' },
+      { ok: /[a-z]/.test(formData.password), label: 'حرف إنجليزي صغير' },
+      { ok: /\d/.test(formData.password), label: 'رقم واحد على الأقل' },
+      { ok: /[^A-Za-z0-9]/.test(formData.password), label: 'رمز خاص مثل !@#$' },
+    ],
+    [formData.password]
+  );
+  const isPasswordValid = passwordChecks.every((c) => c.ok);
 
   const getActivityLabel = (a?: ActivityWithGroup) => a?.title || a?.id || '';
 
@@ -228,11 +281,29 @@ function SignupContent() {
       return;
     }
 
+    // نطبّق كود الدولة ونحوّل الأرقام لصيغة E.164 (+20XXXXXXXXXX) المطلوبة من الباك اند
+    const merchantPhone = toE164(dialCode, formData.phone);
+    const finalShopPhone = formData.shopPhone.trim() ? toE164(dialCode, formData.shopPhone) : '';
+
+    if (!isValidE164(merchantPhone)) {
+      setError('رقم الموبايل غير صحيح — اختر كود الدولة واكتب رقمك بدون صفر في البداية');
+      return;
+    }
+    if (finalShopPhone && !isValidE164(finalShopPhone)) {
+      setError('هاتف المتجر غير صحيح — اكتب الرقم بدون صفر في البداية');
+      return;
+    }
+    if (!isPasswordValid) {
+      setError('كلمة المرور ضعيفة — تحتاج 8 أحرف على الأقل مع حرف كبير وحرف صغير ورقم ورمز خاص');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
       // 1) إنشاء حساب التاجر عبر البروكسي الداخلي
+      //    الباك اند بيشترط: role بحروف كبيرة (MERCHANT) + رقم موبايل بصيغة E.164
       const signupRes = await fetch('/api/v1/auth/signup', {
         method: 'POST',
         headers: {
@@ -243,8 +314,8 @@ function SignupContent() {
           name: formData.shopName,
           email: formData.email,
           password: formData.password,
-          phone: formData.phone,
-          role: 'merchant',
+          phone: merchantPhone,
+          role: 'MERCHANT',
         }),
       });
 
@@ -270,7 +341,7 @@ function SignupContent() {
       const shopPayload = {
         name: formData.shopName,
         category: shopCategory,
-        phone: formData.shopPhone || formData.phone,
+        phone: finalShopPhone || merchantPhone,
         governorate: formData.governorate,
         city: formData.city,
         addressDetailed: formData.addressDetailed,
@@ -354,6 +425,10 @@ function SignupContent() {
     if (step === 'account') {
       if (!formData.shopName.trim() || !formData.phone.trim()) {
         setError('اكمل اسم المتجر ورقم الموبايل عشان نكمل');
+        return;
+      }
+      if (!isValidE164(toE164(dialCode, formData.phone))) {
+        setError('رقم الموبايل غير صحيح — اختر كود الدولة واكتب رقمك بدون صفر في البداية');
         return;
       }
       setStep('activity');
@@ -491,16 +566,30 @@ function SignupContent() {
               <Phone className="w-4 h-4 text-[#00E5FF]" /> رقم الموبايل{' '}
               <span className="text-red-500">*</span>
             </label>
-            <input
-              type="tel"
-              value={formData.phone}
-              dir="ltr"
-              onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
-              placeholder="01xxxxxxxxx"
-              className="w-full bg-slate-50 border-2 border-transparent rounded-2xl py-4 px-5 font-black text-left text-slate-900 placeholder:text-slate-300 focus:bg-white focus:border-[#00E5FF] transition-all outline-none"
-            />
+            <div className="flex gap-2" dir="ltr">
+              <select
+                value={dialCode}
+                onChange={(e) => setDialCode(e.target.value)}
+                aria-label="كود الدولة"
+                className="shrink-0 bg-slate-50 border-2 border-transparent rounded-2xl py-4 px-3 font-black text-slate-900 focus:bg-white focus:border-[#00E5FF] transition-all outline-none cursor-pointer"
+              >
+                {DIAL_CODES.map((d) => (
+                  <option key={d.code} value={d.code}>
+                    {d.code} {d.country}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                value={formData.phone}
+                dir="ltr"
+                onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
+                placeholder="10xxxxxxxxx"
+                className="w-full bg-slate-50 border-2 border-transparent rounded-2xl py-4 px-5 font-black text-left text-slate-900 placeholder:text-slate-300 focus:bg-white focus:border-[#00E5FF] transition-all outline-none"
+              />
+            </div>
             <p className="text-[10px] font-bold text-slate-400 mt-2">
-              هنستخدم الرقم للتواصل معاك وتفعيل حسابك — مفيش رسائل مزعجة
+              اختر كود الدولة واكتب رقمك بدون الصفر في البداية — هنستخدمه للتواصل وتفعيل حسابك، مفيش رسائل مزعجة
             </p>
           </div>
         </div>
@@ -900,6 +989,20 @@ function SignupContent() {
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            {/* شروط كلمة المرور — نفس سياسة الباك اند */}
+            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+              {passwordChecks.map((c) => (
+                <li
+                  key={c.label}
+                  className={`flex items-center gap-1.5 text-[10px] font-bold ${
+                    c.ok ? 'text-emerald-600' : 'text-slate-400'
+                  }`}
+                >
+                  <Check size={12} className={c.ok ? 'text-emerald-500' : 'text-slate-300'} />
+                  {c.label}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>
@@ -965,12 +1068,26 @@ function SignupContent() {
                 <label className="block text-[10px] font-black text-slate-400 mb-1.5">
                   هاتف المتجر (لو مختلف)
                 </label>
-                <input
-                  value={formData.shopPhone}
-                  onChange={(e) => setFormData((p) => ({ ...p, shopPhone: e.target.value }))}
-                  placeholder="02xxxxxxxx"
-                  className="w-full bg-slate-50 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00E5FF]/30"
-                />
+                <div className="flex gap-2" dir="ltr">
+                  <select
+                    value={dialCode}
+                    onChange={(e) => setDialCode(e.target.value)}
+                    aria-label="كود الدولة"
+                    className="shrink-0 bg-slate-50 rounded-xl py-3 px-2 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00E5FF]/30 cursor-pointer"
+                  >
+                    {DIAL_CODES.map((d) => (
+                      <option key={d.code} value={d.code}>
+                        {d.code} {d.country}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={formData.shopPhone}
+                    onChange={(e) => setFormData((p) => ({ ...p, shopPhone: e.target.value }))}
+                    placeholder="2xxxxxxxxx"
+                    className="w-full bg-slate-50 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00E5FF]/30"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-[10px] font-black text-slate-400 mb-1.5">
@@ -1021,7 +1138,7 @@ function SignupContent() {
           <div>
             <div className="text-[10px] font-bold text-white/40 mb-1">الموبايل</div>
             <div className="text-sm font-black" dir="ltr">
-              {formData.phone || '—'}
+              {formData.phone ? `${dialCode} ${formData.phone}` : '—'}
             </div>
           </div>
           <div>

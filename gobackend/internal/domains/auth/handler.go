@@ -113,6 +113,9 @@ func (h *Handler) Signup(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return errors.Validation("invalid_body", "تعذر قراءة بيانات الطلب")
 	}
+	// Roles are upper-case internally and the validator is case-sensitive, so
+	// normalize client casing ("merchant" / "Merchant" → "MERCHANT").
+	req.Role = Role(strings.ToUpper(strings.TrimSpace(string(req.Role))))
 	if err := validate.Struct(req); err != nil {
 		return err
 	}
