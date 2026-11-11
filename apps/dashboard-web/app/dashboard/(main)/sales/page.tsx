@@ -434,47 +434,61 @@ export default function SalesPage() {
     }
   };
 
-  const fetchOrders = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const { orders } = await fetchMyOrders({ limit: 200 });
-      let allOrders = (Array.isArray(orders) ? orders : []) as Order[];
+  /**
+   * fetchOrders(silent?) — التحميل الأول فقط هو اللي بيعرض سبينر الجدول كامل.
+   * التحديثات في الخلفية (بعد تأكيد/تسليم/مرتجع/إنشاء طلب) بتفضل صامتة:
+   * الجدول يفضل مثبت في مكانه، والسطر المتأثر بس هو اللي بيتحدث فورًا
+   * (تحديث تفاؤلي في updateStatus) ثم يتطابق مع بيانات السيرفر بهدوء.
+   * من غير كده، كل خطوة كانت بتمسح الجدول وترجّعه — رجّزة مزعجة
+   * وبتحسس التاجر إن الصفحة "بتعمل ريفرش" مع كل حركة.
+   */
+  const fetchOrders = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const silent = opts?.silent === true;
+      if (!silent) setLoading(true);
+      setError('');
+      try {
+        const { orders } = await fetchMyOrders({ limit: 200 });
+        let allOrders = (Array.isArray(orders) ? orders : []) as Order[];
 
-      // Load local merchant orders placed from the standalone website cart
-      if (typeof window !== 'undefined') {
-        try {
-          const shopId = shop?.id;
-          const localKeys = shopId
-            ? [`ray_merchant_orders_${shopId}`]
-            : Object.keys(localStorage).filter((k) => k.startsWith('ray_merchant_orders_'));
+        // Load local merchant orders placed from the standalone website cart
+        if (typeof window !== 'undefined') {
+          try {
+            const shopId = shop?.id;
+            const localKeys = shopId
+              ? [`ray_merchant_orders_${shopId}`]
+              : Object.keys(localStorage).filter((k) => k.startsWith('ray_merchant_orders_'));
 
-          const localOrders: any[] = [];
-          for (const k of localKeys) {
-            const raw = localStorage.getItem(k);
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              if (Array.isArray(parsed)) localOrders.push(...parsed);
+            const localOrders: any[] = [];
+            for (const k of localKeys) {
+              const raw = localStorage.getItem(k);
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) localOrders.push(...parsed);
+              }
             }
-          }
 
-          const existingIds = new Set(allOrders.map((o) => o.id));
-          const newLocal = localOrders.filter((lo: any) => lo?.id && !existingIds.has(lo.id));
-          allOrders = [...newLocal, ...allOrders];
-        } catch {}
+            const existingIds = new Set(allOrders.map((o) => o.id));
+            const newLocal = localOrders.filter((lo: any) => lo?.id && !existingIds.has(lo.id));
+            allOrders = [...newLocal, ...allOrders];
+          } catch {}
+        }
+
+        setOrders(allOrders);
+      } catch (err: any) {
+        setError(err?.message || 'فشل تحميل الطلبات');
+      } finally {
+        if (!silent) setLoading(false);
       }
-
-      setOrders(allOrders);
-    } catch (err: any) {
-      setError(err?.message || 'فشل تحميل الطلبات');
-    } finally {
-      setLoading(false);
-    }
-  }, [shop?.id]);
+    },
+    [shop?.id]
+  );
 
   useEffect(() => {
     fetchOrders();
-    const handleUpdate = () => fetchOrders();
+    // أحداث المزامنة (طلب جديد / تغيير حالة / مرتجع) = تحديث هادئ في الخلفية،
+    // مش إعادة تحميل ظاهرة. الصفحة اللي أطلقت الحدث هي اللي حدّثت سطرها محليًا.
+    const handleUpdate = () => fetchOrders({ silent: true });
     window.addEventListener('orders-updated', handleUpdate);
     window.addEventListener('ray_new_website_order', handleUpdate);
     return () => {
@@ -543,7 +557,8 @@ export default function SalesPage() {
       });
       setShowCreateModal(false);
       setCreateFormData({ customerName: '', customerPhone: '', customerAddress: '' });
-      await fetchOrders();
+      // الطلب الجديد بيظهر في القائمة بهدوء من غير ما الجدول يختفي ويرجع.
+      await fetchOrders({ silent: true });
       try {
         window.dispatchEvent(new Event('orders-updated'));
       } catch {}
