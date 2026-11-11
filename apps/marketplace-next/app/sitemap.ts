@@ -61,20 +61,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/search`, lastModified: now, changeFrequency: 'daily', priority: 0.6 },
     // ملاحظة: الصفحات الخاصة (login/signup/checkout/profile/notifications/wishlist)
     // متعملها disallow في robots.ts فمش لازم تكون في الـ sitemap أصلاً.
-    // Builder pages
-    { url: `${baseUrl}/builder`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
-    {
-      url: `${baseUrl}/builder/templates`,
-      lastModified: now,
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/builder/themes`,
-      lastModified: now,
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
+    // ملاحظة ٢: صفحات الـ builder تعيش في dashboard-web (تطبيق منفصل خلف تسجيل
+    // الدخول) — مش موجودة في التطبيق ده، فأي روابط ليها هنا كانت بتضرب 404.
   ];
 
   const activityPages: MetadataRoute.Sitemap = VISIBLE_ACTIVITIES.map((a) => ({
@@ -110,18 +98,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
-    for (const shop of shops.slice(0, 50)) {
-      try {
-        const products = await getProducts(shop.id, 50);
-        productPages.push(
-          ...products.map((p) => ({
-            url: `${baseUrl}/product/${p.id}`,
-            lastModified: now,
-            changeFrequency: 'weekly' as const,
-            priority: 0.7,
-          }))
-        );
-      } catch {}
+    // جلب متوازي (Promise.allSettled) بدل ٥٠ نداء متسلسل — يقلّل زمن توليد
+    // الـ sitemap بشكل كبير، والفشل الفردي لخدمة أي متجر متجاهَل بأمان.
+    const productResults = await Promise.allSettled(
+      shops.slice(0, 50).map((shop) => getProducts(shop.id, 50))
+    );
+    for (const result of productResults) {
+      if (result.status !== 'fulfilled') continue;
+      productPages.push(
+        ...result.value.map((p) => ({
+          url: `${baseUrl}/product/${p.id}`,
+          lastModified: now,
+          changeFrequency: 'weekly' as const,
+          priority: 0.7,
+        }))
+      );
     }
   } catch {}
 
