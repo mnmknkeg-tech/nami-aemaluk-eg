@@ -37,12 +37,19 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 		return nil, errors.Validation("shopId_required", "shopId مطلوب")
 	}
 
-	customerName := strings.TrimSpace(req.CustomerName)
+	// Reject unknown shops with a clean 404 — otherwise the insert dies later
+	// on the booking_services FK with an opaque HTTP 500.
+	shopExists, err := s.repo.ShopExists(ctx, shopID)
+	if err != nil {
+		return nil, err
+	}
+	if !shopExists {
+		return nil, errors.NotFound("shop", shopID)
+	}
+
+	customerName := truncateRunes(strings.TrimSpace(req.CustomerName), 120)
 	if customerName == "" {
 		customerName = "زائر"
-	}
-	if len(customerName) > 120 {
-		customerName = customerName[:120]
 	}
 
 	customerPhone := strings.TrimSpace(req.CustomerPhone)
@@ -78,7 +85,7 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 			linkedProduct = req.ItemID
 		} else {
 			// First booking for this product — provision from the catalog row.
-			if name, price, prodDur, prodCap, perr := s.repo.GetProductBookingInfo(ctx, shopID, req.ItemID); perr == nil {
+			if name, price, prodDur, _, perr := s.repo.GetProductBookingInfo(ctx, shopID, req.ItemID); perr == nil {
 				linkedProduct = req.ItemID
 				if req.ItemName == "" {
 					req.ItemName = name
@@ -87,15 +94,33 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 					itemPrice = price
 				}
 				durationMinutes = prodDur
-				if participants == 1 && prodCap > 1 {
-					participants = 1
-				}
 			}
 		}
 	}
-	// The service's own duration wins over the product config.
-	if svc, serr := s.repo.GetService(ctx, req.ServiceID); serr == nil && svc != nil && svc.DurationMinutes > 0 {
-		durationMinutes = svc.DurationMinutes
+
+	// Ensure the booking service FIRST so the availability window below always
+	// runs against the final service id (product-linked bookings used to skip
+	// the conflict check entirely because ServiceID was still empty here).
+	serviceID, err := s.repo.ensureBookingService(ctx, ensureServiceParams{
+		ShopID: shopID, ServiceID: req.ServiceID, ItemID: linkedProduct,
+		ItemName: req.ItemName, ItemPrice: itemPrice,
+		DurationMinutes: durationMinutes,
+	})
+	if err != nil {
+		return nil, err
+	}
+	req.ServiceID = serviceID
+
+	// The service row is the single source of truth for duration and price —
+	// the client-supplied itemPrice is only a provisioning hint. This stops
+	// price tampering (guest sends itemPrice=1 for a 1000 EGP service).
+	if svc, serr := s.repo.GetService(ctx, serviceID); serr == nil && svc != nil {
+		if svc.DurationMinutes > 0 {
+			durationMinutes = svc.DurationMinutes
+		}
+		if svc.Price > 0 {
+			itemPrice = svc.Price
+		}
 	}
 	if durationMinutes <= 0 {
 		durationMinutes = settings.SlotDuration
@@ -110,66 +135,43 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 		if timePart == "" {
 			timePart = "00:00"
 		}
-		t, err := CairoWallClock(req.BookingDate, timePart)
-		if err == nil {
+		if t, perr := CairoWallClock(req.BookingDate, timePart); perr == nil {
 			startAt = &t
 			end := t.Add(time.Duration(durationMinutes) * time.Minute)
 			endAt = &end
 		}
 	}
 
-	// Check slot availability if serviceId and startAt provided
-	if req.ServiceID != "" && startAt != nil {
-		startTimeStr := FormatCairoClock(*startAt)
-		endTimeStr := ""
+	// Time-window rules — previously only reschedule enforced them, so the
+	// guest API happily booked yesterday 03:00 or times outside work hours.
+	if startAt != nil {
+		if startAt.Before(time.Now()) {
+			return nil, errors.Validation("past_time", "لا يمكن الحجز في وقت في الماضي")
+		}
+		if ws, werr := CairoWallClock(req.BookingDate, settings.WorkStart); werr == nil && startAt.Before(ws) {
+			return nil, errors.Validation("outside_work_hours", "الوقت قبل ساعة بدء استقبال المواعيد")
+		}
 		if endAt != nil {
-			endTimeStr = FormatCairoClock(*endAt)
+			if we, werr := CairoWallClock(req.BookingDate, settings.WorkEnd); werr == nil && endAt.After(we) {
+				return nil, errors.Validation("outside_work_hours", "الوقت بعد ساعة نهاية استقبال المواعيد")
+			}
 		}
-		available, err := s.repo.CheckSlotAvailability(ctx, req.ServiceID, *startAt, startTimeStr, endTimeStr, "")
-		if err != nil {
-			return nil, err
-		}
-		if !available {
-			return nil, errors.Validation("slot_unavailable", "الفترة الزمنية غير متاحة")
+		if settings.AdvanceDays > 0 && CairoDayStartOf(*startAt).After(CairoDayStartOf(time.Now()).AddDate(0, 0, settings.AdvanceDays)) {
+			return nil, errors.Validation("beyond_advance_window", "التاريخ أبعد من نافذة الحجز المسبق")
 		}
 		if req.ResourceID != "" {
-			resAvailable, err := s.repo.CheckResourceAvailability(ctx, req.ResourceID, *startAt, startTimeStr, endTimeStr, "")
-			if err != nil {
-				return nil, err
+			endTimeStr := ""
+			if endAt != nil {
+				endTimeStr = FormatCairoClock(*endAt)
+			}
+			resAvailable, rerr := s.repo.CheckResourceAvailability(ctx, req.ResourceID, *startAt, FormatCairoClock(*startAt), endTimeStr, "")
+			if rerr != nil {
+				return nil, rerr
 			}
 			if !resAvailable {
 				return nil, errors.Validation("resource_unavailable", "المورد غير متاح")
 			}
 		}
-	}
-
-	// Ensure booking service
-	serviceID, err := s.repo.ensureBookingService(ctx, ensureServiceParams{
-		ShopID: shopID, ServiceID: req.ServiceID, ItemID: linkedProduct,
-		ItemName: req.ItemName, ItemPrice: itemPrice,
-		DurationMinutes: durationMinutes,
-	})
-	if err != nil {
-		return nil, err
-	}
-	if linkedProduct != "" {
-		req.ServiceID = serviceID
-	}
-
-	// Ensure booking slot
-	var slotID *string
-	if startAt != nil {
-		dateStr := FormatCairoDate(*startAt)
-		startTimeStr := FormatCairoClock(*startAt)
-		endTimeStr := "23:59"
-		if endAt != nil {
-			endTimeStr = FormatCairoClock(*endAt)
-		}
-		sid, err := s.repo.EnsureBookingSlot(ctx, serviceID, shopID, req.ResourceID, dateStr, startTimeStr, endTimeStr, participants)
-		if err != nil {
-			return nil, err
-		}
-		slotID = &sid
 	}
 
 	// Build metadata
@@ -206,10 +208,7 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 
 	var notes *string
 	if strings.TrimSpace(req.Notes) != "" {
-		n := strings.TrimSpace(req.Notes)
-		if len(n) > 2000 {
-			n = n[:2000]
-		}
+		n := truncateRunes(strings.TrimSpace(req.Notes), 2000)
 		notes = &n
 	}
 
@@ -225,7 +224,6 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 	booking := &Booking{
 		BookingNumber: BuildBookingNumber(),
 		ServiceID:     serviceID,
-		SlotID:        slotID,
 		ShopID:        shopID,
 		UserID:        userID,
 		CustomerName:  customerName,
@@ -245,7 +243,21 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 	metaBytes, _ := json.Marshal(metadata)
 	booking.Metadata = metaBytes
 
-	created, err := s.repo.Create(ctx, booking)
+	// Timed bookings go through the guarded insert: per-service advisory lock
+	// + MaxPerSlot cap + duplicate guard + slot row, all in one transaction —
+	// closing the check-then-insert double-booking race. QUOTE bookings (no
+	// concrete window) have nothing to guard.
+	var created *Booking
+	if startAt != nil {
+		created, err = s.repo.CreateGuarded(ctx, guardedCreateParams{
+			Booking:           booking,
+			ResourceID:        req.ResourceID,
+			MaxPerSlot:        settings.MaxPerSlot,
+			PreventDuplicates: settings.PreventDuplicates,
+		})
+	} else {
+		created, err = s.repo.Create(ctx, booking)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -275,6 +287,18 @@ func (s *Service) ListByUserID(ctx context.Context, userID string, page, limit i
 	return shapeBookings(bookings), nil
 }
 
+// bookingTransitions defines the legal status lifecycle. Previously any status
+// could jump to any other (CONFIRMED→PENDING, reviving CANCELLED bookings…),
+// which corrupted merchant reporting. NO_SHOW can be undone (customer arrived
+// late after all); COMPLETED and CANCELLED are terminal.
+var bookingTransitions = map[string]map[string]bool{
+	"PENDING":   {"CONFIRMED": true, "COMPLETED": true, "CANCELLED": true, "NO_SHOW": true},
+	"CONFIRMED": {"COMPLETED": true, "CANCELLED": true, "NO_SHOW": true},
+	"NO_SHOW":   {"CONFIRMED": true, "CANCELLED": true},
+	"COMPLETED": {},
+	"CANCELLED": {},
+}
+
 // UpdateStatus updates a booking's status.
 func (s *Service) UpdateStatus(ctx context.Context, id, status, actorRole, actorShopID string) (*BookingResponse, error) {
 	if id == "" {
@@ -295,6 +319,15 @@ func (s *Service) UpdateStatus(ctx context.Context, id, status, actorRole, actor
 
 	if !isAdmin(actorRole) && actorShopID != existing.ShopID {
 		return nil, errors.Forbidden("insufficient_role", "صلاحيات غير كافية")
+	}
+
+	// Enforce the status lifecycle (legacy rows with unknown statuses skip
+	// the check). A no-op same-status update is also rejected.
+	if allowed, known := bookingTransitions[existing.Status]; known {
+		if !allowed[normalized] {
+			return nil, errors.Validation("invalid_status_transition",
+				"لا يمكن نقل الحجز من حالة "+existing.Status+" إلى "+normalized)
+		}
 	}
 
 	updated, err := s.repo.UpdateStatus(ctx, id, normalized)
@@ -627,20 +660,48 @@ func (s *Service) CheckResourceAvailability(ctx context.Context, resourceID, dat
 	return &SlotAvailabilityResponse{Available: false, Reason: "المورد غير متاح في هذا الوقت"}, nil
 }
 
-// CheckSlotAvailability checks if a single slot is available.
+// CheckSlotAvailability checks if a single slot is available. Honors the
+// merchant's MaxPerSlot cap (it previously hard-required an empty slot, so
+// the public page offered slots the create endpoint then rejected) and
+// validates inputs instead of silently parsing empty times into zero dates.
 func (s *Service) CheckSlotAvailability(ctx context.Context, serviceID, dateStr, startTime, endTime, excludeBookingID string) (*SlotAvailabilityResponse, error) {
 	if serviceID == "" {
 		return nil, errors.Validation("serviceId_required", "serviceId مطلوب")
 	}
-	d, err := CairoDayStart(dateStr)
-	if err != nil {
+	if strings.TrimSpace(startTime) == "" || strings.TrimSpace(endTime) == "" {
+		return nil, errors.Validation("start_time_end_time_required", "startTime و endTime مطلوبان")
+	}
+	if _, err := CairoDayStart(dateStr); err != nil {
 		return nil, errors.Validation("invalid_date", "تاريخ غير صحيح")
 	}
-	available, err := s.repo.CheckSlotAvailability(ctx, serviceID, d, startTime, endTime, excludeBookingID)
+	svc, err := s.repo.GetService(ctx, serviceID)
 	if err != nil {
 		return nil, err
 	}
-	if available {
+	if svc == nil {
+		return nil, errors.NotFound("service", serviceID)
+	}
+	settings, err := s.repo.GetShopBookingSettings(ctx, svc.ShopID)
+	if err != nil {
+		return nil, err
+	}
+	startAt, err := CairoWallClock(dateStr, startTime)
+	if err != nil {
+		return nil, errors.Validation("invalid_time", "وقت غير صحيح")
+	}
+	endAt, err := CairoWallClock(dateStr, endTime)
+	if err != nil {
+		return nil, errors.Validation("invalid_time", "وقت غير صحيح")
+	}
+	count, err := s.repo.CountOverlappingBookings(ctx, serviceID, startAt, endAt, excludeBookingID)
+	if err != nil {
+		return nil, err
+	}
+	maxPer := settings.MaxPerSlot
+	if maxPer < 1 {
+		maxPer = 1
+	}
+	if count < maxPer {
 		return &SlotAvailabilityResponse{Available: true}, nil
 	}
 	return &SlotAvailabilityResponse{Available: false, Reason: "الفترة الزمنية ممتلئة"}, nil

@@ -2,7 +2,9 @@ package bookings
 
 import (
 	"context"
+	crand "crypto/rand"
 	"database/sql"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -205,12 +207,115 @@ func (r *Repository) UpdateStatus(ctx context.Context, id, status string) (*Book
 	return scanBooking(row)
 }
 
-// CheckSlotAvailability checks if a slot is available.
-func (r *Repository) CheckSlotAvailability(ctx context.Context, serviceID string, date time.Time, startTime, endTime, excludeBookingID string) (bool, error) {
-	dateStr := FormatCairoDate(date)
-	startAt, _ := CairoWallClock(dateStr, startTime)
-	endAt, _ := CairoWallClock(dateStr, endTime)
+// CreateGuarded inserts a booking under a per-service advisory lock so two
+// concurrent requests can never both pass the same availability check (the
+// classic check-then-insert double-booking race). The overlap count is
+// re-evaluated inside the transaction with the merchant's MaxPerSlot cap, the
+// optional duplicate guard runs in the same transaction, and the booking slot
+// row is created atomically with the booking so a rejected request leaves no
+// orphan slot behind.
+type guardedCreateParams struct {
+	Booking           *Booking
+	ResourceID        string
+	MaxPerSlot        int
+	PreventDuplicates bool
+}
 
+func (r *Repository) CreateGuarded(ctx context.Context, p guardedCreateParams) (*Booking, error) {
+	b := p.Booking
+	// Bookings without a concrete window (QUOTE requests) have nothing to
+	// guard — plain insert.
+	if b.ServiceID == "" || b.StartAt == nil || b.EndAt == nil {
+		return r.Create(ctx, b)
+	}
+
+	maxPer := p.MaxPerSlot
+	if maxPer < 1 {
+		maxPer = 1
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, errors.Internal("begin_booking_tx_failed", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Serialize booking creation per service. hashtext(int4) + 0 keeps this
+	// compatible with every PostgreSQL version in production.
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtext($1), 0)", b.ServiceID); err != nil {
+		return nil, errors.Internal("booking_lock_failed", err)
+	}
+
+	// Cap check inside the lock.
+	count, err := countOverlapping(ctx, tx, b.ServiceID, *b.StartAt, *b.EndAt, "")
+	if err != nil {
+		return nil, err
+	}
+	if count >= maxPer {
+		return nil, errors.Validation("slot_unavailable", "الفترة الزمنية غير متاحة — جرّب موعداً آخر")
+	}
+
+	// Duplicate guard inside the lock: same shop + phone + service on the same
+	// Cairo day already has an active booking.
+	if p.PreventDuplicates && b.CustomerPhone != nil {
+		dayStart := CairoDayStartOf(*b.StartAt)
+		var dups int
+		if err := tx.QueryRow(ctx, `
+                        SELECT COUNT(*) FROM bookings
+                        WHERE shop_id = $1 AND customer_phone = $2 AND service_id = $3
+                          AND status IN ('PENDING', 'CONFIRMED')
+                          AND start_at >= $4 AND start_at < $5
+                `, b.ShopID, *b.CustomerPhone, b.ServiceID, dayStart, dayStart.AddDate(0, 0, 1)).Scan(&dups); err != nil {
+			return nil, errors.Internal("booking_dup_check_failed", err)
+		}
+		if dups > 0 {
+			return nil, errors.Validation("duplicate_booking", "عندك حجز بنفس البيانات في هذا اليوم بالفعل")
+		}
+	}
+
+	// Slot row is part of the same transaction.
+	sid, err := insertBookingSlot(ctx, tx, b.ServiceID, b.ShopID, p.ResourceID, *b.StartAt, *b.EndAt, b.Participants)
+	if err != nil {
+		return nil, err
+	}
+	b.SlotID = &sid
+
+	metadataJSON, _ := json.Marshal(b.Metadata)
+	row := tx.QueryRow(ctx, bookingInsertSQL,
+		b.BookingNumber, b.ServiceID, b.SlotID, b.ShopID, b.UserID,
+		b.CustomerName, b.CustomerPhone, b.CustomerEmail,
+		b.StartAt, b.EndAt, b.Participants, b.TotalAmount, b.Currency,
+		b.Status, b.PaymentStatus, b.Notes, metadataJSON,
+	)
+	created, err := scanBooking(row)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, errors.Internal("commit_booking_failed", err)
+	}
+	return created, nil
+}
+
+// bookingInsertSQL is the shared INSERT for Create and CreateGuarded.
+var bookingInsertSQL = `
+        INSERT INTO bookings (
+                booking_number, service_id, slot_id, shop_id, user_id,
+                customer_name, customer_phone, customer_email,
+                start_at, end_at, participants, total_amount, currency,
+                status, payment_status, notes, metadata
+        ) VALUES (
+                $1, $2, $3, $4, $5,
+                $6, $7, $8,
+                $9, $10, $11, $12, $13,
+                $14, $15, $16, $17
+        ) RETURNING ` + bookingReturningColumns + bookingReturningJoins
+
+// countOverlapping counts active bookings overlapping a window, on any
+// Querier (pool or transaction).
+func countOverlapping(ctx context.Context, q interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}, serviceID string, startAt, endAt time.Time, excludeBookingID string) (int, error) {
 	query := `
                 SELECT COUNT(*) FROM bookings
                 WHERE service_id = $1
@@ -223,33 +328,30 @@ func (r *Repository) CheckSlotAvailability(ctx context.Context, serviceID string
 		args = append(args, excludeBookingID)
 	}
 	var count int
-	err := r.pool.QueryRow(ctx, query, args...).Scan(&count)
-	if err != nil {
-		return false, errors.Internal("check_slot_availability_failed", err)
+	if err := q.QueryRow(ctx, query, args...).Scan(&count); err != nil {
+		return 0, errors.Internal("count_overlapping_bookings_failed", err)
 	}
-	return count == 0, nil
+	return count, nil
 }
 
 // CountOverlappingBookings counts active bookings overlapping a window for a
 // service — used to enforce the merchant's bookings-per-slot cap.
 func (r *Repository) CountOverlappingBookings(ctx context.Context, serviceID string, startAt, endAt time.Time, excludeBookingID string) (int, error) {
-	query := `
-                SELECT COUNT(*) FROM bookings
-                WHERE service_id = $1
-                  AND status IN ('PENDING', 'CONFIRMED')
-                  AND start_at < $3 AND end_at > $2
-        `
-	args := []any{serviceID, startAt, endAt}
-	if excludeBookingID != "" {
-		query += " AND id != $4"
-		args = append(args, excludeBookingID)
+	return countOverlapping(ctx, r.pool, serviceID, startAt, endAt, excludeBookingID)
+}
+
+// ShopExists reports whether the shop id actually exists — guest bookings
+// otherwise surface FK violations (HTTP 500) instead of a clean 404.
+func (r *Repository) ShopExists(ctx context.Context, shopID string) (bool, error) {
+	var one int
+	err := r.pool.QueryRow(ctx, "SELECT 1 FROM shops WHERE id = $1 LIMIT 1", shopID).Scan(&one)
+	if err == nil {
+		return true, nil
 	}
-	var count int
-	err := r.pool.QueryRow(ctx, query, args...).Scan(&count)
-	if err != nil {
-		return 0, errors.Internal("count_overlapping_bookings_failed", err)
+	if err == pgx.ErrNoRows {
+		return false, nil
 	}
-	return count, nil
+	return false, errors.Internal("shop_exists_check_failed", err)
 }
 
 // CheckResourceAvailability checks if a resource is available.
@@ -464,9 +566,7 @@ func (r *Repository) ensureBookingService(ctx context.Context, p ensureServicePa
 	if name == "" {
 		name = "حجز عام"
 	}
-	if len(name) > 160 {
-		name = name[:160]
-	}
+	name = truncateRunes(name, 160)
 
 	var existingID string
 	err := r.pool.QueryRow(ctx, "SELECT id FROM booking_services WHERE shop_id = $1 AND name = $2 LIMIT 1", p.ShopID, name).Scan(&existingID)
@@ -514,15 +614,30 @@ func (r *Repository) ensureBookingService(ctx context.Context, p ensureServicePa
 
 // EnsureBookingSlot finds or creates a booking slot.
 func (r *Repository) EnsureBookingSlot(ctx context.Context, serviceID, shopID, resourceID, dateStr, startTime, endTime string, participants int) (string, error) {
-	startAt, _ := time.Parse("2006-01-02 15:04", dateStr+" "+startTime)
-	endAt, _ := time.Parse("2006-01-02 15:04", dateStr+" "+endTime)
+	startAt, err := CairoWallClock(dateStr, startTime)
+	if err != nil {
+		return "", errors.Validation("invalid_slot_time", "وقت الفترة غير صحيح")
+	}
+	endAt, err := CairoWallClock(dateStr, endTime)
+	if err != nil {
+		return "", errors.Validation("invalid_slot_time", "وقت نهاية الفترة غير صحيح")
+	}
+	return insertBookingSlot(ctx, r.pool, serviceID, shopID, resourceID, startAt, endAt, participants)
+}
 
+// insertBookingSlot writes the booking_slots row. start_at/end_at are absolute
+// instants built via CairoWallClock so the slot row and the booking row always
+// carry the same time semantics (the date/start_time/end_time TEXT columns
+// keep the Cairo wall-clock digits for display).
+func insertBookingSlot(ctx context.Context, q interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}, serviceID, shopID, resourceID string, startAt, endAt time.Time, participants int) (string, error) {
 	var slotID string
-	err := r.pool.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
                 INSERT INTO booking_slots (service_id, shop_id, resource_id, date, start_time, end_time, start_at, end_at, status, max_capacity, current_bookings, updated_at)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'BOOKED', $9, $9, NOW())
                 RETURNING id
-        `, serviceID, nullableStr(shopID), nullableStr(resourceID), dateStr, startTime, endTime, startAt, endAt, participants).Scan(&slotID)
+        `, serviceID, nullableStr(shopID), nullableStr(resourceID), FormatCairoDate(startAt), FormatCairoClock(startAt), FormatCairoClock(endAt), startAt, endAt, participants).Scan(&slotID)
 	if err != nil {
 		return "", errors.Internal("create_booking_slot_failed", err)
 	}
@@ -614,10 +729,28 @@ func nullableStr(s string) any {
 	return s
 }
 
-// BuildBookingNumber generates a unique booking number.
+// BuildBookingNumber generates a unique booking number. The suffix comes from
+// crypto/rand (6 digits ≈ 10^6 per timestamp) — the old time.Nanosecond()%10000
+// suffix was weakly random and made guest lookup enumeration feasible.
 func BuildBookingNumber() string {
 	stamp := time.Now().UTC().Format("20060102150405")
-	return fmt.Sprintf("BK-%s-%04d", stamp, time.Now().Nanosecond()%10000)
+	var rnd [4]byte
+	if _, err := crand.Read(rnd[:]); err != nil {
+		// crypto/rand never fails on Linux; fall back to nanoseconds regardless.
+		binary.BigEndian.PutUint32(rnd[:], uint32(time.Now().Nanosecond()))
+	}
+	suffix := binary.BigEndian.Uint32(rnd[:]) % 1000000
+	return fmt.Sprintf("BK-%s-%06d", stamp, suffix)
+}
+
+// truncateRunes cuts a string to max runes WITHOUT splitting multi-byte UTF-8
+// characters — byte slicing (s[:max]) corrupts Arabic text mid-rune.
+func truncateRunes(s string, max int) string {
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	return string(r[:max])
 }
 
 // ---------------------------------------------------------------------------
@@ -782,10 +915,7 @@ func (r *Repository) ListPublicServicesByShopSlug(ctx context.Context, slug stri
 
 // CreateService inserts a merchant-defined bookable service.
 func (r *Repository) CreateService(ctx context.Context, shopID string, req CreateBookingServiceRequest) (*BookingService, error) {
-	name := strings.TrimSpace(req.Name)
-	if len(name) > 160 {
-		name = name[:160]
-	}
+	name := truncateRunes(strings.TrimSpace(req.Name), 160)
 	nameAr := nullableStr(strings.TrimSpace(req.NameAr))
 	activity := nullableStr(strings.TrimSpace(req.ActivityType))
 	desc := nullableStr(strings.TrimSpace(req.Description))

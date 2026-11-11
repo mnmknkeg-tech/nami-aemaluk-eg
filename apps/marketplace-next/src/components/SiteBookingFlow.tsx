@@ -60,25 +60,33 @@ interface BookingResult {
 
 const SERVICE_DAYS = 14;
 
-function dayChip(date: Date): {
+/** YYYY-MM-DD of `offsetDays` from now, measured in Cairo wall clock — never
+ * toISOString(), which shifts the date backwards for Cairo mornings (UTC+2/3). */
+function cairoDateStr(offsetDays = 0): string {
+  const d = new Date(Date.now() + offsetDays * 86400000);
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Cairo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
+function dayChip(value: string): {
   value: string;
   dayName: string;
   dayNum: number;
   monthName: string;
 } {
-  const value = date.toISOString().slice(0, 10);
+  // Parse as a plain calendar date (no timezone shifts — value is YYYY-MM-DD).
+  const [y, m, d] = value.split('-').map(Number);
+  const date = new Date(y, (m ?? 1) - 1, d ?? 1);
   return {
     value,
     dayName: date.toLocaleDateString('ar-EG', { weekday: 'short' }),
     dayNum: date.getDate(),
     monthName: date.toLocaleDateString('ar-EG', { month: 'short' }),
   };
-}
-
-function todayPlus(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
 }
 
 export function SiteBookingFlow({
@@ -101,9 +109,10 @@ export function SiteBookingFlow({
   const days = useMemo(() => {
     const advance = Math.min(Math.max(settings.advanceDays || 14, 1), 90);
     const count = Math.min(advance, SERVICE_DAYS);
-    return Array.from({ length: count }, (_, i) =>
-      dayChip(new Date(Date.now() + (i + 1) * 86400000))
-    );
+    // Start at TODAY (Cairo) — the backend already hides passed slots, so the
+    // remaining same-day slots stay bookable. Previously the flow silently
+    // started tomorrow and used UTC dates (wrong before 02:00 Cairo).
+    return Array.from({ length: count }, (_, i) => dayChip(cairoDateStr(i)));
   }, [settings.advanceDays]);
 
   const [serviceId, setServiceId] = useState<string | undefined>(() => {
@@ -113,7 +122,7 @@ export function SiteBookingFlow({
     if (ref && services.some((s) => s.id === ref || s.productId === ref)) return ref;
     return services.length === 1 ? services[0].id : undefined;
   });
-  const [date, setDate] = useState<string>(days[0]?.value ?? todayPlus(1));
+  const [date, setDate] = useState<string>(days[0]?.value ?? cairoDateStr(1));
   const [time, setTime] = useState<string>('');
   const [slots, setSlots] = useState<AvailableSlot[] | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);

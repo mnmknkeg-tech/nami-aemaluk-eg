@@ -29,9 +29,15 @@ interface AvailableSlot {
 }
 
 function todayPlus(days: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  // Cairo wall-clock date (YYYY-MM-DD) — toISOString() used to roll the date
+  // backwards for early Cairo mornings because it renders in UTC.
+  const d = new Date(Date.now() + days * 86400000);
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Cairo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
 }
 
 const inputClass =
