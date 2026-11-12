@@ -71,14 +71,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="dns-prefetch" href="https://tile.openstreetmap.org" />
         <link rel="dns-prefetch" href={backendOrigin()} />
         {/* PWA service worker — production only. In dev its caches keep serving
-            stale pages/CSS and break hot reload. */}
+            stale pages/CSS and break hot reload. updateViaCache:'none' makes the
+            browser re-fetch sw.js from the network on every navigation instead of
+            trusting its HTTP cache (default up-to-24h window), so a newly deployed
+            worker is detected immediately and its activate handler purges old caches
+            right away instead of serving stale pages for up to a day. */}
         {process.env.NODE_ENV === 'production' && (
           <script
             dangerouslySetInnerHTML={{
               __html: `
                 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
                   window.addEventListener('load', function () {
-                    navigator.serviceWorker.register('/sw.js').catch(function (err) {
+                    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(function (err) {
                       console.warn('SW registration failed:', err);
                     });
                   });

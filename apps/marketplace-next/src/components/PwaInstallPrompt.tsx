@@ -44,9 +44,11 @@ export function PwaInstallPrompt() {
       process.env.NODE_ENV === 'production'
     ) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch((err) => {
-          console.debug('SW registration skipped or failed:', err);
-        });
+        navigator.serviceWorker
+          .register('/sw.js', { updateViaCache: 'none' })
+          .catch((err) => {
+            console.debug('SW registration skipped or failed:', err);
+          });
       });
     }
 
