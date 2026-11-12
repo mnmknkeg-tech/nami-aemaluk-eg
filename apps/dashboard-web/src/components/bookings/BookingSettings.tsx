@@ -18,6 +18,7 @@ import {
   Loader2,
   Timer,
   Stethoscope,
+  Layers,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
 import {
@@ -27,9 +28,11 @@ import {
   type QueueDoctor,
   type ShopBookingConfig,
 } from '@ray-eg/shared/booking';
+import { ACTIVITY_META, ACTIVITY_ORDER, type ActivityType } from '@/lib/bookings/ui';
 
 export const SETTINGS_TABS = [
   { id: 'booking-queue', label: 'الحجز بالانتظار والأطباء', icon: Users },
+  { id: 'booking-activities', label: 'الأنشطة والفصل', icon: Layers },
   { id: 'booking-site', label: 'الموقع العام', icon: Globe },
   { id: 'booking-security', label: 'الأمان والصلاحيات', icon: ShieldCheck },
   { id: 'booking-notifications', label: 'إشعارات وتأكيدات', icon: Bell },
@@ -83,6 +86,7 @@ export function BookingSettings() {
       {/* Settings Card */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-7 shadow-sm">
         {activeSettingsTab === 'booking-queue' && <QueueDoctorsSettings />}
+        {activeSettingsTab === 'booking-activities' && <ActivitiesSettings />}
         {activeSettingsTab === 'booking-site' && <BookingSiteSettings />}
         {activeSettingsTab === 'booking-security' && <BookingSecuritySettings />}
         {activeSettingsTab === 'booking-notifications' && <BookingNotificationsSettings />}
@@ -91,7 +95,7 @@ export function BookingSettings() {
         {activeSettingsTab === 'booking-privacy' && <BookingPrivacySettings />}
 
         {/* Save Bar — التاب الجديد فيه زرار حفظه الخاص */}
-        {activeSettingsTab !== 'booking-queue' && (
+        {activeSettingsTab !== 'booking-queue' && activeSettingsTab !== 'booking-activities' && (
           <div className="mt-8 pt-5 border-t border-slate-100 flex items-center justify-between gap-4">
             <div className="text-xs text-slate-400 font-medium">
               يتم تطبيق التغييرات فور حفظ الإعدادات على جميع الحجوزات والموقع العام.
@@ -186,6 +190,9 @@ function QueueDoctorsSettings() {
   const [notifyMinutes, setNotifyMinutes] = useState(String(DEFAULT_QUEUE_NOTIFY_MINUTES));
   const [avgMinutes, setAvgMinutes] = useState(String(DEFAULT_AVG_SERVICE_MINUTES));
   const [doctors, setDoctors] = useState<QueueDoctor[]>([]);
+  // الأنشطة المفعّلة — نحافظ عليها لو تاب الأنشطة حفظ قبل كده
+  // (هذا التاب بيستبدل كائن booking بالكامل وقت الحفظ)
+  const [activityTypes, setActivityTypes] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -204,6 +211,7 @@ function QueueDoctorsSettings() {
         setNotifyMinutes(String(cfg.queueNotifyMinutes ?? DEFAULT_QUEUE_NOTIFY_MINUTES));
         setAvgMinutes(String(cfg.avgServiceMinutes ?? DEFAULT_AVG_SERVICE_MINUTES));
         setDoctors(cfg.doctors ?? []);
+        setActivityTypes(cfg.activityTypes ?? []);
       } catch (err: any) {
         if (alive) setLoadError(err?.message || 'تعذر تحميل الإعدادات');
       } finally {
@@ -222,9 +230,16 @@ function QueueDoctorsSettings() {
     try {
       const cfg: ShopBookingConfig = {
         queueEnabled,
-        queueNotifyMinutes: Math.max(5, Math.floor(Number(notifyMinutes) || DEFAULT_QUEUE_NOTIFY_MINUTES)),
-        avgServiceMinutes: Math.max(5, Math.floor(Number(avgMinutes) || DEFAULT_AVG_SERVICE_MINUTES)),
+        queueNotifyMinutes: Math.max(
+          5,
+          Math.floor(Number(notifyMinutes) || DEFAULT_QUEUE_NOTIFY_MINUTES)
+        ),
+        avgServiceMinutes: Math.max(
+          5,
+          Math.floor(Number(avgMinutes) || DEFAULT_AVG_SERVICE_MINUTES)
+        ),
         doctors: doctors.filter((d) => d.name.trim()),
+        ...(activityTypes.length > 0 ? { activityTypes } : {}),
       };
       // نحفظ من غير أطباء لو الكوتة مطفية — بس نحتفظ بالقيم للرجوع لاحقًا
       const updatedLayout = {
@@ -399,8 +414,207 @@ function QueueDoctorsSettings() {
           disabled={saving}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-60"
         >
-          {saving ? <Loader2 size={14} className="animate-spin" /> : saveState === 'saved' ? <Check size={14} className="text-emerald-400" /> : <Save size={14} />}
+          {saving ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : saveState === 'saved' ? (
+            <Check size={14} className="text-emerald-400" />
+          ) : (
+            <Save size={14} />
+          )}
           {saving ? 'بنحفظ…' : 'حفظ الإعدادات'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+ * تخصيص الأنشطة — فصل الحجوزات حسب نشاط التاجر
+ * الأنشطة المفعّلة فقط هي اللي بتظهر في فلاتر الأجندة وفي
+ * نموذج إضافة الحجز اليدوي، وكل نشاط ليه لونه وأيقونته.
+ * بتتخزن في layoutConfig.booking.activityTypes (بدون migration).
+ * ============================================================ */
+
+const ACTIVITY_HINTS: Record<ActivityType, string> = {
+  clinic: 'عيادات ومراكز طبية — كشف، متابعة، أسنان',
+  hotel: 'فندقة وشقق وإيواء — ليالي وإقامة',
+  table: 'مطاعم وكافيهات — حجز طاولات وقاعات',
+  consultation: 'استشارات وجلسات — مكالمات ومقابلات',
+  general: 'أي حجز عام مش تابع لنشاط محدد',
+};
+
+function ActivitiesSettings() {
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [layoutConfig, setLayoutConfig] = useState<Record<string, unknown>>({});
+  const [enabled, setEnabled] = useState<ActivityType[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const shop = await apiRequest<any>('/shops/me');
+        if (!alive) return;
+        const layout =
+          shop?.layoutConfig && typeof shop.layoutConfig === 'object' ? shop.layoutConfig : {};
+        setLayoutConfig(layout);
+        const cfg = readShopBookingConfig(shop);
+        setEnabled((cfg.activityTypes as ActivityType[]) || [...ACTIVITY_ORDER]);
+      } catch (err: any) {
+        if (alive) setLoadError(err?.message || 'تعذر تحميل الإعدادات');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const toggleActivity = (t: ActivityType) => {
+    setEnabled((prev) => {
+      const next = prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t];
+      // مفيش حجز من غير أي نشاط — على الأقل نشاط واحد فاضل شغال
+      return next.length > 0 ? next : prev;
+    });
+    setSaveState('idle');
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setSaveState('idle');
+    setSaveError(null);
+    try {
+      const cfg: ShopBookingConfig = {
+        // القيم اللي التاب ده مش مسؤول عنها نقرأها من الحفظ الحالي
+        // عشان ما نكسرش أي تخصيص اتعمل في تاب تاني
+        ...readShopBookingConfig({ layoutConfig } as any),
+        activityTypes: enabled,
+      };
+      const updatedLayout = {
+        ...layoutConfig,
+        booking: cfg,
+        commerce: {
+          ...((layoutConfig.commerce as Record<string, unknown>) || {}),
+          queueEnabled: cfg.queueEnabled === true,
+        },
+      };
+      await apiRequest('/shops/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ layoutConfig: updatedLayout }),
+      });
+      setLayoutConfig(updatedLayout);
+      setSaveState('saved');
+      setTimeout(() => setSaveState('idle'), 3000);
+    } catch (err: any) {
+      setSaveState('error');
+      setSaveError(err?.message || 'تعذر الحفظ — جرّب تاني');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-10 justify-center text-sm font-bold text-slate-400">
+        <Loader2 size={16} className="animate-spin" />
+        بنجيب تخصيص الأنشطة…
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <SectionTitle
+        title="الأنشطة والفصل بينها"
+        desc="اختار الأنشطة اللي بتشتغل بيها — الحجوزات بتتفصل تلقائيًا حسب النشاط في الأجندة والفلاتر ونموذج إضافة الحجز، وكل نشاط ليه لون وأيقونة"
+      />
+
+      {loadError && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-3.5 py-2.5 text-xs font-bold text-red-600">
+          <AlertCircle size={14} />
+          {loadError}
+        </div>
+      )}
+
+      <div className="space-y-2 mb-2">
+        {ACTIVITY_ORDER.map((t) => {
+          const meta = ACTIVITY_META[t];
+          const Icon = meta.icon;
+          const on = enabled.includes(t);
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => toggleActivity(t)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-right transition-all ${
+                on
+                  ? 'border-slate-900 bg-slate-50/80 shadow-xs'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              }`}
+            >
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  on ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'
+                }`}
+              >
+                <Icon size={16} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs sm:text-sm font-bold text-slate-800">{meta.label}</div>
+                <div className="text-[11px] font-medium text-slate-400 mt-0.5">
+                  {ACTIVITY_HINTS[t]}
+                </div>
+              </div>
+              <div
+                className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${
+                  on ? 'bg-slate-900' : 'bg-slate-200'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${
+                    on ? 'right-0.5' : 'right-5.5'
+                  }`}
+                />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="text-[11px] font-medium text-slate-400 mb-4">
+        الحجوزات القديمة اللي ناشتغل بأنشطة مغلقة هتفضل موجودة في السجل، بس مش هتظهر كفلتر مستقل
+        جديد. مفيش حجز بيتسجل من غير نشاط — لو قفلت الكل هيترجع آخر اختيار.
+      </p>
+
+      {saveError && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-3.5 py-2.5 text-xs font-bold text-red-600">
+          <AlertCircle size={14} />
+          {saveError}
+        </div>
+      )}
+
+      <div className="pt-5 border-t border-slate-100 flex items-center justify-between gap-4">
+        <div className="text-xs text-slate-400 font-medium">
+          بتطبق فورًا على أجندة الحجوزات ونموذج الإضافة اليدوية بعد الحفظ.
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-60"
+        >
+          {saving ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : saveState === 'saved' ? (
+            <Check size={14} className="text-emerald-400" />
+          ) : (
+            <Save size={14} />
+          )}
+          {saving ? 'بنحفظ…' : saveState === 'saved' ? 'تم الحفظ بنجاح' : 'حفظ الأنشطة'}
         </button>
       </div>
     </div>

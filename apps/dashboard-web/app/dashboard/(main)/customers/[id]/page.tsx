@@ -36,9 +36,20 @@ import {
   User,
   AlertTriangle,
   ExternalLink,
+  Clock,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
 import { useShop } from '@/hooks/useShop';
+import { hasExplicitConfig, isModuleEnabled } from '@/hooks/useModuleGuard';
+import {
+  ACTIVITY_META,
+  STATUS_META,
+  cairoPartsFromIso,
+  normPhoneKey,
+  normStatus,
+  type ActivityType,
+  type UnifiedStatus,
+} from '@/lib/bookings/ui';
 
 /* ============================================================
  * صفحة تفاصيل العميل الكاملة — مطابقة لتصميم لوحة التاجر (الصورة 2)
@@ -107,6 +118,33 @@ const ORDER_TABS = [
   { id: 'partial_refund', label: 'مسترجع جزئياً' },
 ];
 
+/* ============================================================
+ * الحجوزات — تاب سجل حجوزات العميل
+ * الحجوزات مربوطة بالعميل بالتليفون (مش بـ ID) والباكند
+ * بيدعم فلتر phone بمقارنة آخر 9 أرقام (01x = 20x).
+ * ============================================================ */
+
+type CustomerBooking = {
+  id: string;
+  bookingNumber: string;
+  status: UnifiedStatus;
+  activityType: ActivityType;
+  serviceName: string;
+  dateStr: string;
+  timeStr: string;
+  price: number;
+  participants: number;
+  paymentStatus: string;
+};
+
+const BOOKING_TABS: { id: string; label: string }[] = [
+  { id: 'all', label: 'الكل' },
+  { id: 'PENDING', label: STATUS_META.PENDING.label },
+  { id: 'CONFIRMED', label: STATUS_META.CONFIRMED.label },
+  { id: 'COMPLETED', label: STATUS_META.COMPLETED.label },
+  { id: 'CANCELLED', label: STATUS_META.CANCELLED.label },
+];
+
 export default function CustomerProfilePage() {
   const params = useParams();
   const router = useRouter();
@@ -139,6 +177,11 @@ export default function CustomerProfilePage() {
   // Orders tab filter & search
   const [orderTab, setOrderTab] = useState('all');
   const [orderSearch, setOrderSearch] = useState('');
+
+  // Bookings tab — سجل حجوزات العميل (مربوط بالتليفون)
+  const [bookings, setBookings] = useState<CustomerBooking[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingTab, setBookingTab] = useState('all');
 
   // Accordion states
   const [openAccordion, setOpenAccordion] = useState<string | null>('addresses');
@@ -187,6 +230,68 @@ export default function CustomerProfilePage() {
     loadCustomer();
     loadOrders();
   }, [loadCustomer, loadOrders]);
+
+  // ── حجوزات العميل: نجيبها لما يتوفر التليفون والوحدة مفعّلة ──
+  // ملاحظة: useModuleGuard fail-open للمتاجر الجديدة — نفس المبدأ هنا:
+  // متجر من غير إعداد صريح نشوفله كل حاجة، والمفصول بالاسم بنخفيه.
+  const bookingsModuleEnabled = useMemo(
+    () =>
+      Boolean(shop) &&
+      (isModuleEnabled(shop as any, 'bookings') || !hasExplicitConfig(shop as any)),
+    [shop]
+  );
+
+  const loadBookings = useCallback(async () => {
+    if (!shopId || !customer?.phone || !bookingsModuleEnabled) return;
+    setBookingsLoading(true);
+    try {
+      const params = new URLSearchParams({ phone: customer.phone, limit: '100' });
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shopId)) {
+        params.set('shopId', shopId);
+      }
+      const res = await apiRequest(`/bookings?${params.toString()}`);
+      const list = Array.isArray(res) ? res : res?.data || [];
+      const phoneKey = normPhoneKey(customer.phone);
+      const rows: CustomerBooking[] = (Array.isArray(list) ? list : [])
+        .filter((b: any) => {
+          const bk = normPhoneKey(String(b?.customerPhone || ''));
+          return !phoneKey || !bk || bk === phoneKey;
+        })
+        .map((b: any): CustomerBooking => {
+          const iso = cairoPartsFromIso(b.startAt || b.createdAt || '');
+          const raw = b.startAt || b.createdAt || '';
+          const explicit = String(
+            b.bookingActivityType || b?.metadata?.bookingActivityType || ''
+          ).toLowerCase();
+          const activityType = (['clinic', 'hotel', 'table', 'consultation'] as const).includes(
+            explicit as any
+          )
+            ? (explicit as ActivityType)
+            : 'general';
+          return {
+            id: String(b.id || ''),
+            bookingNumber: String(b.bookingNumber || ''),
+            status: normStatus(b.status),
+            activityType,
+            serviceName: String(b.serviceName || b.metadata?.itemName || 'حجز'),
+            dateStr: iso?.date || String(raw).slice(0, 10) || '—',
+            timeStr: iso?.time || String(raw).slice(11, 16) || '—',
+            price: Number(b.totalAmount || 0),
+            participants: Number(b.participants || 1),
+            paymentStatus: String(b.paymentStatus || ''),
+          };
+        });
+      setBookings(rows);
+    } catch {
+      setBookings([]);
+    } finally {
+      setBookingsLoading(false);
+    }
+  }, [shopId, customer?.phone, bookingsModuleEnabled]);
+
+  useEffect(() => {
+    loadBookings();
+  }, [loadBookings]);
 
   // السوق المستهدف مصر — العملة جنيه مصري دائمًا.
   const currency = useMemo(() => 'ج.م', []);
@@ -339,6 +444,25 @@ export default function CustomerProfilePage() {
       (o) => o.status === 'COMPLETED' || o.status === 'DELIVERED' || o.status === 'مكتمل'
     ).length;
   }, [activity]);
+
+  // ── مشتقات تاب الحجوزات ──
+  const filteredBookings = useMemo(() => {
+    if (bookingTab === 'all') return bookings;
+    return bookings.filter((b) => b.status === bookingTab);
+  }, [bookings, bookingTab]);
+
+  const bookingsStats = useMemo(() => {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo' }).format(new Date());
+    const active = bookings.filter((b) => b.status !== 'CANCELLED');
+    return {
+      total: bookings.length,
+      upcoming: active.filter(
+        (b) => (b.status === 'PENDING' || b.status === 'CONFIRMED') && b.dateStr >= today
+      ).length,
+      completed: bookings.filter((b) => b.status === 'COMPLETED').length,
+      value: active.reduce((sum, b) => sum + (Number(b.price) || 0), 0),
+    };
+  }, [bookings]);
 
   if (loading) {
     return (
@@ -1006,6 +1130,174 @@ export default function CustomerProfilePage() {
                 </div>
               </div>
             </div>
+
+            {/* ============================================================
+             * سجل حجوزات العميل — يظهر فقط لو وحدة الحجوزات مفعّلة
+             * والعميل له رقم موبايل (الحجوزات مربوطة بالتليفون)
+             * ============================================================ */}
+            {bookingsModuleEnabled && customer.phone && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-slate-900">سجل الحجوزات</h3>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    مرتبط برقم موبايل العميل
+                  </span>
+                </div>
+
+                {/* كروت إحصاء الحجوزات */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="border border-slate-100 bg-slate-50/60 rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-bold text-slate-500">إجمالي الحجوزات</span>
+                      <div className="w-7 h-7 rounded-lg bg-purple-100/70 text-[#492770] flex items-center justify-center">
+                        <Calendar size={14} />
+                      </div>
+                    </div>
+                    <div className="text-xl font-black text-slate-900 tabular-nums">
+                      {bookingsStats.total}
+                    </div>
+                  </div>
+                  <div className="border border-slate-100 bg-slate-50/60 rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-bold text-slate-500">حجوزات قادمة</span>
+                      <div className="w-7 h-7 rounded-lg bg-blue-100/70 text-blue-700 flex items-center justify-center">
+                        <Clock size={14} />
+                      </div>
+                    </div>
+                    <div className="text-xl font-black text-slate-900 tabular-nums">
+                      {bookingsStats.upcoming}
+                    </div>
+                  </div>
+                  <div className="border border-slate-100 bg-slate-50/60 rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-bold text-slate-500">حجوزات مكتملة</span>
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100/70 text-emerald-700 flex items-center justify-center">
+                        <CheckCircle2 size={14} />
+                      </div>
+                    </div>
+                    <div className="text-xl font-black text-slate-900 tabular-nums">
+                      {bookingsStats.completed}
+                    </div>
+                  </div>
+                  <div className="border border-slate-100 bg-slate-50/60 rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-bold text-slate-500">قيمة الحجوزات</span>
+                      <div className="w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 flex items-center justify-center">
+                        <Wallet size={14} />
+                      </div>
+                    </div>
+                    <div className="text-xl font-black text-slate-900 tabular-nums">
+                      {bookingsStats.value.toLocaleString()} {currency}
+                    </div>
+                  </div>
+                </div>
+
+                {/* تابات حالات الحجز */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-slate-100">
+                  {BOOKING_TABS.map((t) => {
+                    const active = bookingTab === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setBookingTab(t.id)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                          active
+                            ? 'bg-[#492770] text-white shadow-sm'
+                            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* جدول الحجوزات */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right border-collapse min-w-[700px]">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[11px] font-bold">
+                        <th className="px-3 py-2.5">رقم الحجز / الخدمة</th>
+                        <th className="px-3 py-2.5">النشاط</th>
+                        <th className="px-3 py-2.5">الموعد (توقيت القاهرة)</th>
+                        <th className="px-3 py-2.5">الحالة</th>
+                        <th className="px-3 py-2.5">الدفع</th>
+                        <th className="px-3 py-2.5">المبلغ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bookingsLoading ? (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center">
+                            <Loader2 size={20} className="animate-spin mx-auto text-purple-600" />
+                          </td>
+                        </tr>
+                      ) : filteredBookings.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="py-8 text-center text-xs text-slate-400 font-bold"
+                          >
+                            {bookingTab === 'all'
+                              ? 'لا توجد حجوزات لهذا العميل'
+                              : 'لا توجد حجوزات في هذه الحالة'}
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredBookings.map((b) => {
+                          const act = ACTIVITY_META[b.activityType];
+                          const st = STATUS_META[b.status];
+                          return (
+                            <tr
+                              key={b.id}
+                              className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors text-xs"
+                            >
+                              <td className="px-3 py-3">
+                                <div className="font-bold text-slate-900 tabular-nums">
+                                  #{b.bookingNumber || b.id.slice(0, 8)}
+                                </div>
+                                <div className="text-[11px] text-slate-400 font-semibold">
+                                  {b.serviceName}
+                                  {b.participants > 1 ? ` ×${b.participants}` : ''}
+                                </div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${act.chip}`}
+                                >
+                                  {act.label}
+                                </span>
+                              </td>
+                              <td className="px-3 py-3 text-slate-600 font-semibold tabular-nums">
+                                {b.dateStr} · {b.timeStr}
+                              </td>
+                              <td className="px-3 py-3">
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${st.chip}`}
+                                >
+                                  {st.label}
+                                </span>
+                              </td>
+                              <td className="px-3 py-3 text-slate-700 font-semibold">
+                                {b.paymentStatus || '—'}
+                              </td>
+                              <td className="px-3 py-3 font-bold text-slate-900 tabular-nums">
+                                {b.price.toLocaleString()} {currency}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="text-xs text-slate-400 font-bold">
+                  إجمالي النتائج: {filteredBookings.length}
+                </div>
+              </div>
+            )}
 
             {/* الأكورديونات السفلية القابلة للفتح والطي كالصورة 2 */}
             <div className="space-y-2">

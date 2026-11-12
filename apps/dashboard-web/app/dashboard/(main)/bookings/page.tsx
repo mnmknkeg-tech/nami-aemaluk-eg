@@ -35,13 +35,22 @@ import { apiRequest } from '@/lib/auth';
 import { useModuleGuard } from '@/hooks/useModuleGuard';
 import { addBookingViaBackend, updateBookingStatusViaBackend } from '@/lib/api/bookings';
 import { BookingSettings } from '@/components/bookings/BookingSettings';
+import { readShopBookingConfig, type ShopBookingConfig } from '@ray-eg/shared/booking';
+import {
+  ACTIVITY_META,
+  ACTIVITY_ORDER,
+  STATUS_META,
+  cairoPartsFromIso,
+  normPhoneKey,
+  normStatus,
+  type ActivityType,
+  type UnifiedStatus,
+} from '@/lib/bookings/ui';
 
 /* ============================================================
  * Types & Constants
  * ============================================================ */
 
-type UnifiedStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED';
-type ActivityType = 'clinic' | 'hotel' | 'table' | 'consultation' | 'general';
 type ViewMode = 'month' | 'week' | 'day' | 'agenda';
 
 type BookingItem = {
@@ -84,56 +93,7 @@ const ARABIC_MONTHS = [
 
 const WEEK_DAYS = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
-const ACTIVITY_META: Record<ActivityType, { label: string; icon: any; chip: string; dot: string }> =
-  {
-    clinic: {
-      label: 'عيادة',
-      icon: Stethoscope,
-      chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      dot: 'bg-emerald-500',
-    },
-    hotel: {
-      label: 'فندقة',
-      icon: BedDouble,
-      chip: 'bg-amber-50 text-amber-700 border-amber-200',
-      dot: 'bg-amber-500',
-    },
-    table: {
-      label: 'طاولة',
-      icon: Utensils,
-      chip: 'bg-violet-50 text-violet-700 border-violet-200',
-      dot: 'bg-violet-500',
-    },
-    consultation: {
-      label: 'استشارة',
-      icon: Briefcase,
-      chip: 'bg-sky-50 text-sky-700 border-sky-200',
-      dot: 'bg-sky-500',
-    },
-    general: {
-      label: 'حجز عام',
-      icon: CalendarDays,
-      chip: 'bg-slate-100 text-slate-700 border-slate-200',
-      dot: 'bg-slate-500',
-    },
-  };
-
-const STATUS_META: Record<UnifiedStatus, { label: string; chip: string }> = {
-  PENDING: { label: 'بانتظار التأكيد', chip: 'bg-amber-50 text-amber-700 border-amber-200' },
-  CONFIRMED: { label: 'مؤكد', chip: 'bg-blue-50 text-blue-700 border-blue-200' },
-  COMPLETED: { label: 'مكتمل', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  CANCELLED: { label: 'ملغي', chip: 'bg-red-50 text-red-700 border-red-200' },
-  EXPIRED: { label: 'منتهي', chip: 'bg-slate-100 text-slate-600 border-slate-200' },
-};
-
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function normStatus(s: any): UnifiedStatus {
-  const v = String(s || '').toUpperCase();
-  if (v === 'CONFIRMED' || v === 'COMPLETED' || v === 'CANCELLED' || v === 'EXPIRED')
-    return v as UnifiedStatus;
-  return 'PENDING';
-}
 
 function inferActivityType(raw: any): ActivityType {
   const t = String(
@@ -185,36 +145,6 @@ function formatDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/**
- * تحويل timestamp بمنطقة زمنية (UTC غالبًا) إلى تاريخ ووقت القاهرة الحقيقيين.
- * الباكند بيخزن startAt/startTime بصيغة ISO UTC، وslice الخام (11,16) كان
- * بيعرض وقت أوروبا — عشان كده الحجوزات كانت بتظهر 00:30 بدل 02:30 مثلًا.
- * النص اللي مكتوب فيه منطقة زمنية بس هو اللي بيتحول؛ التواريخ الخام تفضل زي ما هي.
- */
-function cairoPartsFromIso(iso: unknown): { date: string; time: string } | null {
-  if (typeof iso !== 'string' || !iso.trim()) return null;
-  if (!/[zZ]$/.test(iso.trim()) && !/[+-]\d{2}:\d{2}$/.test(iso.trim())) return null;
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return null;
-    const date = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Africa/Cairo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(d);
-    const time = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Africa/Cairo',
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    }).format(d);
-    return { date, time };
-  } catch {
-    return null;
-  }
-}
-
 /* ============================================================
  * عملاء الحجوزات → صفحة العملاء (من الموقع أو اليدوي)
  * كل عميل في أي حجز بيتأكد إن له سجل في /shops/{id}/customers —
@@ -225,14 +155,11 @@ function cairoPartsFromIso(iso: unknown): { date: string; time: string } | null 
 const syncedCustomerKeys = new Set<string>();
 let bookingCustomersCache: { at: number; phones: Set<string>; names: Set<string> } | null = null;
 
-/** آخر 9 أرقام — 01xxxxxxxxx و20xxxxxxxxx يطابقوا نفس العميل */
-function normPhoneKey(p: string): string {
-  const d = String(p || '').replace(/\D/g, '');
-  return d.length >= 9 ? d.slice(-9) : d;
-}
-
 function normNameKey(n: string): string {
-  return String(n || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  return String(n || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
 }
 
 async function ensureBookingCustomers(shopId: string, items: BookingItem[]): Promise<void> {
@@ -249,10 +176,7 @@ async function ensureBookingCustomers(shopId: string, items: BookingItem[]): Pro
   if (candidates.size === 0) return;
 
   try {
-    if (
-      !bookingCustomersCache ||
-      Date.now() - bookingCustomersCache.at > 5 * 60000
-    ) {
+    if (!bookingCustomersCache || Date.now() - bookingCustomersCache.at > 5 * 60000) {
       const res = await apiRequest<any>(`/shops/${shopId}/customers?limit=500`);
       const list = Array.isArray(res)
         ? res
@@ -280,9 +204,7 @@ async function ensureBookingCustomers(shopId: string, items: BookingItem[]): Pro
           ...(c.phone ? { phone: c.phone } : {}),
           source: 'bookings',
           notes:
-            c.src === 'website'
-              ? 'اتضاف تلقائيًا من حجز على الموقع'
-              : 'اتضاف تلقائيًا من حجز يدوي',
+            c.src === 'website' ? 'اتضاف تلقائيًا من حجز على الموقع' : 'اتضاف تلقائيًا من حجز يدوي',
         }),
       })
         .then((res: any) => {
@@ -331,6 +253,27 @@ function BookingsMainContent() {
   const [agendaStatusFilter, setAgendaStatusFilter] = useState('all');
   const [agendaTypeFilter, setAgendaTypeFilter] = useState('all');
 
+  // تخصيص الأنشطة — إعدادات التاجر من layoutConfig.booking.activityTypes
+  const [bookingConfig, setBookingConfig] = useState<ShopBookingConfig>({});
+
+  // الأنشطة المفعّلة: فاضي = كل الأنشطة، وغير كده الأنشطة المختارة فقط
+  // (بتفصل الأجندة ونموذج الإضافة حسب نشاط التاجر)
+  const enabledActivities = useMemo<ActivityType[]>(() => {
+    const set = new Set(bookingConfig.activityTypes || []);
+    const picked = ACTIVITY_ORDER.filter((t) => set.has(t));
+    return picked.length > 0 ? picked : [...ACTIVITY_ORDER];
+  }, [bookingConfig]);
+
+  // لو النشاط المفلتر عليه بقى غير مفعّل من التخصيص نرجّع لـ "الكل"
+  useEffect(() => {
+    if (
+      agendaTypeFilter !== 'all' &&
+      !enabledActivities.includes(agendaTypeFilter as ActivityType)
+    ) {
+      setAgendaTypeFilter('all');
+    }
+  }, [enabledActivities, agendaTypeFilter]);
+
   // Load bookings from API
   const loadBookings = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -340,6 +283,8 @@ function BookingsMainContent() {
       try {
         const shop = await apiRequest('/shops/me');
         shopId = shop?.id;
+        // نحتفظ بإعدادات الحجز (تخصيص الأنشطة) من نفس الاستجابة
+        setBookingConfig(readShopBookingConfig(shop));
       } catch {}
       if (shopId) setMyShopId(String(shopId));
 
@@ -750,6 +695,7 @@ function BookingsMainContent() {
             setStatusFilter={setAgendaStatusFilter}
             typeFilter={agendaTypeFilter}
             setTypeFilter={setAgendaTypeFilter}
+            typeOptions={enabledActivities}
             onSelectBooking={(b) => setSelectedBooking(b)}
           />
         )}
@@ -768,6 +714,7 @@ function BookingsMainContent() {
         <AddBookingModal
           initialDate={modalInitialDate}
           shopId={myShopId}
+          enabledActivities={enabledActivities}
           onClose={() => setIsAddModalOpen(false)}
           onSuccess={(newB) => {
             setBookings((prev) => [newB, ...prev]);
@@ -1190,6 +1137,7 @@ function AgendaView({
   setStatusFilter,
   typeFilter,
   setTypeFilter,
+  typeOptions,
   onSelectBooking,
 }: {
   bookings: BookingItem[];
@@ -1199,6 +1147,8 @@ function AgendaView({
   setStatusFilter: (s: string) => void;
   typeFilter: string;
   setTypeFilter: (s: string) => void;
+  /** الأنشطة المفعّلة من تخصيص التاجر — الفلتر يعرضها فقط */
+  typeOptions: ActivityType[];
   onSelectBooking: (b: BookingItem) => void;
 }) {
   const filtered = useMemo(() => {
@@ -1243,11 +1193,11 @@ function AgendaView({
             className="h-9 px-3 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none"
           >
             <option value="all">كل الأنشطة</option>
-            <option value="clinic">عيادات</option>
-            <option value="hotel">فندقة وإيواء</option>
-            <option value="table">طاولات ومطاعم</option>
-            <option value="consultation">استشارات</option>
-            <option value="general">عام</option>
+            {typeOptions.map((t) => (
+              <option key={t} value={t}>
+                {ACTIVITY_META[t].label}
+              </option>
+            ))}
           </select>
 
           <select
@@ -1352,15 +1302,18 @@ const QUICK_TIMES: string[] = Array.from({ length: 30 }, (_, i) => {
 function AddBookingModal({
   initialDate,
   shopId,
+  enabledActivities,
   onClose,
   onSuccess,
 }: {
   initialDate: string;
   shopId?: string;
+  /** الأنشطة المفعّلة من تخصيص التاجر — الشبكة تعرضها فقط وتختار الأول افتراضيًا */
+  enabledActivities: ActivityType[];
   onClose: () => void;
   onSuccess: (b: BookingItem) => void;
 }) {
-  const [activityType, setActivityType] = useState<ActivityType>('clinic');
+  const [activityType, setActivityType] = useState<ActivityType>(enabledActivities[0] || 'general');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [itemName, setItemName] = useState('');
@@ -1475,7 +1428,7 @@ function AddBookingModal({
               نوع الحجز / النشاط
             </label>
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-              {(Object.keys(ACTIVITY_META) as ActivityType[]).map((t) => {
+              {enabledActivities.map((t) => {
                 const act = ACTIVITY_META[t];
                 const Icon = act.icon;
                 const isSelected = activityType === t;
@@ -1874,7 +1827,10 @@ function QueueTodayPanel({
   };
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-amber-200 shadow-sm overflow-hidden" dir="rtl">
+    <div
+      className="bg-white rounded-2xl border-2 border-amber-200 shadow-sm overflow-hidden"
+      dir="rtl"
+    >
       <div className="flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 border-b border-amber-100">
         <div className="flex items-center gap-2">
           <Users size={16} className="text-amber-600" />
@@ -1908,7 +1864,9 @@ function QueueTodayPanel({
                 title="ترتيب في الطابور"
               >
                 <span className="text-sm font-black leading-none">{item.queuePosition}</span>
-                <span className="text-[8px] font-bold opacity-80">{isNext ? 'الدور عليه' : 'في الانتظار'}</span>
+                <span className="text-[8px] font-bold opacity-80">
+                  {isNext ? 'الدور عليه' : 'في الانتظار'}
+                </span>
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-extrabold text-slate-900 truncate">
@@ -1954,7 +1912,11 @@ function QueueTodayPanel({
                   onClick={() => setStatus(item, 'CONFIRMED')}
                   className="h-8 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-extrabold flex items-center gap-1.5 disabled:opacity-60 shrink-0"
                 >
-                  {busy ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                  {busy ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={12} />
+                  )}
                   بدأ الدور
                 </button>
               )}

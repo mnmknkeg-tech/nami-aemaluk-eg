@@ -24,6 +24,11 @@ export interface ShopBookingConfig {
   avgServiceMinutes?: number;
   /** فريق العمل / الأطباء */
   doctors?: QueueDoctor[];
+  /**
+   * الأنشطة المفعّلة للحجوزات (مثل clinic/hotel/table/consultation/general) —
+   * تخصيص يفصل الأجندة وفلاتر الحجز حسب نشاط التاجر. غيابه أو فراغه = كل الأنشطة.
+   */
+  activityTypes?: string[];
 }
 
 export const DEFAULT_QUEUE_NOTIFY_MINUTES = 30;
@@ -53,14 +58,8 @@ export function readShopBookingConfig(
 
   const out: ShopBookingConfig = {
     queueEnabled: booking.queueEnabled === true,
-    queueNotifyMinutes: asPositiveInt(
-      booking.queueNotifyMinutes,
-      DEFAULT_QUEUE_NOTIFY_MINUTES
-    ),
-    avgServiceMinutes: asPositiveInt(
-      booking.avgServiceMinutes,
-      DEFAULT_AVG_SERVICE_MINUTES
-    ),
+    queueNotifyMinutes: asPositiveInt(booking.queueNotifyMinutes, DEFAULT_QUEUE_NOTIFY_MINUTES),
+    avgServiceMinutes: asPositiveInt(booking.avgServiceMinutes, DEFAULT_AVG_SERVICE_MINUTES),
   };
 
   if (Array.isArray(booking.doctors)) {
@@ -76,6 +75,13 @@ export function readShopBookingConfig(
         };
       })
       .filter((d): d is QueueDoctor => d !== null);
+  }
+
+  if (Array.isArray(booking.activityTypes)) {
+    const list = booking.activityTypes
+      .map((v: unknown) => asString(v))
+      .filter((v: string | undefined): v is string => Boolean(v));
+    if (list.length > 0) out.activityTypes = list;
   }
 
   return out;

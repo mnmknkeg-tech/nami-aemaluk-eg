@@ -142,6 +142,27 @@ func normalizeBookingStatus(s string) string {
 	}
 }
 
+// normalizePhoneDigits strips non-digit characters from a phone number and
+// keeps the trailing 9 digits (Egyptian local 01xxxxxxxxx and international
+// 20xxxxxxxxx forms then match the same customer). Returns "" for empty or
+// too-short input so callers skip the filter entirely.
+func normalizePhoneDigits(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			b.WriteRune(r)
+		}
+	}
+	digits := b.String()
+	if len(digits) > 9 {
+		digits = digits[len(digits)-9:]
+	}
+	if len(digits) < 9 {
+		return ""
+	}
+	return digits
+}
+
 // ---------------------------------------------------------------------------
 // Booking services (bookable offerings) — CRUD + public contracts.
 // ---------------------------------------------------------------------------
@@ -230,10 +251,13 @@ type ShopBookingSettings struct {
 }
 
 // BookingListFilter narrows the merchant dashboard list by time range
-// (Cairo dates, inclusive) and status, with an explicit ordering.
+// (Cairo dates, inclusive), status, customer phone and ordering.
 type BookingListFilter struct {
 	From   string
 	To     string
 	Status string
 	Order  string // "asc" | "desc" (created_at / start_at aware)
+	// Phone — optional customer-phone filter used by the customer profile
+	// page (bookings are linked to customers by phone, not by id).
+	Phone string
 }

@@ -151,6 +151,7 @@ func (h *Handler) ListByShop(c *fiber.Ctx) error {
 		To:     c.Query("to"),
 		Status: c.Query("status"),
 		Order:  strings.ToLower(c.Query("order")),
+		Phone:  c.Query("phone"),
 	}
 	bookings, err := h.service.ListByShop(c.UserContext(), shopID, page, limit, filter)
 	if err != nil {

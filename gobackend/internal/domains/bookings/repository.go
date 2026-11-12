@@ -134,6 +134,15 @@ func (r *Repository) ListByShop(ctx context.Context, shopID string, limit, offse
 			args = append(args, status)
 			idx++
 		}
+		// فلتر التليفون — الحجوزات مربوطة بالعميل بالرقم مش بالـ ID، وممكن
+		// الرقم يكون متخزن بصيغة محلية (01x) أو دولية (20x) فنقارن آخر 9 أرقام.
+		if phoneDigits := normalizePhoneDigits(filter.Phone); phoneDigits != "" {
+			query += fmt.Sprintf(
+				" AND RIGHT(regexp_replace(COALESCE(b.customer_phone, ''), '[^0-9]', '', 'g'), %d) = $%d",
+				len(phoneDigits), idx)
+			args = append(args, phoneDigits)
+			idx++
+		}
 	}
 	if filter != nil && filter.Order == "asc" {
 		query += " ORDER BY b.start_at ASC NULLS LAST, b.created_at ASC"
