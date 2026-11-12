@@ -54,9 +54,11 @@ import {
   getHomePageId,
   getInitialBuilderState,
   hasWebsiteContentToReplace,
+  localBuilderSiteKey,
   normalizeWebsite,
   persistTemplateCandidateBeforeCommit,
 } from './builderUtils';
+import { readUserId } from '@/lib/session-keys';
 import { getMergedThemeTokens } from '../data/themes/utils';
 import { normalizeCatalogProduct } from '@ray-eg/shared/builder';
 
@@ -358,7 +360,8 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Sync local storage on every website change
+  // Sync local storage on every website change — key scoped to the current
+  // user so another merchant's draft is never readable on a shared browser.
   useEffect(() => {
     if (
       !isInitializing &&
@@ -367,7 +370,10 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
       website?.pages?.length
     ) {
       try {
-        localStorage.setItem('ray_builder_last_active_site', JSON.stringify(website));
+        const uid = readUserId();
+        if (uid) {
+          localStorage.setItem(`ray_builder_last_active_site_${uid}`, JSON.stringify(website));
+        }
       } catch {}
     }
   }, [isInitializing, website]);
@@ -515,10 +521,14 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         // Recover only this shop's backup; never scan arbitrary merchant keys.
         if (typeof window !== 'undefined' && !cancelled) {
           try {
+            const uid = readUserId();
+            // بلا معرف مستخدم لا تُستعاد أي نسخة محلية — لا مفتاح مشترك بين التجار.
             const key = builderShopIdRef.current
               ? `ray_builder_site_${builderShopIdRef.current}`
-              : 'ray_builder_site_local';
-            const parsed = JSON.parse(localStorage.getItem(key) || '');
+              : localBuilderSiteKey();
+            const parsed = uid
+              ? JSON.parse(localStorage.getItem(key) || '')
+              : null;
             if (Array.isArray(parsed?.pages) && parsed.pages.length && parsed?.components) {
               hasPersistedWebsiteRef.current = true;
               setWebsite(normalizeWebsite(parsed));
@@ -613,7 +623,10 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             setTemplateError(null);
             if (typeof window !== 'undefined') {
               try {
-                localStorage.setItem('ray_builder_selected_template', entry.id);
+                const uid = readUserId();
+                if (uid) {
+                  localStorage.setItem(`ray_builder_selected_template_${uid}`, entry.id);
+                }
               } catch (error) {
                 console.error('[WebsiteBuilder] Could not remember the applied template.', error);
               }

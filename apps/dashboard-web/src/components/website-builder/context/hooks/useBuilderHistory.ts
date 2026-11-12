@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { Website, WebsiteSettings } from '../../types/builder';
 import { EditingModeId } from '../types';
 import { apiRequest } from '../../../../lib/api/client';
+import { localBuilderSiteKey } from '../builderUtils';
 import type { WebsiteReducer } from './useBuilderComponentOperations';
 import { inspectWebsiteTree, normalizeWebsiteTree } from '@ray-eg/shared/builder';
 
@@ -88,7 +89,12 @@ export const enqueueSerialSave = <T>(
 const writeLocalDraft = (shopId: string, website: Website) => {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(`ray_builder_site_${shopId || 'local'}`, JSON.stringify(website));
+    // 'local' never resolves to a shared cross-merchant key — it is scoped
+    // to the current user until the real shopId arrives.
+    localStorage.setItem(
+      shopId ? `ray_builder_site_${shopId}` : localBuilderSiteKey(),
+      JSON.stringify(website)
+    );
   } catch {
     // Keep the in-memory copy; quota/private-mode errors should not hide save errors.
   }

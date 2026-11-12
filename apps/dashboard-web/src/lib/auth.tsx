@@ -27,7 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   refreshUser: async () => {},
 });
 
-import { clearToken, clearUserJSON, readUserJSON, writeUserJSON } from '@/lib/session-keys';
+import { clearToken, clearUserJSON, readUserJSON, writeUserJSON, clearMerchantScopedCaches, dispatchAuthIdentityChanged } from '@/lib/session-keys';
 // All request/refresh/401 logic lives in the unified core — this provider
 // only owns React state. The re-export below feeds the 674 call sites.
 import { apiRequest, clearApiCache, noteAuthSuccess, refreshSession } from '@/lib/api/core';
@@ -93,6 +93,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined') clearUserJSON();
       setUser(null);
       stopAuthScheduler();
+      // الجلسة انتهت — امسح حالة التاجر و اطلب من المستمعين (React Query)
+      // تفريغ كاشهم حتى لا تعرض الشاشات بيانات جلسة سابقة.
+      clearMerchantScopedCaches();
+      dispatchAuthIdentityChanged();
     };
     const onUserRefreshed = () => {
       try {
@@ -130,6 +134,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       noteAuthSuccess(data?.token?.expiresAt || data?.data?.token?.expiresAt);
       clearToken();
       clearApiCache();
+      // هوية جديدة — امسح كل كاش التاجر السابق (الأزرار/المنشئ/الكاشير)
+      // واطلب من المستمعين تفريغ كاشهم قبل أن ترسم الواجهة بأي بيانات.
+      clearMerchantScopedCaches();
+      dispatchAuthIdentityChanged();
     }
     return data;
   }, []);
@@ -139,6 +147,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearUserJSON();
     clearToken();
     clearApiCache();
+    clearMerchantScopedCaches();
+    dispatchAuthIdentityChanged();
     stopAuthScheduler();
     // core attaches X-CSRF-Token for mutations automatically.
     apiRequest('/auth/logout', { method: 'POST' }).catch(() => {});

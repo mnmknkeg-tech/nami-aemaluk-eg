@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, apiRequest } from '@/lib/auth';
+import { writeMerchantCache } from '@/lib/session-keys';
 import { AuthSkeleton } from '@/components/ui/Skeleton';
 import { BUSINESS_ACTIVITIES, groupAccentColors, ActivityWithGroup } from '@/lib/activities';
 import {
@@ -389,28 +390,27 @@ function SignupContent() {
         throw new Error(shopErr?.message || 'فشل إنشاء المتجر، يرجى مراجعة البيانات');
       }
 
-      // Pre-seed local cache so dashboard renders instantly without initial flash
-      try {
-        localStorage.setItem(
-          'ray_merchant_shop_cache',
-          JSON.stringify({
-            name: formData.shopName,
-            category: shopCategory,
-            enabledModules: resolvedModules,
-            layoutConfig: {
-              enabledModules: resolvedModules,
-              enabledFeatures: dashboardEnabledFeatures(resolvedModules),
-            },
-          })
-        );
-      } catch {}
-
       // 4) تسجيل الدخول التلقائي في نفس الأصل (dashboard-web) لتعيين الكوكيز
       try {
         await login(formData.email, formData.password);
       } catch (logErr) {
         console.warn('Auto-login notice:', logErr);
       }
+
+      // Pre-seed local cache so dashboard renders instantly without initial
+      // flash — after login (login wipes stale merchant caches) and stamped
+      // with the new owner so it is only ever trusted by this account.
+      try {
+        writeMerchantCache({
+          name: formData.shopName,
+          category: shopCategory,
+          enabledModules: resolvedModules,
+          layoutConfig: {
+            enabledModules: resolvedModules,
+            enabledFeatures: dashboardEnabledFeatures(resolvedModules),
+          },
+        });
+      } catch {}
 
       // 5) الانتقال مباشرة للوحة التحكم!
       window.location.href = returnTo || '/dashboard';

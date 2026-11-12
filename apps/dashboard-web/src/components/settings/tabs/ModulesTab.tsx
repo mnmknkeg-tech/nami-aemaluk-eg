@@ -71,6 +71,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../ToastProvider';
 import { apiRequest } from '@/lib/auth';
+import { readMerchantCache, writeMerchantCache } from '@/lib/session-keys';
 
 interface ModulesTabProps {
   shop: any;
@@ -170,11 +171,9 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
         }
 
         try {
-          const cached = JSON.parse(localStorage.getItem('ray_merchant_shop_cache') || '{}');
-          localStorage.setItem(
-            'ray_merchant_shop_cache',
-            JSON.stringify({ ...cached, layoutConfig: updatedLayout })
-          );
+          // قراءة/كتابة موسومة بالمالك — لا يُدمج تعديل الوحدات في كاش تاجر آخر.
+          const cached = readMerchantCache<Record<string, unknown>>() || {};
+          writeMerchantCache({ ...cached, layoutConfig: updatedLayout });
         } catch {}
 
         window.dispatchEvent(

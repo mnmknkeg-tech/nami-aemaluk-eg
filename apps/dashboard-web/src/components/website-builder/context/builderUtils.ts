@@ -15,6 +15,17 @@ import {
   getInvalidPageDestinations,
   normalizeWebsiteTree,
 } from '@ray-eg/shared/builder';
+import { readUserId } from '@/lib/session-keys';
+
+/**
+ * مفتاح "النسخة المحلية" للمنشئ حين لم يُحدَّد المتجر بعد — مُقسَّم بالمستخدم
+ * حتى لا تُستعاد مسودة تاجر آخر أبدًا (كان المفتاح المشترك `ray_builder_site_local`
+ * سبب ظهور ثيم التاجر السابق في المنشئ حتى بعد الريفرش).
+ */
+export const localBuilderSiteKey = (): string => {
+  const uid = readUserId();
+  return uid ? `ray_builder_site_local_${uid}` : 'ray_builder_site_anonymous';
+};
 
 export const createUniqueBuilderId = (
   prefix: string,
@@ -337,15 +348,21 @@ const getBrowserSelection = (): InitialBuilderSelection => {
   try {
     const urlParams = new URLSearchParams(window.location.search);
     const isPendingTemplateApplication = urlParams.get('applyTemplate') === '1';
+    // مفاتيح القالب/الثيم/آخر موقع مُقسَّمة بالمستخدم — قالب أو ثيم تاجر
+    // آخر في نفس المتصفح لا يُقرأ إطلاقًا (كان يظهر ثيمه للمنشئ حتى بعد الريفرش).
+    const uid = readUserId();
+    const templateKey = uid ? `ray_builder_selected_template_${uid}` : null;
+    const presetKey = uid ? `ray_builder_selected_preset_${uid}` : null;
+    const lastSiteKey = uid ? `ray_builder_last_active_site_${uid}` : null;
     return {
       search: window.location.search,
       selectedTemplate: isPendingTemplateApplication
         ? null
-        : urlParams.get('template') || localStorage.getItem('ray_builder_selected_template'),
+        : urlParams.get('template') || (templateKey ? localStorage.getItem(templateKey) : null),
       selectedPreset: isPendingTemplateApplication
         ? null
-        : urlParams.get('preset') || localStorage.getItem('ray_builder_selected_preset'),
-      lastActiveSite: localStorage.getItem('ray_builder_last_active_site'),
+        : urlParams.get('preset') || (presetKey ? localStorage.getItem(presetKey) : null),
+      lastActiveSite: lastSiteKey ? localStorage.getItem(lastSiteKey) : null,
     };
   } catch (error) {
     console.error('[WebsiteBuilder] Could not read the initial template selection.', error);

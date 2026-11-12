@@ -1,7 +1,25 @@
 'use client';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+
+/**
+ * تبديل التاجر/الجلسة يفرغ كاش React Query فورًا. بدونه تبقى بيانات التاجر
+ * السابق في الشاشات المشتركة (shops/me والأزرار والمحتويات) حتى gcTime —
+ * ولا تُصلح إلا بإعادة تحميل كاملة للصفحة. الحدث يطلقه AuthProvider عند
+ * دخول/خروج/انتهاء جلسة.
+ */
+function AuthIdentityCacheReset() {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const reset = () => {
+      queryClient.clear();
+    };
+    window.addEventListener('ray-auth-identity-changed', reset);
+    return () => window.removeEventListener('ray-auth-identity-changed', reset);
+  }, [queryClient]);
+  return null;
+}
 
 // Single shared TanStack Query provider. The defaults below are the
 // request-budget guardrails: data is considered fresh for 60s, refetches don't
@@ -21,5 +39,10 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       })
   );
 
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={client}>
+      <AuthIdentityCacheReset />
+      {children}
+    </QueryClientProvider>
+  );
 }

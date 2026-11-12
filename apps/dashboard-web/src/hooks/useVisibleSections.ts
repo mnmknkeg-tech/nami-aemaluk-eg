@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { sidebarSections, HIDE_UNPUBLISHED, type SidebarSection } from '@/config/sidebar';
-import { apiRequest } from '@/lib/auth';
+import { apiRequest, useAuth } from '@/lib/auth';
+import { readMerchantCache, writeMerchantCache } from '@/lib/session-keys';
 
 type Shop = {
   id?: string;
@@ -114,21 +115,13 @@ const SETTINGS_TAB_MODULES: Record<string, string> = {
  * TopNav header: strictly respects the modules and features chosen by the merchant.
  */
 export default function useVisibleSections() {
-  const [shop, setShop] = useState<Shop | null>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('ray_merchant_shop_cache');
-        if (cached) return JSON.parse(cached);
-      } catch {}
-    }
-    return null;
-  });
-  const [isLoaded, setIsLoaded] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return Boolean(localStorage.getItem('ray_merchant_shop_cache'));
-    }
-    return false;
-  });
+  const { user } = useAuth();
+  const currentUserId = user?.id || '';
+
+  // كاش التاجر لا يُقرأ إلا إن كان موسومًا بالمستخدم الحالي — بقايا تاجر
+  // آخر في نفس المتصفح لا تُعرض أبدًا (كانت سبب بقاء أزرار التاجر السابق).
+  const [shop, setShop] = useState<Shop | null>(() => readMerchantCache<Shop>());
+  const [isLoaded, setIsLoaded] = useState<boolean>(() => Boolean(readMerchantCache()));
 
   useEffect(() => {
     const handleModulesChanged = (event: Event) => {
@@ -149,24 +142,32 @@ export default function useVisibleSections() {
               enabledModules: detail.enabledModules ?? current?.layoutConfig?.enabledModules,
             },
           };
-          try {
-            localStorage.setItem('ray_merchant_shop_cache', JSON.stringify(next));
-          } catch {}
+          writeMerchantCache(next as Record<string, unknown>);
           return next;
         });
       }
     };
     window.addEventListener('merchant-modules-changed', handleModulesChanged);
     let cancelled = false;
+
+    // تبديل الهوية يعيد التحميل كاملًا: نبذّ كاش أي تاجر آخر ثم نجيب
+    // /shops/me من الخادم — الكاش الموسوم يُستخدم للرسم الفوري فقط.
+    const cached = currentUserId ? readMerchantCache<Shop>() : null;
+    if (cached) {
+      setShop(cached);
+      setIsLoaded(true);
+    } else {
+      setShop(null);
+      setIsLoaded(false);
+    }
+
     (async () => {
       try {
         const shopData = await apiRequest('/shops/me');
         if (cancelled) return;
         setShop(shopData);
         setIsLoaded(true);
-        try {
-          localStorage.setItem('ray_merchant_shop_cache', JSON.stringify(shopData));
-        } catch {}
+        writeMerchantCache(shopData as unknown as Record<string, unknown>);
       } catch {
         if (!cancelled) setIsLoaded(true);
       }
@@ -175,7 +176,7 @@ export default function useVisibleSections() {
       cancelled = true;
       window.removeEventListener('merchant-modules-changed', handleModulesChanged);
     };
-  }, []);
+  }, [currentUserId]);
 
   const { enabledFeatures, enabledModulesSet, hasExplicitConfig } = useMemo(() => {
     const savedFeatures = shop?.layoutConfig?.enabledFeatures;
