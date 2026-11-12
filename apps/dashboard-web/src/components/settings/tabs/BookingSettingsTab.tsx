@@ -37,6 +37,7 @@ export default function BookingSettingsTab({ shop, onSaved }: BookingSettingsTab
   const initial = useMemo(
     () => ({
       bookingSlotDuration: Number(pd.bookingSlotDuration || 30),
+      bookingGapMinutes: Number(pd.bookingGapMinutes ?? 15),
       bookingAdvanceDays: Number(pd.bookingAdvanceDays || 14),
       bookingAutoConfirm: Boolean(pd.bookingAutoConfirm ?? false),
       bookingPreventDuplicates: Boolean(pd.bookingPreventDuplicates ?? true),
@@ -75,6 +76,7 @@ export default function BookingSettingsTab({ shop, onSaved }: BookingSettingsTab
   useEffect(() => {
     const isChanged =
       form.bookingSlotDuration !== initial.bookingSlotDuration ||
+      form.bookingGapMinutes !== initial.bookingGapMinutes ||
       form.bookingAdvanceDays !== initial.bookingAdvanceDays ||
       form.bookingAutoConfirm !== initial.bookingAutoConfirm ||
       form.bookingPreventDuplicates !== initial.bookingPreventDuplicates ||
@@ -113,6 +115,7 @@ export default function BookingSettingsTab({ shop, onSaved }: BookingSettingsTab
           pageDesign: {
             ...pd,
             bookingSlotDuration: current.bookingSlotDuration,
+            bookingGapMinutes: current.bookingGapMinutes,
             bookingAdvanceDays: current.bookingAdvanceDays,
             bookingAutoConfirm: current.bookingAutoConfirm,
             bookingPreventDuplicates: current.bookingPreventDuplicates,
@@ -214,9 +217,11 @@ export default function BookingSettingsTab({ shop, onSaved }: BookingSettingsTab
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 pt-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-800">مدة الموعد الافتراضية</Label>
+              <Label className="text-xs font-bold text-slate-800">
+                مدة العميل الواحد (دقائق)
+              </Label>
               <select
                 value={form.bookingSlotDuration}
                 onChange={(e) => setForm({ ...form, bookingSlotDuration: Number(e.target.value) })}
@@ -228,6 +233,25 @@ export default function BookingSettingsTab({ shop, onSaved }: BookingSettingsTab
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-800">
+                الفاصل بين العملاء (دقائق)
+              </Label>
+              <Input
+                type="number"
+                min="0"
+                max="120"
+                value={form.bookingGapMinutes}
+                onChange={(e) =>
+                  setForm({ ...form, bookingGapMinutes: Math.max(0, Number(e.target.value) || 0) })
+                }
+                className="rounded-xl border-slate-200 text-xs font-bold"
+              />
+              <p className="text-[11px] text-slate-400 font-medium leading-4">
+                الحجز اللي بعد أي موعد يجي تلقائيًا بعد آخر حجز + هذا الفاصل
+              </p>
             </div>
 
             <div className="space-y-1.5">

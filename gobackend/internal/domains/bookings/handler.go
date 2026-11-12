@@ -106,7 +106,12 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	if err := validate.Struct(req); err != nil {
 		return err
 	}
-	booking, err := h.service.CreateForUser(c.UserContext(), req, user.ID)
+	// Manual dashboard bookings (merchant/admin — the secretary registering a
+	// walk-in) carry full permissions: no time-window restrictions and busy
+	// windows are auto-queued after the last booking. Customer-token creates
+	// stay under the strict public rules.
+	manual := !strings.EqualFold(user.Role, string(auth.RoleCustomer))
+	booking, err := h.service.CreateForUser(c.UserContext(), req, user.ID, manual)
 	if err != nil {
 		return err
 	}

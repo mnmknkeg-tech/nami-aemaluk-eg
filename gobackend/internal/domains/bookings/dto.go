@@ -69,6 +69,9 @@ type CreateBookingRequest struct {
 	BookingActivityRoute string         `json:"bookingActivityRoute,omitempty"`
 	BookingDate          string         `json:"bookingDate,omitempty"`
 	BookingTime          string         `json:"bookingTime,omitempty"`
+	// Status lets a manual dashboard booking force CONFIRMED (the secretary
+	// registered the walk-in in person). Guests cannot force confirmation.
+	Status string `json:"status,omitempty"`
 }
 
 // UpdateBookingStatusRequest is the payload for updating booking status.
@@ -218,11 +221,12 @@ type PublicBookingLookupResponse struct {
 type ShopBookingSettings struct {
 	WorkStart         string // "09:00"
 	WorkEnd           string // "21:00"
-	SlotDuration      int    // minutes, fallback slot grid step
+	SlotDuration      int    // minutes, per-client appointment duration fallback
 	AdvanceDays       int    // how far ahead booking is open
 	AutoConfirm       bool
 	MaxPerSlot        int
 	PreventDuplicates bool
+	GapMinutes        int // minutes kept free between consecutive appointments
 }
 
 // BookingListFilter narrows the merchant dashboard list by time range

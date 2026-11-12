@@ -23,12 +23,16 @@ func NewService(repo *Repository, compressionSvc *compression.Service) *Service 
 
 // CreateForGuest creates a booking for a guest user.
 func (s *Service) CreateForGuest(ctx context.Context, req CreateBookingRequest) (*BookingResponse, error) {
-	return s.create(ctx, req, nil)
+	return s.create(ctx, req, nil, false)
 }
 
-// CreateForUser creates a booking for an authenticated user.
-func (s *Service) CreateForUser(ctx context.Context, req CreateBookingRequest, userID string) (*BookingResponse, error) {
-	return s.create(ctx, req, &userID)
+// CreateForUser creates a booking for an authenticated user. Manual marks
+// dashboard bookings made by the merchant/admin (the secretary registering a
+// walk-in): those carry full permissions — no past-time, work-hours or
+// advance-window restrictions, and a busy window is auto-queued after the
+// last booking instead of being rejected.
+func (s *Service) CreateForUser(ctx context.Context, req CreateBookingRequest, userID string, manual bool) (*BookingResponse, error) {
+	return s.create(ctx, req, &userID, manual)
 }
 
 // ResolveUserShopID returns the shop of an authenticated caller, resolved
@@ -39,7 +43,7 @@ func (s *Service) ResolveUserShopID(ctx context.Context, userID string) (string,
 	return s.repo.FindUserShopID(ctx, userID)
 }
 
-func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *string) (*BookingResponse, error) {
+func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *string, manual bool) (*BookingResponse, error) {
 	shopID := strings.TrimSpace(req.ShopID)
 	if shopID == "" {
 		return nil, errors.Validation("shopId_required", "shopId مطلوب")
@@ -87,6 +91,17 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 	// reuse it instead of minting a generic 30-minute “حجز عام” service.
 	durationMinutes := 0
 	var linkedProduct string
+	// Manual dashboard bookings follow the doctor's "per-client duration"
+	// setting (مدة العميل الواحد) — the secretary books generic walk-ins,
+	// and the auto-provisioned generic service row would otherwise pin its
+	// own default regardless of what the doctor configured.
+	if manual && strings.TrimSpace(req.ServiceID) == "" && req.ItemID == "" {
+		if settings.SlotDuration > 0 {
+			durationMinutes = settings.SlotDuration
+		} else {
+			durationMinutes = 30
+		}
+	}
 	if req.ServiceID == "" && req.ItemID != "" {
 		if linked, lerr := s.repo.FindServiceIDByProduct(ctx, shopID, req.ItemID); lerr == nil && linked != "" {
 			req.ServiceID = linked
@@ -109,6 +124,7 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 	// Ensure the booking service FIRST so the availability window below always
 	// runs against the final service id (product-linked bookings used to skip
 	// the conflict check entirely because ServiceID was still empty here).
+	callerServiceID := req.ServiceID
 	serviceID, err := s.repo.ensureBookingService(ctx, ensureServiceParams{
 		ShopID: shopID, ServiceID: req.ServiceID, ItemID: linkedProduct,
 		ItemName: req.ItemName, ItemPrice: itemPrice,
@@ -128,6 +144,18 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 		}
 		if svc.Price > 0 {
 			itemPrice = svc.Price
+		}
+	}
+	// Manual walk-in bookings: the secretary's typed price and the doctor's
+	// per-client duration setting win over stale auto-provisioned generic
+	// service rows (which would otherwise pin the first booking's values
+	// onto every later walk-in with the same name).
+	if manual && callerServiceID == "" && req.ItemID == "" {
+		if settings.SlotDuration > 0 {
+			durationMinutes = settings.SlotDuration
+		}
+		if req.ItemPrice > 0 {
+			itemPrice = req.ItemPrice
 		}
 	}
 	if durationMinutes <= 0 {
@@ -152,7 +180,9 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 
 	// Time-window rules — previously only reschedule enforced them, so the
 	// guest API happily booked yesterday 03:00 or times outside work hours.
-	if startAt != nil {
+	// Manual dashboard bookings skip them entirely: the secretary registers
+	// walk-ins at any time of day, including a few minutes from now.
+	if startAt != nil && !manual {
 		if startAt.Before(time.Now()) {
 			return nil, errors.Validation("past_time", "لا يمكن الحجز في وقت في الماضي")
 		}
@@ -179,6 +209,30 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 			if !resAvailable {
 				return nil, errors.Validation("resource_unavailable", "المورد غير متاح")
 			}
+		}
+	}
+
+	// Manual bookings never reject a busy window: the new appointment is
+	// queued after the last overlapping booking (shop-wide — the doctor's day
+	// is one queue) plus the doctor's configured gap between clients. The
+	// response carries the actual scheduled time so the dashboard can show it.
+	if manual && startAt != nil && endAt != nil {
+		gap := settings.GapMinutes
+		if gap < 0 {
+			gap = 0
+		}
+		for i := 0; i < 64; i++ {
+			latestEnd, overlaps, oerr := s.repo.FindShopOverlaps(ctx, shopID, *startAt, *endAt)
+			if oerr != nil {
+				return nil, oerr
+			}
+			if overlaps == 0 || latestEnd == nil {
+				break
+			}
+			next := latestEnd.Add(time.Duration(gap) * time.Minute)
+			startAt = &next
+			end := next.Add(time.Duration(durationMinutes) * time.Minute)
+			endAt = &end
 		}
 	}
 
@@ -229,6 +283,11 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 	if settings.AutoConfirm {
 		status = "CONFIRMED"
 	}
+	// Manual bookings may force-confirm: the secretary registered the walk-in
+	// in person. Guests can never force confirmation.
+	if manual && strings.EqualFold(strings.TrimSpace(req.Status), "CONFIRMED") {
+		status = "CONFIRMED"
+	}
 	booking := &Booking{
 		BookingNumber: BuildBookingNumber(),
 		ServiceID:     serviceID,
@@ -261,7 +320,7 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 			Booking:           booking,
 			ResourceID:        req.ResourceID,
 			MaxPerSlot:        settings.MaxPerSlot,
-			PreventDuplicates: settings.PreventDuplicates,
+			PreventDuplicates: settings.PreventDuplicates && !manual,
 		})
 	} else {
 		created, err = s.repo.Create(ctx, booking)

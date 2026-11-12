@@ -1199,7 +1199,13 @@ function AddBookingModal({
   const [customerPhone, setCustomerPhone] = useState('');
   const [itemName, setItemName] = useState('');
   const [bookingDate, setBookingDate] = useState(initialDate || formatDateKey(new Date()));
-  const [bookingTime, setBookingTime] = useState('11:00');
+  // Walk-in default: ~30 minutes from now, rounded to 5 minutes — the
+  // secretary usually registers a client standing right there.
+  const [bookingTime, setBookingTime] = useState(() => {
+    const d = new Date(Date.now() + 30 * 60000);
+    d.setMinutes(Math.round(d.getMinutes() / 5) * 5, 0, 0);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  });
   const [price, setPrice] = useState('200');
   const [participants, setParticipants] = useState('1');
   const [notes, setNotes] = useState('');
@@ -1230,6 +1236,18 @@ function AddBookingModal({
 
       const res = await addBookingViaBackend(payload);
 
+      // Manual bookings are never rejected for a busy window — the backend
+      // queues them after the last overlapping booking (+ the doctor's gap).
+      // Surface the actual scheduled Cairo time in both the notice and the
+      // list row instead of silently showing the requested one.
+      const actualDate: string = res?.bookingDate || bookingDate;
+      const actualTime: string = res?.bookingTime || bookingTime;
+      if (actualDate !== bookingDate || actualTime !== bookingTime) {
+        alert(
+          `الوقت المطلوب كان مشغول — تم تسجيل الحجز تلقائيًا بعد آخر موعد: ${actualDate} الساعة ${actualTime}`
+        );
+      }
+
       const newBooking: BookingItem = {
         id: `int-${res.id || Date.now()}`,
         source: 'internal',
@@ -1238,9 +1256,9 @@ function AddBookingModal({
         itemName: payload.itemName,
         customerName: payload.customerName,
         customerPhone: payload.customerPhone,
-        when: `${bookingDate}T${bookingTime}:00`,
-        dateStr: bookingDate,
-        timeStr: bookingTime,
+        when: `${actualDate}T${actualTime}:00`,
+        dateStr: actualDate,
+        timeStr: actualTime,
         price: payload.itemPrice,
         participants: payload.participants,
         notes: payload.notes,

@@ -79,6 +79,29 @@ func (r *Repository) FindUserShopID(ctx context.Context, userID string) (string,
 	return shopID, nil
 }
 
+// FindShopOverlaps counts the shop's active bookings overlapping the given
+// window and returns the latest end among them. Used by manual dashboard
+// bookings to auto-queue a new appointment after the last overlapping one
+// (plus the configured gap) instead of rejecting a busy window.
+func (r *Repository) FindShopOverlaps(ctx context.Context, shopID string, startAt, endAt time.Time) (*time.Time, int, error) {
+	var count int
+	var latestEnd sql.NullTime
+	err := r.pool.QueryRow(ctx, `
+		SELECT COUNT(*), MAX(end_at) FROM bookings
+		WHERE shop_id = $1 AND status IN ('PENDING', 'CONFIRMED')
+		  AND start_at IS NOT NULL AND end_at IS NOT NULL
+		  AND start_at < $2 AND end_at > $3
+	`, shopID, endAt, startAt).Scan(&count, &latestEnd)
+	if err != nil {
+		return nil, 0, errors.Internal("shop_overlap_check_failed", err)
+	}
+	if count == 0 || !latestEnd.Valid {
+		return nil, 0, nil
+	}
+	t := latestEnd.Time
+	return &t, count, nil
+}
+
 // ListByShop returns bookings for a shop, optionally narrowed by a Cairo
 // date range (from/to inclusive), status and ordering.
 func (r *Repository) ListByShop(ctx context.Context, shopID string, limit, offset int, filter *BookingListFilter) ([]Booking, error) {
@@ -789,6 +812,7 @@ func DefaultShopBookingSettings() *ShopBookingSettings {
 		AutoConfirm:       false,
 		MaxPerSlot:        1,
 		PreventDuplicates: true,
+		GapMinutes:        15,
 	}
 }
 
@@ -823,6 +847,9 @@ func parseShopBookingSettings(raw []byte) *ShopBookingSettings {
 	}
 	if v, ok := pd["bookingSlotDuration"].(float64); ok && v > 0 {
 		s.SlotDuration = int(v)
+	}
+	if v, ok := pd["bookingGapMinutes"].(float64); ok && v >= 0 {
+		s.GapMinutes = int(v)
 	}
 	if v, ok := pd["bookingAdvanceDays"].(float64); ok && v > 0 {
 		s.AdvanceDays = int(v)
