@@ -13,8 +13,11 @@ import {
   ShoppingBag,
   X,
 } from 'lucide-react';
-import { api, markSessionActive } from '@/lib/api';
-import { normalizeEgyptianPhone } from '@/lib/phone';
+// Relative (not '@/…'): pulled into the ROOT tsc program via cart.tsx, where
+// the root tsconfig maps '@/*' to packages/shared/src — app-level alias
+// imports break that typecheck.
+import { api, markSessionActive } from '../lib/api';
+import { normalizeEgyptianPhone } from '../lib/phone';
 
 type GateMode = 'signup' | 'login';
 

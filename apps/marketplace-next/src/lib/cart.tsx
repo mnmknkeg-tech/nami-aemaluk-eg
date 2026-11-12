@@ -14,7 +14,10 @@ import type { Product } from './services';
 import { productStockState } from './stock';
 import { playCartSound } from './sounds';
 import { isSessionActive } from './api';
-import { AuthGateModal } from '@/components/AuthGateModal';
+// Relative (not '@/…'): this module is pulled into the ROOT tsc program by
+// test/cart-stage5.test.ts, where the root tsconfig maps '@/*' to
+// packages/shared/src — an app-level alias import breaks that typecheck.
+import { AuthGateModal } from '../components/AuthGateModal';
 
 export interface CartItem {
   id: string;
