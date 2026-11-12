@@ -53,18 +53,54 @@ func NewService(cfg *config.Config, repo *Repository, tokens *TokenService, lock
 }
 
 // Signup registers a new user and issues an initial token pair.
+//
+// Phone-first (Egypt): customers sign up with their Egyptian mobile, always
+// stored as E.164 +201XXXXXXXXX. Email is optional for customers — when it is
+// missing, a deterministic placeholder mailbox is derived from the phone so
+// the NOT NULL + unique email schema stays satisfied. Merchants (dashboard)
+// keep the email requirement, and verification mail is only sent to real
+// mailboxes.
 func (s *Service) Signup(ctx context.Context, req SignupRequest, meta RequestMeta) (*AuthResponse, error) {
 	if err := password.Validate(req.Password); err != nil {
 		return nil, errors.Validation("invalid_password", err.Error())
 	}
 
 	email := normalizeEmail(req.Email)
-	existing, err := s.repo.FindByEmail(ctx, email)
-	if err != nil {
-		return nil, err
+
+	phone := ""
+	if strings.TrimSpace(req.Phone) != "" {
+		var perr error
+		phone, perr = NormalizeEgyptianPhone(req.Phone)
+		if perr != nil {
+			return nil, errors.Validation("phone_invalid", perr.Error())
+		}
 	}
-	if existing != nil {
-		return nil, errors.Conflict("email_already_exists", "البريد الإلكتروني مستخدم بالفعل")
+
+	if phone == "" && email == "" {
+		return nil, errors.Validation("identity_required", "لازم رقم الموبايل أو البريد الإلكتروني عشان تعمل حساب")
+	}
+
+	if phone != "" {
+		existingPhone, err := s.repo.FindByPhone(ctx, phone)
+		if err != nil {
+			return nil, err
+		}
+		if existingPhone != nil {
+			return nil, errors.Conflict("phone_already_exists", "رقم الموبايل مسجل بالفعل — سجل دخول أو جرب رقم تاني")
+		}
+	}
+
+	if email != "" {
+		existing, err := s.repo.FindByEmail(ctx, email)
+		if err != nil {
+			return nil, err
+		}
+		if existing != nil {
+			return nil, errors.Conflict("email_already_exists", "البريد الإلكتروني مستخدم بالفعل")
+		}
+	} else if phone != "" {
+		// Phone-only customer: placeholder mailbox, never mailed.
+		email = SyntheticEmailForPhone(phone)
 	}
 
 	hash, err := password.Hash(req.Password)
@@ -75,19 +111,22 @@ func (s *Service) Signup(ctx context.Context, req SignupRequest, meta RequestMet
 	role := RoleCustomer
 	if req.Role == RoleMerchant {
 		role = RoleMerchant
+		if email == "" {
+			// The dashboard is email-based — merchants must keep one.
+			return nil, errors.Validation("email_required", "البريد الإلكتروني مطلوب لحساب التاجر")
+		}
 	}
 
 	user := &User{
 		Email:    email,
 		Name:     strings.TrimSpace(req.Name),
-		Phone:    nil,
 		Password: hash,
 		Role:     role,
 		IsActive: true,
 	}
-	if strings.TrimSpace(req.Phone) != "" {
-		phone := strings.TrimSpace(req.Phone)
-		user.Phone = &phone
+	if phone != "" {
+		p := phone
+		user.Phone = &p
 	}
 
 	created, err := s.repo.Create(ctx, user)
@@ -97,12 +136,16 @@ func (s *Service) Signup(ctx context.Context, req SignupRequest, meta RequestMet
 
 	s.recordAuthEvent(ctx, created, "signup", "success", meta)
 
-	verificationToken, err := s.tokens.IssueEmailVerificationToken(*created)
-	if err != nil {
-		logger.Global().Warn("failed to issue verification token", zap.Error(err))
-	} else {
-		if err := s.sendVerificationEmail(ctx, created, verificationToken); err != nil {
-			logger.Global().Warn("failed to send verification email", zap.Error(err))
+	// Verification mail only for real mailboxes — phone-only accounts have
+	// a placeholder address that nothing can deliver to.
+	if !IsSyntheticEmail(created.Email) {
+		verificationToken, err := s.tokens.IssueEmailVerificationToken(*created)
+		if err != nil {
+			logger.Global().Warn("failed to issue verification token", zap.Error(err))
+		} else {
+			if err := s.sendVerificationEmail(ctx, created, verificationToken); err != nil {
+				logger.Global().Warn("failed to send verification email", zap.Error(err))
+			}
 		}
 	}
 
@@ -112,24 +155,41 @@ func (s *Service) Signup(ctx context.Context, req SignupRequest, meta RequestMet
 // Login authenticates a user. On success it returns a LoginResult carrying the
 // token pair, or — when the account has 2FA enabled — a short-lived challenge
 // the client must exchange via Login2FA before any tokens are issued.
+//
+// Identity resolution: a non-empty Phone field means phone login (Egyptian
+// mobile, normalized to E.164); otherwise the classic email lookup runs — the
+// dashboard and legacy accounts keep working unchanged. The lockout key is the
+// resolved identifier so brute force is throttled for both variants.
 func (s *Service) Login(ctx context.Context, req LoginRequest, meta RequestMeta) (*LoginResult, error) {
-	email := normalizeEmail(req.Email)
+	lookupKey := normalizeEmail(req.Email)
+	findByKey := func() (*User, error) { return s.repo.FindByEmail(ctx, lookupKey) }
 
-	locked, err := s.lockout.IsLocked(ctx, email)
+	if strings.TrimSpace(req.Phone) != "" {
+		phone, perr := NormalizeEgyptianPhone(req.Phone)
+		if perr != nil {
+			return nil, errors.Validation("phone_invalid", perr.Error())
+		}
+		lookupKey = phone
+		findByKey = func() (*User, error) { return s.repo.FindByPhone(ctx, phone) }
+	} else if lookupKey == "" {
+		return nil, errors.Validation("identity_required", "لازم رقم الموبايل أو البريد الإلكتروني")
+	}
+
+	locked, err := s.lockout.IsLocked(ctx, lookupKey)
 	if err != nil {
 		logger.Global().Warn("lockout check failed", zap.Error(err))
 	}
 	if locked {
-		s.recordAuthEvent(ctx, nil, "login", "locked", meta, "email", email)
+		s.recordAuthEvent(ctx, nil, "login", "locked", meta, "email", lookupKey)
 		return nil, errors.Forbidden("account_locked", "تم قفل الحساب مؤقتاً بسبب محاولات متكررة. حاول لاحقاً.")
 	}
 
-	user, err := s.repo.FindByEmail(ctx, email)
+	user, err := findByKey()
 	if err != nil {
 		return nil, err
 	}
 	if user == nil {
-		s.recordAuthEvent(ctx, nil, "login", "failed", meta, "email", email, "reason", "user_not_found")
+		s.recordAuthEvent(ctx, nil, "login", "failed", meta, "email", lookupKey, "reason", "user_not_found")
 		return nil, errors.Unauthorized("invalid_credentials", "بيانات الدخول غير صحيحة")
 	}
 
@@ -155,12 +215,12 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, meta RequestMeta)
 
 	valid, err := password.Verify(req.Password, user.Password)
 	if err != nil || !valid {
-		count, _ := s.lockout.RecordFailure(ctx, email)
+		count, _ := s.lockout.RecordFailure(ctx, lookupKey)
 		s.recordAuthEvent(ctx, user, "login", "failed", meta, "reason", "wrong_password", "attempt", count)
 		return nil, errors.Unauthorized("invalid_credentials", "بيانات الدخول غير صحيحة")
 	}
 
-	_ = s.lockout.Reset(ctx, email)
+	_ = s.lockout.Reset(ctx, lookupKey)
 
 	// 2FA gate: when the account has TOTP enabled we must not issue session
 	// tokens on the password check alone — otherwise the second factor is

@@ -100,6 +100,21 @@ func (r *Repository) FindByEmail(ctx context.Context, email string) (*User, erro
 	return scanUser(row)
 }
 
+// FindByPhone returns a user by phone (E.164, e.g. +201012345678) or nil if
+// not found. Phone is the login identity for the marketplace.
+func (r *Repository) FindByPhone(ctx context.Context, phone string) (*User, error) {
+	query := `
+		SELECT id, email, name, phone, password, role, shop_id, is_active,
+		       email_verified_at, email_verification_sent_at, last_login, tfa_secret,
+		       deactivated_at, scheduled_purge_at, created_at, updated_at
+		FROM users
+		WHERE phone = $1
+		LIMIT 1
+	`
+	row := r.pool.QueryRow(ctx, query, phone)
+	return scanUser(row)
+}
+
 // FindByID returns a user by ID.
 func (r *Repository) FindByID(ctx context.Context, id string) (*User, error) {
 	query := `

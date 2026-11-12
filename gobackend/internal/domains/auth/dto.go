@@ -30,35 +30,41 @@ const (
 
 // User represents a database user row.
 type User struct {
-	ID                      string     `json:"id"`
-	Email                   string     `json:"email"`
-	Name                    string     `json:"name"`
-	Phone                   *string    `json:"phone,omitempty"`
-	ExtraPhones             []string   `json:"extraPhones,omitempty"`
+	ID                      string            `json:"id"`
+	Email                   string            `json:"email"`
+	Name                    string            `json:"name"`
+	Phone                   *string           `json:"phone,omitempty"`
+	ExtraPhones             []string          `json:"extraPhones,omitempty"`
 	DeliveryAddresses       []DeliveryAddress `json:"deliveryAddresses,omitempty"`
-	Password                string     `json:"-"`
-	Role                    Role       `json:"role"`
-	ShopID                  *string    `json:"shopId,omitempty"`
-	IsActive                bool       `json:"isActive"`
-	EmailVerifiedAt         *time.Time `json:"emailVerifiedAt,omitempty"`
-	EmailVerificationSentAt *time.Time `json:"emailVerificationSentAt,omitempty"`
-	LastLogin               *time.Time `json:"lastLogin,omitempty"`
-	TFASecret               string     `json:"-"` // 2FA secret, never exposed
+	Password                string            `json:"-"`
+	Role                    Role              `json:"role"`
+	ShopID                  *string           `json:"shopId,omitempty"`
+	IsActive                bool              `json:"isActive"`
+	EmailVerifiedAt         *time.Time        `json:"emailVerifiedAt,omitempty"`
+	EmailVerificationSentAt *time.Time        `json:"emailVerificationSentAt,omitempty"`
+	LastLogin               *time.Time        `json:"lastLogin,omitempty"`
+	TFASecret               string            `json:"-"` // 2FA secret, never exposed
 	// Scheduled account deletion (POST /auth/deactivate) — soft-deactivated
 	// immediately, purgeable after ScheduledPurgeAt. Login before that date
 	// cancels the deletion.
-	DeactivatedAt   *time.Time `json:"-"`
+	DeactivatedAt    *time.Time `json:"-"`
 	ScheduledPurgeAt *time.Time `json:"-"`
-	CreatedAt       time.Time  `json:"createdAt"`
-	UpdatedAt       time.Time  `json:"updatedAt"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	UpdatedAt        time.Time  `json:"updatedAt"`
 }
 
 // SignupRequest represents the customer/merchant registration payload.
+//
+// Phone-first: marketplace customers sign up with their Egyptian mobile —
+// email is optional for them (a placeholder mailbox is derived from the
+// phone). Merchants keep the email requirement (the dashboard is email
+// based). The phone/email values are normalized and cross-checked in the
+// service, after validate.Struct runs.
 type SignupRequest struct {
-	Email    string `json:"email" validate:"required,email"`
+	Email    string `json:"email" validate:"omitempty,email"`
 	Password string `json:"password" validate:"required"`
 	Name     string `json:"name" validate:"required,min=2,max=100"`
-	Phone    string `json:"phone,omitempty" validate:"omitempty,e164"`
+	Phone    string `json:"phone,omitempty" validate:"omitempty,max=32"`
 	Role     Role   `json:"role,omitempty" validate:"omitempty,oneof=CUSTOMER MERCHANT"`
 
 	// Merchant-specific fields
@@ -79,9 +85,12 @@ type SignupRequest struct {
 	OpeningHours    string `json:"openingHours,omitempty"`
 }
 
-// LoginRequest represents the login payload.
+// LoginRequest represents the login payload. Identity is either the Egyptian
+// mobile (phone-first marketplace) or the email (dashboard + legacy accounts);
+// the service picks the lookup by which field is present.
 type LoginRequest struct {
-	Email    string `json:"email" validate:"required,email"`
+	Email    string `json:"email" validate:"omitempty,email"`
+	Phone    string `json:"phone,omitempty" validate:"omitempty,max=32"`
 	Password string `json:"password" validate:"required"`
 }
 

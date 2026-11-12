@@ -80,7 +80,12 @@ func (s *Service) UpdateMe(ctx context.Context, userID string, req UpdateMeReque
 	if req.Phone != nil {
 		phone = normalizePhone(*req.Phone)
 		if phone != "" {
-			if err := validatePhone(phone); err != nil {
+			// Egyptian mobiles are canonicalized to E.164 (+201XX…)
+			// so the value matches the phone-login lookup exactly;
+			// non-Egyptian / non-mobile formats keep the loose rule.
+			if e164, err := auth.NormalizeEgyptianPhone(phone); err == nil {
+				phone = e164
+			} else if err := validatePhone(phone); err != nil {
 				return nil, err
 			}
 			existing, err := s.repo.FindByPhone(ctx, phone)
@@ -210,7 +215,11 @@ func (s *Service) normalizeExtraPhones(ctx context.Context, userID, primaryPhone
 		if normalized == "" {
 			continue
 		}
-		if err := validatePhone(normalized); err != nil {
+		// Egyptian mobiles → E.164 (+20…) so they match phone login and
+		// the order-form normalizer; other formats keep the loose rule.
+		if e164, err := auth.NormalizeEgyptianPhone(normalized); err == nil {
+			normalized = e164
+		} else if err := validatePhone(normalized); err != nil {
 			return nil, err
 		}
 		if normalized == primaryPhone {
