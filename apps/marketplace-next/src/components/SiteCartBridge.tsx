@@ -81,6 +81,24 @@ export function SiteCartBridge({
           setCartOpen(true);
         }}
         onOpenCart={() => setCartOpen(true)}
+        onSubmitBooking={async (payload) => {
+          const response = await jsonRequest<any>('/bookings/guest', {
+            method: 'POST',
+            body: JSON.stringify({
+              shopId: shop.id,
+              itemName: payload.itemName,
+              itemPrice: 0,
+              customerName: payload.customerName,
+              customerPhone: payload.customerPhone,
+              notes: payload.notes,
+              bookingActivityType: payload.bookingActivityType || 'QUOTE',
+              metadata: { source: 'site-contact-form', siteSlug: shop.slug },
+            }),
+          });
+          const data = response?.data ?? response ?? {};
+          return { bookingNumber: data?.bookingNumber };
+        }}
+        bookingTrackHref={(number) => `/bookings/track?number=${encodeURIComponent(number)}`}
       />
       <SiteCartDrawer
         isOpen={isCartOpen}

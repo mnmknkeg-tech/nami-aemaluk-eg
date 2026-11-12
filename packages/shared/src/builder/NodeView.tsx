@@ -8,6 +8,8 @@ import {
   Truck,
   CreditCard,
   MessageCircle,
+  Send,
+  Loader2,
   Star,
   ArrowRight,
   ChevronDown,
@@ -72,6 +74,20 @@ import { isCompleteChildBasedHero, resolveHeroContent } from './heroCompatibilit
 import { CartIcon } from './CartIcon';
 import { isCartVisible, resolveCartIconType } from './cartPolicy';
 
+/** Payload a published-site form sends to the host app when the visitor submits. */
+export interface SiteFormBookingPayload {
+  itemName: string;
+  customerName: string;
+  customerPhone: string;
+  notes?: string;
+  bookingActivityType?: 'APPOINTMENT' | 'QUOTE';
+}
+
+/** Result the host app returns after persisting the booking. */
+export interface SiteBookingSubmitResult {
+  bookingNumber?: string;
+}
+
 export interface NodeViewContext {
   website: Website;
   viewport: ViewportBreakpoint;
@@ -105,6 +121,11 @@ export interface NodeViewContext {
   cartCount?: number;
   /** Prevents checkout and other real-world actions in an isolated template preview. */
   previewMode?: boolean;
+  /** Real booking submit for site forms — host app persists via POST /bookings/guest
+   *  and shows a real success state instead of the legacy WhatsApp hand-off. */
+  onSubmitBooking?: (payload: SiteFormBookingPayload) => Promise<SiteBookingSubmitResult | void>;
+  /** Builds a tracking URL for a returned booking number (optional). */
+  bookingTrackHref?: (bookingNumber: string) => string;
 }
 
 // ---------------------------------------------------------------------------
@@ -699,6 +720,9 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
   const [faqOpen, setFaqOpen] = useState(true);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  const [formBookingNumber, setFormBookingNumber] = useState<string | null>(null);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [isMobileMenuDrawerOpen, setIsMobileMenuDrawerOpen] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
 
@@ -2410,13 +2434,70 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
       ];
       const primaryColor = theme.colors.primary;
 
-      const submitViaWhatsApp = () => {
-        const summary = fieldsList
-          .map((f: any) => `${f.label}: ${inputValues[f.name] || '-'}`)
-          .join('\n');
-        const href = waLink(`مرحبًا، أريد إرسال الطلب التالي:\n${summary}`);
-        if (href && !ctx.previewMode) window.open(href, '_blank', 'noopener,noreferrer');
-        setFormSubmitted(true);
+      const submitSiteForm = async () => {
+        if (ctx.previewMode) {
+          // Template previews stay isolated: show the success state without posting.
+          setFormError(null);
+          setFormBookingNumber(null);
+          setFormSubmitted(true);
+          return;
+        }
+        if (!ctx.onSubmitBooking) {
+          setFormError('خدمة الطلبات غير متاحة حاليًا — تواصل معنا هاتفيًا.');
+          return;
+        }
+        let customerName = '';
+        let customerPhone = '';
+        const notesParts: string[] = [];
+        fieldsList.forEach((f: any) => {
+          const value = String(inputValues[f.name] || '').trim();
+          if (!value) return;
+          const label = String(f.label || '');
+          const type = String(f.type || '');
+          const fname = String(f.name || '').toLowerCase();
+          if (
+            type === 'tel' ||
+            fname === 'phone' ||
+            fname === 'tel' ||
+            fname === 'mobile' ||
+            /جوال|هاتف|موبايل|واتس/.test(label)
+          ) {
+            customerPhone = value;
+          } else if (fname === 'name' || fname === 'fullname' || /اسم/.test(label)) {
+            customerName = value;
+          } else {
+            notesParts.push(`${label}: ${value}`);
+          }
+        });
+        if (customerName.length < 2) {
+          setFormError('اكتب الاسم من فضلك');
+          return;
+        }
+        if (customerPhone.replace(/\D/g, '').length < 10) {
+          setFormError('اكتب رقم موبايل صحيح');
+          return;
+        }
+        setFormSubmitting(true);
+        setFormError(null);
+        try {
+          const intentText = `${node.props.title || ''} ${node.props.subtitle || ''}`;
+          const result = await ctx.onSubmitBooking({
+            itemName: String(node.props.title || 'طلب من الموقع').slice(0, 120),
+            customerName,
+            customerPhone,
+            notes: notesParts.join(' — ') || undefined,
+            bookingActivityType: /حجز|موعد|استشارة/.test(intentText) ? 'APPOINTMENT' : 'QUOTE',
+          });
+          setFormBookingNumber(result?.bookingNumber || null);
+          setFormSubmitted(true);
+          setInputValues({});
+        } catch (err) {
+          setFormError(
+            err instanceof Error && err.message ? err.message : 'تعذر الإرسال الآن، جرّب تاني'
+          );
+        } finally {
+          setFormSubmitting(false);
+        }
       };
 
       return (
@@ -2439,13 +2520,34 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                   <div className="w-12 h-12 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-md">
                     <Check className="w-6 h-6 stroke-[3]" />
                   </div>
-                  <h3 className="text-lg font-bold text-emerald-900">تم استلام طلبك!</h3>
+                  <h3 className="text-lg font-bold text-emerald-900">تم استلام طلبك بنجاح!</h3>
                   <p className="text-xs sm:text-sm text-emerald-700 leading-relaxed">
-                    شكراً لتواصلك معنا. سنقوم بالرد عليك في أقرب وقت — أو أكمل إرسال التفاصيل عبر
-                    واتساب ليصلك رد أسرع.
+                    طلبك اتحفظ في نظام التاجر — هيتم التواصل معك لتأكيد التفاصيل.
                   </p>
+                  {formBookingNumber && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-bold text-slate-600">
+                        رقم الطلب:{' '}
+                        <span className="text-emerald-700" dir="ltr">
+                          {formBookingNumber}
+                        </span>
+                      </p>
+                      {ctx.bookingTrackHref && (
+                        <a
+                          href={ctx.bookingTrackHref(formBookingNumber)}
+                          className="inline-block text-xs font-bold text-emerald-800 underline hover:text-emerald-950"
+                        >
+                          تتبع حالة الطلب
+                        </a>
+                      )}
+                    </div>
+                  )}
                   <button
-                    onClick={() => setFormSubmitted(false)}
+                    onClick={() => {
+                      setFormSubmitted(false);
+                      setFormBookingNumber(null);
+                      setFormError(null);
+                    }}
                     className="text-xs font-bold text-emerald-800 underline hover:text-emerald-950 pt-2"
                   >
                     إرسال طلب آخر
@@ -2455,7 +2557,7 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
-                    submitViaWhatsApp();
+                    void submitSiteForm();
                   }}
                   className="space-y-4"
                 >
@@ -2489,15 +2591,30 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
 
                   <button
                     type="submit"
+                    disabled={formSubmitting}
                     style={{
                       backgroundColor: primaryColor,
                       borderRadius: theme.radius.lg || '12px',
                     }}
-                    className="w-full py-3 sm:py-3.5 text-white font-bold text-xs sm:text-sm shadow-md hover:opacity-95 active:scale-98 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3 sm:py-3.5 text-white font-bold text-xs sm:text-sm shadow-md hover:opacity-95 active:scale-98 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>{node.props.buttonText || 'إرسال الطلب عبر واتساب'}</span>
+                    {formSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>جاري الإرسال...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>{node.props.buttonText || 'إرسال الطلب'}</span>
+                      </>
+                    )}
                   </button>
+                  {formError && (
+                    <p className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 text-center">
+                      {formError}
+                    </p>
+                  )}
                 </form>
               )}
             </div>

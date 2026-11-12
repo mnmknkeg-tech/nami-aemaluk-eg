@@ -11,7 +11,7 @@ import type {
   Website,
 } from './types';
 import { resolveTheme, buildWhatsAppLink } from './theme';
-import { NodeView } from './NodeView';
+import { NodeView, type SiteFormBookingPayload, type SiteBookingSubmitResult } from './NodeView';
 import { SiteSubscriptionModal } from './SiteSubscriptionModal';
 import { SiteCartDrawer, type SiteCartItem } from './SiteCartDrawer';
 import { useResponsiveViewport } from './responsiveViewport';
@@ -32,6 +32,10 @@ export interface PublicSiteRendererProps {
   onOpenCart?: () => void;
   cartCount?: number;
   onNavigatePage?: (pageId: string) => void;
+  /** Real booking submit for site forms (see NodeViewContext.onSubmitBooking). */
+  onSubmitBooking?: (payload: SiteFormBookingPayload) => Promise<SiteBookingSubmitResult | void>;
+  /** Builds a tracking URL for a returned booking number. */
+  bookingTrackHref?: (bookingNumber: string) => string;
   previewMode?: boolean;
   previewViewport?: ViewportBreakpoint;
   previewPageId?: string;
@@ -79,6 +83,8 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
   onOpenCart,
   cartCount,
   onNavigatePage,
+  onSubmitBooking,
+  bookingTrackHref,
   previewMode = false,
   previewViewport,
   previewPageId,
@@ -337,6 +343,8 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
               waLink,
               onAddToCart: handleAddToCart,
               onOpenCart: handleOpenCart,
+              onSubmitBooking,
+              bookingTrackHref,
               cartCount: effectiveCartCount,
               previewMode,
             }}
