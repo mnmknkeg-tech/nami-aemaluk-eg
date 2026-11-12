@@ -456,9 +456,25 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             ? config.draftVersion
             : 0;
           const loadedWebsite = normalizeWebsite(config.website as Website);
+          const shopLogo = shop.logoUrl || shop.logo || '';
+          // هوية العلامة تُحقن قبل أي مقارنة مع النسخ المحلية: كاش الجلسة
+          // السابقة حُفظ وهو يحمل اللوجو، فمقارنة بلا لوجو كانت تُنتج تنبيه
+          // "استعادة النسخة المحلية" في كل فتح للمنشئ حتى بلا أي تعديل حقيقي.
+          const applyBranding = (w: Website): Website => {
+            if (!shopLogo) return w;
+            w.settings = {
+              ...(w.settings || {}),
+              branding: {
+                ...((w.settings as any)?.branding || {}),
+                logoUrl: shopLogo,
+              },
+            } as any;
+            return w;
+          };
+          applyBranding(loadedWebsite);
           if (
             recoveredLocalWebsite &&
-            JSON.stringify(recoveredLocalWebsite) === JSON.stringify(loadedWebsite)
+            JSON.stringify(applyBranding(recoveredLocalWebsite)) === JSON.stringify(loadedWebsite)
           ) {
             localStorage.removeItem(recoveryKey);
             recoveredLocalWebsite = null;
@@ -474,17 +490,13 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
               backup.components &&
               typeof backup.components === 'object'
             ) {
-              const localWebsite = normalizeWebsite(backup as Website);
+              const localWebsite = applyBranding(normalizeWebsite(backup as Website));
               if (JSON.stringify(localWebsite) === JSON.stringify(loadedWebsite)) {
                 // Local backup matches server exactly — clean it up so we don't prompt needlessly
                 localStorage.removeItem(`ray_builder_site_${shopId}`);
-              } else {
-                const localWebsite = normalizeWebsite(backup as Website);
-                if (!recoveredLocalWebsite) {
-                  localStorage.setItem(recoveryKey, JSON.stringify(localWebsite));
-                  recoveredLocalWebsite = localWebsite;
-                  setLocalDraftRecovery(localWebsite);
-                }
+              } else if (!recoveredLocalWebsite) {
+                localStorage.setItem(recoveryKey, JSON.stringify(localWebsite));
+                setLocalDraftRecovery(localWebsite);
                 // Keep the server draft as the initial view, but preserve the local version
                 // separately so a failed or stale autosave can be restored intentionally.
                 localStorage.setItem(`ray_builder_site_${shopId}`, JSON.stringify(loadedWebsite));
@@ -492,16 +504,6 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             }
           } catch {
             // Invalid or inaccessible local backups are ignored, never trusted.
-          }
-          const shopLogo = shop.logoUrl || shop.logo || '';
-          if (shopLogo) {
-            loadedWebsite.settings = {
-              ...(loadedWebsite.settings || {}),
-              branding: {
-                ...((loadedWebsite.settings as any)?.branding || {}),
-                logoUrl: shopLogo,
-              },
-            } as any;
           }
           setWebsite(loadedWebsite);
           setActivePageId(getHomePageId(loadedWebsite) || 'page_home');

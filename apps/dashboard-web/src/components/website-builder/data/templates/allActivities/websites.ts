@@ -7,6 +7,7 @@ import { groceryComponents } from './grocery';
 import { homeServicesComponents } from './homeServices';
 import { travelComponents } from './travel';
 import { lawComponents } from './law';
+import { medicalComponents } from './medical';
 import { sampleActivityWebsites } from '../sampleActivities';
 import { sampleWebsites } from '../automotive';
 import { mockTenants } from '../../mockTenants';
@@ -14,6 +15,35 @@ import { extraActivityWebsites, extraTemplatesMeta } from '../extraActivities';
 import { all85ActivitiesMeta, generateActivityWebsite } from '../../allBusinessCatalog';
 
 export const allActivityWebsites: Record<string, Website> = {
+  // العيادات والمجمعات الطبية — تصميم حديث يدوي (حجز مواعيد، بلا سلة شراء).
+  // مُسجَّل قبل حلقة التوليد العام حتى لا يُستبدل بالهيكل المولَّد.
+  site_clinic_hospital: createTemplateWebsite(
+    'site_clinic_hospital',
+    'tenant_zaha_clinic',
+    'مجمع زها الطبي التخصصي',
+    'zaha-medical',
+    'agency',
+    'clinicalClean',
+    medicalComponents,
+    [
+      {
+        id: 'page_home',
+        name: 'الرئيسية والتخصصات الطبية',
+        slug: 'home',
+        rootNodeId: 'page_root',
+        createdAt: '2025-03-05T10:00:00Z',
+        updatedAt: '2025-05-15T12:00:00Z',
+        metadata: {
+          title: 'مجمع زها الطبي التخصصي | حجز مواعيد أطباء وتخصصات معتمدة',
+          description:
+            'أكثر من 20 تخصصًا طبيًا تحت سقف واحد — احجز موعدك أونلاين واستلم تأكيد الحجز فورًا على واتساب.',
+          slug: 'home',
+          isHomePage: true,
+        },
+      },
+    ]
+  ),
+
   // 1. المطاعم والكافيهات
   ...sampleActivityWebsites,
 

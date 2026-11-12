@@ -51,8 +51,8 @@ const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = fal
           className="border-b border-amber-200 bg-amber-50 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-sm text-amber-950"
         >
           <span>
-            توجد نسخة محلية تختلف عن مسودة الخادم؛ احتفظنا بها ولم نستبدلها. يمكنك استعادتها أو
-            تجاهلها.
+            لقينا نسخة محفوظة على جهازك تختلف عن المسودة الحالية — ده بيحصل غالبًا لو الاتصال انقطع
+            أثناء الحفظ التلقائي. استعادتها بترجع تعديلاتك، والتجاهل بيكمل على مسودة الخادم الأخيرة.
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -60,14 +60,14 @@ const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = fal
               onClick={restoreLocalDraft}
               className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-800"
             >
-              استعادة النسخة المحلية
+              استعادة تعديلاتي المحفوظة
             </button>
             <button
               type="button"
               onClick={dismissLocalDraftRecovery}
               className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-100"
             >
-              تجاهل
+              تجاهل والإكمال بمسودة الخادم
             </button>
           </div>
         </div>

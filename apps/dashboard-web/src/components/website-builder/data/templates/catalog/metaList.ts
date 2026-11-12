@@ -736,6 +736,7 @@ export const all85ActivitiesMeta: ActivityTemplateMeta[] = [
   // 59-70: Health, Clinics, Dental, Beauty, Fitness & Spa
   {
     id: 'site_clinic_hospital',
+    bookingMode: true,
     tenantId: 'tenant_zaha_clinic',
     name: 'مجمع زها الطبي التخصصي',
     category: 'العيادات والمراكز الطبية',
@@ -749,6 +750,7 @@ export const all85ActivitiesMeta: ActivityTemplateMeta[] = [
   },
   {
     id: 'site_dental_implant_center',
+    bookingMode: true,
     tenantId: 'tenant_dental_implant_center',
     name: 'مركز رويال سمايل لطب وزراعة وتجميل الأسنان',
     category: 'العيادات والمراكز الطبية',
@@ -762,6 +764,7 @@ export const all85ActivitiesMeta: ActivityTemplateMeta[] = [
   },
   {
     id: 'site_derma_laser_cosmetics',
+    bookingMode: true,
     tenantId: 'tenant_derma_laser_cosmetics',
     name: 'عيادات ديرما لوكس للجلدية والليزر والتجميل',
     category: 'العيادات والمراكز الطبية',
@@ -840,6 +843,7 @@ export const all85ActivitiesMeta: ActivityTemplateMeta[] = [
   },
   {
     id: 'site_physiotherapy_rehab_center',
+    bookingMode: true,
     tenantId: 'tenant_physiotherapy_rehab_center',
     name: 'مركز التعافي للعلاج الطبيعي والتأهيل الحركي',
     category: 'العيادات والمراكز الطبية',
@@ -853,6 +857,7 @@ export const all85ActivitiesMeta: ActivityTemplateMeta[] = [
   },
   {
     id: 'site_eye_vision_hospital',
+    bookingMode: true,
     tenantId: 'tenant_eye_vision_hospital',
     name: 'مستشفى النور التخصصي لطب وجراحة العيون والليزك',
     category: 'العيادات والمراكز الطبية',
@@ -866,6 +871,7 @@ export const all85ActivitiesMeta: ActivityTemplateMeta[] = [
   },
   {
     id: 'site_veterinary_pet_hospital',
+    bookingMode: true,
     tenantId: 'tenant_veterinary_pet_hospital',
     name: 'المستشفى البيطري الحديث وفندقة ورعاية الأليفة',
     category: 'العيادات والمراكز الطبية',

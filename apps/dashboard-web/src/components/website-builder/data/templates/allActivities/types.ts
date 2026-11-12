@@ -9,4 +9,6 @@ export interface ActivityTemplateMeta {
   primaryColor: string;
   description: string;
   tags: string[];
+  /** الأنشطة الطبية/الاستشارية تعتمد الحجز لا السلة — يخفي زر الإضافة للسلة في القالب المولَّد. */
+  bookingMode?: boolean;
 }

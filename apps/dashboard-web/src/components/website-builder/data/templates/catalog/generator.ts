@@ -18,6 +18,19 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
     matchedDetail?.hero.heroImage ||
     'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80';
 
+  // الأنشطة الطبية (عيادات/مستشفيات/أسنان/طبيعي/عيون/بيطرة) تبيع "حجز موعد"
+  // لا "منتجًا في سلة": نخفي زر الإضافة للسلة ونخلي زر البطاقة حجزًا يوصل
+  // لصفحة التواصل والحجز. الصيدليات استثناء — تجارة حقيقية تحتفظ بالسلة.
+  const bookingMode = meta.bookingMode === true || matchedDetail?.bookingMode === true;
+  const bookingCardOverrides = bookingMode
+    ? {
+        // buyButtonMode 'hidden' يُقرأ من resolveProductCardOptions في الكانفس
+        // والموقع المنشور معًا — فيختفي زر "إضافة للسلة" من الاثنين.
+        buyButtonMode: 'hidden' as const,
+        ctaText: 'احجز الآن',
+      }
+    : {};
+
   const items = matchedDetail?.items || [
     {
       id: `${meta.id}_item_1`,
@@ -325,7 +338,10 @@ export const generateActivityWebsite = (meta: ActivityTemplateMeta): Website => 
       childrenIds: [],
       props: {
         title: `أبرز عروض وخدمات ${meta.name}`,
-        subtitle: 'اختر الخدمة أو المنتج المناسب مع تفاصيل دقيقة للأسعار والمواصفات',
+        subtitle: bookingMode
+          ? 'اختر الخدمة المناسبة واحجز موعدك — التفاصيل والأسعار توضيحية قبل الكشف'
+          : 'اختر الخدمة أو المنتج المناسب مع تفاصيل دقيقة للأسعار والمواصفات',
+        ...bookingCardOverrides,
         items,
       },
       styles: {
