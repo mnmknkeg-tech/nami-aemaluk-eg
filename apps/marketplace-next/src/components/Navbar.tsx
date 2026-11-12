@@ -118,6 +118,12 @@ export function Navbar() {
     };
     load(true);
     const interval = setInterval(() => load(true), 60_000);
+    // التسجيل/الدخول من بوابة السلة (من غير تغيير مسار) بيبلّغ هنا
+    const onSessionChanged = () => {
+      setIsLoggedIn(isSessionActive());
+      load(true);
+    };
+    window.addEventListener('ray-session-changed', onSessionChanged);
     const onVisible = () => {
       if (document.visibilityState === 'visible') load(true);
     };
@@ -126,6 +132,7 @@ export function Navbar() {
       cancelled = true;
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('ray-session-changed', onSessionChanged);
     };
   }, [pathname]);
 

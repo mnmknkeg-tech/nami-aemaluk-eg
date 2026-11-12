@@ -1,10 +1,20 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  ReactNode,
+} from 'react';
 import { usePathname } from 'next/navigation';
 import type { Product } from './services';
 import { productStockState } from './stock';
 import { playCartSound } from './sounds';
+import { isSessionActive } from './api';
+import { AuthGateModal } from '@/components/AuthGateModal';
 
 export interface CartItem {
   id: string;
@@ -45,6 +55,15 @@ interface CartContextValue {
   itemsByShop: () => Record<string, CartItem[]>;
   isCartOpen: boolean;
   setCartOpen: (open: boolean) => void;
+}
+
+/** محاولة إضافة معلّقة — الزائر ضيف منتج وهو مش مسجل، فبنحتفظ بيها ونضيفها
+ *  تلقائياً أول ما الحساب يتعمل من بوابة رقم الموبايل. */
+interface PendingAdd {
+  product: Product;
+  quantity: number;
+  openDrawer: boolean;
+  options?: { variantSelection?: any; addons?: any[]; calculatedPrice?: number };
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -118,6 +137,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setCartOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  // بوابة التسجيل برقم الموبايل — بتفتح لأول إضافة للزائر
+  const [authGateOpen, setAuthGateOpen] = useState(false);
+  const pendingAddRef = useRef<PendingAdd | null>(null);
 
   useEffect(() => {
     setHydrated(false);
@@ -138,6 +160,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       options?: { variantSelection?: any; addons?: any[]; calculatedPrice?: number }
     ) => {
       if (product.isAvailable === false || !Number.isInteger(quantity) || quantity < 1) return;
+
+      // الطلب في الماركت للعملاء المسجلين بس: الزائر اللي بيضيف للسلة أول
+      // مرة بيستقبل بوابة "سجل برقم موبايلك" — المنتج بيتحفظ معلّق وبيتضاف
+      // تلقائياً بعد إنشاء الحساب/الدخول، فالمسار مش بيتبهدل.
+      if (typeof window !== 'undefined' && !isSessionActive()) {
+        pendingAddRef.current = { product, quantity, openDrawer, options };
+        setAuthGateOpen(true);
+        return;
+      }
+
       const stockState = productStockState(product);
       // صنف بيتبع مخزون وخلص → مفيش إضافة. الكمية بتتظبط على المتبقي لو طلبت أكتر.
       if (stockState.soldOut) return;
@@ -229,6 +261,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return map;
   }, [items]);
 
+  // بعد نجاح التسجيل/الدخول من البوابة: رجّع المنتج المعلّق للسلة بالمسار
+  // الأصلي (فتح الدرو/صوت السلة) كأن الإضافة اتعملت من أول مرة.
+  const handleAuthSuccess = useCallback(() => {
+    const pending = pendingAddRef.current;
+    pendingAddRef.current = null;
+    if (!pending) return;
+    // تأجيل بسيط عشان الحالة تتحدد الأول بعد قفل البوابة
+    window.setTimeout(() => {
+      addItemRef.current(pending.product, pending.quantity, pending.openDrawer, pending.options);
+    }, 0);
+  }, []);
+
+  // أحدث نسخة من addItem (بتتغير مع المسار) للإضافة المؤجلة
+  const addItemRef = useRef(addItem);
+  useEffect(() => {
+    addItemRef.current = addItem;
+  }, [addItem]);
+
   return (
     <CartContext.Provider
       value={{
@@ -247,6 +297,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      {/* بوابة "سجل برقم موبايلك عشان تطلب" — واحدة على مستوى التطبيق */}
+      <AuthGateModal
+        open={authGateOpen}
+        onClose={() => setAuthGateOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </CartContext.Provider>
   );
 }

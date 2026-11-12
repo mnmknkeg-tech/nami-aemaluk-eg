@@ -4,14 +4,27 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { UserPlus, Mail, Lock, User, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
-import { api } from '@/lib/api';
+import {
+  UserPlus,
+  Mail,
+  Lock,
+  User,
+  ArrowLeft,
+  Loader2,
+  AlertCircle,
+  ChevronDown,
+} from 'lucide-react';
+import { api, markSessionActive } from '@/lib/api';
+import { normalizeEgyptianPhone } from '@/lib/phone';
 
 export default function SignupPage() {
   const router = useRouter();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  // البريد اختياري دلوقتي — الحساب بيتعمل برقم الموبايل
+  const [showEmail, setShowEmail] = useState(false);
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,7 +44,7 @@ export default function SignupPage() {
           </div>
           <h1 className="text-3xl font-bold tracking-tight mb-2">إنشاء حساب</h1>
           <p className="text-slate-500 dark:text-slate-400 font-semibold text-sm">
-            انضم لمنصة من مكانك الآن
+            اعمل حسابك برقم موبايلك — بدون بريد إلكتروني
           </p>
         </div>
 
@@ -42,13 +55,29 @@ export default function SignupPage() {
             setError('');
             setLoading(true);
             try {
-              await api.post('/auth/signup', { name, email, password });
+              const normalized = normalizeEgyptianPhone(phone);
+              if (!normalized) {
+                throw new Error('رقم موبايل مصري غير صحيح — اكتب الرقم زي 01012345678');
+              }
+              await api.post('/auth/signup', {
+                name,
+                phone: normalized,
+                password,
+                role: 'CUSTOMER',
+                ...(showEmail && email.trim() ? { email: email.trim() } : {}),
+              });
+              // كوكيز الجلسة بترجع مع الرد — علّم الجلسة نشطة فوراً عشان
+              // بوابة "سجل عشان تطلب" تسحب السلة المعلقة على طول.
+              markSessionActive();
               try {
                 sessionStorage.setItem('mnmknk_welcome', JSON.stringify({ type: 'signup', name }));
               } catch {
                 /* ignore */
               }
-              router.push('/');
+              const returnTo =
+                typeof window !== 'undefined' &&
+                new URLSearchParams(window.location.search).get('returnTo');
+              router.push(returnTo || '/');
             } catch (err: any) {
               setError(err?.message || 'فشل إنشاء الحساب. حاول مرة أخرى');
             } finally {
@@ -66,21 +95,30 @@ export default function SignupPage() {
                 onChange={(e) => setName(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pr-12 pl-4 py-4 font-semibold focus:border-brand-cyan outline-none transition-colors"
                 placeholder="اسمك"
+                required
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold mb-2">البريد الإلكتروني</label>
-            <div className="relative">
-              <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <label className="block text-sm font-semibold mb-2">رقم الموبايل</label>
+            <div className="flex" dir="ltr">
+              <span className="inline-flex items-center justify-center min-w-[64px] px-3 rounded-l-xl border border-r-0 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-sm select-none">
+                +20
+              </span>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pr-12 pl-4 py-4 font-semibold focus:border-brand-cyan outline-none transition-colors"
-                placeholder="بريدك الإلكتروني"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-r-xl py-4 font-semibold focus:border-brand-cyan outline-none transition-colors"
+                placeholder="01012345678"
+                required
               />
             </div>
+            <p className="text-[11px] text-slate-400 font-semibold mt-1.5">
+              رقم موبايلك هو وسيلة الدخول والتواصل بخصوص طلباتك — يتحفظ بكود الدولة +20
+            </p>
           </div>
           <div>
             <label className="block text-sm font-semibold mb-2">كلمة المرور</label>
@@ -92,8 +130,35 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pr-12 pl-4 py-4 font-semibold focus:border-brand-cyan outline-none transition-colors"
                 placeholder="كلمة المرور"
+                required
               />
             </div>
+          </div>
+
+          {/* بريد اختياري مطوي — للحسابات اللي عايزة تستقبل الفواتير والإشعارات بالبريد */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowEmail((v) => !v)}
+              className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-semibold text-xs hover:text-brand-cyan transition-colors"
+            >
+              <ChevronDown
+                className={`w-4 h-4 transition-transform ${showEmail ? 'rotate-180' : ''}`}
+              />
+              إضافة بريد إلكتروني (اختياري)
+            </button>
+            {showEmail && (
+              <div className="relative mt-2">
+                <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pr-12 pl-4 py-4 font-semibold focus:border-brand-cyan outline-none transition-colors"
+                  placeholder="بريدك الإلكتروني (اختياري)"
+                />
+              </div>
+            )}
           </div>
           {error && (
             <div className="flex items-center gap-2 text-red-500 text-sm font-semibold bg-red-50 dark:bg-red-900/20 p-3 rounded-lg">

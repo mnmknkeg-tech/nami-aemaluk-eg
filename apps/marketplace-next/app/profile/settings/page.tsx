@@ -21,6 +21,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { api, clearStoredAuthToken, isSessionActive } from '@/lib/api';
+import { normalizeEgyptianPhone, phoneDisplay, toLocalEgyptianPhone } from '@/lib/phone';
 import { ProfileShellSkeleton } from '@/components/Skeleton';
 
 export default function ProfileSettingsPage() {
@@ -58,7 +59,9 @@ export default function ProfileSettingsPage() {
         setForm({
           name: u?.name || '',
           email: u?.email || '',
-          phone: u?.phone || '',
+          // القيمة المخزنة E.164 (+20…) — نعرضها محلية بدون الكود عشان الكود
+          // ثابت جنب الحقل ويبقى الشكل "01012345678".
+          phone: u?.phone ? (toLocalEgyptianPhone(u.phone) ?? u.phone) : '',
           currentPassword: '',
           newPassword: '',
         });
@@ -85,11 +88,18 @@ export default function ProfileSettingsPage() {
     setErrorMsg('');
 
     try {
+      // رقم الموبايل بيتحفظ بكود الدولة +20 (E.164) — نفس صيغة الدخول بالرقم.
+      const trimmedPhone = form.phone.trim();
+      if (trimmedPhone && !normalizeEgyptianPhone(trimmedPhone)) {
+        setErrorMsg('رقم موبايل مصري غير صحيح — اكتب الرقم زي 01012345678');
+        setSaving(false);
+        return;
+      }
       // The backend exposes profile updates on PATCH /users/me (PUT /auth/me
       // does not exist) — it accepts name, primary phone and extra phones.
       await api.patch('/users/me', {
         name: form.name,
-        phone: form.phone,
+        phone: trimmedPhone ? normalizeEgyptianPhone(trimmedPhone) : '',
         extraPhones,
       });
 
@@ -112,9 +122,11 @@ export default function ProfileSettingsPage() {
   };
 
   const addExtraPhone = () => {
-    const value = newExtraPhone.trim();
-    if (!value) return;
-    if (value === form.phone.trim()) {
+    const raw = newExtraPhone.trim();
+    if (!raw) return;
+    const value = normalizeEgyptianPhone(raw) || raw;
+    const primaryE164 = normalizeEgyptianPhone(form.phone) || form.phone.trim();
+    if (value === primaryE164) {
       setErrorMsg('الرقم الإضافي مكرر مع الرقم الأساسي');
       return;
     }
@@ -171,7 +183,9 @@ export default function ProfileSettingsPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold">{user?.name || 'مستخدم'}</h1>
-              <p className="text-white/60 text-sm">{user?.email}</p>
+              <p className="text-white/60 text-sm font-bold" dir="ltr">
+                {user?.phone ? phoneDisplay(user.phone) : user?.email}
+              </p>
             </div>
           </div>
         </div>
@@ -268,7 +282,7 @@ export default function ProfileSettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                      البريد الإلكتروني
+                      البريد الإلكتروني (اختياري)
                     </label>
                     <input
                       type="email"
@@ -279,16 +293,23 @@ export default function ProfileSettingsPage() {
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                      رقم الهاتف
+                      رقم الموبايل (وسيلة الدخول والطلب)
                     </label>
-                    <input
-                      type="tel"
-                      value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className="w-full text-xs p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
-                      dir="ltr"
-                      placeholder="010xxxxxxxx"
-                    />
+                    <div className="flex" dir="ltr">
+                      <span className="inline-flex items-center justify-center min-w-[46px] px-2 rounded-l-xl border border-r-0 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold text-xs select-none">
+                        +20
+                      </span>
+                      <input
+                        type="tel"
+                        value={form.phone}
+                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                        className="flex-1 text-xs p-3 rounded-r-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
+                        placeholder="010xxxxxxxx"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-semibold mt-1">
+                      بيتم حفظه بكود الدولة +20 — ده الرقم اللي بتدخل بيه وتوصل بيه إشعارات الطلبات
+                    </p>
                   </div>
                 </div>
 

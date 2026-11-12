@@ -14,6 +14,7 @@ import {
   Store,
   Banknote,
   UserRound,
+  LockKeyhole,
 } from 'lucide-react';
 import { useCart } from '@/lib/cart';
 import { useSiteCart } from '@/lib/site-cart';
@@ -264,6 +265,18 @@ export default function CheckoutPage() {
     }
   }, [isMerchantCheckout, siteCart.items, totalPrice]);
 
+  // حالة الجلسة — الطلب في الماركت (‎/checkout و‎/shop/…) للمسجلين بس؛
+  // فحص الجلسة بعد التحميل عشان مايحصلش خلاف hydration بين السيرفر والمتصفح.
+  const [sessionState, setSessionState] = useState<'loading' | 'guest' | 'authed'>('loading');
+  useEffect(() => {
+    const sync = () => setSessionState(isSessionActive() ? 'authed' : 'guest');
+    sync();
+    window.addEventListener('ray-session-changed', sync);
+    return () => window.removeEventListener('ray-session-changed', sync);
+  }, []);
+  /** مسارات الماركت بتشترط حساب؛ موقع/متجر التاجر المنشور بيسمح للضيف. */
+  const marketAuthRequired = !isSiteCheckout;
+
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return;
@@ -285,8 +298,10 @@ export default function CheckoutPage() {
     const succeededShops: string[] = [];
 
     try {
-      // Guest checkout: visitors without an account order via the public endpoint.
-      const isGuest = !isSessionActive();
+      // Guest checkout يبقى مسموح بس في checkout موقع التاجر المنشور
+      // (‎/site/…) — checkout الماركت بيتطلب حساب، فالنهاية العامة هنا
+      // ما بتستخدمش خالص من مسارات الماركت.
+      const isGuest = !isSessionActive() && isSiteCheckout;
       const endpoint = isGuest ? '/orders/public' : '/orders';
 
       const orders: any[] = [];
@@ -483,6 +498,88 @@ export default function CheckoutPage() {
           >
             {isMerchantCheckout ? 'العودة إلى المتجر' : 'تصفح المتاجر'}
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // حالة تحميل الجلسة — بونص بسيط عشان فورم التوصيل مايظهرش وميض للزائر
+  if (marketAuthRequired && sessionState === 'loading') {
+    return (
+      <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950/40">
+        {checkoutHeader('إتمام الطلب', totalItems)}
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-cyan" />
+        </div>
+      </div>
+    );
+  }
+
+  // بوابة "الطلب محتاج حساب" — الزائر على checkout الماركت ما يقدرش يطلب
+  // من غير تسجيل برقم الموبايل؛ ملخص السلة يفضل ظاهر عشان يعرف هيطلب إيه.
+  if (marketAuthRequired && sessionState === 'guest') {
+    const returnTo = encodeURIComponent(pathname || '/checkout');
+    return (
+      <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950/40">
+        {checkoutHeader('إتمام الطلب', totalItems)}
+        <div className="max-w-2xl mx-auto px-4 md:px-6 py-10">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-brand-cyan/10 flex items-center justify-center mx-auto mb-4">
+              <LockKeyhole className="w-8 h-8 text-brand-cyan" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">الطلب محتاج حساب</h2>
+            <p className="text-slate-500 dark:text-slate-400 font-semibold mb-6 leading-relaxed text-sm">
+              الطلب في الماركت متاح للحسابات المسجلة بس — سجل برقم موبايلك (بكود الدولة +20
+              تلقائياً) عشان نقدر نأكد طلبك ونوصل معاك بسهولة.
+            </p>
+            <div className="flex gap-3 justify-center flex-wrap">
+              <Link
+                href={`/login?returnTo=${returnTo}`}
+                className="px-6 py-3 rounded-xl bg-brand-gradient text-white font-bold text-sm"
+              >
+                تسجيل الدخول
+              </Link>
+              <Link
+                href={`/signup?returnTo=${returnTo}`}
+                className="px-6 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold text-sm text-slate-700 dark:text-slate-200"
+              >
+                إنشاء حساب جديد
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
+            <h3 className="font-bold text-sm mb-3 flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-brand-cyan" />
+              سلتك مستنية ({totalItems} منتج)
+            </h3>
+            <ul className="space-y-2">
+              {items.slice(0, 6).map((item: any) => (
+                <li
+                  key={item.id}
+                  className="flex justify-between gap-3 text-xs font-semibold text-slate-600 dark:text-slate-300"
+                >
+                  <span className="truncate">
+                    {item.name}
+                    {(item as any).shopName ? (
+                      <span className="text-slate-400"> — {(item as any).shopName}</span>
+                    ) : null}{' '}
+                    × {item.quantity}
+                  </span>
+                  <span className="flex-shrink-0">{formatPrice(item.price * item.quantity)}</span>
+                </li>
+              ))}
+            </ul>
+            {items.length > 6 && (
+              <p className="text-[11px] text-slate-400 font-semibold mt-2">
+                و{items.length - 6} منتجات تانية…
+              </p>
+            )}
+            <div className="border-t border-slate-100 dark:border-slate-800 mt-3 pt-3 flex justify-between text-sm font-bold">
+              <span>الإجمالي</span>
+              <span>{formatPrice(totalPrice)}</span>
+            </div>
+          </div>
         </div>
       </div>
     );
