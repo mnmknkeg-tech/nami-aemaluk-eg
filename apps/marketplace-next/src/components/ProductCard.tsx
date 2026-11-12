@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Star, Eye } from 'lucide-react';
 import type { Product, Shop } from '@/lib/services';
+import { productStockState } from '@/lib/stock';
 import type { MarketActivity } from '@/lib/activity-catalog';
 import { resolveCommerce, type CommerceDecision } from '@/lib/commerce';
 import { useShopCommerce } from '@/lib/useShopCommerce';
@@ -50,7 +51,10 @@ export function ProductCard({
   const discountPercent = hasDiscount
     ? Math.round(((product.oldPrice! - (product.price || 0)) / product.oldPrice!) * 100)
     : 0;
-  const isOOS = product.isAvailable === false;
+  // أصناف التجزئة بيتبع مخزونها → نفاد بيغطّي الكارت. أصناف المنيو/الخدمات مفتوحة دايمًا.
+  const stockState = productStockState(product);
+  const isOOS = product.isAvailable === false || stockState.soldOut;
+  const soldOut = product.isAvailable !== false && stockState.soldOut;
 
   return (
     <div
@@ -111,7 +115,7 @@ export function ProductCard({
         {isOOS && (
           <div className="absolute inset-0 bg-brand-ink/50 backdrop-blur-[2px] flex items-center justify-center">
             <span className="px-3 py-1.5 rounded-full bg-white/95 text-brand-ink font-bold text-xs shadow-md">
-              غير متوفر حالياً
+              {soldOut ? 'نفدت الكمية' : 'غير متوفر حالياً'}
             </span>
           </div>
         )}

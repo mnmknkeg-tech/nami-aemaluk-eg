@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { productStockState } from '@/lib/stock';
 import {
   Check,
   Minus,
@@ -54,6 +55,11 @@ export function MarketProductConfigurator({
   const [customerNote, setCustomerNote] = useState('');
 
   const unavailable = product.isAvailable === false;
+  // أصناف التجزئة بتتبع المخزون → نفاد يمنع الطلب والعدّاد بسقف المتبقي.
+  // أصناف المنيو/الخدمات (trackStock=false) مفتوحة بلا سقف.
+  const stockState = productStockState(product);
+  const soldOut = stockState.soldOut;
+  const maxQuantity = stockState.maxQuantity;
 
   // 1. استخراج مجموعات الأحجام/الأنواع (menuVariants / sizes / colors)
   const menuVariants: MenuVariantGroup[] = useMemo(() => {
@@ -537,6 +543,13 @@ export function MarketProductConfigurator({
           >
             المنتج غير متوفر حالياً
           </p>
+        ) : soldOut ? (
+          <p
+            role="status"
+            className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-4 font-bold text-amber-600 dark:text-amber-400 text-center"
+          >
+            نفدت الكمية — متاح تاني لما التاجر يحدّث المخزون
+          </p>
         ) : (
           <div className="flex flex-wrap items-center gap-3">
             {/* عداد الكمية */}
@@ -551,10 +564,19 @@ export function MarketProductConfigurator({
               </button>
               <span className="min-w-7 text-center text-base font-black text-slate-900 dark:text-white">
                 {quantity}
+                {maxQuantity ? (
+                  <span className="block text-[10px] font-bold text-slate-400">
+                    متاح {maxQuantity}
+                  </span>
+                ) : null}
               </span>
               <button
                 type="button"
-                onClick={() => setQuantity((value) => value + 1)}
+                onClick={() =>
+                  setQuantity((value) =>
+                    maxQuantity ? Math.min(value + 1, maxQuantity) : value + 1
+                  )
+                }
                 className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 transition hover:bg-slate-200 dark:hover:bg-slate-600"
                 aria-label="زيادة الكمية"
               >

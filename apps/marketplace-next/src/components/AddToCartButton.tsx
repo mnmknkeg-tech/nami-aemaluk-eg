@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useCart } from '@/lib/cart';
 import { productHasOptions } from '@/lib/product-options';
+import { productStockState } from '@/lib/stock';
 import type { Product } from '@/lib/services';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +35,10 @@ export function AddToCartButton({
   const pathname = usePathname();
   const [added, setAdded] = useState(false);
   const [qty, setQty] = useState(initialQuantity);
+  // أصناف التجزئة بتتبع المخزون → نفاد = منع الطلب وسقف العدّاد. أصناف المنيو
+  // والخدمات (بلا تتبع) مفتوحة دايمًا.
+  const stock = productStockState(product);
+  const outOfStock = product.isAvailable === false || stock.soldOut;
 
   const cartItem = items.find((i) => i.productId === product.id);
   const cartQty = cartItem ? cartItem.quantity : 0;
@@ -41,7 +46,7 @@ export function AddToCartButton({
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (product.isAvailable === false) return;
+    if (outOfStock) return;
     // Products with sizes/colors/variants must be configured on the product
     // page first — adding them blind would put an unspecified variant in the cart.
     // Skip when we are already there (the product page's own button).
@@ -66,7 +71,11 @@ export function AddToCartButton({
     if (cartItem) {
       updateQuantity(product.id, cartQty + delta);
     } else {
-      setQty((prev) => Math.max(1, prev + delta));
+      setQty((prev) => {
+        const next = Math.max(1, prev + delta);
+        // سقف المخزون للمنتجات المتتبعة — أصناف المطاعم/الخدمات بلا سقف.
+        return stock.maxQuantity ? Math.min(next, stock.maxQuantity) : next;
+      });
     }
   };
 
@@ -82,13 +91,13 @@ export function AddToCartButton({
   if (variant === 'icon') {
     const label = product.name ? `أضف ${product.name} للسلة` : 'أضف للسلة';
 
-    if (product.isAvailable === false) {
+    if (outOfStock) {
       return (
         <button
           type="button"
           disabled
-          aria-label="غير متوفر"
-          title="غير متوفر"
+          aria-label="نفدت الكمية"
+          title="نفدت الكمية"
           className="w-9 h-9 shrink-0 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center cursor-not-allowed"
         >
           <Ban className="w-4 h-4" />
@@ -142,13 +151,13 @@ export function AddToCartButton({
     );
   }
 
-  if (product.isAvailable === false) {
+  if (outOfStock) {
     return (
       <button
         disabled
         className={`${sizeCls} rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 font-bold cursor-not-allowed flex items-center gap-2`}
       >
-        غير متوفر
+        {product.isAvailable === false ? 'غير متوفر' : 'نفدت الكمية'}
       </button>
     );
   }

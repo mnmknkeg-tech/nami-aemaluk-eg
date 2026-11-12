@@ -72,6 +72,10 @@ export interface Product {
   imageUrl?: string;
   category?: string;
   isAvailable?: boolean;
+  /** تتبع المخزون — منتجات التجزئة true، أصناف المنيو/الخدمات false */
+  trackStock?: boolean;
+  /** المتبقي في المخزون — موجود فقط للأصناف التي تتبع المخزون */
+  stock?: number;
   rating?: number;
   reviewCount?: number;
   tags?: string[];

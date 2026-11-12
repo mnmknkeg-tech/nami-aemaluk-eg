@@ -19,6 +19,7 @@ import {
   StickyNote,
 } from 'lucide-react';
 import { useSiteCart } from '@/lib/site-cart';
+import { productStockState } from '@/lib/stock';
 import { formatPrice } from '@/lib/utils';
 
 interface VariantOption {
@@ -50,6 +51,11 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
 
   const unavailable =
     product.isAvailable === false || product.isActive === false || product.is_active === false;
+  // أصناف التجزئة بتتبع المخزون → نفاد يمنع الطلب والعدّاد بسقف المتبقي.
+  // أصناف المنيو/الخدمات (trackStock=false) مفتوحة بلا سقف.
+  const stockState = productStockState(product);
+  const soldOut = !unavailable && stockState.soldOut;
+  const maxQuantity = stockState.maxQuantity;
 
   // 1. استخراج مجموعات الأحجام/الأنواع (menuVariants / sizes / colors)
   const menuVariants: MenuVariantGroup[] = useMemo(() => {
@@ -534,6 +540,13 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
           >
             المنتج غير متوفر حالياً
           </p>
+        ) : soldOut ? (
+          <p
+            role="status"
+            className="rounded-xl bg-amber-50 border border-amber-200 p-4 font-bold text-amber-600 text-center"
+          >
+            نفدت الكمية — متاح تاني لما التاجر يحدّث المخزون
+          </p>
         ) : isBooking && shop?.slug ? (
           /* المنتج القابل للحجز بيمشي في تدفق الحجز الحقيقي (المواعيد المتاحة
              بتوقيت القاهرة) بدل السلة — نفس مسار صفحة /site/[slug]/book */
@@ -559,10 +572,19 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
               </button>
               <span className="min-w-7 text-center text-base font-black text-slate-900">
                 {quantity}
+                {maxQuantity ? (
+                  <span className="block text-[10px] font-bold text-slate-400">
+                    متاح {maxQuantity}
+                  </span>
+                ) : null}
               </span>
               <button
                 type="button"
-                onClick={() => setQuantity((value) => value + 1)}
+                onClick={() =>
+                  setQuantity((value) =>
+                    maxQuantity ? Math.min(value + 1, maxQuantity) : value + 1
+                  )
+                }
                 className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-700 transition hover:bg-slate-200"
                 aria-label="زيادة الكمية"
               >

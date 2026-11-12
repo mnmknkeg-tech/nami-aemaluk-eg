@@ -2,7 +2,8 @@ import { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Star, Store, Tag, ArrowLeft, MessageCircle, Phone, CheckCircle } from 'lucide-react';
+import { Star, Store, Tag, ArrowLeft, MessageCircle, Phone, CheckCircle, Ban } from 'lucide-react';
+import { productStockState } from '@/lib/stock';
 import { getProductById, getProducts, getShops } from '@/lib/services';
 import { formatPrice, truncate } from '@/lib/utils';
 import { siteConfig } from '@/lib/config';
@@ -71,6 +72,7 @@ export default async function ProductPage({ params }: Props) {
   const product = await getProductById(id, { fresh: true });
   // الظهور مستقل لكل سطح: مخفي من التطبيق = 404 هنا حتى لو معروض على الموقع.
   if (!product || (product as any).appActive === false) notFound();
+  const stockState = productStockState(product);
 
   // مفيش shopSlug في payload بتاع المنتج، فبنلاقي المتجر من فهرس المتاجر بنفسه
   // (نفس مصدر بيانات الكارت) عشان قرار التاجر في layoutConfig.commerce يتطبّق هنا كمان.
@@ -292,12 +294,18 @@ export default async function ProductPage({ params }: Props) {
             </div>
           )}
 
-          {/* Availability */}
+          {/* Availability — أصناف التجزئة بتتبع المخزون فبتتهدد بالنفاد،
+              أصناف المنيو/الخدمات (trackStock=false) متاحة دايمًا */}
           <div className="mb-6">
-            {product.isAvailable !== false ? (
+            {product.isAvailable !== false && !stockState.soldOut ? (
               <span className="flex items-center gap-2 text-green-500 font-semibold text-sm">
                 <CheckCircle className="w-5 h-5" />
                 متوفر الآن
+              </span>
+            ) : product.isAvailable !== false && stockState.soldOut ? (
+              <span className="flex items-center gap-2 text-amber-500 font-semibold text-sm">
+                <Ban className="w-5 h-5" />
+                نفدت الكمية
               </span>
             ) : (
               <span className="flex items-center gap-2 text-red-500 font-semibold text-sm">

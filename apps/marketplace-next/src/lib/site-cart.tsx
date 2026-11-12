@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { productStockState } from './stock';
 import type { SiteProduct, SiteShopContext } from '@ray-eg/shared/builder';
 
 export interface SiteCartEntry {
@@ -124,6 +125,8 @@ export function SiteCartProvider({ children }: { children: React.ReactNode }) {
         if (
           product.isActive === false ||
           product.isAvailable === false ||
+          // صنف بيتبع مخزون وخلص → ممنوع. أصناف المنيو/الخدمات (trackStock=false) مفتوحة دايمًا.
+          productStockState(product).soldOut ||
           (product.shopId && product.shopId !== shop.id)
         ) {
           return;

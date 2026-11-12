@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import type { Product } from './services';
+import { productStockState } from './stock';
 import { playCartSound } from './sounds';
 
 export interface CartItem {
@@ -137,6 +138,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       options?: { variantSelection?: any; addons?: any[]; calculatedPrice?: number }
     ) => {
       if (product.isAvailable === false || !Number.isInteger(quantity) || quantity < 1) return;
+      const stockState = productStockState(product);
+      // صنف بيتبع مخزون وخلص → مفيش إضافة. الكمية بتتظبط على المتبقي لو طلبت أكتر.
+      if (stockState.soldOut) return;
+      if (stockState.maxQuantity && quantity > stockState.maxQuantity) {
+        quantity = stockState.maxQuantity;
+      }
       const vKey = options?.variantSelection ? JSON.stringify(options.variantSelection) : '';
       const aKey =
         options?.addons && options.addons.length > 0 ? JSON.stringify(options.addons) : '';
@@ -165,7 +172,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           oldPrice: product.oldPrice,
           image: product.imageUrl || product.images?.[0] || '/placeholder-product.png',
           quantity,
-          maxQuantity: undefined,
+          // أصناف التجزئة بتتبع المخزون → سقف الكمية = المتبقي. أصناف المنيو
+          // والخدمات (trackStock=false) بلا سقف — بتتجهز لكل طلب.
+          maxQuantity: productStockState(product).maxQuantity,
           variantSelection: options?.variantSelection,
           addons: options?.addons,
         };

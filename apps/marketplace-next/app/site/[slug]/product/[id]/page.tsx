@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   ArrowRight,
+  Ban,
   CheckCircle,
   MessageCircle,
   ShoppingBag,
@@ -13,6 +14,7 @@ import {
   Star,
   Video,
 } from 'lucide-react';
+import { productStockState } from '@/lib/stock';
 import { api } from '@/lib/api';
 import { getProductById, getProducts } from '@/lib/services';
 import { getSiteProductImageUrl, mapSiteProduct } from '@ray-eg/shared/builder';
@@ -150,6 +152,8 @@ export default async function MerchantProductPage({ params }: Props) {
     shopId: site.shop.id,
     shopSlug: site.shop.slug,
   };
+  // أصناف التجزئة بتتبع المخزون فبتتهدد بالنفاد — أصناف المنيو/الخدمات مفتوحة دايمًا.
+  const stockState = productStockState(cartProduct);
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -165,7 +169,7 @@ export default async function MerchantProductPage({ params }: Props) {
       price: product.price,
       priceCurrency: product.currency || 'EGP',
       availability:
-        product.isAvailable !== false
+        product.isAvailable !== false && !stockState.soldOut
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
     },
@@ -276,9 +280,27 @@ export default async function MerchantProductPage({ params }: Props) {
               <span className="px-3 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">
                 {product.category || 'عام'}
               </span>
-              <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100">
-                <CheckCircle className="h-3.5 w-3.5" />
-                {product.isAvailable === false ? 'غير متوفر حالياً' : 'متوفر للطلب'}
+              <div
+                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-xl border ${
+                  product.isAvailable === false
+                    ? 'bg-red-50 text-red-500 border-red-100'
+                    : stockState.soldOut
+                      ? 'bg-amber-50 text-amber-600 border-amber-100'
+                      : 'text-emerald-600 bg-emerald-50 border-emerald-100'
+                }`}
+              >
+                {product.isAvailable === false ? (
+                  <Ban className="h-3.5 w-3.5" />
+                ) : stockState.soldOut ? (
+                  <Ban className="h-3.5 w-3.5" />
+                ) : (
+                  <CheckCircle className="h-3.5 w-3.5" />
+                )}
+                {product.isAvailable === false
+                  ? 'غير متوفر حالياً'
+                  : stockState.soldOut
+                    ? 'نفدت الكمية'
+                    : 'متوفر للطلب'}
               </div>
             </div>
 

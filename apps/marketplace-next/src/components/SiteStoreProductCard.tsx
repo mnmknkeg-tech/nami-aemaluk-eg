@@ -5,6 +5,7 @@ import { Check, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 import { getSiteProductImageUrl } from '@ray-eg/shared/builder';
 import { useSiteCart } from '@/lib/site-cart';
+import { productStockState } from '@/lib/stock';
 import { SafeProductImage } from '@/components/SafeProductImage';
 
 export function SiteStoreProductCard({
@@ -22,9 +23,12 @@ export function SiteStoreProductCard({
   const price = product.price ?? product.basePrice ?? product.base_price;
   const unavailable =
     product.isAvailable === false || product.isActive === false || product.is_active === false;
+  // أصناف التجزئة بيتبع مخزونها → نفاد يمنع الطلب. أصناف المنيو/الخدمات مفتوحة.
+  const soldOut = productStockState(product).soldOut;
+  const blocked = unavailable || soldOut;
 
   const handleAdd = () => {
-    if (unavailable) return;
+    if (blocked) return;
     addItem(product, shop);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1600);
@@ -72,16 +76,22 @@ export function SiteStoreProductCard({
           <button
             type="button"
             onClick={handleAdd}
-            disabled={unavailable}
+            disabled={blocked}
             className="inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-400"
-            style={unavailable ? undefined : { backgroundColor: 'var(--site-primary, #2563eb)' }}
+            style={blocked ? undefined : { backgroundColor: 'var(--site-primary, #2563eb)' }}
           >
-            {unavailable ? null : added ? (
+            {blocked ? null : added ? (
               <Check className="h-4 w-4" />
             ) : (
               <ShoppingCart className="h-4 w-4" />
             )}
-            {unavailable ? 'غير متوفر' : added ? 'تمت الإضافة' : 'أضف للسلة'}
+            {unavailable
+              ? 'غير متوفر'
+              : soldOut
+                ? 'نفدت الكمية'
+                : added
+                  ? 'تمت الإضافة'
+                  : 'أضف للسلة'}
           </button>
         </div>
       </div>
