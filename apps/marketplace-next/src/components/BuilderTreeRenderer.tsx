@@ -700,14 +700,21 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
       let customerPhone = '';
       const notesParts: string[] = [];
       fields.forEach((field: any, idx: number) => {
-        const fid = field.id || `f_${idx}`;
+        const fid = field.id || field.name || `f_${idx}`;
         const value = String(inputValues[fid] || '').trim();
         if (!value) return;
         const label = String(field.label || '');
         const type = String(field.type || '');
-        if (type === 'tel' || /جوال|هاتف|موبايل|واتس/.test(label)) {
+        const fname = String(field.name || '').toLowerCase();
+        if (
+          type === 'tel' ||
+          fname === 'phone' ||
+          fname === 'tel' ||
+          fname === 'mobile' ||
+          /جوال|هاتف|موبايل|واتس/.test(label)
+        ) {
           customerPhone = value;
-        } else if (/اسم/.test(label)) {
+        } else if (fname === 'name' || fname === 'fullname' || /اسم/.test(label)) {
           customerName = value;
         } else {
           notesParts.push(`${label}: ${value}`);
@@ -756,9 +763,17 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
                 طلبك اتحفظ في نظام التاجر — هيتم التواصل معك لتأكيد التفاصيل.
               </p>
               {formBookingNumber && (
-                <p className="text-sm font-bold text-slate-600">
-                  رقم الطلب: <span className="text-emerald-700" dir="ltr">{formBookingNumber}</span>
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm font-bold text-slate-600">
+                    رقم الطلب: <span className="text-emerald-700" dir="ltr">{formBookingNumber}</span>
+                  </p>
+                  <a
+                    href={`/bookings/track?number=${encodeURIComponent(formBookingNumber)}`}
+                    className="inline-block text-xs font-bold text-emerald-800 underline hover:text-emerald-950"
+                  >
+                    تتبع حالة الطلب
+                  </a>
+                </div>
               )}
               <button
                 onClick={() => {
@@ -802,7 +817,7 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
           )}
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
             {fields.map((field: any, idx: number) => {
-              const fid = field.id || `f_${idx}`;
+              const fid = field.id || field.name || `f_${idx}`;
               if (field.type === 'select') {
                 return (
                   <div key={fid} className="space-y-1.5">
