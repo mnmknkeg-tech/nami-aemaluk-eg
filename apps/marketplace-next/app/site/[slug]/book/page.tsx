@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, CalendarClock, Clock, MapPin } from 'lucide-react';
 import { api } from '@/lib/api';
 import { SiteBookingFlow, type PublicBookingService } from '@/components/SiteBookingFlow';
+import { readShopBookingConfig } from '@ray-eg/shared/booking';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -89,6 +90,8 @@ export default async function SiteBookingPage({ params, searchParams }: Props) {
   if (!site) notFound();
 
   const services = await getPublicServices(slug);
+  // إعدادات الحجز بالانتظار + الأطباء من layoutConfig المتجر
+  const queueCfg = readShopBookingConfig(site.shop);
 
   return (
     <div dir="rtl" className="min-h-screen bg-slate-50">
@@ -142,6 +145,16 @@ export default async function SiteBookingPage({ params, searchParams }: Props) {
             }
           }
           initialServiceId={service}
+          queueConfig={
+            queueCfg.queueEnabled
+              ? {
+                  queueEnabled: true,
+                  queueNotifyMinutes: queueCfg.queueNotifyMinutes,
+                  avgServiceMinutes: queueCfg.avgServiceMinutes,
+                  doctors: queueCfg.doctors,
+                }
+              : undefined
+          }
         />
       </main>
     </div>

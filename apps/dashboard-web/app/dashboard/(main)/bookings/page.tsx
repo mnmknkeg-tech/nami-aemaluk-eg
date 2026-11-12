@@ -60,6 +60,10 @@ type BookingItem = {
   participants: number;
   paymentStatus?: string;
   notes?: string;
+  /** ترتيب طابور الانتظار (0 = عادي مش كوتة) */
+  queuePosition?: number;
+  /** الطبيب المعيّن من metadata */
+  doctorName?: string;
   raw?: any;
 };
 
@@ -270,6 +274,8 @@ function BookingsMainContent() {
             participants: Number(b.participants || 1),
             paymentStatus: b.paymentStatus || '',
             notes: b.notes || '',
+            queuePosition: Number(b.queuePosition ?? b?.metadata?.queuePosition ?? 0),
+            doctorName: String(b?.metadata?.doctorName || ''),
             raw: b,
           };
         }),
@@ -432,6 +438,18 @@ function BookingsMainContent() {
   // Month Title e.g. "سبتمبر 2026"
   const monthTitle = `${ARABIC_MONTHS[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
 
+  // طابور اليوم — حجوزات الموقع بالانتظار (كوتة) النهاردة، مرتبين بالترتيب.
+  // حساب عادي مش useMemo: بنكون بعد الـ early returns فقواعد الـ hooks مبتسمحش.
+  const queueItems = bookings
+    .filter(
+      (b) =>
+        b.source === 'website' &&
+        (b.queuePosition ?? 0) > 0 &&
+        b.dateStr === formatDateKey(new Date()) &&
+        (b.status === 'PENDING' || b.status === 'CONFIRMED')
+    )
+    .sort((a, b) => (a.queuePosition ?? 999) - (b.queuePosition ?? 999));
+
   return (
     <div className="p-3 sm:p-6 space-y-4 max-w-[1600px] mx-auto select-none" dir="rtl">
       {/* ===== Header Bar (مواعيد الحجوزات) ===== */}
@@ -478,6 +496,19 @@ function BookingsMainContent() {
           </button>
         </div>
       </div>
+
+      {/* ===== طابور اليوم (الحجز بالانتظار) ===== */}
+      {queueItems.length > 0 && (
+        <QueueTodayPanel
+          items={queueItems}
+          onStatusChange={async (id, status) => {
+            try {
+              await updateBookingStatusViaBackend(id, status);
+              await loadBookings(true);
+            } catch {}
+          }}
+        />
+      )}
 
       {/* ===== Controls Bar (المطابق للصورة) ===== */}
       <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1632,5 +1663,139 @@ export default function BookingsUnifiedPage() {
     >
       <BookingsMainContent />
     </Suspense>
+  );
+}
+
+/* ============================================================
+ * QueueTodayPanel — طابور اليوم (الحجز بالانتظار)
+ * حجوزات الموقع اللي دخلت الكوتة النهاردة مرتبين بالترتيب، مع
+ * إشعار واتساب جاهز للعميل قبل دوره + تغيير الحالة (بدأ الدور / تم).
+ * ============================================================ */
+
+/** wa.me link مصحّح لمصر — لو بدأ بصفر بنحط 20 قبله */
+function waMeLink(phone: string, text: string): string {
+  const digits = phone.replace(/\D/g, '');
+  const intl = digits.startsWith('0') ? `20${digits.slice(1)}` : digits;
+  return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
+}
+
+function QueueTodayPanel({
+  items,
+  onStatusChange,
+}: {
+  items: BookingItem[];
+  onStatusChange: (backendId: string, status: string) => void | Promise<void>;
+}) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const setStatus = async (item: BookingItem, status: string) => {
+    const backendId = item.id.startsWith('web-') ? item.id.slice(4) : item.id;
+    setBusyId(item.id);
+    try {
+      await onStatusChange(backendId, status);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border-2 border-amber-200 shadow-sm overflow-hidden" dir="rtl">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 border-b border-amber-100">
+        <div className="flex items-center gap-2">
+          <Users size={16} className="text-amber-600" />
+          <span className="text-sm font-extrabold text-amber-800">
+            طابور اليوم — الحجز بالانتظار ({items.length})
+          </span>
+        </div>
+        <span className="text-[10px] font-bold text-amber-500">
+          مرتبين بالترتيب — اللي عليه الدور الأول معلّم
+        </span>
+      </div>
+      <div className="divide-y divide-slate-100">
+        {items.map((item, idx) => {
+          const isNext = idx === 0;
+          const busy = busyId === item.id;
+          const waText = `مرحبًا ${item.customerName}، دورك قرّب في طابور الانتظار — نرجو التوجه إلينا خلال 30 دقيقة تقريبًا.${
+            item.raw?.bookingNumber ? ` رقم حجزك: ${item.raw.bookingNumber}.` : ''
+          }`;
+          const waHref = item.customerPhone ? waMeLink(item.customerPhone, waText) : null;
+          return (
+            <div
+              key={item.id}
+              className={`flex flex-wrap items-center gap-2 sm:gap-3 px-4 py-3 ${
+                isNext ? 'bg-amber-50/60' : ''
+              }`}
+            >
+              <div
+                className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 ${
+                  isNext ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 text-slate-500'
+                }`}
+                title="ترتيب في الطابور"
+              >
+                <span className="text-sm font-black leading-none">{item.queuePosition}</span>
+                <span className="text-[8px] font-bold opacity-80">{isNext ? 'الدور عليه' : 'في الانتظار'}</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-extrabold text-slate-900 truncate">
+                  {item.customerName}
+                  {item.doctorName && (
+                    <span className="inline-flex items-center gap-1 mr-2 text-[10px] font-bold text-cyan-600">
+                      <Stethoscope size={11} />
+                      {item.doctorName}
+                    </span>
+                  )}
+                </p>
+                <p className="text-[11px] font-bold text-slate-400 truncate">
+                  {item.itemName}
+                  {item.raw?.bookingNumber ? ` · ${item.raw.bookingNumber}` : ''}
+                  {item.notes ? ` · ${item.notes}` : ''}
+                </p>
+              </div>
+              {item.customerPhone && (
+                <a
+                  href={`tel:${item.customerPhone}`}
+                  className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center shrink-0"
+                  title={`اتصال ${item.customerName}`}
+                >
+                  <Phone size={14} />
+                </a>
+              )}
+              {waHref && (
+                <a
+                  href={waHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-8 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-extrabold flex items-center gap-1.5 shrink-0"
+                  title="إشعار العميل إن دوره قرّب عبر واتساب"
+                >
+                  <MessageCircle size={13} />
+                  إشعار العميل
+                </a>
+              )}
+              {item.status === 'PENDING' && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setStatus(item, 'CONFIRMED')}
+                  className="h-8 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-extrabold flex items-center gap-1.5 disabled:opacity-60 shrink-0"
+                >
+                  {busy ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                  بدأ الدور
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setStatus(item, 'COMPLETED')}
+                className="h-8 px-3 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 text-[11px] font-extrabold flex items-center gap-1.5 disabled:opacity-60 shrink-0"
+              >
+                <CheckCircle2 size={12} />
+                تم
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

@@ -15,6 +15,7 @@
     "./components/common/*": "./src/components/common/*",
     "./builder": "./src/builder/index.ts",
     "./builder/*": "./src/builder/*",
+    "./booking": "./src/booking/index.ts",
     "./utils/*": "./src/utils/*"
   },
   "scripts": {

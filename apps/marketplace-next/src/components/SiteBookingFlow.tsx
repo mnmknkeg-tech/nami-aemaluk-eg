@@ -56,6 +56,17 @@ interface AvailableSlot {
 interface BookingResult {
   bookingNumber?: string;
   id?: string;
+  /** ترتيب العميل في طابور الانتظار (لما الحجز بالانتظار مفعّل) */
+  queuePosition?: number | null;
+}
+
+export interface QueueFlowConfig {
+  queueEnabled: boolean;
+  /** تنبيه العميل قبل دوره بكم دقيقة */
+  queueNotifyMinutes?: number;
+  /** متوسط زمن الخدمة — لحساب الانتظار التقديري */
+  avgServiceMinutes?: number;
+  doctors?: { id: string; name: string; specialty?: string }[];
 }
 
 const SERVICE_DAYS = 14;
@@ -97,6 +108,7 @@ export function SiteBookingFlow({
   services,
   settings,
   initialServiceId,
+  queueConfig,
 }: {
   slug: string;
   shopId: string;
@@ -105,7 +117,13 @@ export function SiteBookingFlow({
   services: PublicBookingService[];
   settings: PublicBookingSettings;
   initialServiceId?: string;
+  /** إعدادات الحجز بالانتظار (من layoutConfig المتجر) — عند التفعيل يتحول التدفّق لكوتة */
+  queueConfig?: QueueFlowConfig;
 }) {
+  const isQueue = !!queueConfig?.queueEnabled;
+  const flowDoctors = queueConfig?.doctors ?? [];
+  const notifyMinutes = queueConfig?.queueNotifyMinutes ?? 30;
+  const avgMinutes = queueConfig?.avgServiceMinutes ?? 15;
   const days = useMemo(() => {
     const advance = Math.min(Math.max(settings.advanceDays || 14, 1), 90);
     const count = Math.min(advance, SERVICE_DAYS);
@@ -129,6 +147,7 @@ export function SiteBookingFlow({
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
+  const [doctorId, setDoctorId] = useState<string>('any');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BookingResult | null>(null);
@@ -167,9 +186,11 @@ export function SiteBookingFlow({
     e.preventDefault();
     setError(null);
     if (!service) return setError('اختار الخدمة الأول');
-    if (!time) return setError('اختار الوقت المناسب من المواعيد المتاحة');
+    if (!isQueue && !time) return setError('اختار الوقت المناسب من المواعيد المتاحة');
     if (name.trim().length < 2) return setError('اكتب اسمك من فضلك');
     if (phone.replace(/\D/g, '').length < 10) return setError('رقم الموبايل مش مظبوط');
+
+    const doctor = flowDoctors.find((d) => d.id === doctorId);
 
     setSubmitting(true);
     try {
@@ -182,10 +203,16 @@ export function SiteBookingFlow({
         customerPhone: phone.trim(),
         notes: notes.trim() || undefined,
         serviceId: service.id,
-        bookingDate: date,
-        bookingTime: time,
+        // في وضع الكوتة: الحجز لنفس اليوم بدون ساعة ثابتة — الترتيب هو اللي بيتحكم
+        bookingDate: isQueue ? cairoDateStr(0) : date,
+        bookingTime: isQueue ? undefined : time,
         bookingActivityType: 'APPOINTMENT',
-        metadata: { source: 'site-booking-page', siteSlug: slug },
+        metadata: {
+          source: 'site-booking-page',
+          siteSlug: slug,
+          ...(isQueue ? { queueEnabled: true } : {}),
+          ...(doctor ? { doctorName: doctor.name } : {}),
+        },
       });
       setResult((res as any)?.data ?? res ?? {});
     } catch (err) {
@@ -196,16 +223,45 @@ export function SiteBookingFlow({
   };
 
   if (result) {
+    const queuePosition =
+      isQueue && result.queuePosition != null && Number(result.queuePosition) > 0
+        ? Number(result.queuePosition)
+        : null;
+    const ahead = queuePosition ? queuePosition - 1 : 0;
+    const estMinutes = ahead * avgMinutes;
     return (
       <div className="rounded-3xl border border-emerald-200 bg-emerald-50/60 p-6 sm:p-8 text-center space-y-4">
         <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto" />
         <div>
-          <p className="text-lg font-black text-slate-900">تم تثبيت طلب حجزك</p>
+          <p className="text-lg font-black text-slate-900">
+            {isQueue ? 'اتسجل دورك في الطابور' : 'تم تثبيت طلب حجزك'}
+          </p>
           <p className="text-sm font-semibold text-slate-500 mt-1">
-            {service?.name} — {date}
-            {time ? ` · ${time}` : ''}
+            {service?.name} — {isQueue ? 'اليوم' : date}
+            {!isQueue && time ? ` · ${time}` : ''}
           </p>
         </div>
+        {queuePosition && (
+          <div className="mx-auto max-w-xs rounded-2xl bg-white border-2 border-brand-cyan/40 p-4 space-y-2">
+            <p className="text-[11px] font-bold text-slate-400">ترتيبك في الطابور</p>
+            <p className="font-black text-4xl text-brand-cyan leading-none">
+              {queuePosition}
+            </p>
+            <p className="text-xs font-bold text-slate-600">
+              فيه <span className="text-brand-cyan">{ahead}</span> قدامك
+              {ahead > 0 && (
+                <span className="text-slate-400">
+                  {' '}
+                  — انتظار تقديري ~{estMinutes} دقيقة
+                </span>
+              )}
+            </p>
+            <p className="text-[10px] font-semibold text-slate-400 leading-4">
+              لما يتبقى عليك ~{notifyMinutes} دقيقة هيظهرلك تنبيه كبير في صفحة التتبع
+              (بالصوت) — خليها مفتوحة أو ارجعلها في أي وقت
+            </p>
+          </div>
+        )}
         {result.bookingNumber && (
           <div className="mx-auto max-w-xs rounded-2xl bg-white border border-emerald-200 p-4">
             <p className="text-[11px] font-bold text-slate-400 mb-1">احتفظ برقم الحجز</p>
@@ -238,7 +294,7 @@ export function SiteBookingFlow({
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-white py-3 font-black text-sm hover:bg-slate-800"
           >
             <SearchCheck className="w-4 h-4" />
-            تتبع حالة الحجز
+            {isQueue ? 'افتح التتبع وشوف دورك لايف' : 'تتبع حالة الحجز'}
           </Link>
         </div>
         <button
@@ -252,7 +308,7 @@ export function SiteBookingFlow({
           }}
           className="text-xs font-bold text-slate-400 hover:text-slate-600 underline underline-offset-4"
         >
-          حجز موعد آخر
+          {isQueue ? 'حجز دور آخر' : 'حجز موعد آخر'}
         </button>
       </div>
     );
@@ -333,8 +389,8 @@ export function SiteBookingFlow({
         )}
       </section>
 
-      {/* اختيار اليوم */}
-      {service && (
+      {/* اختيار اليوم — في وضع الكوتة مفيش أيام ثابتة */}
+      {service && !isQueue && (
         <section>
           <h2 className="flex items-center gap-2 text-sm font-black text-slate-900 mb-3">
             <CalendarDays className="w-4 h-4 text-brand-cyan" />
@@ -379,8 +435,8 @@ export function SiteBookingFlow({
         </section>
       )}
 
-      {/* اختيار الوقت */}
-      {service && (
+      {/* اختيار الوقت — في وضع الكوتة بيتستبدل بطابور الانتظار */}
+      {service && !isQueue && (
         <section>
           <h2 className="flex items-center gap-2 text-sm font-black text-slate-900 mb-3">
             <Clock className="w-4 h-4 text-brand-cyan" />
@@ -421,8 +477,52 @@ export function SiteBookingFlow({
         </section>
       )}
 
+      {/* اختيار الطبيب — وضع الكوتة بس */}
+      {service && isQueue && flowDoctors.length > 0 && (
+        <section>
+          <h2 className="flex items-center gap-2 text-sm font-black text-slate-900 mb-3">
+            <User className="w-4 h-4 text-brand-cyan" />
+            2. معين تخدمك؟
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setDoctorId('any')}
+              className={cn(
+                'text-right px-4 py-3 rounded-2xl border font-black text-sm transition-all',
+                doctorId === 'any'
+                  ? 'border-brand-cyan bg-brand-cyan/5 ring-2 ring-brand-cyan/20 text-slate-900'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+              )}
+            >
+              أي طبيب متاح — أسرع دور
+            </button>
+            {flowDoctors.map((doc) => (
+              <button
+                key={doc.id}
+                type="button"
+                onClick={() => setDoctorId(doc.id)}
+                className={cn(
+                  'text-right px-4 py-3 rounded-2xl border transition-all space-y-0.5',
+                  doctorId === doc.id
+                    ? 'border-brand-cyan bg-brand-cyan/5 ring-2 ring-brand-cyan/20'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                )}
+              >
+                <span className="block font-black text-sm text-slate-900">{doc.name}</span>
+                {doc.specialty && (
+                  <span className="block text-[11px] font-bold text-slate-400">
+                    {doc.specialty}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* بيانات الحاجز */}
-      {service && time && (
+      {service && (isQueue || time) && (
         <section className="space-y-3">
           <h2 className="flex items-center gap-2 text-sm font-black text-slate-900">
             <User className="w-4 h-4 text-brand-cyan" />
@@ -435,7 +535,9 @@ export function SiteBookingFlow({
             <div className="rounded-xl bg-brand-cyan/5 border border-brand-cyan/20 px-3.5 py-2.5 text-xs font-bold text-slate-600 flex items-center justify-between">
               <span>{service.name}</span>
               <span dir="ltr">
-                {date} · {time}
+                {isQueue
+                  ? `طابور اليوم · ${flowDoctors.find((d) => d.id === doctorId)?.name ?? 'أي طبيب'}`
+                  : `${date} · ${time}`}
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -474,7 +576,7 @@ export function SiteBookingFlow({
               ) : (
                 <Phone className="w-4 h-4" />
               )}
-              {submitting ? 'بنثبّت الحجز…' : 'تثبيت الحجز'}
+              {submitting ? 'بنثبّت الحجز…' : isQueue ? 'احجز دورك الآن' : 'تثبيت الحجز'}
             </button>
           </form>
         </section>

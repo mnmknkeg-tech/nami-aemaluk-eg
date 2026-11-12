@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Globe,
   ShieldCheck,
@@ -12,9 +12,24 @@ import {
   Save,
   RefreshCw,
   AlertCircle,
+  Users,
+  Plus,
+  Trash2,
+  Loader2,
+  Timer,
+  Stethoscope,
 } from 'lucide-react';
+import { apiRequest } from '@/lib/auth';
+import {
+  DEFAULT_AVG_SERVICE_MINUTES,
+  DEFAULT_QUEUE_NOTIFY_MINUTES,
+  readShopBookingConfig,
+  type QueueDoctor,
+  type ShopBookingConfig,
+} from '@ray-eg/shared/booking';
 
 export const SETTINGS_TABS = [
+  { id: 'booking-queue', label: 'الحجز بالانتظار والأطباء', icon: Users },
   { id: 'booking-site', label: 'الموقع العام', icon: Globe },
   { id: 'booking-security', label: 'الأمان والصلاحيات', icon: ShieldCheck },
   { id: 'booking-notifications', label: 'إشعارات وتأكيدات', icon: Bell },
@@ -37,7 +52,7 @@ export function BookingSettings() {
   return (
     <div className="space-y-4">
       {/* Tab Navigation */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
         {SETTINGS_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeSettingsTab === tab.id;
@@ -67,6 +82,7 @@ export function BookingSettings() {
 
       {/* Settings Card */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-7 shadow-sm">
+        {activeSettingsTab === 'booking-queue' && <QueueDoctorsSettings />}
         {activeSettingsTab === 'booking-site' && <BookingSiteSettings />}
         {activeSettingsTab === 'booking-security' && <BookingSecuritySettings />}
         {activeSettingsTab === 'booking-notifications' && <BookingNotificationsSettings />}
@@ -74,20 +90,22 @@ export function BookingSettings() {
         {activeSettingsTab === 'booking-cancellation' && <BookingCancellationSettings />}
         {activeSettingsTab === 'booking-privacy' && <BookingPrivacySettings />}
 
-        {/* Save Bar */}
-        <div className="mt-8 pt-5 border-t border-slate-100 flex items-center justify-between gap-4">
-          <div className="text-xs text-slate-400 font-medium">
-            يتم تطبيق التغييرات فور حفظ الإعدادات على جميع الحجوزات والموقع العام.
+        {/* Save Bar — التاب الجديد فيه زرار حفظه الخاص */}
+        {activeSettingsTab !== 'booking-queue' && (
+          <div className="mt-8 pt-5 border-t border-slate-100 flex items-center justify-between gap-4">
+            <div className="text-xs text-slate-400 font-medium">
+              يتم تطبيق التغييرات فور حفظ الإعدادات على جميع الحجوزات والموقع العام.
+            </div>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors shadow-sm"
+            >
+              {saved ? <Check size={14} className="text-emerald-400" /> : <Save size={14} />}
+              {saved ? 'تم الحفظ بنجاح' : 'حفظ الإعدادات'}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors shadow-sm"
-          >
-            {saved ? <Check size={14} className="text-emerald-400" /> : <Save size={14} />}
-            {saved ? 'تم الحفظ بنجاح' : 'حفظ الإعدادات'}
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -151,6 +169,304 @@ function InputRow({
         defaultValue={defaultValue}
         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 transition-colors"
       />
+    </div>
+  );
+}
+
+/**
+ * الحجز بالانتظار (الكوتة) + فريق العمل — الإعدادات الوحيدة المحفوظة فعليًا:
+ * بتتخزن في layoutConfig.booking عبر PATCH /shops/me، والموقع المنشور
+ * (صفحة الحجز + صفحة التتبع) بيقراها فورًا.
+ */
+function QueueDoctorsSettings() {
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [layoutConfig, setLayoutConfig] = useState<Record<string, unknown>>({});
+  const [queueEnabled, setQueueEnabled] = useState(false);
+  const [notifyMinutes, setNotifyMinutes] = useState(String(DEFAULT_QUEUE_NOTIFY_MINUTES));
+  const [avgMinutes, setAvgMinutes] = useState(String(DEFAULT_AVG_SERVICE_MINUTES));
+  const [doctors, setDoctors] = useState<QueueDoctor[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const shop = await apiRequest<any>('/shops/me');
+        if (!alive) return;
+        const layout =
+          shop?.layoutConfig && typeof shop.layoutConfig === 'object' ? shop.layoutConfig : {};
+        setLayoutConfig(layout);
+        const cfg = readShopBookingConfig(shop);
+        setQueueEnabled(!!cfg.queueEnabled);
+        setNotifyMinutes(String(cfg.queueNotifyMinutes ?? DEFAULT_QUEUE_NOTIFY_MINUTES));
+        setAvgMinutes(String(cfg.avgServiceMinutes ?? DEFAULT_AVG_SERVICE_MINUTES));
+        setDoctors(cfg.doctors ?? []);
+      } catch (err: any) {
+        if (alive) setLoadError(err?.message || 'تعذر تحميل الإعدادات');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    setSaveState('idle');
+    setSaveError(null);
+    try {
+      const cfg: ShopBookingConfig = {
+        queueEnabled,
+        queueNotifyMinutes: Math.max(5, Math.floor(Number(notifyMinutes) || DEFAULT_QUEUE_NOTIFY_MINUTES)),
+        avgServiceMinutes: Math.max(5, Math.floor(Number(avgMinutes) || DEFAULT_AVG_SERVICE_MINUTES)),
+        doctors: doctors.filter((d) => d.name.trim()),
+      };
+      // نحفظ من غير أطباء لو الكوتة مطفية — بس نحتفظ بالقيم للرجوع لاحقًا
+      const updatedLayout = {
+        ...layoutConfig,
+        booking: cfg,
+        commerce: {
+          ...((layoutConfig.commerce as Record<string, unknown>) || {}),
+          queueEnabled: cfg.queueEnabled,
+        },
+      };
+      await apiRequest('/shops/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ layoutConfig: updatedLayout }),
+      });
+      setLayoutConfig(updatedLayout);
+      setSaveState('saved');
+      setTimeout(() => setSaveState('idle'), 3000);
+    } catch (err: any) {
+      setSaveState('error');
+      setSaveError(err?.message || 'تعذر الحفظ — جرّب تاني');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-10 justify-center text-sm font-bold text-slate-400">
+        <Loader2 size={16} className="animate-spin" />
+        بنجيب إعدادات الحجز…
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <SectionTitle
+        title="الحجز بالانتظار (الكوتة) وفريق العمل"
+        desc="بدل المواعيد الثابتة: العميل ياخد رقم في الطابور ويشوف قدامه كام، والتنبيه بيوصله قبل دوره"
+      />
+
+      {loadError && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-3.5 py-2.5 text-xs font-bold text-red-600">
+          <AlertCircle size={14} />
+          {loadError}
+        </div>
+      )}
+
+      <ToggleRow2
+        title="تفعيل الحجز بالانتظار"
+        desc="صفحة الحجز تبقى «احجز دورك الآن» — العميل ياخد رقمه فورًا بدل اختيار ساعة ثابتة"
+        on={queueEnabled}
+        onChange={setQueueEnabled}
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+        <InputRow2
+          label="التنبيه قبل الدور بكم دقيقة؟"
+          hint="لما يتبقى عليه وقت قليل يظهر تنبيه كبير في صفحة تتبع الحجز مع صوت واهتزاز"
+          value={notifyMinutes}
+          onChange={setNotifyMinutes}
+          suffix="دقيقة"
+        />
+        <InputRow2
+          label="متوسط زمن الخدمة"
+          hint="بيتحسب منه الانتظار التقديري: قدامه كام × المتوسط"
+          value={avgMinutes}
+          onChange={setAvgMinutes}
+          suffix="دقيقة"
+        />
+      </div>
+
+      {/* فريق العمل */}
+      <div className="py-3.5">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <div className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5">
+              <Stethoscope size={15} className="text-cyan-500" />
+              فريق العمل / الأطباء
+            </div>
+            <div className="text-[11px] font-medium text-slate-400 mt-0.5">
+              يظهرون في صفحة الحجز ليختار العميل معين يخدمه (اختياري)
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              setDoctors((d) => [...d, { id: `dr_${Date.now()}`, name: '', specialty: '' }])
+            }
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:border-cyan-400 hover:text-cyan-500 transition-colors"
+          >
+            <Plus size={13} />
+            إضافة
+          </button>
+        </div>
+        {doctors.length === 0 ? (
+          <p className="rounded-xl bg-slate-50 border border-dashed border-slate-200 px-3.5 py-3 text-[11px] font-bold text-slate-400">
+            مفيش أطباء مضافين — الحجوزات هتدخل الطابور العام من غير تعيين طبيب.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {doctors.map((doc, idx) => (
+              <div key={doc.id} className="flex items-center gap-2">
+                <input
+                  value={doc.name}
+                  onChange={(e) =>
+                    setDoctors((arr) =>
+                      arr.map((d, i) => (i === idx ? { ...d, name: e.target.value } : d))
+                    )
+                  }
+                  placeholder="اسم الطبيب — مثال: د. أحمد سمير"
+                  className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-cyan-400"
+                />
+                <input
+                  value={doc.specialty || ''}
+                  onChange={(e) =>
+                    setDoctors((arr) =>
+                      arr.map((d, i) => (i === idx ? { ...d, specialty: e.target.value } : d))
+                    )
+                  }
+                  placeholder="التخصص"
+                  className="w-28 sm:w-36 shrink-0 px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-cyan-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setDoctors((arr) => arr.filter((_, i) => i !== idx))}
+                  className="w-8 h-8 shrink-0 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center"
+                  aria-label="حذف الطبيب"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* إزاي العميل بيتابع — شرح مختصر داخل الإعدادات */}
+      <div className="rounded-xl bg-cyan-50 border border-cyan-200 px-3.5 py-3 space-y-1.5">
+        <p className="text-[11px] font-black text-slate-700 flex items-center gap-1.5">
+          <Timer size={13} className="text-cyan-500" />
+          إزاي العميل بيتابع دوره؟
+        </p>
+        <ul className="text-[11px] font-semibold text-slate-500 leading-5 list-disc pr-4 space-y-0.5">
+          <li>بعد الحجز ياخد رقم الحجز + لينك تتبع — يفتحه في أي وقت من غير تسجيل دخول.</li>
+          <li>صفحة التتبع بتتحدث لوحدها كل 30 ثانية: ترتيبه وقدامه كام والحالة.</li>
+          <li>لما دورك يقرّب (بالمدة اللي حددتها فوق) يظهر تنبيه كبير + صوت + اهتزاز.</li>
+          <li>وأنت كمان من صفحة «طابور اليوم» تقدر تبعتله إشعار واتساب جاهز بضغطة.</li>
+        </ul>
+      </div>
+
+      {/* Save bar */}
+      <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-4">
+        <div className="text-xs font-medium">
+          {saveState === 'error' ? (
+            <span className="text-red-600 flex items-center gap-1.5">
+              <AlertCircle size={13} />
+              {saveError}
+            </span>
+          ) : saveState === 'saved' ? (
+            <span className="text-emerald-600 flex items-center gap-1.5 font-bold">
+              <Check size={13} />
+              اتسجلت — شغالة على الموقع فورًا
+            </span>
+          ) : (
+            <span className="text-slate-400">الحفظ بيسجل الإعدادات في بروفايل متجرك مباشرة.</span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-60"
+        >
+          {saving ? <Loader2 size={14} className="animate-spin" /> : saveState === 'saved' ? <Check size={14} className="text-emerald-400" /> : <Save size={14} />}
+          {saving ? 'بنحفظ…' : 'حفظ الإعدادات'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** نسخ محلية من ToggleRow/InputRow بتشتغل بحالة مسيطر عليها (عشان الحفظ الحقيقي). */
+function ToggleRow2({
+  title,
+  desc,
+  on,
+  onChange,
+}: {
+  title: string;
+  desc: string;
+  on: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between py-3.5 border-b border-slate-50 gap-4">
+      <div className="flex-1 min-w-0">
+        <div className="text-xs sm:text-sm font-bold text-slate-800">{title}</div>
+        <div className="text-[11px] font-medium text-slate-400 mt-0.5">{desc}</div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(!on)}
+        className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${on ? 'bg-slate-900' : 'bg-slate-200'}`}
+      >
+        <div
+          className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${on ? 'right-0.5' : 'right-5.5'}`}
+        />
+      </button>
+    </div>
+  );
+}
+
+function InputRow2({
+  label,
+  hint,
+  value,
+  onChange,
+  suffix,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  onChange: (v: string) => void;
+  suffix: string;
+}) {
+  return (
+    <div className="py-3.5">
+      <label className="text-xs sm:text-sm font-bold text-slate-800 block mb-1.5">{label}</label>
+      <div className="relative">
+        <input
+          type="number"
+          min={5}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-3.5 py-2.5 pl-16 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold text-slate-800 focus:outline-none focus:border-cyan-400 transition-colors"
+        />
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">
+          {suffix}
+        </span>
+      </div>
+      <p className="text-[10px] font-medium text-slate-400 mt-1">{hint}</p>
     </div>
   );
 }
