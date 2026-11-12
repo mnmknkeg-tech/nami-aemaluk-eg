@@ -185,6 +185,117 @@ function formatDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * تحويل timestamp بمنطقة زمنية (UTC غالبًا) إلى تاريخ ووقت القاهرة الحقيقيين.
+ * الباكند بيخزن startAt/startTime بصيغة ISO UTC، وslice الخام (11,16) كان
+ * بيعرض وقت أوروبا — عشان كده الحجوزات كانت بتظهر 00:30 بدل 02:30 مثلًا.
+ * النص اللي مكتوب فيه منطقة زمنية بس هو اللي بيتحول؛ التواريخ الخام تفضل زي ما هي.
+ */
+function cairoPartsFromIso(iso: unknown): { date: string; time: string } | null {
+  if (typeof iso !== 'string' || !iso.trim()) return null;
+  if (!/[zZ]$/.test(iso.trim()) && !/[+-]\d{2}:\d{2}$/.test(iso.trim())) return null;
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    const date = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Cairo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+    const time = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Africa/Cairo',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(d);
+    return { date, time };
+  } catch {
+    return null;
+  }
+}
+
+/* ============================================================
+ * عملاء الحجوزات → صفحة العملاء (من الموقع أو اليدوي)
+ * كل عميل في أي حجز بيتأكد إن له سجل في /shops/{id}/customers —
+ * الباكند بيعمل upsert بالتليفون فمفيش تكرار، وعلامة session-level
+ * هنا بتمنع إعادة الإرسال لنفس العميل كل ما القايمة تعمل refresh.
+ * ============================================================ */
+
+const syncedCustomerKeys = new Set<string>();
+let bookingCustomersCache: { at: number; phones: Set<string>; names: Set<string> } | null = null;
+
+/** آخر 9 أرقام — 01xxxxxxxxx و20xxxxxxxxx يطابقوا نفس العميل */
+function normPhoneKey(p: string): string {
+  const d = String(p || '').replace(/\D/g, '');
+  return d.length >= 9 ? d.slice(-9) : d;
+}
+
+function normNameKey(n: string): string {
+  return String(n || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+async function ensureBookingCustomers(shopId: string, items: BookingItem[]): Promise<void> {
+  if (!shopId) return;
+  const candidates = new Map<string, { name: string; phone: string; src: string }>();
+  for (const b of items) {
+    const name = (b.customerName || '').trim();
+    if (!name || name === 'عميل') continue;
+    const phone = (b.customerPhone || '').trim();
+    const key = phone ? `p:${normPhoneKey(phone)}` : `n:${normNameKey(name)}`;
+    if (syncedCustomerKeys.has(key) || candidates.has(key)) continue;
+    candidates.set(key, { name, phone, src: b.source });
+  }
+  if (candidates.size === 0) return;
+
+  try {
+    if (
+      !bookingCustomersCache ||
+      Date.now() - bookingCustomersCache.at > 5 * 60000
+    ) {
+      const res = await apiRequest<any>(`/shops/${shopId}/customers?limit=500`);
+      const list = Array.isArray(res)
+        ? res
+        : res?.data?.customers || res?.data || res?.customers || [];
+      const phones = new Set<string>();
+      const names = new Set<string>();
+      (Array.isArray(list) ? list : []).forEach((c: any) => {
+        if (c?.phone) phones.add(normPhoneKey(String(c.phone)));
+        if (c?.name) names.add(normNameKey(String(c.name)));
+      });
+      bookingCustomersCache = { at: Date.now(), phones, names };
+    }
+
+    for (const [key, c] of candidates) {
+      // نعلّم قبل الإرسال — فشل الرابط مش هيعيد المحاولة كل refresh
+      syncedCustomerKeys.add(key);
+      const exists = c.phone
+        ? bookingCustomersCache.phones.has(normPhoneKey(c.phone))
+        : bookingCustomersCache.names.has(normNameKey(c.name));
+      if (exists) continue;
+      apiRequest(`/shops/${shopId}/customers`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: c.name,
+          ...(c.phone ? { phone: c.phone } : {}),
+          source: 'bookings',
+          notes:
+            c.src === 'website'
+              ? 'اتضاف تلقائيًا من حجز على الموقع'
+              : 'اتضاف تلقائيًا من حجز يدوي',
+        }),
+      })
+        .then((res: any) => {
+          // الباكند ممكن يرجّع عميل موجود بدل الإنشاء (upsert بالتليفون)
+          if (res?.raw?.created !== false && c.phone) {
+            bookingCustomersCache?.phones.add(normPhoneKey(c.phone));
+          }
+        })
+        .catch(() => {});
+    }
+  } catch {}
+}
+
 /* ============================================================
  * Main Page Component
  * ============================================================ */
@@ -252,11 +363,14 @@ function BookingsMainContent() {
 
       const list: BookingItem[] = [
         ...webList.map((b: any): BookingItem => {
+          const isoCairo = cairoPartsFromIso(b.startAt || b.createdAt || '');
           const rawDate =
             b.bookingDate ||
+            isoCairo?.date ||
             (b.startAt ? b.startAt.slice(0, 10) : '') ||
-            (b.createdAt ? b.createdAt.slice(0, 10) : formatDateKey(new Date()));
-          const rawTime = b.bookingTime || (b.startAt ? b.startAt.slice(11, 16) : '10:00');
+            formatDateKey(new Date());
+          const rawTime =
+            b.bookingTime || isoCairo?.time || (b.startAt ? b.startAt.slice(11, 16) : '10:00');
           const whenIso = b.startAt || `${rawDate}T${rawTime}:00`;
           return {
             id: `web-${b.id}`,
@@ -280,12 +394,16 @@ function BookingsMainContent() {
           };
         }),
         ...intList.map((r: any): BookingItem => {
+          // startTime بتوصل UTC من الباكند — بنحولها لتوقيت القاهرة بدل slice الخام
+          const isoCairo = cairoPartsFromIso(r.startTime || '');
           const rawDate =
+            isoCairo?.date ||
             r.reservationDate ||
             (r.startTime ? r.startTime.slice(0, 10) : '') ||
-            (r.createdAt ? r.createdAt.slice(0, 10) : formatDateKey(new Date()));
+            formatDateKey(new Date());
           const rawTime =
-            r.startTime && r.startTime.length >= 16 ? r.startTime.slice(11, 16) : '10:00';
+            isoCairo?.time ||
+            (r.startTime && r.startTime.length >= 16 ? r.startTime.slice(11, 16) : '10:00');
           const whenIso = r.startTime || `${rawDate}T${rawTime}:00`;
           return {
             id: `int-${r.id}`,
@@ -352,6 +470,13 @@ function BookingsMainContent() {
     setModalInitialDate(dateStr || formatDateKey(currentDate));
     setIsAddModalOpen(true);
   };
+
+  // عملاء الحجوزات (من الموقع أو اليدوي) بيتحولوا لصفحة العملاء تلقائيًا
+  useEffect(() => {
+    if (myShopId && bookings.length > 0) {
+      void ensureBookingCustomers(myShopId, bookings);
+    }
+  }, [myShopId, bookings]);
 
   // Status Updater
   const handleUpdateStatus = async (item: BookingItem, newStatus: UnifiedStatus) => {
@@ -1214,6 +1339,16 @@ function AgendaView({
  * Add Manual Booking Modal (حجز يدوي لجميع الأنشطة)
  * ============================================================ */
 
+/**
+ * أوقات سريعة للاختيار بنقرة — كل 30 دقيقة من 08:00 لـ 22:30.
+ * الاختيار الحر بالدقائق ما زال متاحًا من حقل الوقت العادي.
+ */
+const QUICK_TIMES: string[] = Array.from({ length: 30 }, (_, i) => {
+  const h = 8 + Math.floor(i / 2);
+  const m = i % 2 === 0 ? '00' : '30';
+  return `${String(h).padStart(2, '0')}:${m}`;
+});
+
 function AddBookingModal({
   initialDate,
   shopId,
@@ -1244,8 +1379,14 @@ function AddBookingModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName.trim() || !customerPhone.trim() || !itemName.trim()) {
-      alert('يرجى كتابة اسم العميل، رقم الهاتف، واسم الخدمة/الحجز');
+    // الحجز اليدوي حر: الاسم والخدمة بس المطلوبين — التليفون اختياري،
+    // وأي تاريخ (قديم أو جديد) وأي وقت بيتسجلوا زي ما هما بدون قيود.
+    if (!customerName.trim() || !itemName.trim()) {
+      alert('يرجى كتابة اسم العميل واسم الخدمة/الحجز');
+      return;
+    }
+    if (customerPhone.trim() && customerPhone.replace(/\D/g, '').length < 10) {
+      alert('رقم الهاتف ناقص — أكمله صح أو سيبه فاضي');
       return;
     }
 
@@ -1263,6 +1404,9 @@ function AddBookingModal({
         notes: notes.trim(),
         bookingActivityType: activityType,
         status: 'CONFIRMED',
+        // علامة إدخال يدوي — بنطلب من الباكند تسجيل الموعد كما هو بالظبط
+        // بدون إعادة جدولة أو فحص ازدحام (القيود للموقع العام مش لليدوي)
+        metadata: { source: 'dashboard-manual', manual: true, exactSlot: true },
       };
 
       const res = await addBookingViaBackend(payload);
@@ -1383,7 +1527,9 @@ function AddBookingModal({
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">رقم الهاتف *</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                رقم الهاتف <span className="text-slate-400 font-medium">(اختياري)</span>
+              </label>
               <input
                 type="tel"
                 value={customerPhone}
@@ -1391,12 +1537,11 @@ function AddBookingModal({
                 placeholder="010xxxxxxxx"
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-slate-400 text-right"
                 dir="ltr"
-                required
               />
             </div>
           </div>
 
-          {/* التاريخ والوقت */}
+          {/* التاريخ والوقت — اليدوي حر تمامًا */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">تاريخ الحجز</label>
@@ -1407,6 +1552,9 @@ function AddBookingModal({
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-slate-400"
                 required
               />
+              <p className="text-[10px] font-bold text-slate-400 mt-1">
+                أي تاريخ — قديم أو جديد، من غير قيود
+              </p>
             </div>
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">وقت الموعد</label>
@@ -1417,6 +1565,33 @@ function AddBookingModal({
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-slate-400"
                 required
               />
+              <p className="text-[10px] font-bold text-slate-400 mt-1">
+                أي وقت — بيتسجل زي ما دخّلته بالظبط
+              </p>
+            </div>
+          </div>
+
+          {/* أوقات سريعة — نقرة واحدة بدل الكتابة */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1.5">
+              أوقات سريعة <span className="text-slate-400 font-medium">(اختيار بنقرة)</span>
+            </label>
+            <div className="flex gap-1.5 overflow-x-auto pb-1.5 -mx-0.5 px-0.5">
+              {QUICK_TIMES.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setBookingTime(t)}
+                  className={`shrink-0 px-2.5 py-1.5 rounded-lg border text-[11px] font-bold transition-all ${
+                    bookingTime === t
+                      ? 'border-slate-900 bg-slate-900 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
+                  }`}
+                  dir="ltr"
+                >
+                  {t}
+                </button>
+              ))}
             </div>
           </div>
 
