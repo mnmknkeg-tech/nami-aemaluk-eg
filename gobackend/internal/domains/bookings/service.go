@@ -212,29 +212,12 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 		}
 	}
 
-	// Manual bookings never reject a busy window: the new appointment is
-	// queued after the last overlapping booking (shop-wide — the doctor's day
-	// is one queue) plus the doctor's configured gap between clients. The
-	// response carries the actual scheduled time so the dashboard can show it.
-	if manual && startAt != nil && endAt != nil {
-		gap := settings.GapMinutes
-		if gap < 0 {
-			gap = 0
-		}
-		for i := 0; i < 64; i++ {
-			latestEnd, overlaps, oerr := s.repo.FindShopOverlaps(ctx, shopID, *startAt, *endAt)
-			if oerr != nil {
-				return nil, oerr
-			}
-			if overlaps == 0 || latestEnd == nil {
-				break
-			}
-			next := latestEnd.Add(time.Duration(gap) * time.Minute)
-			startAt = &next
-			end := next.Add(time.Duration(durationMinutes) * time.Minute)
-			endAt = &end
-		}
-	}
+	// Manual bookings land EXACTLY at the requested slot — the secretary is
+	// registering a client standing right there, so the backend never reschedules
+	// them (the old auto-queue shifted overlapping walk-ins to "after the last
+	// booking", which surfaced as 00:30/01:35-style ghost times) and skips the
+	// per-slot cap below via SkipSlotCap. Slot restrictions are for the public
+	// site flow only.
 
 	// Build metadata
 	metadata := map[string]any{}
@@ -321,6 +304,7 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 			ResourceID:        req.ResourceID,
 			MaxPerSlot:        settings.MaxPerSlot,
 			PreventDuplicates: settings.PreventDuplicates && !manual,
+			SkipSlotCap:       manual,
 		})
 	} else {
 		created, err = s.repo.Create(ctx, booking)

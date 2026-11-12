@@ -290,6 +290,9 @@ type PublicShopInfo struct {
 	LogoURL *string `json:"logoUrl,omitempty"`
 	Phone   *string `json:"phone,omitempty"`
 	Address *string `json:"address,omitempty"`
+	// LayoutConfig carries the shop-level layout JSONB — the public booking
+	// page reads the queue-mode config (layoutConfig.booking) from it.
+	LayoutConfig map[string]any `json:"layoutConfig,omitempty"`
 }
 
 // GetPublicWebsiteBySlug returns the published website config for a shop by
@@ -303,18 +306,20 @@ func (s *BuilderService) GetPublicWebsiteBySlug(ctx context.Context, slug string
 		address     *string
 		configJSON  []byte
 		publishedAt *time.Time
+		layoutJSON  []byte
 	)
 
 	err := s.repo.pool.QueryRow(ctx, `
 		SELECT id, name, logo_url, phone, address,
 		       builder_published_config,
-		       builder_published_at
+		       builder_published_at,
+		       layout_config
 		FROM shops
 		WHERE slug = $1
 		  AND status = 'APPROVED'
 		  AND builder_published_config IS NOT NULL
 		  AND builder_published_at IS NOT NULL
-	`, slug).Scan(&shopID, &shopName, &logoURL, &phone, &address, &configJSON, &publishedAt)
+	`, slug).Scan(&shopID, &shopName, &logoURL, &phone, &address, &configJSON, &publishedAt, &layoutJSON)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -334,16 +339,27 @@ func (s *BuilderService) GetPublicWebsiteBySlug(ctx context.Context, slug string
 		config = s.getDefaultConfig()
 	}
 
+	// Shop-level layout JSONB — the public booking page reads the queue-mode
+	// config (layoutConfig.booking) from it. Malformed JSON is ignored: the
+	// website itself is still served.
+	var layoutConfig map[string]any
+	if len(layoutJSON) > 0 {
+		if uerr := json.Unmarshal(layoutJSON, &layoutConfig); uerr != nil {
+			s.logger.Warn("Failed to unmarshal public layout_config", zap.Error(uerr), zap.String("slug", slug))
+		}
+	}
+
 	return &PublicWebsite{
 		Published:   publishedAt != nil,
 		PublishedAt: publishedAt,
 		Shop: PublicShopInfo{
-			ID:      shopID,
-			Name:    shopName,
-			Slug:    slug,
-			LogoURL: logoURL,
-			Phone:   phone,
-			Address: address,
+			ID:           shopID,
+			Name:         shopName,
+			Slug:         slug,
+			LogoURL:      logoURL,
+			Phone:        phone,
+			Address:      address,
+			LayoutConfig: layoutConfig,
 		},
 		Config: &config,
 	}, nil

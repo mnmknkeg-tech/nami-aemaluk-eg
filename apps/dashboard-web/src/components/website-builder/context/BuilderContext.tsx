@@ -58,7 +58,8 @@ import {
   normalizeWebsite,
   persistTemplateCandidateBeforeCommit,
 } from './builderUtils';
-import { readUserId } from '@/lib/session-keys';
+// استيراد نسبي مقصود (برنامج الـ typecheck الجذري بيخلي `@/*` على packages/shared)
+import { readUserId } from '../../../lib/session-keys';
 import { getMergedThemeTokens } from '../data/themes/utils';
 import { normalizeCatalogProduct } from '@ray-eg/shared/builder';
 
@@ -528,9 +529,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
             const key = builderShopIdRef.current
               ? `ray_builder_site_${builderShopIdRef.current}`
               : localBuilderSiteKey();
-            const parsed = uid
-              ? JSON.parse(localStorage.getItem(key) || '')
-              : null;
+            const parsed = uid ? JSON.parse(localStorage.getItem(key) || '') : null;
             if (Array.isArray(parsed?.pages) && parsed.pages.length && parsed?.components) {
               hasPersistedWebsiteRef.current = true;
               setWebsite(normalizeWebsite(parsed));

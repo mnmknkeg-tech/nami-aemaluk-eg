@@ -33,7 +33,8 @@ test('guest orders from a published merchant site through the public checkout co
   expect(payload).toMatchObject({
     shopId: 'shop-checkout-restaurant',
     items: [{ productId: 'phase12-test-product', quantity: 1 }],
-    customer: { name: 'عميل اختبار', phone: '201000000001' },
+    // المدخل 201000000001 بيتطبّع في الفورم لصيغة 01 المحلية (toEgyptianPhoneDigits)
+    customer: { name: 'عميل اختبار', phone: '01000000001' },
     source: 'website',
   });
   expect(payload.total).toBeUndefined();

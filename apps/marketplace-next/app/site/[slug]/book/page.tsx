@@ -26,11 +26,10 @@ type PublicWebsite = {
     logoUrl?: string;
     phone?: string;
     address?: string;
-    /** إعدادات الحجز بالانتظار تُقرأ من layoutConfig.booking. الـ API العام حاليًا
-     *  ما بيرجعشه، وreadShopBookingConfig بيستقبل غيابه بأمان — لما الباك إند
-     *  يبدأ يرجّعه، الصفحة هتلتقطه هنا من غير أي تعديل. */
-    layoutConfig?: unknown;
-  };
+    // إعدادات المتجر — منها queueConfig (layoutConfig.booking) للحجز بالانتظار.
+    // الباكند بيرجّع layoutConfig في /shops/{slug}/website (Go PublicShopInfo)
+    // فالقراءة شغالة فعليًا، مش مجرد توافق أنواع.
+    layoutConfig?: Record<string, any>;  };
   config: Record<string, any>;
 };
 

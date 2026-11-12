@@ -262,6 +262,10 @@ type guardedCreateParams struct {
 	ResourceID        string
 	MaxPerSlot        int
 	PreventDuplicates bool
+	// SkipSlotCap bypasses the MaxPerSlot overlap cap — manual dashboard
+	// bookings land at the requested slot even on a busy one (slot rules
+	// are for the public site flow only).
+	SkipSlotCap bool
 }
 
 func (r *Repository) CreateGuarded(ctx context.Context, p guardedCreateParams) (*Booking, error) {
@@ -289,13 +293,15 @@ func (r *Repository) CreateGuarded(ctx context.Context, p guardedCreateParams) (
 		return nil, errors.Internal("booking_lock_failed", err)
 	}
 
-	// Cap check inside the lock.
-	count, err := countOverlapping(ctx, tx, b.ServiceID, *b.StartAt, *b.EndAt, "")
-	if err != nil {
-		return nil, err
-	}
-	if count >= maxPer {
-		return nil, errors.Validation("slot_unavailable", "الفترة الزمنية غير متاحة — جرّب موعداً آخر")
+	// Cap check inside the lock — skipped for manual entries (SkipSlotCap).
+	if !p.SkipSlotCap {
+		count, err := countOverlapping(ctx, tx, b.ServiceID, *b.StartAt, *b.EndAt, "")
+		if err != nil {
+			return nil, err
+		}
+		if count >= maxPer {
+			return nil, errors.Validation("slot_unavailable", "الفترة الزمنية غير متاحة — جرّب موعداً آخر")
+		}
 	}
 
 	// Duplicate guard inside the lock: same shop + phone + service on the same

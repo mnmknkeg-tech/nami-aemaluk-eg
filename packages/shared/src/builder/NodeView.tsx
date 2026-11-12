@@ -2488,7 +2488,9 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
             notes: notesParts.join(' — ') || undefined,
             bookingActivityType: /حجز|موعد|استشارة/.test(intentText) ? 'APPOINTMENT' : 'QUOTE',
           });
-          setFormBookingNumber(result?.bookingNumber || null);
+          // onSubmitBooking مسموح لها ترجع void — نضيّق النوع قبل قراءة الرقم
+          const booked = result || undefined;
+          setFormBookingNumber(booked?.bookingNumber || null);
           setFormSubmitted(true);
           setInputValues({});
         } catch (err) {

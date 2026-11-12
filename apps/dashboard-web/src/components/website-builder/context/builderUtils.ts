@@ -1,4 +1,4 @@
-import { ComponentNode, StyleProperties, Website } from '../types/builder';
+import { ComponentNode, StyleProperties, Website, PageMetadata } from '../types/builder';
 import {
   defaultDesignTokens,
   getMergedThemeTokens,
@@ -15,7 +15,9 @@ import {
   getInvalidPageDestinations,
   normalizeWebsiteTree,
 } from '@ray-eg/shared/builder';
-import { readUserId } from '@/lib/session-keys';
+// استيراد نسبي مقصود: الملف بيتسحب في برنامج الـ typecheck الجذري كذلك،
+// وهناك `@/*` بتشاور على packages/shared مش src بتاعة اللوحة.
+import { readUserId } from '../../../lib/session-keys';
 
 /**
  * مفتاح "النسخة المحلية" للمنشئ حين لم يُحدَّد المتجر بعد — مُقسَّم بالمستخدم
@@ -269,7 +271,9 @@ const rewriteTemplateBrandName = (website: Website, from: string, to: string): W
   const pages = website.pages.map((page) => {
     const title = page.metadata?.title;
     const description = page.metadata?.description;
-    const metadata = { ...(page.metadata || {}) };
+    // النوع صريح: الـ spread على `PageMetadata | {}` بيخلي الخصائص اختيارية
+    // والنتيجة مش متوافقة مع PageMetadata (title مطلوبة).
+    const metadata: PageMetadata = page.metadata ? { ...page.metadata } : ({} as PageMetadata);
     if (typeof title === 'string' && title.includes(from)) metadata.title = replaceAll(title);
     if (typeof description === 'string' && description.includes(from))
       metadata.description = replaceAll(description);
@@ -294,10 +298,9 @@ export const createFullWebsiteTemplateCandidate = (
   }
 
   const templateWebsite = entry.website;
-  const merchantName =
-    identity.preserveExistingIdentity
-      ? currentWebsite.name
-      : identity.shopName || templateWebsite.name;
+  const merchantName = identity.preserveExistingIdentity
+    ? currentWebsite.name
+    : identity.shopName || templateWebsite.name;
   const candidate = adaptTemplateLinkDestinations(
     // اسم التاجر الحقيقي يحل محل اسم القالب في هوية الموقع ونصوصه —
     // الطبيب لا يريد نشر "مجمع زها الطبي" باسم عيادته.
