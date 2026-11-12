@@ -45,6 +45,11 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       <main className="min-h-screen pb-28 lg:pb-0">{children}</main>
       <Footer />
       <MobileFooter />
+      {/* The market CartDrawer must be mounted on every market page — the
+          header cart button (mobile + desktop) only calls setCartOpen(true),
+          and previously the drawer existed on /shop/* pages only, so the
+          button silently did nothing on home/dalil/offers/restaurants. */}
+      <CartDrawer />
     </>
   );
 }

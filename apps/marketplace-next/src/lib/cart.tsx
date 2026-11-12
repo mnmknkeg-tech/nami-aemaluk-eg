@@ -50,6 +50,16 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 const STORAGE_KEY = 'mnmknk_cart';
 
+/** Merchant slug when the current path is a storefront (/shop/x, /site/x).
+ *  Catalog products from the API carry no shop fields, so items added from a
+ *  merchant page were saved with shopSlug:'' — and the shop checkout filter
+ *  missed them, rendering an empty cart after إتمام الطلب. Stamping the slug
+ *  from the path here covers every add-to-cart entry point at once. */
+function slugFromPath(pathname: string | null): string {
+  const merchant = pathname?.match(/^\/(?:site|shop)\/([^/]+)/);
+  return merchant ? merchant[1] : '';
+}
+
 function finiteNonNegativeNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }
@@ -149,7 +159,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           productId: itemKey,
           shopId: product.shopId,
           shopName: product.shopName || '',
-          shopSlug: product.shopSlug || '',
+          shopSlug: product.shopSlug || slugFromPath(pathname) || '',
           name: product.name,
           price: finalPrice,
           oldPrice: product.oldPrice,
@@ -164,7 +174,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (openDrawer) setCartOpen(true);
       playCartSound();
     },
-    []
+    [pathname]
   );
 
   const removeItem = useCallback((productId: string) => {

@@ -75,19 +75,33 @@ export default function CheckoutPage() {
   const marketCart = useCart();
   const siteCart = useSiteCart();
 
+  // Three checkout modes, resolved from the path alone:
+  //  - /site/[slug]/checkout  → the published-site cart (per-merchant cart)
+  //  - /shop/[slug]/checkout  → the MARKET cart filtered to that shop — shop
+  //    storefronts add to the market cart, so reading the site cart here used
+  //    to render an empty "سلتك فارغة" page right after إتمام الطلب
+  //  - /checkout              → the whole market cart (multi-shop grouped)
+  // The old `Boolean(siteCart.items[0]?.shop …)` fallback let leftover site-cart
+  // items hijack the plain market checkout — removed on purpose.
+  const siteCheckoutMatch = (pathname || '').match(/^\/site\/([^/]+)\/checkout\/?$/);
+  const shopCheckoutMatch = (pathname || '').match(/^\/shop\/([^/]+)\/checkout\/?$/);
+  const isSiteCheckout = Boolean(siteCheckoutMatch);
+  const isShopCheckout = Boolean(shopCheckoutMatch);
+  const isMerchantPath = isSiteCheckout || isShopCheckout;
+  const merchantType = shopCheckoutMatch ? 'shop' : 'site';
+  const merchantSlug = siteCheckoutMatch?.[1] || shopCheckoutMatch?.[1] || '';
   const siteCartShop = siteCart.items[0]?.shop;
-  const isMerchantPath = /^\/(shop|site)\/[^/]+\/checkout\/?$/.test(pathname || '');
-  const merchantMatch = (pathname || '').match(/^\/(shop|site)\/([^/]+)/);
-  const merchantType = merchantMatch?.[1] || 'site';
-  const merchantSlug = merchantMatch?.[2] || siteCartShop?.slug || '';
-  const isMerchantCheckout =
-    isMerchantPath || Boolean(siteCartShop?.slug || siteCartShop?.id || merchantSlug);
+  const isMerchantCheckout = isSiteCheckout;
 
-  const merchantShopName = siteCartShop?.name || '';
+  const merchantShopName = isSiteCheckout
+    ? siteCartShop?.name || ''
+    : isShopCheckout
+      ? (marketCart.items.find((i: any) => i.shopSlug === merchantSlug) as any)?.shopName || ''
+      : '';
   const merchantHomeUrl = merchantSlug
     ? `/${merchantType}/${merchantSlug}`
     : (pathname || '/').replace(/\/checkout\/?$/, '') || '/';
-  const items = isMerchantCheckout
+  const items = isSiteCheckout
     ? siteCart.items.map((entry: any) => ({
         id: entry.product.id,
         productId: entry.product.id,
@@ -106,16 +120,40 @@ export default function CheckoutPage() {
           entry.product?.variantSelection ||
           entry.product?.selectedVariant,
       }))
-    : marketCart.items;
+    : isShopCheckout
+      ? marketCart.items.filter((i: any) => i.shopSlug === merchantSlug || !i.shopSlug)
+      : marketCart.items;
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
   const payableTotal = Math.max(0, totalPrice - couponDiscount);
-  const shopGroups = isMerchantCheckout
+  const shopGroups = isSiteCheckout
     ? { [siteCart.items[0]?.shop.id || 'merchant-site']: items }
-    : marketCart.itemsByShop();
-  const clearCart = isMerchantCheckout ? siteCart.clearCart : marketCart.clearCart;
+    : isShopCheckout
+      ? { [String((items[0] as any)?.shopId || merchantSlug)]: items }
+      : marketCart.itemsByShop();
+  const clearCart = isSiteCheckout
+    ? siteCart.clearCart
+    : isShopCheckout
+      ? () => {
+          const shopId = String((items[0] as any)?.shopId || '');
+          if (shopId) marketCart.clearShopItems(shopId);
+        }
+      : marketCart.clearCart;
+  // Orders born on a merchant storefront or published site are 'website'
+  // orders; the multi-shop market checkout stays 'marketplace'.
+  const orderSource = isMerchantPath ? 'website' : 'marketplace';
+
+  const headerShopName = isSiteCheckout
+    ? siteCart.items[0]?.shop?.name || siteCartShop?.name || ''
+    : isShopCheckout
+      ? (items[0] as any)?.shopName || ''
+      : '';
+  // Market cart items carry no logo — only the published-site cart does.
+  const headerShopLogo = isSiteCheckout
+    ? siteCart.items[0]?.shop?.logoUrl || siteCartShop?.logoUrl || ''
+    : '';
 
   // Compact replacement for the market navbar, which is intentionally not
   // rendered on /checkout (see AppChrome). Keeps a clear way back and a
@@ -128,7 +166,7 @@ export default function CheckoutPage() {
           onClick={() =>
             window.history.length > 1
               ? router.back()
-              : router.push(isMerchantCheckout ? merchantHomeUrl : '/')
+              : router.push(isMerchantPath ? merchantHomeUrl : '/')
           }
           className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-brand-cyan transition-colors"
         >
@@ -136,18 +174,16 @@ export default function CheckoutPage() {
           رجوع
         </button>
         <span className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
-        {isMerchantCheckout && (siteCart.items[0]?.shop?.logoUrl || siteCartShop?.logoUrl) && (
+        {isMerchantPath && headerShopLogo && (
           <img
-            src={siteCart.items[0]?.shop?.logoUrl || siteCartShop?.logoUrl}
-            alt={siteCart.items[0]?.shop?.name || siteCartShop?.name || 'متجر'}
+            src={headerShopLogo}
+            alt={headerShopName || 'متجر'}
             className="h-8 w-8 rounded-lg object-cover"
           />
         )}
         <div className="min-w-0">
-          {isMerchantCheckout && (siteCart.items[0]?.shop?.name || siteCartShop?.name) && (
-            <p className="truncate text-[11px] font-bold text-slate-500">
-              {siteCart.items[0]?.shop?.name || siteCartShop?.name}
-            </p>
+          {isMerchantPath && headerShopName && (
+            <p className="truncate text-[11px] font-bold text-slate-500">{headerShopName}</p>
           )}
           <h1 className="truncate text-sm font-black text-slate-900 dark:text-white md:text-base">
             {title}
@@ -285,7 +321,7 @@ export default function CheckoutPage() {
           deliveryLng: coords?.lng,
           deliveryNote: notes.trim() || undefined,
           paymentMethod: paymentMethod === 'cod' ? 'COD' : 'CARD',
-          source: isMerchantCheckout ? 'website' : 'marketplace',
+          source: orderSource,
         };
         const requestKey = await getCheckoutIdempotencyKey(shopId, payload);
         const order = await jsonRequest<any>(endpoint, {
@@ -442,7 +478,7 @@ export default function CheckoutPage() {
           <h2 className="text-2xl font-bold mb-2">سلتك فارغة</h2>
           <p className="text-slate-500 font-semibold mb-6">أضف منتجات قبل إتمام الطلب</p>
           <Link
-            href={isMerchantCheckout ? (pathname || '/').replace(/\/checkout\/?$/, '') : '/dalil'}
+            href={isMerchantPath ? (pathname || '/').replace(/\/checkout\/?$/, '') : '/dalil'}
             className="px-6 py-3 rounded-xl bg-brand-gradient text-white font-bold text-sm"
           >
             {isMerchantCheckout ? 'العودة إلى المتجر' : 'تصفح المتاجر'}

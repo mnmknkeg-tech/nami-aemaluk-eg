@@ -190,6 +190,22 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
+  /** Add-to-cart from builder trees: catalog products from the API carry no
+   *  shop fields, so items were saved with shopSlug:'' and the shop checkout
+   *  filter missed them. Stamp the hosting shop on every cart item. */
+  const addLiveToCart = (product: any, quantity = 1) => {
+    addItem(
+      {
+        ...product,
+        shopId: String(product.shopId || ctxShop?.id || ''),
+        shopName: String(product.shopName || ctxShop?.name || ''),
+        shopSlug: String(product.shopSlug || ctxShop?.slug || ''),
+      },
+      quantity,
+      true
+    );
+  };
+
   /** Resolve a node/link click the same way the published /site handler does
    *  (destination → page switch/section scroll/cart/external) so links and
    *  buttons configured in the builder stop being dead on /shop. */
@@ -628,7 +644,7 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
                               type="button"
                               disabled={!available}
                               onClick={() => {
-                                addItem(live, 1, true);
+                                addLiveToCart(live);
                               }}
                               style={{
                                 backgroundColor: theme.colors.primary,
@@ -1133,7 +1149,7 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
               siteSlug: ctxShop?.slug,
               onAddToCart: (product) => {
                 const live = (ctxProducts || []).find((p) => String(p.id) === String(product.id));
-                addItem((live || product) as any, 1, true);
+                addLiveToCart((live || product) as any);
               },
             }}
           />
