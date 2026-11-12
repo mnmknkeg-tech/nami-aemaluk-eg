@@ -59,6 +59,26 @@ func (r *Repository) FindByID(ctx context.Context, id string) (*Booking, error) 
 	return scanBooking(row)
 }
 
+// FindUserShopID resolves the shop linked to a user account: users.shop_id
+// first, then the latest shop they own. The fallback matters because access
+// tokens minted during signup carry no shopId claim — the shop only exists
+// after the onboarding wizard runs — so booking creation must re-resolve it
+// server-side instead of failing with a validator dump.
+func (r *Repository) FindUserShopID(ctx context.Context, userID string) (string, error) {
+	const query = `
+		SELECT COALESCE(
+			NULLIF((SELECT shop_id FROM users WHERE id = $1), ''),
+			(SELECT id FROM shops WHERE owner_id = $1 ORDER BY created_at DESC LIMIT 1),
+			''
+		)
+	`
+	var shopID string
+	if err := r.pool.QueryRow(ctx, query, userID).Scan(&shopID); err != nil {
+		return "", err
+	}
+	return shopID, nil
+}
+
 // ListByShop returns bookings for a shop, optionally narrowed by a Cairo
 // date range (from/to inclusive), status and ordering.
 func (r *Repository) ListByShop(ctx context.Context, shopID string, limit, offset int, filter *BookingListFilter) ([]Booking, error) {

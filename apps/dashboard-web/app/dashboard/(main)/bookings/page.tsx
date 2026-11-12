@@ -207,6 +207,9 @@ function BookingsMainContent() {
   const [selectedBooking, setSelectedBooking] = useState<BookingItem | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [modalInitialDate, setModalInitialDate] = useState<string>('');
+  // The merchant's own shop id, resolved from /shops/me — the manual
+  // booking modal sends it so the backend never has to guess.
+  const [myShopId, setMyShopId] = useState<string>('');
 
   // Agenda Filter
   const [agendaSearch, setAgendaSearch] = useState('');
@@ -223,6 +226,7 @@ function BookingsMainContent() {
         const shop = await apiRequest('/shops/me');
         shopId = shop?.id;
       } catch {}
+      if (shopId) setMyShopId(String(shopId));
 
       const paramsB = new URLSearchParams({ limit: '150' });
       const paramsR = new URLSearchParams({ limit: '150' });
@@ -607,6 +611,7 @@ function BookingsMainContent() {
       {isAddModalOpen && (
         <AddBookingModal
           initialDate={modalInitialDate}
+          shopId={myShopId}
           onClose={() => setIsAddModalOpen(false)}
           onSuccess={(newB) => {
             setBookings((prev) => [newB, ...prev]);
@@ -1180,10 +1185,12 @@ function AgendaView({
 
 function AddBookingModal({
   initialDate,
+  shopId,
   onClose,
   onSuccess,
 }: {
   initialDate: string;
+  shopId?: string;
   onClose: () => void;
   onSuccess: (b: BookingItem) => void;
 }) {
@@ -1208,6 +1215,7 @@ function AddBookingModal({
     setSaving(true);
     try {
       const payload = {
+        shopId: shopId || undefined,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
         itemName: itemName.trim(),

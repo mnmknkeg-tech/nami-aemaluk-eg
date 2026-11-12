@@ -81,10 +81,27 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return errors.Validation("invalid_body", "تعذر قراءة بيانات الطلب")
 	}
+	// Merchants can only create bookings for their own shop — ignore any
+	// shopId they send in the body. Admins and customers may target the
+	// shop they pass.
+	if strings.EqualFold(user.Role, string(auth.RoleMerchant)) {
+		req.ShopID = user.ShopID
+	}
 	// Dashboard bookings may omit shopId — default it from the token claims
-	// so merchants never need to know their own shop id.
+	// so merchants never need to know their own shop id. Tokens minted
+	// during signup carry no shopId claim (the shop does not exist yet at
+	// that point), so re-resolve from the database before giving up —
+	// otherwise manual bookings fail with a validator dump until the user
+	// logs out and back in.
 	if req.ShopID == "" {
 		req.ShopID = user.ShopID
+	}
+	if req.ShopID == "" {
+		shopID, err := h.service.ResolveUserShopID(c.UserContext(), user.ID)
+		if err != nil {
+			return err
+		}
+		req.ShopID = shopID
 	}
 	if err := validate.Struct(req); err != nil {
 		return err

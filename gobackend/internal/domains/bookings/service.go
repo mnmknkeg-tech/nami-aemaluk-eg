@@ -31,6 +31,14 @@ func (s *Service) CreateForUser(ctx context.Context, req CreateBookingRequest, u
 	return s.create(ctx, req, &userID)
 }
 
+// ResolveUserShopID returns the shop of an authenticated caller, resolved
+// from the database (users.shop_id, then the latest shop they own). Used by
+// the create handler when neither the request body nor the JWT carries a
+// shopId — the common case right after signup, before onboarding ran.
+func (s *Service) ResolveUserShopID(ctx context.Context, userID string) (string, error) {
+	return s.repo.FindUserShopID(ctx, userID)
+}
+
 func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *string) (*BookingResponse, error) {
 	shopID := strings.TrimSpace(req.ShopID)
 	if shopID == "" {

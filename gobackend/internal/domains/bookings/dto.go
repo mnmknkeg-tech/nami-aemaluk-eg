@@ -43,7 +43,13 @@ type Booking struct {
 
 // CreateBookingRequest is the payload for creating a booking.
 type CreateBookingRequest struct {
-	ShopID               string         `json:"shopId" validate:"required"`
+	// ShopID is intentionally not tagged "required": guest bookings must
+	// supply it (enforced with a clear Arabic message by the service), while
+	// authenticated dashboard bookings fall back to the caller's own shop
+	// (token claim, then the database — the claim can be missing on access
+	// tokens minted during signup, before the onboarding wizard created the
+	// shop).
+	ShopID               string         `json:"shopId"`
 	ItemID               string         `json:"itemId"`
 	ItemName             string         `json:"itemName"`
 	ItemImage            string         `json:"itemImage,omitempty"`
