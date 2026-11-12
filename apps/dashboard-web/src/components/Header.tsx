@@ -6,6 +6,7 @@ import { Menu, Bell, Search, LogOut, User, ChevronDown, PanelTop, Settings } fro
 import { useAuth } from '@/lib/auth';
 import { sectionSettingsHref } from '@/lib/sectionSettings';
 import { useOrderBell } from '@/hooks/useOrderBell';
+import { useShop } from '@/hooks/useShop';
 import { useSettingsModal, parseSettingsHref } from '@/hooks/useSettingsModal';
 
 export default function Header({
@@ -19,6 +20,7 @@ export default function Header({
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { unreadCount } = useOrderBell();
+  const { shop } = useShop();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { openModal } = useSettingsModal();
@@ -110,19 +112,40 @@ export default function Header({
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center gap-2 p-1.5 hover:bg-white/10 rounded-xl transition-all"
           >
-            <div className="w-9 h-9 bg-gradient-to-tr from-[#00E5FF] to-[#BD00FF] rounded-xl flex items-center justify-center">
-              <span className="text-white font-black text-sm">{userInitial}</span>
-            </div>
+            {shop?.logoUrl ? (
+              <img
+                src={shop.logoUrl}
+                alt={shop.name || 'شعار المتجر'}
+                className="w-9 h-9 rounded-xl object-cover bg-white border border-white/30"
+              />
+            ) : (
+              <div className="w-9 h-9 bg-gradient-to-tr from-[#00E5FF] to-[#BD00FF] rounded-xl flex items-center justify-center">
+                <span className="text-white font-black text-sm">{userInitial}</span>
+              </div>
+            )}
             <span className="hidden md:block text-xs font-black text-white/90">{userName}</span>
             <ChevronDown size={14} className="hidden md:block text-white/50" />
           </button>
 
           {dropdownOpen && (
             <div className="absolute left-0 mt-2 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl py-2 z-50">
-              <div className="px-4 py-2 border-b border-slate-50">
-                <div className="text-xs font-black text-slate-900">{userName}</div>
-                <div className="text-[10px] font-bold text-slate-400 mt-0.5">
-                  {user?.email || ''}
+              <div className="px-4 py-2 border-b border-slate-50 flex items-center gap-2.5">
+                {shop?.logoUrl ? (
+                  <img
+                    src={shop.logoUrl}
+                    alt={shop.name || 'شعار المتجر'}
+                    className="w-8 h-8 rounded-lg object-cover bg-white border border-slate-100 shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 bg-gradient-to-tr from-[#00E5FF] to-[#BD00FF] rounded-lg flex items-center justify-center shrink-0">
+                    <span className="text-white font-black text-xs">{userInitial}</span>
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-slate-900 truncate">{userName}</div>
+                  <div className="text-[10px] font-bold text-slate-400 mt-0.5 truncate">
+                    {user?.email || ''}
+                  </div>
                 </div>
               </div>
               <button

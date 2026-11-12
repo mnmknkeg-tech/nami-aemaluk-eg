@@ -16,6 +16,7 @@ type Shop = {
   city?: string;
   address?: string;
   openingHours?: string;
+  logoUrl?: string | null;
 };
 
 export const SHOP_QUERY_KEY = ['shop', 'me'] as const;
