@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -47,6 +47,8 @@ import {
   CalendarDays,
   CalendarCheck,
   Clock,
+  EyeOff,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useAuth, apiRequest } from '@/lib/auth';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
@@ -544,6 +546,66 @@ function SectionHead({
   );
 }
 
+/* ============================================================
+ * تخصيص النظرة العامة — إظهار/إخفاء كل قسم على حدة
+ * ============================================================ */
+
+/** كل أقسام الصفحة القابلة للتخصيص — بالترتيب نفسه اللي بتظهر بيه في اللوحة */
+const OVERVIEW_SECTIONS: { id: string; label: string }[] = [
+  { id: 'recent', label: 'آخر ما اطّلع عليه' },
+  { id: 'performance', label: 'أداء المتجر (الرسم البياني)' },
+  { id: 'kpi:Revenue', label: 'مؤشر الإيرادات الإجمالية' },
+  { id: 'kpi:Orders', label: 'مؤشر الطلبات' },
+  { id: 'kpi:Bookings', label: 'مؤشر الحجوزات والمواعيد' },
+  { id: 'kpi:Customers', label: 'مؤشر العملاء' },
+  { id: 'kpi:Views', label: 'مؤشر زوار المتجر' },
+  { id: 'activity', label: 'أحدث الطلبات والحجوزات' },
+  { id: 'shopStats', label: 'التقييم والمتابعون' },
+  { id: 'quickActions', label: 'الإجراءات السريعة' },
+  { id: 'notifications', label: 'آخر الإشعارات' },
+  { id: 'sessions', label: 'آخر جلسات الدخول' },
+  { id: 'distribution', label: 'توزيع الطلبات' },
+  { id: 'topProducts', label: 'الأكثر مبيعًا' },
+];
+
+type OverviewPrefs = { hidden: string[]; forced: string[] };
+
+const overviewPrefsKey = (userKey: string) => `ray_overview_sections_v1:${userKey}`;
+
+function readOverviewPrefs(userKey: string): OverviewPrefs {
+  try {
+    const raw = localStorage.getItem(overviewPrefsKey(userKey));
+    const parsed = raw ? JSON.parse(raw) : null;
+    return {
+      hidden: Array.isArray(parsed?.hidden) ? parsed.hidden : [],
+      forced: Array.isArray(parsed?.forced) ? parsed.forced : [],
+    };
+  } catch {
+    return { hidden: [], forced: [] };
+  }
+}
+
+function writeOverviewPrefs(userKey: string, p: OverviewPrefs) {
+  try {
+    localStorage.setItem(overviewPrefsKey(userKey), JSON.stringify(p));
+  } catch {}
+}
+
+/** الزر الصغير جدًا في رُكن كل قسم — ضغطة واحدة تخفي القسم */
+function SectionHideButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="إخفاء هذا القسم"
+      aria-label="إخفاء هذا القسم"
+      className="absolute top-2 left-2 z-20 w-5 h-5 rounded-md flex items-center justify-center text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all"
+    >
+      <EyeOff size={11} />
+    </button>
+  );
+}
+
 function Empty({
   icon,
   title,
@@ -649,8 +711,101 @@ export default function DashboardOverview() {
       (shop as any)?.builderConfig?.enabledModules ??
       Object.keys((shop as any)?.layoutConfig?.enabledFeatures ?? {});
     if (!Array.isArray(mods) || mods.length === 0) return true; // unconfigured
-    return mods.map((m) => m.toLowerCase()).some((m) => m === 'bookings' || m === 'reservations');
+    return mods
+      .map((m) => m.toLowerCase())
+      .some((m) => m === 'bookings' || m === 'reservations' || m === 'bookingsschedule');
   }, [shop]);
+
+  /* ============================================================
+   * تخصيص الأقسام — الحالة + الافتراضي الذكي حسب موديولات المتجر
+   * ============================================================ */
+  const userKey = String(user?.id || shop?.id || 'anon');
+  const [sectionPrefs, setSectionPrefs] = useState<OverviewPrefs>({ hidden: [], forced: [] });
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+
+  useEffect(() => {
+    setSectionPrefs(readOverviewPrefs(userKey));
+  }, [userKey]);
+
+  const saveSectionPrefs = useCallback(
+    (next: OverviewPrefs) => {
+      setSectionPrefs(next);
+      writeOverviewPrefs(userKey, next);
+    },
+    [userKey]
+  );
+
+  // قدرات المتجر بنفس منطق bookingModuleEnabled — متجر متفعّل فيه الحجوزات
+  // فقط مثلاً لا يرى بطاقات الطلبات وتوزيعها افتراضيًا (وقد يُرجعها من اللوحة).
+  const configuredGroups = useMemo(() => {
+    const feats = (shop as any)?.layoutConfig?.enabledFeatures as
+      Record<string, string[]> | undefined;
+    const mods: string[] =
+      (shop as any)?.enabledModules ??
+      (shop as any)?.builderConfig?.enabledModules ??
+      Object.keys(feats ?? {});
+    return Array.isArray(mods) ? mods.map((m) => m.toLowerCase()) : [];
+  }, [shop]);
+  const hasExplicitModules = configuredGroups.length > 0;
+  const ordersCapability = !hasExplicitModules
+    ? true
+    : configuredGroups.some((g) =>
+        ['sales', 'orders', 'pos', 'products', 'inventory', 'promotions'].includes(g)
+      );
+  const productsCapability = !hasExplicitModules
+    ? true
+    : configuredGroups.some((g) => ['products', 'inventory', 'sales'].includes(g));
+  const crmCapability = !hasExplicitModules
+    ? true
+    : configuredGroups.some((g) => ['crm', 'customers'].includes(g));
+
+  // أقسام تُخفى تلقائيًا لأن موديولها موقوف — اللوحة تسمح بإظهارها رغم ذلك.
+  const moduleAutoHidden = useMemo(() => {
+    const out: string[] = [];
+    if (!ordersCapability) out.push('kpi:Orders', 'distribution');
+    if (!productsCapability) out.push('topProducts');
+    if (!bookingModuleEnabled) out.push('kpi:Bookings');
+    if (!crmCapability && !bookingModuleEnabled) out.push('kpi:Customers');
+    return out;
+  }, [ordersCapability, productsCapability, bookingModuleEnabled, crmCapability]);
+
+  const isSectionHidden = useCallback(
+    (id: string) =>
+      sectionPrefs.hidden.includes(id) ||
+      (moduleAutoHidden.includes(id) && !sectionPrefs.forced.includes(id)),
+    [sectionPrefs, moduleAutoHidden]
+  );
+
+  const hideSection = useCallback(
+    (id: string) =>
+      saveSectionPrefs({
+        hidden: [...new Set([...sectionPrefs.hidden, id])],
+        forced: sectionPrefs.forced.filter((f) => f !== id),
+      }),
+    [sectionPrefs, saveSectionPrefs]
+  );
+
+  const toggleSection = useCallback(
+    (id: string) => {
+      if (!isSectionHidden(id)) {
+        hideSection(id);
+        return;
+      }
+      // إظهار: يشيله من المخفي، ولو قسم موقوف مع الموديول يُسجَّل كاستثناء
+      saveSectionPrefs({
+        hidden: sectionPrefs.hidden.filter((x) => x !== id),
+        forced: moduleAutoHidden.includes(id)
+          ? [...new Set([...sectionPrefs.forced, id])]
+          : sectionPrefs.forced,
+      });
+    },
+    [sectionPrefs, moduleAutoHidden, isSectionHidden, hideSection, saveSectionPrefs]
+  );
+
+  const showAllSections = useCallback(
+    () => saveSectionPrefs({ hidden: [], forced: [] }),
+    [saveSectionPrefs]
+  );
 
   const load = useCallback(
     async (p: PeriodKey) => {
@@ -1122,39 +1277,112 @@ export default function DashboardOverview() {
             <Download size={13} />
             تصدير
           </button>
+          {/* تخصيص النظرة العامة — إظهار/إخفاء كل قسم */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setCustomizeOpen((v) => !v)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 bg-white border rounded-lg text-xs font-bold transition-colors ${
+                customizeOpen
+                  ? 'border-slate-900 text-slate-900'
+                  : 'border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <SlidersHorizontal size={13} />
+              تخصيص
+            </button>
+            {customizeOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setCustomizeOpen(false)} />
+                <div className="absolute left-0 top-11 z-40 w-80 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-2xl shadow-2xl p-3">
+                  <div className="flex items-center justify-between px-1 pb-2 mb-1 border-b border-slate-100">
+                    <span className="text-xs font-extrabold text-slate-800">
+                      تخصيص أقسام النظرة العامة
+                    </span>
+                    <button
+                      type="button"
+                      onClick={showAllSections}
+                      className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800"
+                    >
+                      إظهار الكل
+                    </button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto py-1">
+                    {OVERVIEW_SECTIONS.map((s) => {
+                      const moduleOff = moduleAutoHidden.includes(s.id);
+                      const hidden = isSectionHidden(s.id);
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => toggleSection(s.id)}
+                          className="w-full flex items-center justify-between gap-2 px-2 py-2 rounded-lg hover:bg-slate-50 text-right transition-colors"
+                        >
+                          <span className="min-w-0">
+                            <span
+                              className={`block text-[11px] font-bold ${hidden ? 'text-slate-400' : 'text-slate-700'}`}
+                            >
+                              {s.label}
+                            </span>
+                            {moduleOff && (
+                              <span className="block text-[9px] font-semibold text-amber-600 leading-3 mt-0.5">
+                                مربوط بموديول موقوف — أظهره رغم ذلك أو فعّل الموديول من الإعدادات
+                              </span>
+                            )}
+                          </span>
+                          <span
+                            className={`w-7 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                              hidden
+                                ? 'bg-slate-100 text-slate-400'
+                                : 'bg-indigo-50 text-indigo-600'
+                            }`}
+                          >
+                            {hidden ? <EyeOff size={12} /> : <Eye size={12} />}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
       {/* ===== آخر ما اطّلع عليه (Recent shortcuts) ===== */}
-      <Card className="p-0 overflow-hidden">
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <History size={15} className="text-slate-500" />
-            <h2 className="text-sm font-bold text-slate-800">آخر ما اطّلع عليه</h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowAllRecent((v) => !v)}
-            className="text-[11px] font-bold text-slate-400 hover:text-slate-700 transition-colors"
-          >
-            {showAllRecent ? 'إخفاء' : 'استعراض الكل'}
-          </button>
-        </div>
-        <div className="px-5 py-3 flex flex-wrap items-center">
-          {(recentItems.length === 0 ? DEFAULT_SHORTCUTS : recentItems).map((it, idx, arr) => (
-            <Link
-              key={it.href}
-              href={it.href}
-              className={`group flex items-center gap-1.5 px-3.5 py-2 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors rounded-lg ${idx !== arr.length - 1 ? 'border-l border-slate-100' : ''}`}
+      {!isSectionHidden('recent') && (
+        <Card className="p-0 overflow-hidden relative">
+          <SectionHideButton onClick={() => hideSection('recent')} />
+          <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <History size={15} className="text-slate-500" />
+              <h2 className="text-sm font-bold text-slate-800">آخر ما اطّلع عليه</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAllRecent((v) => !v)}
+              className="text-[11px] font-bold text-slate-400 hover:text-slate-700 transition-colors"
             >
-              <Star
-                size={13}
-                className="text-slate-300 group-hover:text-amber-400 transition-colors shrink-0"
-              />
-              <span className="truncate">{it.labelAr}</span>
-            </Link>
-          ))}
-        </div>
-      </Card>
+              {showAllRecent ? 'إخفاء' : 'استعراض الكل'}
+            </button>
+          </div>
+          <div className="px-5 py-3 flex flex-wrap items-center">
+            {(recentItems.length === 0 ? DEFAULT_SHORTCUTS : recentItems).map((it, idx, arr) => (
+              <Link
+                key={it.href}
+                href={it.href}
+                className={`group flex items-center gap-1.5 px-3.5 py-2 text-[12px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors rounded-lg ${idx !== arr.length - 1 ? 'border-l border-slate-100' : ''}`}
+              >
+                <Star
+                  size={13}
+                  className="text-slate-300 group-hover:text-amber-400 transition-colors shrink-0"
+                />
+                <span className="truncate">{it.labelAr}</span>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* ===== Alerts ===== */}
       {error && (
@@ -1197,541 +1425,583 @@ export default function DashboardOverview() {
       )}
 
       {/* ===== أداء المتجر — بعرض الصفحة كاملاً تحت آخر ما اطّلع عليه ===== */}
-      <MotionCard className="w-full p-0 overflow-hidden" delay={0.1}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 pt-4 pb-3">
-          <div className="flex items-center gap-2.5">
-            <span className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
-              <BarChart3 size={15} />
-            </span>
-            <div>
-              <h3 className="text-[14px] font-extrabold text-slate-900 leading-5">أداء المتجر</h3>
-              <p className="text-[11px] font-medium text-slate-400 leading-4">
-                آخر {fmtNum(trendPoints.length)} يوم
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-lg p-0.5">
-              {(
-                [
-                  { key: 'revenue', label: 'الإيرادات' },
-                  { key: 'orders', label: 'الطلبات' },
-                ] as { key: Metric; label: string }[]
-              ).map((m) => (
-                <button
-                  key={m.key}
-                  onClick={() => setMetric(m.key)}
-                  className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${metric === m.key ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-            <span className="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums">
-              {metric === 'revenue' ? fmtEGP(trendTotal) : fmtNum(trendTotal)}
-            </span>
-          </div>
-        </div>
-
-        <div className="px-3 pb-3 pt-1">
-          {loading ? (
-            <Skeleton className="h-64 m-2" />
-          ) : (
-            <PerformanceAreaChart
-              data={chartData}
-              color={metric === 'revenue' ? chartColors.revenue : chartColors.orders}
-              formatY={fmtCompact}
-              formatTip={(n) => (metric === 'revenue' ? fmtEGP(n) : `${fmtNum(n)} طلب`)}
-            />
-          )}
-        </div>
-      </MotionCard>
-
-      {/* ===== KPIs — المربعات والمؤشرات الرئيسية تحت أداء المتجر مباشرة ===== */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3.5">
-        {kpis.map((k: any, i) => (
-          <MotionCard
-            key={k.key}
-            delay={0.05 + i * 0.04}
-            className="p-4 sm:p-5 flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-[11px] font-semibold text-slate-400">{k.label}</p>
-                <DeltaInline delta={k.delta} />
-              </div>
-              {loading ? (
-                <Skeleton className="h-7 w-24 mt-2" />
-              ) : (
-                <div className="flex items-end justify-between gap-2 mt-1.5">
-                  <div className="min-w-0">
-                    <span className="text-[18px] sm:text-[21px] font-extrabold text-slate-900 tabular-nums leading-7 truncate block">
-                      {k.value}
-                    </span>
-                    {k.sub && (
-                      <p className="text-[10px] font-bold text-slate-400 mt-0.5 truncate">
-                        {k.sub}
-                      </p>
-                    )}
-                  </div>
-                  {k.spark && k.spark.length > 0 && (
-                    <Sparkline
-                      values={k.spark}
-                      color={['#4F46E5', '#7C3AED', '#EC4899', '#2563EB', '#059669'][i]}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-            {!loading && k.href && (
-              <button
-                type="button"
-                onClick={() => router.push(k.href)}
-                className="mt-2.5 text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline inline-flex items-center gap-0.5 self-start"
-              >
-                عرض المزيد
-                <ChevronLeft size={10} />
-              </button>
-            )}
-          </MotionCard>
-        ))}
-      </div>
-
-      {/* ===== Orders + Notifications ===== */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <MotionCard className="xl:col-span-2 p-0" delay={0.2}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-slate-100">
+      {!isSectionHidden('performance') && (
+        <MotionCard className="w-full p-0 overflow-hidden relative" delay={0.1}>
+          <SectionHideButton onClick={() => hideSection('performance')} />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 pt-4 pb-3">
             <div className="flex items-center gap-2.5">
-              <span className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-                <History size={15} />
+              <span className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+                <BarChart3 size={15} />
               </span>
               <div>
-                <h3 className="text-[14px] font-extrabold text-slate-900 leading-5">
-                  أحدث الطلبات والحجوزات
-                </h3>
-                <p className="text-[11px] font-medium text-slate-400">
-                  سجل مدمج لعمليات البيع ومواعيد الحجز
+                <h3 className="text-[14px] font-extrabold text-slate-900 leading-5">أداء المتجر</h3>
+                <p className="text-[11px] font-medium text-slate-400 leading-4">
+                  آخر {fmtNum(trendPoints.length)} يوم
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center bg-slate-100 rounded-lg p-0.5 text-[11px] font-bold">
-                <button
-                  type="button"
-                  onClick={() => setRecentTab('all')}
-                  className={`px-2.5 py-1 rounded-md transition-all ${recentTab === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  الكل ({orders.length + (bookingModuleEnabled ? bookings.length : 0)})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRecentTab('orders')}
-                  className={`px-2.5 py-1 rounded-md transition-all ${recentTab === 'orders' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  الطلبات ({orders.length})
-                </button>
-                {bookingModuleEnabled && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-lg p-0.5">
+                {(
+                  [
+                    { key: 'revenue', label: 'الإيرادات' },
+                    { key: 'orders', label: 'الطلبات' },
+                  ] as { key: Metric; label: string }[]
+                ).map((m) => (
                   <button
-                    type="button"
-                    onClick={() => setRecentTab('bookings')}
-                    className={`px-2.5 py-1 rounded-md transition-all ${recentTab === 'bookings' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    key={m.key}
+                    onClick={() => setMetric(m.key)}
+                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${metric === m.key ? 'bg-white text-slate-900 border border-slate-200 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                   >
-                    الحجوزات ({bookings.length})
+                    {m.label}
                   </button>
-                )}
+                ))}
               </div>
-              <button
-                type="button"
-                onClick={() =>
-                  router.push(recentTab === 'bookings' ? '/dashboard/bookings' : '/dashboard/sales')
-                }
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-0.5 shrink-0 mr-1"
-              >
-                {recentTab === 'bookings' ? 'مواعيد الحجوزات' : 'كل الطلبات'}{' '}
-                <ChevronLeft size={12} />
-              </button>
+              <span className="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums">
+                {metric === 'revenue' ? fmtEGP(trendTotal) : fmtNum(trendTotal)}
+              </span>
             </div>
           </div>
-          {loading ? (
-            <div className="p-5 space-y-2">
-              <Skeleton className="h-9" />
-              <Skeleton className="h-9" />
-              <Skeleton className="h-9" />
-            </div>
-          ) : combinedActivities.length === 0 ? (
-            <Empty
-              icon={<ShoppingCart size={20} />}
-              title="لا توجد عمليات بعد"
-              desc="ستظهر هنا طلبات الشراء الجديدة فور وصولها."
-              actionLabel="عرض الطلبات"
-              onAction={() => router.push('/dashboard/sales')}
-              secondaryLabel="طلب من الكاشير"
-              onSecondary={() => router.push('/dashboard/pos')}
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-right">
-                <thead>
-                  <tr className="border-b border-slate-100">
-                    <th className="text-[10px] font-semibold text-slate-400 pb-2 pr-5">
-                      النوع / المعرف
-                    </th>
-                    <th className="text-[10px] font-semibold text-slate-400 pb-2">العميل</th>
-                    <th className="text-[10px] font-semibold text-slate-400 pb-2">الحالة</th>
-                    <th className="text-[10px] font-semibold text-slate-400 pb-2">
-                      التاريخ / الموعد
-                    </th>
-                    <th className="text-[10px] font-semibold text-slate-400 pb-2 pl-5 text-left">
-                      الإجمالي
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {combinedActivities.slice(0, 8).map((it) => (
-                    <tr
-                      key={it.id}
-                      onClick={() => router.push(it.href)}
-                      className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70 transition-colors cursor-pointer"
-                    >
-                      <td className="py-2.5 pr-5">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`inline-flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded ${it.kind === 'order' ? 'bg-sky-50 text-sky-700 border border-sky-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}
-                          >
-                            {it.kind === 'order' ? (
-                              <ShoppingCart size={10} />
-                            ) : (
-                              <CalendarCheck size={10} />
-                            )}
-                            {it.kind === 'order' ? 'طلب' : 'حجز'}
-                          </span>
-                          <span className="text-xs font-bold text-slate-800 truncate max-w-[160px]">
-                            {it.title}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-2.5 text-xs text-slate-600">
-                        <div>{it.customer}</div>
-                        {it.phone && (
-                          <div className="text-[10px] text-slate-400" dir="ltr">
-                            {it.phone}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2.5">
-                        <span
-                          className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded border whitespace-nowrap ${it.statusChip}`}
-                        >
-                          {it.statusLabel}
-                        </span>
-                      </td>
-                      <td className="py-2.5 text-[11px] text-slate-400 whitespace-nowrap">
-                        {timeAgo(it.dateIso)}
-                      </td>
-                      <td className="py-2.5 pl-5 text-xs font-bold text-slate-900 text-left tabular-nums">
-                        {fmtEGP(it.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+
+          <div className="px-3 pb-3 pt-1">
+            {loading ? (
+              <Skeleton className="h-64 m-2" />
+            ) : (
+              <PerformanceAreaChart
+                data={chartData}
+                color={metric === 'revenue' ? chartColors.revenue : chartColors.orders}
+                formatY={fmtCompact}
+                formatTip={(n) => (metric === 'revenue' ? fmtEGP(n) : `${fmtNum(n)} طلب`)}
+              />
+            )}
+          </div>
         </MotionCard>
+      )}
+
+      {/* ===== KPIs — المربعات والمؤشرات الرئيسية تحت أداء المتجر مباشرة ===== */}
+      {kpis.some((k: any) => !isSectionHidden(`kpi:${k.key}`)) && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3.5">
+          {kpis
+            .filter((k: any) => !isSectionHidden(`kpi:${k.key}`))
+            .map((k: any, i) => (
+              <MotionCard
+                key={k.key}
+                delay={0.05 + i * 0.04}
+                className="p-4 sm:p-5 flex flex-col justify-between relative"
+              >
+                <SectionHideButton onClick={() => hideSection(`kpi:${k.key}`)} />
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[11px] font-semibold text-slate-400">{k.label}</p>
+                    <DeltaInline delta={k.delta} />
+                  </div>
+                  {loading ? (
+                    <Skeleton className="h-7 w-24 mt-2" />
+                  ) : (
+                    <div className="flex items-end justify-between gap-2 mt-1.5">
+                      <div className="min-w-0">
+                        <span className="text-[18px] sm:text-[21px] font-extrabold text-slate-900 tabular-nums leading-7 truncate block">
+                          {k.value}
+                        </span>
+                        {k.sub && (
+                          <p className="text-[10px] font-bold text-slate-400 mt-0.5 truncate">
+                            {k.sub}
+                          </p>
+                        )}
+                      </div>
+                      {k.spark && k.spark.length > 0 && (
+                        <Sparkline
+                          values={k.spark}
+                          color={['#4F46E5', '#7C3AED', '#EC4899', '#2563EB', '#059669'][i]}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+                {!loading && k.href && (
+                  <button
+                    type="button"
+                    onClick={() => router.push(k.href)}
+                    className="mt-2.5 text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline inline-flex items-center gap-0.5 self-start"
+                  >
+                    عرض المزيد
+                    <ChevronLeft size={10} />
+                  </button>
+                )}
+              </MotionCard>
+            ))}
+        </div>
+      )}
+
+      {/* ===== Orders + Notifications ===== */}
+      <div
+        className={`grid grid-cols-1 gap-4 ${isSectionHidden('activity') ? '' : 'xl:grid-cols-3'}`}
+      >
+        {!isSectionHidden('activity') && (
+          <MotionCard className="xl:col-span-2 p-0 relative" delay={0.2}>
+            <SectionHideButton onClick={() => hideSection('activity')} />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                  <History size={15} />
+                </span>
+                <div>
+                  <h3 className="text-[14px] font-extrabold text-slate-900 leading-5">
+                    أحدث الطلبات والحجوزات
+                  </h3>
+                  <p className="text-[11px] font-medium text-slate-400">
+                    سجل مدمج لعمليات البيع ومواعيد الحجز
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center bg-slate-100 rounded-lg p-0.5 text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setRecentTab('all')}
+                    className={`px-2.5 py-1 rounded-md transition-all ${recentTab === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    الكل ({orders.length + (bookingModuleEnabled ? bookings.length : 0)})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRecentTab('orders')}
+                    className={`px-2.5 py-1 rounded-md transition-all ${recentTab === 'orders' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    الطلبات ({orders.length})
+                  </button>
+                  {bookingModuleEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => setRecentTab('bookings')}
+                      className={`px-2.5 py-1 rounded-md transition-all ${recentTab === 'bookings' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      الحجوزات ({bookings.length})
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(
+                      recentTab === 'bookings' ? '/dashboard/bookings' : '/dashboard/sales'
+                    )
+                  }
+                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-0.5 shrink-0 mr-1"
+                >
+                  {recentTab === 'bookings' ? 'مواعيد الحجوزات' : 'كل الطلبات'}{' '}
+                  <ChevronLeft size={12} />
+                </button>
+              </div>
+            </div>
+            {loading ? (
+              <div className="p-5 space-y-2">
+                <Skeleton className="h-9" />
+                <Skeleton className="h-9" />
+                <Skeleton className="h-9" />
+              </div>
+            ) : combinedActivities.length === 0 ? (
+              <Empty
+                icon={<ShoppingCart size={20} />}
+                title="لا توجد عمليات بعد"
+                desc="ستظهر هنا طلبات الشراء الجديدة فور وصولها."
+                actionLabel="عرض الطلبات"
+                onAction={() => router.push('/dashboard/sales')}
+                secondaryLabel="طلب من الكاشير"
+                onSecondary={() => router.push('/dashboard/pos')}
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      <th className="text-[10px] font-semibold text-slate-400 pb-2 pr-5">
+                        النوع / المعرف
+                      </th>
+                      <th className="text-[10px] font-semibold text-slate-400 pb-2">العميل</th>
+                      <th className="text-[10px] font-semibold text-slate-400 pb-2">الحالة</th>
+                      <th className="text-[10px] font-semibold text-slate-400 pb-2">
+                        التاريخ / الموعد
+                      </th>
+                      <th className="text-[10px] font-semibold text-slate-400 pb-2 pl-5 text-left">
+                        الإجمالي
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {combinedActivities.slice(0, 8).map((it) => (
+                      <tr
+                        key={it.id}
+                        onClick={() => router.push(it.href)}
+                        className="border-b border-slate-50 last:border-0 hover:bg-slate-50/70 transition-colors cursor-pointer"
+                      >
+                        <td className="py-2.5 pr-5">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded ${it.kind === 'order' ? 'bg-sky-50 text-sky-700 border border-sky-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}
+                            >
+                              {it.kind === 'order' ? (
+                                <ShoppingCart size={10} />
+                              ) : (
+                                <CalendarCheck size={10} />
+                              )}
+                              {it.kind === 'order' ? 'طلب' : 'حجز'}
+                            </span>
+                            <span className="text-xs font-bold text-slate-800 truncate max-w-[160px]">
+                              {it.title}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 text-xs text-slate-600">
+                          <div>{it.customer}</div>
+                          {it.phone && (
+                            <div className="text-[10px] text-slate-400" dir="ltr">
+                              {it.phone}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2.5">
+                          <span
+                            className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded border whitespace-nowrap ${it.statusChip}`}
+                          >
+                            {it.statusLabel}
+                          </span>
+                        </td>
+                        <td className="py-2.5 text-[11px] text-slate-400 whitespace-nowrap">
+                          {timeAgo(it.dateIso)}
+                        </td>
+                        <td className="py-2.5 pl-5 text-xs font-bold text-slate-900 text-left tabular-nums">
+                          {fmtEGP(it.amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </MotionCard>
+        )}
 
         <div className="space-y-4">
           {/* Shop stats — التقييم والمتابع */}
-          <MotionCard className="p-4" delay={0.2}>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="text-center py-1">
-                <div className="flex items-center justify-center gap-1.5 text-amber-500 mb-1">
-                  <Star size={14} fill="currentColor" />
-                  <span className="text-lg font-extrabold text-slate-900 tabular-nums">
-                    {(shop?.rating || 0).toFixed(1)}
-                  </span>
+          {!isSectionHidden('shopStats') && (
+            <MotionCard className="p-4 relative" delay={0.2}>
+              <SectionHideButton onClick={() => hideSection('shopStats')} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="text-center py-1">
+                  <div className="flex items-center justify-center gap-1.5 text-amber-500 mb-1">
+                    <Star size={14} fill="currentColor" />
+                    <span className="text-lg font-extrabold text-slate-900 tabular-nums">
+                      {(shop?.rating || 0).toFixed(1)}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-semibold">التقييم</span>
                 </div>
-                <span className="text-[11px] text-slate-400 font-semibold">التقييم</span>
+                <div className="text-center py-1 border-r border-slate-100">
+                  <span className="text-lg font-extrabold text-slate-900 tabular-nums">
+                    {fmtNum(shop?.followers || 0)}
+                  </span>
+                  <div className="text-[11px] text-slate-400 font-semibold mt-1">متابع</div>
+                </div>
               </div>
-              <div className="text-center py-1 border-r border-slate-100">
-                <span className="text-lg font-extrabold text-slate-900 tabular-nums">
-                  {fmtNum(shop?.followers || 0)}
-                </span>
-                <div className="text-[11px] text-slate-400 font-semibold mt-1">متابع</div>
-              </div>
-            </div>
-          </MotionCard>
+            </MotionCard>
+          )}
 
           {/* Quick actions — إجراءات سريعة */}
-          <MotionCard className="p-2" delay={0.22}>
-            {[
-              {
-                label: 'إضافة منتج جديد',
-                desc: 'وسّع كتالوج متجرك',
-                icon: <Plus size={15} />,
-                href: '/dashboard/inventory/products',
-              },
-              {
-                label: 'طلب جديد',
-                desc: 'سجّل بيع من الكاشير',
-                icon: <ShoppingCart size={15} />,
-                href: '/dashboard/pos',
-              },
-              ...(bookingModuleEnabled
-                ? [
-                    {
-                      label: 'حجز جديد',
-                      desc: 'احجز موعدًا لعميل',
-                      icon: <Calendar size={15} />,
-                      href: '/dashboard/bookings',
-                    },
-                  ]
-                : []),
-              {
-                label: 'حملة إعلانية',
-                desc: 'أطلق عرضًا لعملائك',
-                icon: <Megaphone size={15} />,
-                href: '/dashboard/marketing',
-              },
-              // Market-launch switch: التقرير المالي لوكال فقط.
-              ...(HIDE_UNPUBLISHED
-                ? []
-                : [
-                    {
-                      label: 'تقرير مالي',
-                      desc: 'راجع أرباحك ومصروفاتك',
-                      icon: <Wallet size={15} />,
-                      href: '/dashboard/finance',
-                    },
-                  ]),
-              {
-                label: 'إعدادات المتجر',
-                desc: 'بيانات المتجر والرؤية',
-                icon: <SettingsIcon size={15} />,
-                href: '/dashboard/settings',
-              },
-            ].map((a) => (
-              <button
-                key={a.label}
-                type="button"
-                onClick={() => router.push(a.href)}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors text-right"
-              >
-                <span className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                  {a.icon}
-                </span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-xs font-bold text-slate-800">{a.label}</span>
-                  <span className="block text-[10px] text-slate-400">{a.desc}</span>
-                </span>
-                <ChevronLeft size={13} className="text-slate-300 shrink-0" />
-              </button>
-            ))}
-          </MotionCard>
+          {!isSectionHidden('quickActions') && (
+            <MotionCard className="p-2 relative" delay={0.22}>
+              <SectionHideButton onClick={() => hideSection('quickActions')} />
+              {[
+                {
+                  label: 'إضافة منتج جديد',
+                  desc: 'وسّع كتالوج متجرك',
+                  icon: <Plus size={15} />,
+                  href: '/dashboard/inventory/products',
+                },
+                {
+                  label: 'طلب جديد',
+                  desc: 'سجّل بيع من الكاشير',
+                  icon: <ShoppingCart size={15} />,
+                  href: '/dashboard/pos',
+                },
+                ...(bookingModuleEnabled
+                  ? [
+                      {
+                        label: 'حجز جديد',
+                        desc: 'احجز موعدًا لعميل',
+                        icon: <Calendar size={15} />,
+                        href: '/dashboard/bookings',
+                      },
+                    ]
+                  : []),
+                {
+                  label: 'حملة إعلانية',
+                  desc: 'أطلق عرضًا لعملائك',
+                  icon: <Megaphone size={15} />,
+                  href: '/dashboard/marketing',
+                },
+                // Market-launch switch: التقرير المالي لوكال فقط.
+                ...(HIDE_UNPUBLISHED
+                  ? []
+                  : [
+                      {
+                        label: 'تقرير مالي',
+                        desc: 'راجع أرباحك ومصروفاتك',
+                        icon: <Wallet size={15} />,
+                        href: '/dashboard/finance',
+                      },
+                    ]),
+                {
+                  label: 'إعدادات المتجر',
+                  desc: 'بيانات المتجر والرؤية',
+                  icon: <SettingsIcon size={15} />,
+                  href: '/dashboard/settings',
+                },
+              ].map((a) => (
+                <button
+                  key={a.label}
+                  type="button"
+                  onClick={() => router.push(a.href)}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors text-right"
+                >
+                  <span className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                    {a.icon}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-xs font-bold text-slate-800">{a.label}</span>
+                    <span className="block text-[10px] text-slate-400">{a.desc}</span>
+                  </span>
+                  <ChevronLeft size={13} className="text-slate-300 shrink-0" />
+                </button>
+              ))}
+            </MotionCard>
+          )}
 
-          <MotionCard className="p-0" delay={0.25}>
-            <SectionHead
-              title="آخر الإشعارات"
-              icon={<Bell size={14} />}
-              actionLabel="الكل"
-              onAction={() => router.push('/dashboard/notifications')}
-            />
-            {loading ? (
-              <div className="p-5 space-y-2">
-                <Skeleton className="h-9" />
-                <Skeleton className="h-9" />
-                <Skeleton className="h-9" />
-              </div>
-            ) : notifications.length === 0 ? (
-              <Empty icon={<Bell size={20} />} title="لا توجد إشعارات" />
-            ) : (
-              <div className="px-3 py-2 divide-y divide-slate-50">
-                {notifications.slice(0, 5).map((n) => (
-                  <div
-                    key={n.id}
-                    className="py-2.5 px-2 rounded-lg hover:bg-slate-50/60 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-bold text-slate-800 leading-5">
-                        {n.title || 'إشعار'}
-                      </p>
-                      <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0">
-                        {timeAgo(n.created_at || n.createdAt)}
-                      </span>
-                    </div>
-                    {n.content && (
-                      <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-5">
-                        {n.content}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </MotionCard>
-
-          <MotionCard className="p-0" delay={0.3}>
-            <SectionHead
-              title="آخر جلسات الدخول"
-              icon={<LogIn size={14} />}
-              sub={`${fmtNum(sessions.length)} جلسة`}
-            />
-            {loading ? (
-              <div className="p-5 space-y-2">
-                <Skeleton className="h-9" />
-                <Skeleton className="h-9" />
-                <Skeleton className="h-9" />
-              </div>
-            ) : sessions.length === 0 ? (
-              <Empty
-                icon={<LogIn size={20} />}
-                title="لا توجد سجلات دخول"
-                desc="سجلات الدخول لحسابك تظهر هنا لأمانك."
+          {/* آخر الإشعارات */}
+          {!isSectionHidden('notifications') && (
+            <MotionCard className="p-0 relative" delay={0.25}>
+              <SectionHideButton onClick={() => hideSection('notifications')} />
+              <SectionHead
+                title="آخر الإشعارات"
+                icon={<Bell size={14} />}
+                actionLabel="الكل"
+                onAction={() => router.push('/dashboard/notifications')}
               />
-            ) : (
-              <div className="px-5 py-3 divide-y divide-slate-50">
-                {sessions.slice(0, 5).map((e, i) => {
-                  const email = e.UserEmail || e.userEmail || '—';
-                  const loginAt = e.LoginAt || e.loginAt;
-                  const logoutAt = e.LogoutAt || e.logoutAt;
-                  const online = !logoutAt;
-                  return (
-                    <div key={e.ID || e.id || i} className="flex items-center gap-2.5 py-2.5">
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${online ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                      />
-                      <span className="flex-1 min-w-0">
-                        <span className="block text-xs font-semibold text-slate-700 truncate">
-                          {email}
+              {loading ? (
+                <div className="p-5 space-y-2">
+                  <Skeleton className="h-9" />
+                  <Skeleton className="h-9" />
+                  <Skeleton className="h-9" />
+                </div>
+              ) : notifications.length === 0 ? (
+                <Empty icon={<Bell size={20} />} title="لا توجد إشعارات" />
+              ) : (
+                <div className="px-3 py-2 divide-y divide-slate-50">
+                  {notifications.slice(0, 5).map((n) => (
+                    <div
+                      key={n.id}
+                      className="py-2.5 px-2 rounded-lg hover:bg-slate-50/60 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-bold text-slate-800 leading-5">
+                          {n.title || 'إشعار'}
+                        </p>
+                        <span className="text-[10px] text-slate-400 whitespace-nowrap shrink-0">
+                          {timeAgo(n.created_at || n.createdAt)}
                         </span>
-                        <span className="block text-[10px] text-slate-400">
-                          {fmtDate(loginAt, { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </span>
-                      {online ? (
-                        <span className="text-[10px] font-bold text-emerald-600 shrink-0">
-                          متصل الآن
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-slate-400 shrink-0">
-                          {fmtDate(logoutAt, { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                      </div>
+                      {n.content && (
+                        <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-5">
+                          {n.content}
+                        </p>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </MotionCard>
+                  ))}
+                </div>
+              )}
+            </MotionCard>
+          )}
+
+          {/* آخر جلسات الدخول */}
+          {!isSectionHidden('sessions') && (
+            <MotionCard className="p-0 relative" delay={0.3}>
+              <SectionHideButton onClick={() => hideSection('sessions')} />
+              <SectionHead
+                title="آخر جلسات الدخول"
+                icon={<LogIn size={14} />}
+                sub={`${fmtNum(sessions.length)} جلسة`}
+              />
+              {loading ? (
+                <div className="p-5 space-y-2">
+                  <Skeleton className="h-9" />
+                  <Skeleton className="h-9" />
+                  <Skeleton className="h-9" />
+                </div>
+              ) : sessions.length === 0 ? (
+                <Empty
+                  icon={<LogIn size={20} />}
+                  title="لا توجد سجلات دخول"
+                  desc="سجلات الدخول لحسابك تظهر هنا لأمانك."
+                />
+              ) : (
+                <div className="px-5 py-3 divide-y divide-slate-50">
+                  {sessions.slice(0, 5).map((e, i) => {
+                    const email = e.UserEmail || e.userEmail || '—';
+                    const loginAt = e.LoginAt || e.loginAt;
+                    const logoutAt = e.LogoutAt || e.logoutAt;
+                    const online = !logoutAt;
+                    return (
+                      <div key={e.ID || e.id || i} className="flex items-center gap-2.5 py-2.5">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${online ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                        />
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-xs font-semibold text-slate-700 truncate">
+                            {email}
+                          </span>
+                          <span className="block text-[10px] text-slate-400">
+                            {fmtDate(loginAt, { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </span>
+                        {online ? (
+                          <span className="text-[10px] font-bold text-emerald-600 shrink-0">
+                            متصل الآن
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 shrink-0">
+                            {fmtDate(logoutAt, { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </MotionCard>
+          )}
         </div>
       </div>
 
       {/* ===== توزيع الطلبات + الأكثر مبيعًا ===== */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <MotionCard className="p-0" delay={0.3}>
-          <SectionHead title="توزيع الطلبات" icon={<PieIcon size={14} />} sub="حسب الحالة" />
-          {loading ? (
-            <div className="p-5">
-              <Skeleton className="h-40" />
-            </div>
-          ) : (
-            <>
-              <div className="px-4 pt-3">
-                <StatusDonut data={statusDistribution} total={orders.length} />
-              </div>
-              {statusDistribution.length === 0 && (
-                <p className="text-[11px] font-medium text-slate-400 text-center pb-4 -mt-1">
-                  بمجرد وصول أول طلب هتتوزع حالاته هنا تلقائيًا.
-                </p>
-              )}
-              {statusDistribution.length > 0 && (
-                <div className="px-5 pb-4 pt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
-                  {statusDistribution.slice(0, 6).map((d) => (
-                    <div
-                      key={d.name}
-                      className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500"
-                    >
-                      <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ background: d.color }}
-                      />
-                      <span className="truncate">{d.name}</span>
-                      <span className="ml-auto font-extrabold text-slate-800 tabular-nums">
-                        {fmtNum(d.value)}
-                      </span>
-                    </div>
-                  ))}
+      {(!isSectionHidden('distribution') || !isSectionHidden('topProducts')) && (
+        <div
+          className={`grid grid-cols-1 gap-4 ${!isSectionHidden('distribution') && !isSectionHidden('topProducts') ? 'xl:grid-cols-3' : ''}`}
+        >
+          {!isSectionHidden('distribution') && (
+            <MotionCard className="p-0 relative" delay={0.3}>
+              <SectionHideButton onClick={() => hideSection('distribution')} />
+              <SectionHead title="توزيع الطلبات" icon={<PieIcon size={14} />} sub="حسب الحالة" />
+              {loading ? (
+                <div className="p-5">
+                  <Skeleton className="h-40" />
                 </div>
-              )}
-            </>
-          )}
-        </MotionCard>
-
-        <MotionCard className="xl:col-span-2 p-0" delay={0.35}>
-          <SectionHead
-            title="الأكثر مبيعًا"
-            icon={<Boxes size={14} />}
-            actionLabel="إدارة المنتجات"
-            onAction={() => router.push('/dashboard/inventory/products')}
-          />
-          {loading ? (
-            <div className="p-5 space-y-2">
-              <Skeleton className="h-9" />
-              <Skeleton className="h-9" />
-              <Skeleton className="h-9" />
-            </div>
-          ) : (current?.top_products || []).length === 0 ? (
-            <Empty
-              icon={<Boxes size={20} />}
-              title="لا توجد مبيعات منتجات بعد"
-              desc="أضف منتجاتك الأولى وشاركها مع عملائك — أكثر المنتجات مبيعًا ستظهر هنا."
-              actionLabel="إضافة منتج"
-              onAction={() => router.push('/dashboard/inventory/products')}
-            />
-          ) : (
-            <div className="px-5 py-3 space-y-1">
-              {(current?.top_products || []).slice(0, 5).map((p, i) => {
-                const maxRev = Math.max(
-                  ...(current?.top_products || []).map((x) => x.revenue || 0),
-                  1
-                );
-                return (
-                  <div key={i} className="py-2 border-b border-slate-50 last:border-0">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-extrabold tabular-nums shrink-0 ${i === 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-500'}`}
-                      >
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-800 truncate">
-                          {p.name || 'منتج'}
-                        </p>
-                        <div className="mt-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${Math.max(4, Math.round(((p.revenue || 0) / maxRev) * 100))}%`,
-                              background: i === 0 ? '#4F46E5' : '#A5B4FC',
-                            }}
+              ) : (
+                <>
+                  <div className="px-4 pt-3">
+                    <StatusDonut data={statusDistribution} total={orders.length} />
+                  </div>
+                  {statusDistribution.length === 0 && (
+                    <p className="text-[11px] font-medium text-slate-400 text-center pb-4 -mt-1">
+                      بمجرد وصول أول طلب هتتوزع حالاته هنا تلقائيًا.
+                    </p>
+                  )}
+                  {statusDistribution.length > 0 && (
+                    <div className="px-5 pb-4 pt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                      {statusDistribution.slice(0, 6).map((d) => (
+                        <div
+                          key={d.name}
+                          className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500"
+                        >
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ background: d.color }}
                           />
+                          <span className="truncate">{d.name}</span>
+                          <span className="ml-auto font-extrabold text-slate-800 tabular-nums">
+                            {fmtNum(d.value)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </MotionCard>
+          )}
+
+          {!isSectionHidden('topProducts') && (
+            <MotionCard
+              className={`p-0 relative ${!isSectionHidden('distribution') ? 'xl:col-span-2' : ''}`}
+              delay={0.35}
+            >
+              <SectionHideButton onClick={() => hideSection('topProducts')} />
+              <SectionHead
+                title="الأكثر مبيعًا"
+                icon={<Boxes size={14} />}
+                actionLabel="إدارة المنتجات"
+                onAction={() => router.push('/dashboard/inventory/products')}
+              />
+              {loading ? (
+                <div className="p-5 space-y-2">
+                  <Skeleton className="h-9" />
+                  <Skeleton className="h-9" />
+                  <Skeleton className="h-9" />
+                </div>
+              ) : (current?.top_products || []).length === 0 ? (
+                <Empty
+                  icon={<Boxes size={20} />}
+                  title="لا توجد مبيعات منتجات بعد"
+                  desc="أضف منتجاتك الأولى وشاركها مع عملائك — أكثر المنتجات مبيعًا ستظهر هنا."
+                  actionLabel="إضافة منتج"
+                  onAction={() => router.push('/dashboard/inventory/products')}
+                />
+              ) : (
+                <div className="px-5 py-3 space-y-1">
+                  {(current?.top_products || []).slice(0, 5).map((p, i) => {
+                    const maxRev = Math.max(
+                      ...(current?.top_products || []).map((x) => x.revenue || 0),
+                      1
+                    );
+                    return (
+                      <div key={i} className="py-2 border-b border-slate-50 last:border-0">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-extrabold tabular-nums shrink-0 ${i === 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-500'}`}
+                          >
+                            {i + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-slate-800 truncate">
+                              {p.name || 'منتج'}
+                            </p>
+                            <div className="mt-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: `${Math.max(4, Math.round(((p.revenue || 0) / maxRev) * 100))}%`,
+                                  background: i === 0 ? '#4F46E5' : '#A5B4FC',
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div className="text-left shrink-0">
+                            <span className="block text-xs font-extrabold text-slate-900 tabular-nums">
+                              {fmtEGP(p.revenue)}
+                            </span>
+                            <span className="block text-[10px] text-slate-400 font-semibold tabular-nums">
+                              {fmtNum(p.sales)} مبيعة
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-left shrink-0">
-                        <span className="block text-xs font-extrabold text-slate-900 tabular-nums">
-                          {fmtEGP(p.revenue)}
-                        </span>
-                        <span className="block text-[10px] text-slate-400 font-semibold tabular-nums">
-                          {fmtNum(p.sales)} مبيعة
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              )}
+            </MotionCard>
           )}
-        </MotionCard>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
