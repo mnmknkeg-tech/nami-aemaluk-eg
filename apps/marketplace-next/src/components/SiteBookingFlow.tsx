@@ -195,13 +195,6 @@ export function SiteBookingFlow({
     }
   };
 
-  const waLink = shopPhone
-    ? buildWhatsAppLink(
-        shopPhone,
-        `مرحبًا، عندي حجز برقم ${result?.bookingNumber ?? ''} في ${shopName}`
-      )
-    : null;
-
   if (result) {
     return (
       <div className="rounded-3xl border border-emerald-200 bg-emerald-50/60 p-6 sm:p-8 text-center space-y-4">
@@ -239,25 +232,14 @@ export function SiteBookingFlow({
             {copied && <p className="text-[10px] font-bold text-emerald-600 mt-1">تم النسخ</p>}
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-md mx-auto">
+        <div className="max-w-md mx-auto">
           <Link
             href={`/bookings/track?number=${encodeURIComponent(result.bookingNumber || '')}`}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 text-white py-3 font-black text-sm hover:bg-slate-800"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-white py-3 font-black text-sm hover:bg-slate-800"
           >
             <SearchCheck className="w-4 h-4" />
             تتبع حالة الحجز
           </Link>
-          {waLink && (
-            <a
-              href={waLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white py-3 font-black text-sm hover:bg-emerald-600"
-            >
-              <MessageCircle className="w-4 h-4" />
-              تأكيد عبر واتساب
-            </a>
-          )}
         </div>
         <button
           type="button"
@@ -289,11 +271,13 @@ export function SiteBookingFlow({
             <p className="text-sm font-bold text-slate-600">
               مفيش خدمات حجز متاحة منشورة حالياً — تواصل مع {shopName} مباشرة
             </p>
-            {waLink && (
+            {shopPhone && (
               <a
                 href={
-                  buildWhatsAppLink(shopPhone!, `مرحبًا، أريد الاستفسار عن خدمات ${shopName}`) ||
-                  '#'
+                  buildWhatsAppLink(
+                    shopPhone,
+                    `مرحبًا، أريد الاستفسار عن خدمات ${shopName}`
+                  ) || '#'
                 }
                 target="_blank"
                 rel="noopener noreferrer"

@@ -243,7 +243,40 @@ export interface WebsiteMerchantIdentity {
   shopId: string;
   shopSlug: string;
   preserveExistingIdentity: boolean;
+  /** الاسم التجاري الحقيقي للتاجر — يُستبدل باسم القالب عند التطبيق. */
+  shopName?: string;
 }
+
+/**
+ * يستبدل اسم القالب باسم التاجر في كل نصوص الهوية: نصوص العقدة
+ * (الشعار/الترويسة)، brandName في الفوتر، وعناوين/أوصاف الصفحات —
+ * فلا ينشر الطبيب موقعًا يحمل اسم قالب جهة أخرى.
+ */
+const rewriteTemplateBrandName = (website: Website, from: string, to: string): Website => {
+  if (!from || !to || from === to) return website;
+  const replaceAll = (value: string): string => value.split(from).join(to);
+  const components = Object.fromEntries(
+    Object.entries(website.components).map(([id, node]) => {
+      const text = node.props?.text;
+      const brandName = node.props?.brandName;
+      const nextProps = { ...node.props };
+      if (typeof text === 'string' && text.includes(from)) nextProps.text = replaceAll(text);
+      if (typeof brandName === 'string' && brandName.includes(from))
+        nextProps.brandName = replaceAll(brandName);
+      return [id, nextProps === node.props ? node : { ...node, props: nextProps }];
+    })
+  );
+  const pages = website.pages.map((page) => {
+    const title = page.metadata?.title;
+    const description = page.metadata?.description;
+    const metadata = { ...(page.metadata || {}) };
+    if (typeof title === 'string' && title.includes(from)) metadata.title = replaceAll(title);
+    if (typeof description === 'string' && description.includes(from))
+      metadata.description = replaceAll(description);
+    return metadata === page.metadata ? page : { ...page, metadata };
+  });
+  return { ...website, name: replaceAll(website.name), pages, components };
+};
 
 export const createFullWebsiteTemplateCandidate = (
   currentWebsite: Website,
@@ -261,20 +294,30 @@ export const createFullWebsiteTemplateCandidate = (
   }
 
   const templateWebsite = entry.website;
+  const merchantName =
+    identity.preserveExistingIdentity
+      ? currentWebsite.name
+      : identity.shopName || templateWebsite.name;
   const candidate = adaptTemplateLinkDestinations(
-    normalizeWebsite({
-      ...templateWebsite,
-      id: identity.preserveExistingIdentity ? currentWebsite.id : identity.shopId,
-      tenantId: identity.shopId,
-      name: identity.preserveExistingIdentity ? currentWebsite.name : templateWebsite.name,
-      domain: identity.preserveExistingIdentity
-        ? currentWebsite.domain
-        : `${identity.shopSlug || 'shop'}.mnmknk.com`,
-      subdomain: identity.preserveExistingIdentity
-        ? currentWebsite.subdomain
-        : identity.shopSlug || 'shop',
-      theme: theme || templateWebsite.theme,
-    })
+    // اسم التاجر الحقيقي يحل محل اسم القالب في هوية الموقع ونصوصه —
+    // الطبيب لا يريد نشر "مجمع زها الطبي" باسم عيادته.
+    rewriteTemplateBrandName(
+      normalizeWebsite({
+        ...templateWebsite,
+        id: identity.preserveExistingIdentity ? currentWebsite.id : identity.shopId,
+        tenantId: identity.shopId,
+        name: merchantName,
+        domain: identity.preserveExistingIdentity
+          ? currentWebsite.domain
+          : `${identity.shopSlug || 'shop'}.mnmknk.com`,
+        subdomain: identity.preserveExistingIdentity
+          ? currentWebsite.subdomain
+          : identity.shopSlug || 'shop',
+        theme: theme || templateWebsite.theme,
+      }),
+      templateWebsite.name,
+      merchantName
+    )
   );
   const validation = validateTemplateEntry({ ...entry, website: candidate });
   if (!validation.valid) {

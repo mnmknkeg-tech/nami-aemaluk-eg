@@ -119,12 +119,54 @@ export function resolvePublishedLinkDestination(
     .trim()
     .toLowerCase();
   if (!label) return undefined;
-  const page = (website.pages || []).find(
+  const pages = website.pages || [];
+  const page = pages.find(
     (candidate) =>
       candidate.name?.trim().toLowerCase() === label ||
       candidate.metadata?.headerTitle?.trim().toLowerCase() === label
   );
-  return page ? { type: 'page', pageId: page.id } : undefined;
+  if (page) return { type: 'page', pageId: page.id };
+
+  // تسميات التنقل العامة ("الرئيسية"، "الخدمات والمنتجات"، "من نحن وقصتنا"…)
+  // لا تطابق أسماء الصفحات حرفيًا في كل القوالب — نطابق بالكلمات المفتاحية
+  // على slug/اسم الصفحة حتى لا تبقى أزرار التنقل نصًا ميتًا في القوالب القديمة.
+  const homePage = pages.find((candidate) => candidate.metadata?.isHomePage) || pages[0];
+  const keywordTargets: Array<{ keywords: string[]; pageId?: string }> = [
+    {
+      keywords: ['الرئيسية', 'رئيسية', 'home', 'البداية'],
+      pageId: homePage?.id,
+    },
+    {
+      keywords: ['خدمات', 'منتجات', 'services', 'الأسعار', 'المتجر'],
+      pageId:
+        pages.find((p) => p.slug === 'services' || p.id === 'page_services')?.id ||
+        pages.find(
+          (p) => (p.name || '').includes('خدمات') || (p.name || '').includes('منتجات')
+        )?.id,
+    },
+    {
+      keywords: ['من نحن', 'قصتنا', 'about', 'فريقنا', 'عن الشركة'],
+      pageId:
+        pages.find((p) => p.slug === 'about' || p.id === 'page_about')?.id ||
+        pages.find(
+          (p) => (p.name || '').includes('نحن') || (p.name || '').includes('قصتنا')
+        )?.id,
+    },
+    {
+      keywords: ['تواصل', 'حجز', 'اتصال', 'contact', 'book', 'مواعيد', 'استفسار'],
+      pageId:
+        pages.find((p) => p.slug === 'contact' || p.id === 'page_contact')?.id ||
+        pages.find(
+          (p) => (p.name || '').includes('تواصل') || (p.name || '').includes('حجز')
+        )?.id,
+    },
+  ];
+  for (const target of keywordTargets) {
+    if (target.keywords.some((keyword) => label.includes(keyword)) && target.pageId) {
+      return { type: 'page', pageId: target.pageId };
+    }
+  }
+  return undefined;
 }
 
 /** Side effects a published renderer can perform when following a link. */

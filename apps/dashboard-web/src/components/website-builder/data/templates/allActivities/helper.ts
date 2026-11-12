@@ -14,6 +14,9 @@ export const createTemplateWebsite = (
   const theme = getMergedThemeTokens(themeKey);
   const comps = { ...components };
   const allPages = [...pages];
+  // صفحة واحدة = المسار القياسي: الرئيسية + الخدمات + من نحن + التواصل
+  // تُنشأ تلقائيًا أدناه، فالملاحة المحقونة تقدر تشير لأرقامها بأمان.
+  const singleHomeFlow = allPages.length === 1 && allPages[0]?.id === 'page_home';
 
   const headerId = Object.keys(comps).find((k) => comps[k].type === 'header') || '';
   const footerId = Object.keys(comps).find((k) => comps[k].type === 'footer') || '';
@@ -71,6 +74,14 @@ export const createTemplateWebsite = (
             props: {
               ...comps[existingNavId].props,
               text: 'الرئيسية • الخدمات والمنتجات • من نحن وقصتنا • تواصل معنا والحجز',
+              navigationItems: singleHomeFlow
+                ? [
+                    { label: 'الرئيسية', destination: { type: 'page', pageId: 'page_home' } },
+                    { label: 'الخدمات والمنتجات', destination: { type: 'page', pageId: 'page_services' } },
+                    { label: 'من نحن وقصتنا', destination: { type: 'page', pageId: 'page_about' } },
+                    { label: 'تواصل معنا والحجز', destination: { type: 'page', pageId: 'page_contact' } },
+                  ]
+                : undefined,
             },
             styles: {
               desktop: {
@@ -97,6 +108,14 @@ export const createTemplateWebsite = (
           childrenIds: [],
           props: {
             text: 'الرئيسية • الخدمات والمنتجات • من نحن وقصتنا • تواصل معنا والحجز',
+            navigationItems: singleHomeFlow
+                ? [
+                    { label: 'الرئيسية', destination: { type: 'page', pageId: 'page_home' } },
+                    { label: 'الخدمات والمنتجات', destination: { type: 'page', pageId: 'page_services' } },
+                    { label: 'من نحن وقصتنا', destination: { type: 'page', pageId: 'page_about' } },
+                    { label: 'تواصل معنا والحجز', destination: { type: 'page', pageId: 'page_contact' } },
+                  ]
+                : undefined,
           },
           styles: {
             desktop: {

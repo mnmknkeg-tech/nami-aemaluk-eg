@@ -583,6 +583,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
           {
             shopId: builderShopId,
             shopSlug: builderShopSlug,
+            shopName: builderShopName || undefined,
             preserveExistingIdentity: hasPersistedWebsiteRef.current,
           },
           presetTheme

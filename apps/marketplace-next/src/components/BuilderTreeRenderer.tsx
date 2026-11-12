@@ -19,8 +19,10 @@ import {
   MapPin,
   Home,
   LayoutGrid,
+  Loader2,
 } from 'lucide-react';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { api } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import type { Shop, Product } from '@/lib/services';
 import {
@@ -138,6 +140,9 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
     onNavigatePage,
   } = React.useContext(ShopDataContext);
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formBookingNumber, setFormBookingNumber] = useState<string | null>(null);
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [isFaqOpen, setIsFaqOpen] = useState(true);
@@ -444,6 +449,22 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
       activeCategory === 'all'
         ? rawList
         : rawList.filter((i: any) => i.category === activeCategory);
+    // توازٍ مع الكانفس: بطاقات وضع الحجز (buyButtonMode hidden) تعرض زر
+    // "احجز الآن" بدل سلة/واتساب — الحجز يثبت في لوحة التاجر لا محادثة.
+    const gridOptions = resolveProductCardOptions(node.props);
+    const bookingModeCards = gridOptions.buyButtonMode === 'hidden';
+    const openBookingFlow = () => {
+      const pages = (website as any).pages || [];
+      const contactPage =
+        pages.find((p: any) => p.slug === 'contact' || p.id === 'page_contact') ||
+        pages.find(
+          (p: any) => (p.name || '').includes('تواصل') || (p.name || '').includes('حجز')
+        ) ||
+        pages[0];
+      if (contactPage) onNavigatePage?.(contactPage.id);
+      if (typeof window !== 'undefined')
+        window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+    };
 
     return (
       <section
@@ -568,6 +589,24 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
                         )}
                       </div>
                       {(() => {
+                        // وضع الحجز: زر حجز يوصل لنموذج يُحفظ في اللوحة —
+                        // لا سلة ولا واتساب (كان يفتح واتساب مباشرة).
+                        if (bookingModeCards) {
+                          return (
+                            <button
+                              type="button"
+                              onClick={openBookingFlow}
+                              style={{
+                                backgroundColor: theme.colors.primary,
+                                borderRadius: theme.radius?.lg || '10px',
+                              }}
+                              className="w-full py-2.5 text-white font-bold text-xs shadow-sm hover:opacity-90 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span>{gridOptions.ctaText || 'احجز الآن'}</span>
+                            </button>
+                          );
+                        }
                         // Bind to the LIVE catalog product when the baked item
                         // matches a real one — add-to-cart then uses the real
                         // product (price/stock/checkout all stay correct).
@@ -648,6 +687,62 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
     const fields: any[] = node.props.fields || [];
     const buttonText = node.props.buttonText || 'إرسال';
 
+    // الطلب يُثبَّت فعلاً في الخادم (نفس مسار حجز الضيف) — بيكتب في لوحة
+    // التاجر فورًا. بلا واتساب وبلا رسائل نجاح وهمية.
+    const submitContactForm = async () => {
+      if (formSubmitting) return;
+      const shopId = String(ctxShop?.id || '');
+      if (!shopId) {
+        setFormError('تعذر إرسال الطلب الآن — تواصل معنا هاتفيًا.');
+        return;
+      }
+      let customerName = '';
+      let customerPhone = '';
+      const notesParts: string[] = [];
+      fields.forEach((field: any, idx: number) => {
+        const fid = field.id || `f_${idx}`;
+        const value = String(inputValues[fid] || '').trim();
+        if (!value) return;
+        const label = String(field.label || '');
+        const type = String(field.type || '');
+        if (type === 'tel' || /جوال|هاتف|موبايل|واتس/.test(label)) {
+          customerPhone = value;
+        } else if (/اسم/.test(label)) {
+          customerName = value;
+        } else {
+          notesParts.push(`${label}: ${value}`);
+        }
+      });
+      if (customerName.length < 2) return setFormError('اكتب الاسم من فضلك');
+      if (customerPhone.replace(/\D/g, '').length < 10)
+        return setFormError('اكتب رقم موبايل صحيح');
+
+      setFormSubmitting(true);
+      setFormError(null);
+      try {
+        const intentText = String(node.props.title || '') + ' ' + fields.map((f: any) => f.label || '').join(' ');
+        const bookingIntent = /حجز|موعد|استشارة/.test(intentText);
+        const res = await api.post<any>('/bookings/guest', {
+          shopId,
+          itemName: String(node.props.title || 'طلب من الموقع').slice(0, 120),
+          itemPrice: 0,
+          customerName,
+          customerPhone,
+          notes: notesParts.join(' — ') || undefined,
+          bookingActivityType: bookingIntent ? 'APPOINTMENT' : 'QUOTE',
+          metadata: { source: 'site-contact-form', siteSlug: ctxShop?.slug },
+        });
+        const data = (res as any)?.data ?? res ?? {};
+        setFormBookingNumber(data?.bookingNumber || null);
+        setFormSubmitted(true);
+        setInputValues({});
+      } catch (err) {
+        setFormError(err instanceof Error ? err.message : 'تعذر الإرسال الآن، جرّب تاني');
+      } finally {
+        setFormSubmitting(false);
+      }
+    };
+
     if (formSubmitted) {
       return (
         <section id={node.id} style={computed} data-section="contact">
@@ -658,11 +753,17 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
               </div>
               <h3 className="text-xl font-bold text-emerald-900">تم استلام طلبك بنجاح!</h3>
               <p className="text-sm text-emerald-700 max-w-sm leading-relaxed">
-                شكراً لك. سنتواصل معك قريباً لتأكيد الطلب.
+                طلبك اتحفظ في نظام التاجر — هيتم التواصل معك لتأكيد التفاصيل.
               </p>
+              {formBookingNumber && (
+                <p className="text-sm font-bold text-slate-600">
+                  رقم الطلب: <span className="text-emerald-700" dir="ltr">{formBookingNumber}</span>
+                </p>
+              )}
               <button
                 onClick={() => {
                   setFormSubmitted(false);
+                  setFormBookingNumber(null);
                   setInputValues({});
                 }}
                 className="mt-2 text-xs font-semibold text-emerald-800 underline hover:text-emerald-950 cursor-pointer"
@@ -748,15 +849,20 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
                 </div>
               );
             })}
+            {formError && (
+              <p className="text-xs font-bold text-red-600">{formError}</p>
+            )}
             <button
-              onClick={() => setFormSubmitted(true)}
+              onClick={submitContactForm}
+              disabled={formSubmitting}
               style={{
                 backgroundColor: theme.colors.primary,
                 borderRadius: theme.radius?.lg || '10px',
               }}
-              className="w-full py-3 text-white font-bold text-sm shadow-sm hover:opacity-90 active:scale-98 transition-all cursor-pointer"
+              className="w-full py-3 text-white font-bold text-sm shadow-sm hover:opacity-90 active:scale-98 transition-all cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
             >
-              {buttonText}
+              {formSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {formSubmitting ? 'بنرسل طلبك…' : buttonText}
             </button>
           </div>
           {renderChildren()}
@@ -1449,15 +1555,61 @@ export function BuilderTreeRenderer({ website, shop, products }: BuilderTreeRend
   // Multi-page parity with /site: pages can navigate client-side (buttons,
   // nav links, footer links with page destinations) instead of being pinned
   // to the home page forever.
-  const [activePageId, setActivePageId] = useState<string | null>(null);
+  const [activePageId, setActivePageId] = useState<string | null>(() => {
+    // فتح برابط فيه ‎?page=slug‎ يفتح الصفحة المطلوبة مباشرة (روابط قابلة
+    // للمشاركة) — وبدونها يبدأ من الرئيسية.
+    if (typeof window === 'undefined') return null;
+    try {
+      const slug = new URLSearchParams(window.location.search).get('page');
+      if (!slug) return null;
+      const match = (website?.pages || []).find(
+        (p: any) => p.slug === slug || p.id === slug
+      );
+      return match?.id ?? null;
+    } catch {
+      return null;
+    }
+  });
   const activePage =
     (activePageId && safeWebsite.pages?.find((page) => page.id === activePageId)) ||
     safeWebsite.pages?.find((page) => page.metadata?.isHomePage) ||
     safeWebsite.pages?.find((page) => page.id === 'page_home') ||
     safeWebsite.pages?.[0];
   const handleNavigatePage = (pageId: string) => {
-    if (safeWebsite.pages?.some((page) => page.id === pageId)) setActivePageId(pageId);
+    if (!safeWebsite.pages?.some((page) => page.id === pageId)) return;
+    setActivePageId(pageId);
+    // تسجيل الصفحة في الـ URL — بدونها سهم رجوع المتصفح بيخرج من الموقع
+    // كله بدل ما يرجّعك للصفحة السابقة.
+    if (typeof window !== 'undefined') {
+      try {
+        const page = safeWebsite.pages?.find((p) => p.id === pageId);
+        const url = new URL(window.location.href);
+        if (page && !page.metadata?.isHomePage) {
+          url.searchParams.set('page', String(page.slug || page.id));
+        } else {
+          url.searchParams.delete('page');
+        }
+        window.history.pushState({}, '', url);
+      } catch {}
+    }
   };
+  // سهم رجوع المتصفح: رجّع الصفحة المعروضة للقيمة السابقة من الـ URL.
+  React.useEffect(() => {
+    const onPopState = () => {
+      if (typeof window === 'undefined') return;
+      try {
+        const slug = new URLSearchParams(window.location.search).get('page');
+        const match = slug
+          ? safeWebsite.pages?.find((p) => p.slug === slug || p.id === slug)
+          : safeWebsite.pages?.find((p) => p.metadata?.isHomePage) ||
+            safeWebsite.pages?.find((p) => p.id === 'page_home') ||
+            safeWebsite.pages?.[0];
+        if (match) setActivePageId(match.id);
+      } catch {}
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [safeWebsite]);
   // Jump back to the top whenever the rendered page changes (skip first mount).
   const currentPageId = activePage?.id;
   const mountedRef = React.useRef(false);
