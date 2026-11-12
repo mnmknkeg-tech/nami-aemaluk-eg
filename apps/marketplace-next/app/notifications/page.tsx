@@ -2,8 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Bell, Package, Store, Tag, Heart, CheckCircle, Clock, ArrowLeft } from 'lucide-react';
+import {
+  Bell,
+  Package,
+  Store,
+  Tag,
+  Heart,
+  CheckCircle,
+  Clock,
+  ArrowLeft,
+  LogIn,
+} from 'lucide-react';
 import { isSessionActive, jsonRequest } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { ListSkeleton, PageHeaderSkeleton } from '@/components/Skeleton';
@@ -35,14 +44,17 @@ const NOTIF_COLORS: Record<string, string> = {
 };
 
 export default function NotificationsPage() {
-  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  // الزائر غير المسجّل يفتح الصفحة نفسها (مش يترمي على /login) — زر السلة والجرس
+  // فتحوا لصفحة فاضية «لا توجد إشعارات» كان بيبان كأن الجرس ميت.
+  const [needsAuth, setNeedsAuth] = useState(false);
 
   useEffect(() => {
     (async () => {
       if (!isSessionActive()) {
-        router.push('/login?returnTo=/notifications');
+        setNeedsAuth(true);
+        setLoading(false);
         return;
       }
       try {
@@ -64,7 +76,7 @@ export default function NotificationsPage() {
       } catch {}
       setLoading(false);
     })();
-  }, [router]);
+  }, []);
 
   const markAsRead = async (id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
@@ -88,6 +100,40 @@ export default function NotificationsPage() {
         <span className="sr-only">جاري التحميل...</span>
         <PageHeaderSkeleton />
         <ListSkeleton rows={5} />
+      </div>
+    );
+  }
+
+  // زائر غير مسجّل — الصفحة تفتح عادي مع دعوة تسجيل دخول ترجّعك لنفس المكان.
+  if (needsAuth) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 md:py-12">
+        <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800">
+          <div className="w-20 h-20 rounded-3xl bg-brand-cyan/10 flex items-center justify-center mx-auto mb-5">
+            <Bell className="w-10 h-10 text-brand-cyan" />
+          </div>
+          <p className="text-slate-700 dark:text-slate-200 font-black text-lg">
+            الإشعارات مرتبطة بحسابك
+          </p>
+          <p className="text-slate-400 dark:text-slate-500 text-sm mt-1 font-semibold">
+            سجّل دخولك (أو أنشئ حساب) لتشوف إشعارات طلباتك وعروضك والمتاجر التي تتابعها
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
+            <Link
+              href="/login?returnTo=/notifications"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-gradient text-white font-bold text-sm shadow-sm hover:shadow-glow-cyan transition-all"
+            >
+              <LogIn className="w-4 h-4" />
+              تسجيل الدخول
+            </Link>
+            <Link
+              href="/"
+              className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            >
+              تصفح السوق
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
