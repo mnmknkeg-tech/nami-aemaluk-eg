@@ -256,7 +256,13 @@ export default function useVisibleSections() {
             const reqMod = SETTINGS_ITEM_MODULES[item.id];
             if (!reqMod) return true; // core items like overview, store
             const norm = (MODULE_ALIASES[reqMod.toLowerCase()] || reqMod).toLowerCase();
-            return enabledModulesSet.has(norm) || Boolean(enabledFeatures[norm]);
+            // ModulesTab writes enabledFeatures[mod] = [] for DISABLED modules —
+            // an empty Set must count as OFF, otherwise the settings sub-tab of a
+            // hidden section stays visible while the section itself disappears.
+            const feats = enabledFeatures[norm];
+            return (
+              enabledModulesSet.has(norm) || (Boolean(feats) && (feats as Set<string>).size > 0)
+            );
           });
           return { ...section, items };
         }

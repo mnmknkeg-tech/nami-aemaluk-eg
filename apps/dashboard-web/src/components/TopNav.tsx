@@ -187,6 +187,19 @@ export default function TopNav({ onMenuClick, onSwitchNav }: TopNavProps) {
   const activeSection = sections.find((s) => s.id === activeSectionId) || null;
   const previewSection = sections.find((s) => s.id === hoverSection) || null;
 
+  // Category pills: hide categories whose every settings item is filtered out
+  // (e.g. bookings module disabled) so the sub-bar only offers what's usable.
+  const effectiveSettingsCategory = useMemo(() => {
+    const items = activeSection?.id === 'settings' ? activeSection.items : [];
+    const hasVisible = SETTINGS_CATEGORIES.some(
+      (c) =>
+        c.id === settingsCategory &&
+        (c.id === 'all' ||
+          items.some((it) => it.id !== 'dashboardSettings' && c.itemIds?.includes(it.id)))
+    );
+    return hasVisible ? settingsCategory : 'all';
+  }, [activeSection, settingsCategory]);
+
   // التمرير التلقائي للتبويب النشط في إعدادات اللوحة
   useEffect(() => {
     if (activeSectionId === 'settings') {
@@ -673,7 +686,11 @@ export default function TopNav({ onMenuClick, onSwitchNav }: TopNavProps) {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-            className="bg-white border-b border-slate-100 overflow-hidden"
+            className={`bg-white border-b border-slate-100 overflow-hidden ${
+              // Settings sub-bar is desktop-only: on mobile the sidebar already
+              // carries the same navigation and the strip crowded the top.
+              activeSection.id === 'settings' ? 'hidden md:block' : ''
+            }`}
           >
             {activeSection.id === 'settings' ? (
               <div className="px-3 md:px-5 py-2 flex items-center gap-2 overflow-hidden">
@@ -687,14 +704,20 @@ export default function TopNav({ onMenuClick, onSwitchNav }: TopNavProps) {
                   </span>
                 </div>
 
-                {/* Category filter pills */}
+                {/* Category filter pills (only categories with visible items) */}
                 <div className="flex items-center gap-1 pl-3 ml-1 border-l border-slate-100 shrink-0 overflow-x-auto no-scrollbar">
-                  {SETTINGS_CATEGORIES.map((cat) => (
+                  {SETTINGS_CATEGORIES.filter(
+                    (cat) =>
+                      cat.id === 'all' ||
+                      activeSection.items.some(
+                        (it) => it.id !== 'dashboardSettings' && cat.itemIds?.includes(it.id)
+                      )
+                  ).map((cat) => (
                     <button
                       key={cat.id}
                       onClick={() => setSettingsCategory(cat.id)}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all whitespace-nowrap ${
-                        settingsCategory === cat.id
+                        effectiveSettingsCategory === cat.id
                           ? 'bg-gradient-to-r from-[#0284C7] to-[#00B4D8] text-white shadow-xs'
                           : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                       }`}
@@ -721,8 +744,10 @@ export default function TopNav({ onMenuClick, onSwitchNav }: TopNavProps) {
                   {activeSection.items
                     .filter((item) => item.id !== 'dashboardSettings')
                     .filter((item) => {
-                      if (settingsCategory === 'all') return true;
-                      const cat = SETTINGS_CATEGORIES.find((c) => c.id === settingsCategory);
+                      if (effectiveSettingsCategory === 'all') return true;
+                      const cat = SETTINGS_CATEGORIES.find(
+                        (c) => c.id === effectiveSettingsCategory
+                      );
                       return cat?.itemIds?.includes(item.id);
                     })
                     .map((item) => {
