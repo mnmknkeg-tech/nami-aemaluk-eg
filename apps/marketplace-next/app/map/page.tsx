@@ -2,9 +2,17 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, MapPin, Store, Briefcase } from 'lucide-react';
+import { Loader2, MapPin, Store, Briefcase, Hand } from 'lucide-react';
 import { apiPath } from '@/lib/api';
 import { buildShopMarkerHtml, buildListingMarkerHtml, escapeHtml } from '@/lib/mapUtils';
+import {
+  requestDeviceLocation,
+  requestApproxLocation,
+  saveLastLocation,
+  loadLastLocation,
+  geoErrorMessage,
+  isInAppBrowser,
+} from '@/lib/geo';
 
 interface MapPinItem {
   id?: string;
@@ -39,6 +47,17 @@ export default function MapPage() {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState('');
+  // ملاحظة إرشادية (مش خطأ): موقع تقريبي / آخر موقع محفوظ
+  const [locationNote, setLocationNote] = useState('');
+  // وضع التحديد اليدوي: المستخدم بيضغط على الخريطة يحط موقعه بنفسه —
+  // بيشتغل دايمًا حتى لو الـ GPS فشل تمامًا.
+  const [manualMode, setManualMode] = useState(false);
+  const manualModeRef = useRef(false);
+  // منع التحريك الطائر لما الموقع جاي من ضغطة المستخدم نفسه على الخريطة.
+  const skipFlyRef = useRef(false);
+  // مستخدم داخل متصفح مدمج (واتساب/فيسبوك...) — لازم نحسبها بعد التحميل
+  // عشان ما يحصلش تعارض hydration.
+  const [inApp, setInApp] = useState(false);
   // Leaflet is imported asynchronously. The pins effect bails out when the map
   // is not ready yet, and `pins` never changes again — so without this flag the
   // markers would silently never be drawn. Bump it once the map is live.
@@ -59,6 +78,16 @@ export default function MapPage() {
       setPins([]);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  // آخر موقع معروف + بيئة التصفح — بعد التحميل على العميل فقط.
+  useEffect(() => {
+    setInApp(isInAppBrowser());
+    const saved = loadLastLocation();
+    if (saved) {
+      setCoords({ lat: saved.lat, lng: saved.lng });
+      setLocationNote('يُعرض آخر موقع معروف لك — اضغط «حدد موقعي» للتحديث');
     }
   }, []);
 
@@ -108,6 +137,20 @@ export default function MapPage() {
           }).addTo(mapRef.current);
 
           markersLayerRef.current = L.layerGroup().addTo(mapRef.current);
+
+          // التحديد اليدوي: لما الوضع شغال، أي ضغطة على الخريطة بتحدد موقع
+          // المستخدم (بتستخدم ref عشان الهاندلر ميمسكش نسخة قديمة من الحالة).
+          mapRef.current.on('click', (e: any) => {
+            if (!manualModeRef.current) return;
+            manualModeRef.current = false;
+            setManualMode(false);
+            const { lat, lng } = e.latlng;
+            saveLastLocation({ lat, lng, source: 'manual', at: Date.now() });
+            skipFlyRef.current = true;
+            setCoords({ lat, lng });
+            setLocationError('');
+            setLocationNote('تم تحديد موقعك يدويًا');
+          });
         }
         // Let the pins effect know the map now exists, even if the pins
         // already arrived while Leaflet was still loading.
@@ -169,6 +212,12 @@ export default function MapPage() {
     }
   }, [pins, router, mapReady]);
 
+  // لما الوضع اليدوي بيتفعّل بنخلي الخريطة جاهزة للضغط — وده بنعمله
+  // بمزامنة الـ ref مع الحالة بعد كل رندر (نمط latest-ref القياسي).
+  useEffect(() => {
+    manualModeRef.current = manualMode;
+  }, [manualMode]);
+
   useEffect(() => {
     if (!mapRef.current || !leafletRef.current || !coords) return;
     const L = leafletRef.current;
@@ -188,8 +237,12 @@ export default function MapPage() {
     }
 
     try {
-      const zoom = Math.max(14, Number(mapRef.current?.getZoom?.() ?? 0));
-      mapRef.current?.flyTo?.([coords.lat, coords.lng], zoom, { animate: true, duration: 0.7 });
+      if (skipFlyRef.current) {
+        skipFlyRef.current = false;
+      } else {
+        const zoom = Math.max(14, Number(mapRef.current?.getZoom?.() ?? 0));
+        mapRef.current?.flyTo?.([coords.lat, coords.lng], zoom, { animate: true, duration: 0.7 });
+      }
       setTimeout(() => {
         mapRef.current?.invalidateSize?.();
       }, 0);
@@ -198,30 +251,38 @@ export default function MapPage() {
 
   const handleLocateMe = async () => {
     setLocationError('');
-    if (!navigator.geolocation) {
-      setLocationError('المتصفح لا يدعم تحديد الموقع');
-      return;
-    }
-    if (typeof window !== 'undefined' && !(window as any).isSecureContext) {
-      setLocationError('تحديد الموقع يتطلب اتصال آمن (HTTPS)');
-      return;
-    }
+    setLocationNote('');
+    setManualMode(false);
+    manualModeRef.current = false;
     setLocating(true);
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        });
-      });
-      setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
-    } catch (err: any) {
-      const msg = String(err?.message || '').trim();
-      if (msg.includes('denied')) setLocationError('تم رفض إذن تحديد الموقع');
-      else if (msg.includes('unavailable')) setLocationError('الموقع غير متاح');
-      else if (msg.includes('timeout')) setLocationError('انتهت مهلة تحديد الموقع');
-      else setLocationError('تعذر تحديد موقعك');
+      // 1) الجهاز: GPS دقيق → موقع شبكي (المحاولة الثانية جوه requestDeviceLocation)
+      const result = await requestDeviceLocation();
+      if (result.ok) {
+        setCoords({ lat: result.coords.lat, lng: result.coords.lng });
+        saveLastLocation(result.coords);
+        setLocationNote(result.coords.source === 'network' ? 'تم التحديد بموقع شبكي تقريبي' : '');
+        return;
+      }
+
+      // 2) الإذن مرفوض — محاولة تانية هتفشل فورًا، منجربش الـ IP ونقول السبب على طول
+      if (result.code === 'denied') {
+        setLocationError(geoErrorMessage('denied'));
+        return;
+      }
+
+      // 3) الجهاز فشل بغير الإذن — موقع تقريبي من الـ IP (نفس النطاق) بدل رسالة خطأ
+      const approx = await requestApproxLocation();
+      if (approx.ok) {
+        setCoords({ lat: approx.coords.lat, lng: approx.coords.lng });
+        setLocationNote(
+          'موقع تقريبي حسب شبكة الإنترنت (على مستوى المدينة) — للدقة استخدم «تحديد يدوي»'
+        );
+        return;
+      }
+
+      // 4) ولا طريقة اشتغلت — رسالة سبب حقيقية + إرشاد للتحديد اليدوي
+      setLocationError(geoErrorMessage(result.code || 'unknown'));
     } finally {
       setLocating(false);
     }
@@ -258,7 +319,14 @@ export default function MapPage() {
           <div className="absolute top-4 right-4 left-4 md:left-auto md:w-[360px] z-[1000] pointer-events-auto">
             <div className="bg-white/95 backdrop-blur border border-slate-200 rounded-xl p-4 md:p-5 space-y-3 pointer-events-auto relative shadow-sm">
               {locationError && (
-                <p className="text-red-500 text-xs font-semibold text-center">{locationError}</p>
+                <p className="text-red-500 text-xs font-bold text-center leading-relaxed">
+                  {locationError}
+                </p>
+              )}
+              {locationNote && (
+                <p className="text-amber-600 text-[11px] font-bold text-center leading-relaxed">
+                  {locationNote}
+                </p>
               )}
 
               <button
@@ -268,13 +336,44 @@ export default function MapPage() {
                 style={{ touchAction: 'manipulation' }}
               >
                 {locating ? (
-                  <Loader2 className="animate-spin w-4 h-4" />
+                  <>
+                    <Loader2 className="animate-spin w-4 h-4" /> جاري تحديد موقعك…
+                  </>
                 ) : (
                   <>
                     <MapPin className="w-4 h-4" style={{ color: DASHBOARD_CYAN }} /> حدد موقعي
                   </>
                 )}
               </button>
+
+              {/* التحديد اليدوي — بيشتغل دايمًا حتى لو الـ GPS فشل تمامًا */}
+              <button
+                onClick={() => {
+                  setLocationError('');
+                  setManualMode((v) => !v);
+                }}
+                disabled={locating}
+                className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all disabled:opacity-50 ${
+                  manualMode
+                    ? 'bg-slate-900 border-slate-900 text-white'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+                style={{ touchAction: 'manipulation' }}
+              >
+                <Hand
+                  className="w-4 h-4"
+                  style={!manualMode ? { color: DASHBOARD_CYAN } : undefined}
+                />
+                {manualMode ? 'اضغط على الخريطة لتحديد موقعك…' : 'تحديد يدوي على الخريطة'}
+              </button>
+
+              {/* المتصفح المدمج في تطبيقات التواصل بيبوّظ تحديد الموقع رغم الإذن */}
+              {inApp && (
+                <p className="text-[11px] font-bold text-amber-600 text-center leading-relaxed">
+                  بتفتح الموقع من داخل تطبيق آخر — لو «حدد موقعي» مش شغال، افتح الرابط في متصفح
+                  الهاتف (Chrome / Safari)
+                </p>
+              )}
 
               {/* مفتاح الخريطة */}
               <div className="flex items-center justify-center gap-4 pt-1">

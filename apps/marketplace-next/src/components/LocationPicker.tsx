@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapPin, Locate, Loader2, Check, AlertCircle } from 'lucide-react';
 import { guessGovernorate } from '@/lib/eg-geo';
+import { requestDeviceLocation, saveLastLocation, geoErrorMessage } from '@/lib/geo';
 
 interface ResolvedAddress {
   city?: string;
@@ -180,39 +181,28 @@ export function LocationPicker({
     resolveAddress(lat, lng);
   };
 
-  const handleLocate = () => {
-    if (!navigator.geolocation) {
-      setError('متصفحك لا يدعم تحديد الموقع — اضغط على الخريطة يدويًا بدلًا من ده');
-      return;
-    }
-    if (typeof window !== 'undefined' && !(window as any).isSecureContext) {
-      setError('تحديد الموقع التلقائي يحتاج اتصال آمن (HTTPS) — اضغط على الخريطة يدويًا');
-      return;
-    }
+  // ── التحديد التلقائي: سلّم متدرج (GPS دقيق → موقع شبكي) من lib/geo ──
+  // النسخة القديمة كانت محاولة واحدة enableHighAccuracy + maximumAge:0 +
+  // مهلة 10 ثواني — ودي أشهر سبب لفشل التحديد رغم إذن مفتوح، خصوصًا داخل
+  // المباني. الضغط على الخريطة اليدوي موجود كـ fallback دائم.
+  const handleLocate = async () => {
     setLocating(true);
     setError('');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
+    try {
+      const result = await requestDeviceLocation();
+      if (result.ok) {
+        const { lat, lng } = result.coords;
         if (mapRef.current) {
-          mapRef.current.setView([latitude, longitude], 16);
+          mapRef.current.setView([lat, lng], 16);
         }
-        placeMarker(latitude, longitude);
-        setLocating(false);
-      },
-      (err) => {
-        setLocating(false);
-        const code = err?.code;
-        if (code === 1) {
-          setError('صلاحية الموقع مرفوضة — اسمح بالوصول من إعدادات المتصفح، أو اضغط على الخريطة يدويًا');
-        } else if (code === 2) {
-          setError('الموقع مش متاح حاليًا — اضغط على الخريطة يدويًا بدلًا من ده');
-        } else {
-          setError('انتهت مهلة تحديد الموقع — اضغط على الخريطة يدويًا بدلًا من ده');
-        }
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+        placeMarker(lat, lng);
+        saveLastLocation(result.coords);
+        return;
+      }
+      setError(geoErrorMessage(result.code || 'unknown'));
+    } finally {
+      setLocating(false);
+    }
   };
 
   return (
@@ -274,10 +264,11 @@ export function LocationPicker({
       {selected && (
         <div className="flex items-center gap-2 text-xs font-bold text-green-600 flex-wrap">
           <Check className="w-4 h-4" />
-          تم تحديد الموقع: <span dir="ltr">{selected.lat.toFixed(4)}, {selected.lng.toFixed(4)}</span>
-          {resolveHint && (
-            <span className="text-slate-400 font-semibold">— {resolveHint}</span>
-          )}
+          تم تحديد الموقع:{' '}
+          <span dir="ltr">
+            {selected.lat.toFixed(4)}, {selected.lng.toFixed(4)}
+          </span>
+          {resolveHint && <span className="text-slate-400 font-semibold">— {resolveHint}</span>}
         </div>
       )}
     </div>
