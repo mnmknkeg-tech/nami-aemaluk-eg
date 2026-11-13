@@ -30,7 +30,19 @@ export async function addBookingViaBackend(booking: any) {
 }
 
 export async function updateBookingStatusViaBackend(id: string, status: string) {
-  return apiRequest<any>(`/bookings/${encodeURIComponent(id)}/status`, {
+  // القائمة الموحدة للحجوزات بتمسك bookings + reservations معاً.
+  // reservations بتاخد بادئة int- — مسارها الصحيح /reservations/:id/status،
+  // لا /bookings/:id/status (كان بيودي لـ NotFound صامت لكل تحديث حالة لحجز داخلي).
+  if (id.startsWith('int-')) {
+    const reservationId = id.slice(4);
+    return apiRequest<any>(`/reservations/${encodeURIComponent(reservationId)}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+  // web- prefix أو id خام → مسار bookings (نشيل web- لو موجود)
+  const bookingId = id.startsWith('web-') ? id.slice(4) : id;
+  return apiRequest<any>(`/bookings/${encodeURIComponent(bookingId)}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });

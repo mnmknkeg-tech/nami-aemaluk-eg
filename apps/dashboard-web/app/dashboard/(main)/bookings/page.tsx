@@ -467,8 +467,9 @@ function BookingsMainContent() {
   // Status Updater
   const handleUpdateStatus = async (item: BookingItem, newStatus: UnifiedStatus) => {
     try {
-      const realId = item.raw?.id || item.id.replace(/^(web|int)-/, '');
-      await updateBookingStatusViaBackend(String(realId), newStatus);
+      // نمرّر الـ id كامل بالبادئة (int-/web-) — updateBookingStatusViaBackend
+      // بترتّب على المسار الصحيح حسب البادئة.
+      await updateBookingStatusViaBackend(item.id, newStatus);
       setBookings((prev) => prev.map((x) => (x.id === item.id ? { ...x, status: newStatus } : x)));
       if (selectedBooking && selectedBooking.id === item.id) {
         setSelectedBooking({ ...selectedBooking, status: newStatus });
