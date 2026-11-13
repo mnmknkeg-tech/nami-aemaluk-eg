@@ -17,7 +17,7 @@ import {
   ChevronRight,
   ArrowRight,
 } from 'lucide-react';
-import { api, clearStoredAuthToken, isSessionActive } from '@/lib/api';
+import { api, clearStoredAuthToken, extractList, isSessionActive } from '@/lib/api';
 import { ProfileShellSkeleton } from '@/components/Skeleton';
 
 interface Order {
@@ -65,7 +65,9 @@ export default function ProfileOrdersPage() {
         );
 
         const ordersData = await api.get('/orders/me');
-        setOrders(((ordersData as any)?.data ?? ordersData ?? []) as Order[]);
+        // /orders/me is paginated: `{data: null, meta: {...}}` for a new user —
+        // extractList coerces every envelope shape into a real array.
+        setOrders(extractList<Order>(ordersData));
       } catch (error) {
         console.error('Failed to fetch orders:', error);
       } finally {

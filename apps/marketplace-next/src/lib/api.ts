@@ -122,6 +122,29 @@ export function backendApiUrl(path: string): string {
   return `${BACKEND_URL}${apiPath(path)}`;
 }
 
+/**
+ * Pull the array out of a backend list response, whatever envelope it wears.
+ *
+ * Endpoints are inconsistent: some return a bare array, some
+ * `{data: [...]}`, some paginated `{data: null, meta: {total: 0}}` (an
+ * EMPTY page — `data` is null, not `[]`). Naive `res?.data ?? res ?? []`
+ * chains fall through `null` and hand the whole envelope to `.map`/
+ * `.filter`, which crashes the page (the "حدث خطأ غير متوقع" boundary).
+ * This always returns a real array.
+ */
+export function extractList<T = unknown>(res: unknown): T[] {
+  const r = res as Record<string, any> | undefined | null;
+  if (Array.isArray(res)) return res as T[];
+  if (Array.isArray(r?.data)) return r.data as T[];
+  if (Array.isArray(r?.data?.items)) return r.data.items as T[];
+  if (Array.isArray(r?.data?.orders)) return r.data.orders as T[];
+  if (Array.isArray(r?.data?.bookings)) return r.data.bookings as T[];
+  if (Array.isArray(r?.items)) return r.items as T[];
+  if (Array.isArray(r?.orders)) return r.orders as T[];
+  if (Array.isArray(r?.bookings)) return r.bookings as T[];
+  return [];
+}
+
 export function backendOrigin(): string {
   return new URL(BACKEND_URL).origin;
 }
