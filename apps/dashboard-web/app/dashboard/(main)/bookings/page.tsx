@@ -2032,18 +2032,10 @@ function AddBookingModal({
 
       const res = await addBookingViaBackend(payload);
 
-      // Manual bookings are never rejected for a busy window — the backend
-      // queues them after the last overlapping booking (+ the doctor's gap).
-      // Surface the actual scheduled Cairo time in both the notice and the
-      // list row instead of silently showing the requested one.
-      const actualDate: string = res?.bookingDate || bookingDate;
-      const actualTime: string = res?.bookingTime || bookingTime;
-      if (actualDate !== bookingDate || actualTime !== bookingTime) {
-        alert(
-          `الوقت المطلوب كان مشغول — تم تسجيل الحجز تلقائيًا بعد آخر موعد: ${actualDate} الساعة ${actualTime}`
-        );
-      }
-
+      // الحجز اليدوي بيتسجل على الموعد المطلوب بالظبط — الباكند مش بيحوّله
+      // ولا بيأجّله حتى لو الفترة مزنوقة بالكامل (القيود للموقع العام بس).
+      // عرض الوقت المطلوب نفسه فورًا؛ إعادة التحميل بعدها هتجيب القيمة
+      // المعتمدة من السيرفر ولو اختلفة لأي سبب.
       const newBooking: BookingItem = {
         id: `int-${res.id || Date.now()}`,
         source: 'internal',
@@ -2052,9 +2044,9 @@ function AddBookingModal({
         itemName: payload.itemName,
         customerName: payload.customerName,
         customerPhone: payload.customerPhone,
-        when: `${actualDate}T${actualTime}:00`,
-        dateStr: actualDate,
-        timeStr: actualTime,
+        when: `${bookingDate}T${bookingTime}:00`,
+        dateStr: bookingDate,
+        timeStr: bookingTime,
         price: payload.itemPrice,
         participants: payload.participants,
         notes: payload.notes,

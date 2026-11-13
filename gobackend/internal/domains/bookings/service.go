@@ -405,7 +405,15 @@ func (s *Service) Reschedule(ctx context.Context, id, bookingDate, bookingTime, 
 	if err != nil {
 		return nil, errors.Validation("invalid_date_time", "تاريخ أو وقت غير صحيح")
 	}
-	if newStart.Before(time.Now()) {
+
+	// Staff (merchant/admin) edits are unrestricted: the secretary IS the boss
+	// of the schedule. They may move a booking to any time — past, outside
+	// work hours, beyond the advance window — and stack it on top of a fully
+	// booked slot. Availability rules only bind guest/public flows. The shop
+	// ownership check below still applies to everyone.
+	staff := isAdmin(actorRole) || strings.EqualFold(actorRole, "MERCHANT")
+
+	if !staff && newStart.Before(time.Now()) {
 		return nil, errors.Validation("past_time", "لا يمكن نقل الموعد إلى وقت في الماضي")
 	}
 
@@ -442,29 +450,33 @@ func (s *Service) Reschedule(ctx context.Context, id, bookingDate, bookingTime, 
 	}
 	newEnd := newStart.Add(time.Duration(duration) * time.Minute)
 
-	// Work-hours window check (Cairo wall clock).
-	if ws, err := CairoWallClock(bookingDate, settings.WorkStart); err == nil && newStart.Before(ws) {
-		return nil, errors.Validation("outside_work_hours", "الوقت قبل ساعة بدء استقبال المواعيد")
-	}
-	if we, err := CairoWallClock(bookingDate, settings.WorkEnd); err == nil && newEnd.After(we) {
-		return nil, errors.Validation("outside_work_hours", "الوقت بعد ساعة نهاية استقبال المواعيد")
-	}
-	// Advance-window check.
-	todayStart := CairoDayStartOf(time.Now())
-	if settings.AdvanceDays > 0 && CairoDayStartOf(newStart).After(todayStart.AddDate(0, 0, settings.AdvanceDays)) {
-		return nil, errors.Validation("beyond_advance_window", "التاريخ أبعد من نافذة الحجز المسبق")
-	}
-	// Conflict check against other bookings on the same service.
-	count, err := s.repo.CountOverlappingBookings(ctx, existing.ServiceID, newStart, newEnd, id)
-	if err != nil {
-		return nil, err
-	}
-	maxPer := settings.MaxPerSlot
-	if maxPer < 1 {
-		maxPer = 1
-	}
-	if count >= maxPer {
-		return nil, errors.Validation("slot_unavailable", "الفترة الزمنية غير متاحة")
+	// Availability rules (work hours, advance window, per-slot cap) bind the
+	// guest/public flow only — staff moves are unrestricted (see above).
+	if !staff {
+		// Work-hours window check (Cairo wall clock).
+		if ws, err := CairoWallClock(bookingDate, settings.WorkStart); err == nil && newStart.Before(ws) {
+			return nil, errors.Validation("outside_work_hours", "الوقت قبل ساعة بدء استقبال المواعيد")
+		}
+		if we, err := CairoWallClock(bookingDate, settings.WorkEnd); err == nil && newEnd.After(we) {
+			return nil, errors.Validation("outside_work_hours", "الوقت بعد ساعة نهاية استقبال المواعيد")
+		}
+		// Advance-window check.
+		todayStart := CairoDayStartOf(time.Now())
+		if settings.AdvanceDays > 0 && CairoDayStartOf(newStart).After(todayStart.AddDate(0, 0, settings.AdvanceDays)) {
+			return nil, errors.Validation("beyond_advance_window", "التاريخ أبعد من نافذة الحجز المسبق")
+		}
+		// Conflict check against other bookings on the same service.
+		count, err := s.repo.CountOverlappingBookings(ctx, existing.ServiceID, newStart, newEnd, id)
+		if err != nil {
+			return nil, err
+		}
+		maxPer := settings.MaxPerSlot
+		if maxPer < 1 {
+			maxPer = 1
+		}
+		if count >= maxPer {
+			return nil, errors.Validation("slot_unavailable", "الفترة الزمنية غير متاحة")
+		}
 	}
 
 	updated, err := s.repo.Reschedule(ctx, id, newStart, newEnd)
