@@ -34,6 +34,8 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
+// date-fns — مرجع دقيق لعمليات التاريخ (تنسيق/تفكيك/بداية الأسبوع) بدل الحساب اليدوي
+import { format as dfFormat, parse as dfParse, startOfWeek as dfStartOfWeek } from 'date-fns';
 import { apiRequest } from '@/lib/auth';
 import { useModuleGuard } from '@/hooks/useModuleGuard';
 import { addBookingViaBackend, updateBookingStatusViaBackend } from '@/lib/api/bookings';
@@ -142,17 +144,11 @@ function getWeekNumber(d: Date): number {
 }
 
 function formatDateKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return dfFormat(d, 'yyyy-MM-dd');
 }
 
 function parseDateKey(s: string): Date {
-  const [y, m, d] = String(s || '')
-    .split('-')
-    .map(Number);
-  return new Date(y || new Date().getFullYear(), (m || 1) - 1, d || 1);
+  return dfParse(s, 'yyyy-MM-dd', new Date());
 }
 
 function timeToMinutes(t: string): number {
@@ -1108,10 +1104,23 @@ function TimeGrid({
   const showNow = showsToday && nowMinutes >= startMinutes && nowMinutes <= endMinutes;
   const nowTop = ((nowMinutes - startMinutes) * pxPerHour) / 60;
 
+  // الهوفر بيقرّب لمركز الربع ساعة اللي تحت المؤشر — نفس حساب الضغط بالظبط،
+  // فالوقت اللي بيظهر في البالونة هو بالحرف اللي هيتسجل.
+  const [hoverSlot, setHoverSlot] = useState<{
+    day: string;
+    y: number;
+    minutes: number;
+  } | null>(null);
+  const minutesFromY = (y: number): number =>
+    Math.min(
+      endMinutes - 15,
+      Math.max(startMinutes, startMinutes + Math.floor(y / (pxPerHour / 4)) * 15)
+    );
+
   return (
     <div className="flex" dir="rtl">
       {/* عمود الساعات — يمين الشاشة */}
-      <div className="w-14 shrink-0 relative select-none" style={{ height: gridHeight }}>
+      <div className="w-16 shrink-0 relative select-none" style={{ height: gridHeight }}>
         {hourLines.map((h) => (
           <span
             key={h}
@@ -1145,14 +1154,19 @@ function TimeGrid({
                 isToday ? 'bg-slate-50/40' : 'hover:bg-slate-50/30'
               }`}
               style={{ height: gridHeight }}
+              onMouseMove={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const minutes = minutesFromY(e.clientY - rect.top);
+                setHoverSlot({
+                  day: dStr,
+                  y: ((minutes - startMinutes) * pxPerHour) / 60,
+                  minutes,
+                });
+              }}
+              onMouseLeave={() => setHoverSlot(null)}
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
-                const y = e.clientY - rect.top;
-                const minutes = Math.min(
-                  endMinutes - 15,
-                  Math.max(startMinutes, startMinutes + Math.floor(y / (pxPerHour / 4)) * 15)
-                );
-                onSlotClick(dStr, minutesToTime(minutes));
+                onSlotClick(dStr, minutesToTime(minutesFromY(e.clientY - rect.top)));
               }}
               title="اضغط على أي وقت لإضافة حجز في هذا الموعد"
             >
@@ -1173,8 +1187,8 @@ function TimeGrid({
                 />
               ))}
 
-              {/* كروت الحجوزات */}
-              {blocks.map(({ b, start, end, col }) => {
+              {/* كروت الحجوزات — المتقاطعة تنقسم جنب بعض بأعمدة متساوية */}
+              {blocks.map(({ b, start, end, col, cols }) => {
                 const act = ACTIVITY_META[b.activityType];
                 const top = ((start - startMinutes) * pxPerHour) / 60;
                 const blockHeight = Math.max(30, ((end - start) * pxPerHour) / 60 - 2);
@@ -1190,8 +1204,8 @@ function TimeGrid({
                     style={{
                       top,
                       height: blockHeight,
-                      right: col * 8,
-                      width: `calc(100% - ${col * 8}px)`,
+                      right: `${col * (100 / cols)}%`,
+                      width: `calc(${100 / cols}% - 2px)`,
                     }}
                     title={`${b.itemName} — ${b.customerName} (${b.timeStr})`}
                   >
@@ -1199,7 +1213,7 @@ function TimeGrid({
                       {fmtTime12(b.timeStr)}
                     </span>
                     <span className="block text-[10px] font-bold truncate">{b.customerName}</span>
-                    {blockHeight > 46 && (
+                    {blockHeight > 46 && 100 / cols > 55 && (
                       <span className="block text-[9px] font-semibold truncate opacity-80">
                         {b.itemName}
                       </span>
@@ -1207,6 +1221,23 @@ function TimeGrid({
                   </button>
                 );
               })}
+
+              {/* مؤشر الهوفر — السطر اللي الضغط عليه هيفتح الحجز عند نفس الدقيقة */}
+              {hoverSlot && hoverSlot.day === dStr && (
+                <div
+                  className="absolute inset-x-0 z-10 pointer-events-none"
+                  style={{ top: hoverSlot.y }}
+                >
+                  <div className="relative border-t-2 border-dashed border-indigo-400">
+                    <span
+                      className="absolute right-1 -top-[9px] bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md tabular-nums"
+                      dir="ltr"
+                    >
+                      {fmtTime12(minutesToTime(hoverSlot.minutes))}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* خط الوقت اللحظي */}
               {isToday && showNow && (
@@ -1248,10 +1279,8 @@ function WeekCalendarView({
   onSelectBooking: (b: BookingItem) => void;
   onSlotClick: (dateStr: string, timeStr: string) => void;
 }) {
-  // Start on Saturday
-  const startOfWeek = new Date(currentDate);
-  const dayIndex = (startOfWeek.getDay() + 1) % 7;
-  startOfWeek.setDate(startOfWeek.getDate() - dayIndex);
+  // بداية الأسبوع السبت عبر date-fns (weekStartsOn: 6)
+  const startOfWeek = dfStartOfWeek(currentDate, { weekStartsOn: 6 });
 
   const days: Date[] = [];
   for (let i = 0; i < 7; i++) {
@@ -1264,7 +1293,7 @@ function WeekCalendarView({
 
   return (
     <div>
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center py-3 text-xs font-extrabold text-slate-700 pr-14">
+      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center py-3 text-xs font-extrabold text-slate-700 pr-16">
         {days.map((d, i) => (
           <div key={i} className="space-y-1">
             <div>{WEEK_DAYS[i]}</div>
