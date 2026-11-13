@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     description:
       'منصة مصرية بتجمع التسوّق والمطاعم والحجوزات والخدمات في مكان واحد. اطلب، احجز، اتفرج — من مكانك.',
     url: siteConfig.url,
-    siteName: siteConfig.name,
+    siteName: siteConfig.nameArabic,
     locale: 'ar_EG',
     type: 'website',
     images: [
@@ -125,8 +125,9 @@ export default async function HomePage() {
   const orgJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: siteConfig.name,
-    alternateName: siteConfig.nameArabic,
+    // الاسم العربي هو الهوية الأساسية — الإنجليزي بديل
+    name: siteConfig.nameArabic,
+    alternateName: siteConfig.name,
     url: siteConfig.url,
     logo: `${siteConfig.url}/brand/logo.png`,
     description: siteConfig.description,

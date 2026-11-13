@@ -112,7 +112,7 @@ export default function ComingSoonPage() {
         {/* CTA */}
         <div className="pt-2">
           <a
-            href={siteConfig.businessUrl}
+            href={`${siteConfig.dashboardUrl}/signup`}
             className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-l from-sky-500 to-cyan-400 hover:from-sky-600 hover:to-cyan-500 text-white font-black text-sm shadow-lg shadow-sky-500/25 transition-transform hover:scale-105 active:scale-95"
           >
             <Bell size={16} strokeWidth={2.4} />

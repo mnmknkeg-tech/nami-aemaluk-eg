@@ -281,7 +281,7 @@ export default function BlogPage() {
           </p>
           <div className="flex justify-center">
             <a
-              href={`${siteConfig.businessUrl}/signup`}
+              href={`${siteConfig.dashboardUrl}/signup`}
               className="px-12 py-5 bg-brand-gradient text-white rounded-2xl font-black text-lg hover:shadow-glow-cyan transition-all"
             >
               ابدأ متجرك الآن

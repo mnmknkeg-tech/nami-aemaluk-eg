@@ -3,7 +3,12 @@ import { ShoppingCart } from 'lucide-react';
 import { getOffers } from '@/lib/services';
 import { ProductCard } from '@/components/ProductCard';
 
-export const metadata: Metadata = { title: 'عروض السوبر ماركت' };
+export const metadata: Metadata = {
+  title: 'عروض السوبر ماركت',
+  description:
+    'أحدث عروض وخصومات السوبر ماركت وبقالة على من مكانك — منتجات أساسية بأسعار محدثة يوميًا.',
+  alternates: { canonical: '/offers/supermarket' },
+};
 export const revalidate = 300;
 
 export default async function SupermarketOffersPage() {

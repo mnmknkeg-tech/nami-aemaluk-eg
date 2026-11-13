@@ -15,26 +15,27 @@ import { backendOrigin } from '@/lib/api';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
+  // العنوان العربي أولًا — ده الاسم اللي جوجل والمشاركات المفروض يعرضوه
   title: {
-    default: `${siteConfig.name} - ${siteConfig.nameArabic}`,
-    template: `%s | ${siteConfig.name}`,
+    default: `${siteConfig.nameArabic} — المنصة الأولى للتجارة الذكية في مصر`,
+    template: `%s | ${siteConfig.nameArabic}`,
   },
   description: siteConfig.description,
   keywords: siteConfig.keywords,
-  authors: [{ name: siteConfig.name }],
-  creator: siteConfig.name,
+  authors: [{ name: siteConfig.nameArabic }],
+  creator: siteConfig.nameArabic,
   openGraph: {
     type: 'website',
     locale: 'ar_EG',
     url: siteConfig.url,
-    siteName: siteConfig.name,
-    title: `${siteConfig.name} - ${siteConfig.nameArabic}`,
+    siteName: siteConfig.nameArabic,
+    title: `${siteConfig.nameArabic} — المنصة الأولى للتجارة الذكية في مصر`,
     description: siteConfig.description,
     images: [{ url: siteConfig.ogImage, width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${siteConfig.name} - ${siteConfig.nameArabic}`,
+    title: `${siteConfig.nameArabic} — المنصة الأولى للتجارة الذكية في مصر`,
     description: siteConfig.description,
     images: [siteConfig.ogImage],
   },

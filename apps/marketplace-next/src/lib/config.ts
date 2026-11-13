@@ -11,9 +11,12 @@ export const siteConfig = {
   defaultLocale: 'ar',
   themeColor: '#F97316',
   keywords: ['تسويق', 'متاجر', 'منتجات', 'عروض', 'من مكانك', 'mnmknk', 'مصر', 'تجارة الكترونية'],
-  businessUrl: process.env.NEXT_PUBLIC_BUSINESS_URL || 'https://business-blond-psi.vercel.app',
+  // روابط تطبيقات التجار — الـ defaults لازم تكون deployments حية (القديمة
+  // business-blond-psi / dashboard-web-three-kappa بقت بترجع 404 وكسرت
+  // كل روابط «التاجر» في الفوتر). لو env متعرّف بيغلبها.
+  businessUrl: process.env.NEXT_PUBLIC_BUSINESS_URL || 'https://nami-aemaluk-eg-nami-eg.vercel.app',
   dashboardUrl:
-    process.env.NEXT_PUBLIC_DASHBOARD_URL || 'https://dashboard-web-three-kappa.vercel.app',
+    process.env.NEXT_PUBLIC_DASHBOARD_URL || 'https://nami-aemaluk-eg-dashboard-web.vercel.app',
 };
 
 export const navLinks = [

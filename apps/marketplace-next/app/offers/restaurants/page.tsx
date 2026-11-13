@@ -3,7 +3,12 @@ import { Utensils } from 'lucide-react';
 import { getOffers } from '@/lib/services';
 import { ProductCard } from '@/components/ProductCard';
 
-export const metadata: Metadata = { title: 'عروض المطاعم' };
+export const metadata: Metadata = {
+  title: 'عروض المطاعم',
+  description:
+    'أحدث عروض وخصومات المطاعم على من مكانك — اطلب من أقرب مطعم ليك بأسعار محدثة يوميًا.',
+  alternates: { canonical: '/offers/restaurants' },
+};
 export const revalidate = 300;
 
 export default async function RestaurantsOffersPage() {

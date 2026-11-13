@@ -76,12 +76,14 @@ export function Footer() {
       dot: 'bg-brand-purple',
       links: [
         {
+          // التسجيل بيعيش على أصل الداشبورد مباشرة — نشر التاجر على
+          // business محمي بـ Vercel SSO فكان بيرجع على جدار تسجيل الدخول.
           label: ar ? 'سجل كتاجر' : 'Register as Merchant',
-          href: `${siteConfig.businessUrl}/signup`,
+          href: `${siteConfig.dashboardUrl}/signup`,
         },
         {
           label: ar ? 'بناء موقعك' : 'Website Builder',
-          href: `${siteConfig.businessUrl}/builder`,
+          href: `${siteConfig.dashboardUrl}/login`,
         },
         {
           label: ar ? 'نظام الـ POS' : 'POS System',

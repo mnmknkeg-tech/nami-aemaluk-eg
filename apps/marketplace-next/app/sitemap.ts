@@ -58,7 +58,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     },
     { url: `${baseUrl}/suggestions`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
-    { url: `${baseUrl}/search`, lastModified: now, changeFrequency: 'daily', priority: 0.6 },
+    // ملاحظة: صفحة /search بتعمل noindex (سلاسل استعلامات مخصصة) — مش في الـ sitemap.
     // ملاحظة: الصفحات الخاصة (login/signup/checkout/profile/notifications/wishlist)
     // متعملها disallow في robots.ts فمش لازم تكون في الـ sitemap أصلاً.
     // ملاحظة ٢: صفحات الـ builder تعيش في dashboard-web (تطبيق منفصل خلف تسجيل

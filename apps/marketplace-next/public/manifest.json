@@ -1,7 +1,7 @@
 {
-  "name": "MNMKNK - من مكانك",
-  "short_name": "MNMKNK",
-  "description": "منصة تسويق ومبيعات للأنشطة التجارية",
+  "name": "من مكانك",
+  "short_name": "من مكانك",
+  "description": "من مكانك: أول منصة مصرية بتجمع كل حاجة في مكان واحد — تسوّق منتجات بالسعر والسلة، اطلب من مطاعمك المفضلة، احجز مواعيد عياداتك وجيمك، واطلب أي خدمة لحد باب البيت.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0F172A",
@@ -12,21 +12,28 @@
   "categories": ["shopping", "business", "lifestyle"],
   "icons": [
     {
-      "src": "/brand/logo.png",
+      "src": "/brand/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/brand/logo.png",
+      "src": "/brand/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png"
+      "src": "/brand/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/brand/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
@@ -34,19 +41,19 @@
       "name": "دليل المتاجر",
       "short_name": "الدليل",
       "url": "/dalil",
-      "icons": [{ "src": "/brand/logo.png", "sizes": "96x96", "type": "image/png" }]
+      "icons": [{ "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "العروض",
       "short_name": "العروض",
       "url": "/offers",
-      "icons": [{ "src": "/brand/logo.png", "sizes": "96x96", "type": "image/png" }]
+      "icons": [{ "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "الخريطة",
       "short_name": "الخريطة",
       "url": "/map",
-      "icons": [{ "src": "/brand/logo.png", "sizes": "96x96", "type": "image/png" }]
+      "icons": [{ "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

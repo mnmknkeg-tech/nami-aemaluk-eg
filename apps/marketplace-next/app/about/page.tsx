@@ -212,7 +212,7 @@ export default function AboutPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
-              href={`${siteConfig.businessUrl}/signup`}
+              href={`${siteConfig.dashboardUrl}/signup`}
               className="w-full sm:w-auto px-10 py-5 bg-brand-gradient rounded-xl font-semibold text-lg hover:shadow-glow-cyan transition-all"
             >
               ابدأ الآن مجاناً

@@ -3,7 +3,12 @@ import { Shirt } from 'lucide-react';
 import { getOffers } from '@/lib/services';
 import { ProductCard } from '@/components/ProductCard';
 
-export const metadata: Metadata = { title: 'عروض الأزياء' };
+export const metadata: Metadata = {
+  title: 'عروض الأزياء',
+  description:
+    'أحدث عروض وخصومات الأزياء والملابس على من مكانك — تشكيلة المتاجر المصرية بأسعار محدثة يوميًا.',
+  alternates: { canonical: '/offers/fashion' },
+};
 export const revalidate = 300;
 
 export default async function FashionOffersPage() {

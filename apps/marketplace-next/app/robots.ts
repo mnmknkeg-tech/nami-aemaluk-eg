@@ -18,6 +18,11 @@ export default function robots(): MetadataRoute.Robots {
           '/notifications',
           '/wishlist',
           '/track',
+          // نتائج البحث سلاسل استعلامات مخصصة — noindex + منع الزحف
+          '/search',
+          // صفحات حساب المستخدم الخاصة
+          '/account',
+          '/bookings/track',
         ],
       },
     ],
