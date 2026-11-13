@@ -97,6 +97,15 @@ func (s *Service) TrackPublic(ctx context.Context, req TrackRequest) (*CartEvent
         return s.Track(ctx, req, nil)
 }
 
+// CustomerIdentity returns the name/phone of a logged-in customer for
+// enriching cart events (best-effort, empty on miss).
+func (s *Service) CustomerIdentity(ctx context.Context, userID string) (string, string) {
+        if strings.TrimSpace(userID) == "" {
+                return "", ""
+        }
+        return s.repo.FindUserNamePhone(ctx, userID)
+}
+
 // ListAbandoned returns abandoned cart events for a shop.
 func (s *Service) ListAbandoned(ctx context.Context, shopID string, from, to *time.Time, page, limit int, actorRole, actorShopID string) (*ListAbandonedResponse, error) {
         if !isAdmin(actorRole) && actorShopID != shopID {

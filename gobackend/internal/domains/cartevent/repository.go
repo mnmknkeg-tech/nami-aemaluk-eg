@@ -168,6 +168,16 @@ func (r *Repository) MarkRecovered(ctx context.Context, id string) (*CartEvent, 
         return scanCartEvent(row)
 }
 
+// FindUserNamePhone returns the display name and phone of a user so that
+// authenticated cart events can carry customer identity into the merchant's
+// abandoned-cart list (which shows "العميل" per row). Empty strings when
+// the user no longer exists — callers treat it as best-effort enrichment.
+func (r *Repository) FindUserNamePhone(ctx context.Context, userID string) (string, string) {
+        var name, phone string
+        _ = r.pool.QueryRow(ctx, "SELECT COALESCE(name, ''), COALESCE(phone, '') FROM users WHERE id = $1", userID).Scan(&name, &phone)
+        return name, phone
+}
+
 // RecoverBySession marks every unrecovered cart funnel event
 // (add_to_cart / checkout_started) of a shop that belongs to the given
 // session or user as recovered. Called when a payment_completed event
