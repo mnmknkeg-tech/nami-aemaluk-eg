@@ -52,10 +52,12 @@ func (r *Repository) Track(ctx context.Context, e *CartEvent) (*CartEvent, error
 
         row := r.pool.QueryRow(ctx, `
                 INSERT INTO cart_events (
-                        shop_id, product_id, event, user_id, session_id,
+                        id, shop_id, product_id, event, user_id, session_id,
                         customer_name, customer_email, customer_phone,
-                        quantity, unit_price, currency, metadata
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                        quantity, unit_price, currency, metadata, created_at, updated_at
+                ) VALUES (
+                        gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW()
+                )
                 RETURNING `+cartEventColumns,
                 e.ShopID, e.ProductID, e.Event, userID, sessionID,
                 customerName, customerEmail, customerPhone,
