@@ -119,6 +119,9 @@ import {
 } from '@/lib/posSettings';
 import PosProductToolbar from '@/components/pos/PosProductToolbar';
 import PosCustomerAndHeldModals from '@/components/pos/PosCustomerAndHeldModals';
+import PosAuditTrailModal from '@/components/pos/PosAuditTrailModal';
+import PosPriceLevelPopover from '@/components/pos/PosPriceLevelPopover';
+import PosGiftCardPrompt from '@/components/pos/PosGiftCardPrompt';
 import { type CartItem, type PendingOrder } from './types';
 import { SHOW_UNPUBLISHED } from './constants';
 import {
@@ -4254,131 +4257,32 @@ const POSSystemPage: React.FC = () => {
       </AnimatePresence>
 
       {/* Audit trail modal */}
-      <AnimatePresence>
-        {showAudit && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowAudit(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5 max-h-[85vh] overflow-y-auto"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-lg font-black flex items-center gap-2">
-                  <BarChart3 size={18} /> {isArabic ? 'سجل العمليات' : 'Audit Trail'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowAudit(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              {auditEntries.length === 0 ? (
-                <div className="text-center text-slate-400 py-8 font-bold text-sm">
-                  {isArabic ? 'لا توجد عمليات' : 'No entries'}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {auditEntries.slice(0, 50).map((a) => (
-                    <div
-                      key={a.id}
-                      className="p-2.5 rounded-xl bg-slate-50 border border-slate-100"
-                    >
-                      <div className="flex justify-between text-xs font-black flex-row-reverse">
-                        <span className="text-slate-900">{a.action}</span>
-                        <span className="text-slate-400 text-[10px]">
-                          {new Date(a.ts).toLocaleString('ar-EG')}
-                        </span>
-                      </div>
-                      {a.detail && (
-                        <div className="text-[10px] text-slate-500 font-bold mt-1">{a.detail}</div>
-                      )}
-                      {a.amount != null && (
-                        <div className="text-[10px] text-[#BD00FF] font-black mt-0.5">
-                          ج.م {Number(a.amount).toFixed(2)}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosAuditTrailModal
+        show={showAudit}
+        onClose={() => setShowAudit(false)}
+        entries={auditEntries}
+        isArabic={isArabic}
+      />
 
-      {/* Price level menu (popover) */}
-      <AnimatePresence>
-        {showPriceLevelMenu && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[940]"
-            onClick={() => setShowPriceLevelMenu(false)}
-          >
-            <div className="absolute bottom-24 right-4 md:right-[460px] bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 w-48">
-              {(['retail', 'wholesale', 'employee'] as PriceLevel[]).map((lvl) => (
-                <button
-                  key={lvl}
-                  type="button"
-                  onClick={() => applyPriceLevel(lvl)}
-                  className={`w-full text-right px-3 py-2.5 rounded-xl text-xs font-black transition-all ${priceLevel === lvl ? 'bg-[#BD00FF]/10 text-[#BD00FF]' : 'text-slate-700 hover:bg-slate-50'}`}
-                >
-                  {lvl === 'retail'
-                    ? isArabic
-                      ? 'سعر التجزئة'
-                      : 'Retail'
-                    : lvl === 'wholesale'
-                      ? isArabic
-                        ? 'سعر الجملة (-15%)'
-                        : 'Wholesale (-15%)'
-                      : isArabic
-                        ? 'سعر الموظفين (-10%)'
-                        : 'Employee (-10%)'}
-                </button>
-              ))}
-            </div>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosPriceLevelPopover
+        show={showPriceLevelMenu}
+        onClose={() => setShowPriceLevelMenu(false)}
+        current={priceLevel}
+        onSelect={applyPriceLevel}
+        isArabic={isArabic}
+      />
 
-      {/* Gift card apply (inline prompt result) */}
-      {giftCardCode && !giftCardApplied && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[900] bg-white border border-slate-200 rounded-2xl shadow-xl p-3 flex items-center gap-2">
-          <Gift size={16} className="text-emerald-500" />
-          <span className="text-xs font-black text-slate-700">{giftCardCode}</span>
-          <button
-            type="button"
-            onClick={handleApplyGiftCard}
-            className="px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-[10px] font-black"
-          >
-            {isArabic ? 'تطبيق' : 'Apply'}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setGiftCardCode('');
-              setGiftCardError('');
-            }}
-            className="text-slate-400"
-          >
-            <X size={14} />
-          </button>
-          {giftCardError && (
-            <span className="text-[10px] text-red-500 font-bold">{giftCardError}</span>
-          )}
-        </div>
-      )}
+      <PosGiftCardPrompt
+        code={giftCardCode}
+        applied={!!giftCardApplied}
+        error={giftCardError}
+        isArabic={isArabic}
+        onApply={handleApplyGiftCard}
+        onDismiss={() => {
+          setGiftCardCode('');
+          setGiftCardError('');
+        }}
+      />
 
       {/* X-Report modal (mid-day) */}
       <AnimatePresence>
