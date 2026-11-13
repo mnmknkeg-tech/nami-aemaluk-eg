@@ -127,6 +127,14 @@ import PosTablesModal from '@/components/pos/PosTablesModal';
 import PosLayawayModal from '@/components/pos/PosLayawayModal';
 import PosCameraScannerModal from '@/components/pos/PosCameraScannerModal';
 import PosPriceOverrideModal from '@/components/pos/PosPriceOverrideModal';
+import PosXReportModal from '@/components/pos/PosXReportModal';
+import PosZReportModal from '@/components/pos/PosZReportModal';
+import PosCashMovementModal from '@/components/pos/PosCashMovementModal';
+import PosDrawerDeclarationModal from '@/components/pos/PosDrawerDeclarationModal';
+import PosQuickKeysModal from '@/components/pos/PosQuickKeysModal';
+import PosReceiptSettingsModal from '@/components/pos/PosReceiptSettingsModal';
+import PosLoyaltySettingsModal from '@/components/pos/PosLoyaltySettingsModal';
+import PosSignatureModal from '@/components/pos/PosSignatureModal';
 import { type CartItem, type PendingOrder } from './types';
 import { SHOW_UNPUBLISHED } from './constants';
 import {
@@ -3644,311 +3652,40 @@ const POSSystemPage: React.FC = () => {
         </div>
       )}
 
-      {/* Receipt settings modal */}
-      <AnimatePresence>
-        {showReceiptSettings && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowReceiptSettings(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5 max-h-[85vh] overflow-y-auto"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-lg font-black flex items-center gap-2">
-                  <Settings2 size={18} /> {isArabic ? 'إعدادات الفاتورة' : 'Receipt Settings'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowReceiptSettings(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-black text-slate-500">
-                    {isArabic ? 'شعار (URL)' : 'Logo URL'}
-                  </label>
-                  <input
-                    type="text"
-                    value={receiptTheme.logoUrl || ''}
-                    onChange={(e) => setReceiptTheme((t) => ({ ...t, logoUrl: e.target.value }))}
-                    className="w-full bg-slate-50 border rounded-xl py-2.5 px-4 outline-none text-sm font-bold mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-black text-slate-500">
-                    {isArabic ? 'رسالة علوية' : 'Header message'}
-                  </label>
-                  <input
-                    type="text"
-                    value={receiptTheme.headerMessage || ''}
-                    onChange={(e) =>
-                      setReceiptTheme((t) => ({ ...t, headerMessage: e.target.value }))
-                    }
-                    className="w-full bg-slate-50 border rounded-xl py-2.5 px-4 outline-none text-sm font-bold mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-black text-slate-500">
-                    {isArabic ? 'رسالة سفلية' : 'Footer message'}
-                  </label>
-                  <input
-                    type="text"
-                    value={receiptTheme.footerMessage || ''}
-                    onChange={(e) =>
-                      setReceiptTheme((t) => ({ ...t, footerMessage: e.target.value }))
-                    }
-                    className="w-full bg-slate-50 border rounded-xl py-2.5 px-4 outline-none text-sm font-bold mt-1"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-black text-slate-500">
-                      {isArabic ? 'نسبة الضريبة %' : 'VAT %'}
-                    </label>
-                    <input
-                      type="number"
-                      value={receiptTheme.vatRatePercent || 0}
-                      onChange={(e) => {
-                        const v = Number(e.target.value) || 0;
-                        setReceiptTheme((t) => ({ ...t, vatRatePercent: v }));
-                        setVatRatePct(v);
-                      }}
-                      className="w-full bg-slate-50 border rounded-xl py-2.5 px-4 outline-none text-sm font-bold mt-1"
-                      min={0}
-                      max={100}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-black text-slate-500">
-                      {isArabic ? 'العملة' : 'Currency'}
-                    </label>
-                    <input
-                      type="text"
-                      value={receiptTheme.currency || 'ج.م'}
-                      onChange={(e) => setReceiptTheme((t) => ({ ...t, currency: e.target.value }))}
-                      className="w-full bg-slate-50 border rounded-xl py-2.5 px-4 outline-none text-sm font-bold mt-1"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={receiptTheme.showCashier !== false}
-                      onChange={(e) =>
-                        setReceiptTheme((t) => ({ ...t, showCashier: e.target.checked }))
-                      }
-                      className="w-4 h-4"
-                    />
-                    {isArabic ? 'إظهار الكاشير' : 'Show cashier'}
-                  </label>
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={receiptTheme.showQrCode || false}
-                      onChange={(e) =>
-                        setReceiptTheme((t) => ({ ...t, showQrCode: e.target.checked }))
-                      }
-                      className="w-4 h-4"
-                    />
-                    {isArabic ? 'QR Code' : 'QR Code'}
-                  </label>
-                </div>
-                <div>
-                  <label className="text-xs font-black text-slate-500">
-                    {isArabic ? 'عرض الورق' : 'Paper width'}
-                  </label>
-                  <select
-                    value={receiptTheme.paperWidth || '80mm'}
-                    onChange={(e) =>
-                      setReceiptTheme((t) => ({ ...t, paperWidth: e.target.value as any }))
-                    }
-                    className="w-full bg-slate-50 border rounded-xl py-2.5 px-4 outline-none text-sm font-bold mt-1"
-                  >
-                    <option value="58mm">58mm</option>
-                    <option value="80mm">80mm</option>
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    saveReceiptTheme(shopId, receiptTheme);
-                    setShowReceiptSettings(false);
-                  }}
-                  className="w-full py-3 rounded-2xl bg-slate-900 text-white font-black text-sm"
-                >
-                  {isArabic ? 'حفظ' : 'Save'}
-                </button>
-              </div>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosReceiptSettingsModal
+        show={showReceiptSettings}
+        onClose={() => setShowReceiptSettings(false)}
+        theme={receiptTheme}
+        onThemeChange={setReceiptTheme}
+        onVatRateChange={setVatRatePct}
+        onSave={() => {
+          saveReceiptTheme(shopId, receiptTheme);
+          setShowReceiptSettings(false);
+        }}
+        isArabic={isArabic}
+      />
 
-      {/* Loyalty settings modal */}
-      <AnimatePresence>
-        {showLoyaltySettings && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowLoyaltySettings(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-lg font-black flex items-center gap-2">
-                  <Crown size={18} className="text-amber-500" />{' '}
-                  {isArabic ? 'نقاط الولاء' : 'Loyalty Points'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowLoyaltySettings(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="space-y-3">
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-xs font-black text-slate-600">
-                    {isArabic ? 'تفعيل' : 'Enable'}
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={loyaltyCfg.enabled}
-                    onChange={(e) => setLoyaltyCfg((c) => ({ ...c, enabled: e.target.checked }))}
-                    className="w-5 h-5"
-                  />
-                </label>
-                <div>
-                  <label className="text-xs font-black text-slate-500">
-                    {isArabic ? 'نقاط لكل ج.م' : 'Points per EGP'}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={loyaltyCfg.pointsPerEgp}
-                    onChange={(e) =>
-                      setLoyaltyCfg((c) => ({ ...c, pointsPerEgp: Number(e.target.value) || 0 }))
-                    }
-                    className="w-full bg-slate-50 border rounded-xl py-2.5 px-4 outline-none text-sm font-bold mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-black text-slate-500">
-                    {isArabic ? 'قيمة النقطة (ج.م)' : 'Redeem rate (EGP/pt)'}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={loyaltyCfg.redeemRate}
-                    onChange={(e) =>
-                      setLoyaltyCfg((c) => ({ ...c, redeemRate: Number(e.target.value) || 0 }))
-                    }
-                    className="w-full bg-slate-50 border rounded-xl py-2.5 px-4 outline-none text-sm font-bold mt-1"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    saveLoyaltyConfig(shopId, loyaltyCfg);
-                    setShowLoyaltySettings(false);
-                  }}
-                  className="w-full py-3 rounded-2xl bg-slate-900 text-white font-black text-sm"
-                >
-                  {isArabic ? 'حفظ' : 'Save'}
-                </button>
-              </div>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosLoyaltySettingsModal
+        show={showLoyaltySettings}
+        onClose={() => setShowLoyaltySettings(false)}
+        cfg={loyaltyCfg}
+        onCfgChange={setLoyaltyCfg}
+        onSave={() => {
+          saveLoyaltyConfig(shopId, loyaltyCfg);
+          setShowLoyaltySettings(false);
+        }}
+        isArabic={isArabic}
+      />
 
-      {/* Signature capture modal */}
-      <AnimatePresence>
-        {showSignature && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowSignature(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-lg font-black flex items-center gap-2">
-                  <Users size={18} /> {isArabic ? 'توقيع العميل' : 'Customer Signature'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowSignature(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <canvas
-                ref={signatureCanvasRef}
-                width={400}
-                height={200}
-                className="w-full bg-white border-2 border-slate-200 rounded-2xl touch-none"
-              />
-              <div className="grid grid-cols-3 gap-2 mt-3">
-                <button
-                  type="button"
-                  onClick={clearSignature}
-                  className="py-2 rounded-xl bg-slate-100 text-slate-700 font-black text-xs flex items-center justify-center gap-1.5"
-                >
-                  <Eraser size={14} /> {isArabic ? 'مسح' : 'Clear'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowSignature(false)}
-                  className="py-2 rounded-xl bg-slate-100 text-slate-700 font-black text-xs"
-                >
-                  {isArabic ? 'إلغاء' : 'Cancel'}
-                </button>
-                <button
-                  type="button"
-                  onClick={saveSignature}
-                  className="py-2 rounded-xl bg-slate-900 text-white font-black text-xs"
-                >
-                  {isArabic ? 'حفظ' : 'Save'}
-                </button>
-              </div>
-              {signatureData && (
-                <p className="text-[10px] text-emerald-600 font-black mt-2 text-center">
-                  ✓ {isArabic ? 'يوجد توقيع محفوظ' : 'Signature on file'}
-                </p>
-              )}
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosSignatureModal
+        show={showSignature}
+        onClose={() => setShowSignature(false)}
+        canvasRef={signatureCanvasRef}
+        onClear={clearSignature}
+        onSave={saveSignature}
+        hasSignature={!!signatureData}
+        isArabic={isArabic}
+      />
 
       <PosEmailReceiptModal
         show={showEmailReceipt}
@@ -4009,439 +3746,59 @@ const POSSystemPage: React.FC = () => {
         }}
       />
 
-      {/* X-Report modal (mid-day) */}
-      <AnimatePresence>
-        {showXReport && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowXReport(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5 max-h-[85vh] overflow-y-auto"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-lg font-black flex items-center gap-2">
-                  <FileText size={18} className="text-blue-500" />{' '}
-                  {isArabic ? 'تقرير منتصف اليوم (X)' : 'X-Report'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowXReport(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="space-y-2 text-xs font-bold">
-                <div className="flex justify-between p-2 rounded-lg bg-blue-50">
-                  <span className="text-blue-600">
-                    {isArabic ? 'إجمالي المبيعات' : 'Total sales'}
-                  </span>
-                  <span className="text-blue-700 font-black">
-                    ج.م {reportData.totalSales.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between p-2 rounded-lg bg-slate-50">
-                  <span>{isArabic ? 'عدد الفواتير' : 'Orders'}</span>
-                  <span className="font-black">{reportData.totalOrders}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded-lg bg-slate-50">
-                  <span>{isArabic ? 'كاش' : 'Cash'}</span>
-                  <span>ج.م {reportData.cashSales.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded-lg bg-slate-50">
-                  <span>{isArabic ? 'بطاقة' : 'Card'}</span>
-                  <span>ج.م {reportData.cardSales.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded-lg bg-slate-50">
-                  <span>{isArabic ? 'محفظة' : 'Wallet'}</span>
-                  <span>ج.م {reportData.walletSales.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded-lg bg-slate-50">
-                  <span>{isArabic ? 'آجل' : 'Credit'}</span>
-                  <span>ج.م {reportData.creditSales.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded-lg bg-emerald-50">
-                  <span className="text-emerald-600">{isArabic ? 'إكراميات' : 'Tips'}</span>
-                  <span className="text-emerald-700">ج.م {reportData.totalTips.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded-lg bg-red-50">
-                  <span className="text-red-600">{isArabic ? 'مرتجعات' : 'Returns'}</span>
-                  <span className="text-red-700">ج.م {reportData.totalReturns.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded-lg bg-amber-50 border border-amber-100">
-                  <span className="text-amber-700 font-black">
-                    {isArabic ? 'الصندوق المتوقع' : 'Expected cash'}
-                  </span>
-                  <span className="text-amber-800 font-black">
-                    ج.م {reportData.netCash.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosXReportModal
+        show={showXReport}
+        onClose={() => setShowXReport(false)}
+        reportData={reportData}
+        isArabic={isArabic}
+      />
 
-      {/* Z-Report modal (end of day) */}
-      <AnimatePresence>
-        {showZReport && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowZReport(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5 max-h-[85vh] overflow-y-auto"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-lg font-black flex items-center gap-2">
-                  <FileText size={18} className="text-red-500" />{' '}
-                  {isArabic ? 'تقرير نهاية اليوم (Z)' : 'Z-Report'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowZReport(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="space-y-2 text-xs font-bold">
-                <div className="p-3 rounded-xl bg-red-50 border border-red-100">
-                  <div className="text-[10px] font-black text-red-600 mb-2">
-                    {isArabic ? 'ملخص اليوم' : 'Day Summary'}
-                  </div>
-                  <div className="flex justify-between mb-1">
-                    <span>{isArabic ? 'إجمالي المبيعات' : 'Total sales'}</span>
-                    <span className="font-black">ج.م {reportData.totalSales.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between mb-1">
-                    <span>{isArabic ? 'عدد الفواتير' : 'Orders'}</span>
-                    <span>{reportData.totalOrders}</span>
-                  </div>
-                  <div className="flex justify-between mb-1">
-                    <span>{isArabic ? 'ضريبة محصلة' : 'VAT collected'}</span>
-                    <span>ج.م {reportData.totalVat.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between mb-1">
-                    <span>{isArabic ? 'خصومات' : 'Discounts'}</span>
-                    <span>ج.م {reportData.totalDiscounts.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between mb-1">
-                    <span>{isArabic ? 'إكراميات' : 'Tips'}</span>
-                    <span>ج.م {reportData.totalTips.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between mb-1">
-                    <span>{isArabic ? 'مرتجعات' : 'Returns'}</span>
-                    <span>ج.م {reportData.totalReturns.toFixed(2)}</span>
-                  </div>
-                </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="text-[10px] font-black text-slate-500 mb-2">
-                    {isArabic ? 'الصندوق' : 'Cash Drawer'}
-                  </div>
-                  <div className="flex justify-between mb-1">
-                    <span>{isArabic ? 'عهدة افتتاح' : 'Opening'}</span>
-                    <span>ج.م {reportData.openingAmount.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between mb-1 text-emerald-600">
-                    <span>{isArabic ? 'مبيعات كاش' : 'Cash sales'}</span>
-                    <span>+ ج.م {reportData.cashSales.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between mb-1 text-emerald-600">
-                    <span>{isArabic ? 'إيداع نقدي' : 'Cash in'}</span>
-                    <span>+ ج.م {reportData.cashIn.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between mb-1 text-red-600">
-                    <span>{isArabic ? 'مصروف نقدي' : 'Cash out'}</span>
-                    <span>- ج.م {reportData.cashOut.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between mb-1 text-red-600">
-                    <span>{isArabic ? 'مرتجعات' : 'Returns'}</span>
-                    <span>- ج.م {reportData.totalReturns.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between pt-2 border-t border-slate-200 font-black">
-                    <span>{isArabic ? 'الصافي المتوقع' : 'Expected net'}</span>
-                    <span className="text-amber-700">ج.م {reportData.netCash.toFixed(2)}</span>
-                  </div>
-                </div>
-                {reportData.topProducts.length > 0 && (
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <div className="text-[10px] font-black text-slate-500 mb-2">
-                      {isArabic ? 'أفضل المنتجات' : 'Top Products'}
-                    </div>
-                    {reportData.topProducts.slice(0, 5).map((p, i) => (
-                      <div key={p.name} className="flex justify-between text-[10px] py-0.5">
-                        <span>
-                          {i + 1}. {p.name}
-                        </span>
-                        <span className="text-[#BD00FF]">
-                          {p.qty}× / ج.م {p.revenue.toFixed(0)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowZReport(false);
-                    setShowDrawerDeclaration(true);
-                  }}
-                  className="w-full py-3 rounded-2xl bg-red-500 text-white font-black text-sm hover:bg-red-600"
-                >
-                  {isArabic ? 'إغلاق اليوم + جرد الصندوق' : 'Close Day + Declare Drawer'}
-                </button>
-              </div>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosZReportModal
+        show={showZReport}
+        onClose={() => setShowZReport(false)}
+        reportData={reportData}
+        isArabic={isArabic}
+        onDeclareDrawer={() => {
+          setShowZReport(false);
+          setShowDrawerDeclaration(true);
+        }}
+      />
 
-      {/* Cash in/out modal */}
-      <AnimatePresence>
-        {showCashMovement && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowCashMovement(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-xs bg-white rounded-[2rem] p-5"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-base font-black flex items-center gap-2">
-                  <ArrowDownCircle size={16} /> {isArabic ? 'حركة نقدية' : 'Cash Movement'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowCashMovement(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <button
-                  type="button"
-                  onClick={() => setCashMovementType('in')}
-                  className={`py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 ${cashMovementType === 'in' ? 'bg-emerald-500 text-white' : 'bg-slate-50 text-slate-600'}`}
-                >
-                  <ArrowUpCircle size={14} /> {isArabic ? 'إيداع' : 'Cash In'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCashMovementType('out')}
-                  className={`py-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 ${cashMovementType === 'out' ? 'bg-red-500 text-white' : 'bg-slate-50 text-slate-600'}`}
-                >
-                  <ArrowDownCircle size={14} /> {isArabic ? 'صرف' : 'Cash Out'}
-                </button>
-              </div>
-              <input
-                type="number"
-                value={cashMovementAmount || ''}
-                onChange={(e) => setCashMovementAmount(Number(e.target.value) || 0)}
-                placeholder={isArabic ? 'المبلغ' : 'Amount'}
-                className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-black text-center mb-2"
-                min={0}
-              />
-              <input
-                type="text"
-                value={cashMovementReason}
-                onChange={(e) => setCashMovementReason(e.target.value)}
-                placeholder={isArabic ? 'السبب' : 'Reason'}
-                className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-bold mb-3"
-              />
-              <button
-                type="button"
-                onClick={submitCashMovement}
-                disabled={cashMovementAmount <= 0 || !cashMovementReason.trim()}
-                className="w-full py-3 rounded-2xl bg-slate-900 text-white font-black text-sm disabled:opacity-50"
-              >
-                {isArabic ? 'تأكيد' : 'Confirm'}
-              </button>
-              {cashMovements.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-100 space-y-1 max-h-32 overflow-y-auto">
-                  {cashMovements.slice(0, 5).map((m) => (
-                    <div key={m.id} className="flex justify-between text-[10px] font-bold">
-                      <span className={m.type === 'in' ? 'text-emerald-600' : 'text-red-500'}>
-                        {m.type === 'in' ? '+' : '-'} ج.م {m.amount.toFixed(2)}
-                      </span>
-                      <span className="text-slate-400 truncate max-w-[100px]">{m.reason}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosCashMovementModal
+        show={showCashMovement}
+        onClose={() => setShowCashMovement(false)}
+        type={cashMovementType}
+        onTypeChange={setCashMovementType}
+        amount={cashMovementAmount}
+        onAmountChange={setCashMovementAmount}
+        reason={cashMovementReason}
+        onReasonChange={setCashMovementReason}
+        onSubmit={submitCashMovement}
+        movements={cashMovements}
+        isArabic={isArabic}
+      />
 
-      {/* Drawer declaration modal */}
-      <AnimatePresence>
-        {showDrawerDeclaration && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowDrawerDeclaration(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-xs bg-white rounded-[2rem] p-5"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-base font-black flex items-center gap-2">
-                  <Calculator size={16} /> {isArabic ? 'جرد الصندوق' : 'Drawer Declaration'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowDrawerDeclaration(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 mb-3">
-                <div className="flex justify-between text-xs font-black">
-                  <span className="text-amber-600">{isArabic ? 'المتوقع' : 'Expected'}</span>
-                  <span className="text-amber-700">ج.م {reportData.netCash.toFixed(2)}</span>
-                </div>
-              </div>
-              <input
-                type="number"
-                value={declaredCash || ''}
-                onChange={(e) => setDeclaredCash(Number(e.target.value) || 0)}
-                placeholder={isArabic ? 'العدد الفعلي للصندوق' : 'Declared cash'}
-                className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-black text-center mb-2"
-                min={0}
-              />
-              <input
-                type="text"
-                value={declarationNote}
-                onChange={(e) => setDeclarationNote(e.target.value)}
-                placeholder={isArabic ? 'ملاحظات (اختياري)' : 'Notes (optional)'}
-                className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-bold mb-3"
-              />
-              {declaredCash > 0 && (
-                <div
-                  className={`p-2 rounded-xl text-center text-xs font-black mb-3 ${Math.abs(declaredCash - reportData.netCash) < 0.01 ? 'bg-emerald-50 text-emerald-600' : declaredCash > reportData.netCash ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'}`}
-                >
-                  {isArabic ? 'الفرق' : 'Difference'}: ج.م{' '}
-                  {(declaredCash - reportData.netCash).toFixed(2)}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={submitDrawerDeclaration}
-                disabled={declaredCash <= 0}
-                className="w-full py-3 rounded-2xl bg-slate-900 text-white font-black text-sm disabled:opacity-50"
-              >
-                {isArabic ? 'تأكيد الجرد' : 'Confirm Declaration'}
-              </button>
-              {declarations.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-100 space-y-1 max-h-24 overflow-y-auto">
-                  {declarations.slice(0, 3).map((d) => (
-                    <div key={d.id} className="flex justify-between text-[10px] font-bold">
-                      <span className="text-slate-500">
-                        {new Date(d.ts).toLocaleDateString('ar-EG')}
-                      </span>
-                      <span
-                        className={
-                          Math.abs(d.difference) < 0.01 ? 'text-emerald-600' : 'text-red-500'
-                        }
-                      >
-                        ± ج.م {d.difference.toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosDrawerDeclarationModal
+        show={showDrawerDeclaration}
+        onClose={() => setShowDrawerDeclaration(false)}
+        expectedCash={reportData.netCash}
+        declaredCash={declaredCash}
+        onDeclaredCashChange={setDeclaredCash}
+        note={declarationNote}
+        onNoteChange={setDeclarationNote}
+        onSubmit={submitDrawerDeclaration}
+        declarations={declarations}
+        isArabic={isArabic}
+      />
 
-      {/* Quick keys management (add/remove) */}
-      <AnimatePresence>
-        {showQuickKeys && quickKeyProducts.length === 0 && products.length > 0 && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowQuickKeys(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5 max-h-[85vh] overflow-y-auto"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-base font-black flex items-center gap-2">
-                  <Zap size={16} className="text-amber-500" />{' '}
-                  {isArabic ? 'إضافة أزرار سريعة' : 'Add Quick Keys'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowQuickKeys(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <p className="text-xs text-slate-400 font-bold mb-3">
-                {isArabic
-                  ? 'اضغط على المنتجات لإضافتها للأزرار السريعة'
-                  : 'Tap products to add them as quick keys'}
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {filteredProducts.slice(0, 20).map((p: any) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => handleToggleQuickKey(p.id)}
-                    className={`p-2.5 rounded-xl text-xs font-black text-right transition-all ${quickKeyIds.includes(p.id) ? 'bg-amber-100 border-2 border-amber-300 text-amber-700' : 'bg-slate-50 border border-slate-100 text-slate-600 hover:bg-slate-100'}`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      {quickKeyIds.includes(p.id) && (
-                        <Star size={12} className="text-amber-500 fill-amber-500" />
-                      )}
-                      <span className="truncate">{p.name}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosQuickKeysModal
+        show={showQuickKeys && quickKeyProducts.length === 0 && products.length > 0}
+        onClose={() => setShowQuickKeys(false)}
+        filteredProducts={filteredProducts}
+        quickKeyIds={quickKeyIds}
+        onToggle={handleToggleQuickKey}
+        isArabic={isArabic}
+      />
       {/* Cashier invoices modal — quick access for the shift owner */}
       <AnimatePresence>
         {showInvoices && (
