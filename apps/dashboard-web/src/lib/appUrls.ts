@@ -18,10 +18,11 @@ function sanitizeUrl(raw: string | undefined, fallback: string): string {
 
 const IS_DEV = process.env.NODE_ENV === 'development';
 
-/** Business (merchant acquisition) app origin. */
+/** Business (merchant acquisition) app origin — LIVE origin; the old
+ * …-nami-eg.vercel.app default sat behind the Vercel SSO wall (302). */
 export const BUSINESS_URL = sanitizeUrl(
   process.env.NEXT_PUBLIC_BUSINESS_URL,
-  IS_DEV ? 'http://localhost:1000' : 'https://nami-aemaluk-eg-nami-eg.vercel.app'
+  IS_DEV ? 'http://localhost:1000' : 'https://nami-aemaluk-eg.vercel.app'
 );
 
 /** Merchant signup page — lives right here on the dashboard origin now! */

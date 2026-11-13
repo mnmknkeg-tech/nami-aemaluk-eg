@@ -14,7 +14,10 @@ export const siteConfig = {
   // روابط تطبيقات التجار — الـ defaults لازم تكون deployments حية (القديمة
   // business-blond-psi / dashboard-web-three-kappa بقت بترجع 404 وكسرت
   // كل روابط «التاجر» في الفوتر). لو env متعرّف بيغلبها.
-  businessUrl: process.env.NEXT_PUBLIC_BUSINESS_URL || 'https://nami-aemaluk-eg-nami-eg.vercel.app',
+  // LIVE origin of the business app. The old default …-nami-eg.vercel.app
+  // is a secondary address that sits behind the Vercel SSO wall (302 →
+  // vercel.com/sso-api) — verified live 2026-11-14, returns «نمّي أعمالك».
+  businessUrl: process.env.NEXT_PUBLIC_BUSINESS_URL || 'https://nami-aemaluk-eg.vercel.app',
   dashboardUrl:
     process.env.NEXT_PUBLIC_DASHBOARD_URL || 'https://nami-aemaluk-eg-dashboard-web.vercel.app',
 };
