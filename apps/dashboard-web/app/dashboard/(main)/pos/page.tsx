@@ -122,6 +122,9 @@ import PosCustomerAndHeldModals from '@/components/pos/PosCustomerAndHeldModals'
 import PosAuditTrailModal from '@/components/pos/PosAuditTrailModal';
 import PosPriceLevelPopover from '@/components/pos/PosPriceLevelPopover';
 import PosGiftCardPrompt from '@/components/pos/PosGiftCardPrompt';
+import PosEmailReceiptModal from '@/components/pos/PosEmailReceiptModal';
+import PosTablesModal from '@/components/pos/PosTablesModal';
+import PosLayawayModal from '@/components/pos/PosLayawayModal';
 import { type CartItem, type PendingOrder } from './types';
 import { SHOW_UNPUBLISHED } from './constants';
 import {
@@ -4036,225 +4039,36 @@ const POSSystemPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Email receipt modal */}
-      <AnimatePresence>
-        {showEmailReceipt && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowEmailReceipt(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-xs bg-white rounded-[2rem] p-5"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-base font-black flex items-center gap-2">
-                  <Mail size={16} /> {isArabic ? 'إرسال الفاتورة' : 'Email Receipt'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowEmailReceipt(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <input
-                type="email"
-                value={receiptEmail}
-                onChange={(e) => setReceiptEmail(e.target.value)}
-                placeholder="customer@email.com"
-                className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-bold focus:ring-2 focus:ring-[#BD00FF]"
-              />
-              <button
-                type="button"
-                onClick={handleEmailReceipt}
-                disabled={!receiptEmail.trim()}
-                className="w-full mt-3 py-3 rounded-2xl bg-slate-900 text-white font-black text-sm disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                <Send size={14} /> {isArabic ? 'إرسال' : 'Send'}
-              </button>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosEmailReceiptModal
+        show={showEmailReceipt}
+        onClose={() => setShowEmailReceipt(false)}
+        email={receiptEmail}
+        onEmailChange={setReceiptEmail}
+        onSend={handleEmailReceipt}
+        isArabic={isArabic}
+      />
 
-      {/* Tables modal (restaurant) */}
-      <AnimatePresence>
-        {showTables && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowTables(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5 max-h-[85vh] overflow-y-auto"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-lg font-black flex items-center gap-2">
-                  <Table2 size={18} /> {isArabic ? 'الطاولات' : 'Tables'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowTables(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              {tables.length === 0 ? (
-                <div className="text-center text-slate-400 py-8 font-bold text-sm">
-                  {isArabic ? 'لا توجد طاولات' : 'No tables'}
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {tables.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => selectTable(t.id)}
-                      className={`p-3 rounded-xl border text-center transition-all ${selectedTableId === t.id ? 'border-[#BD00FF] bg-[#BD00FF]/5' : t.status === 'free' ? 'border-slate-100 bg-slate-50 hover:bg-slate-100' : t.status === 'occupied' ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}`}
-                    >
-                      <div className="font-black text-sm">{t.name}</div>
-                      <div className="text-[9px] font-bold text-slate-400 mt-1">
-                        {t.seats} {isArabic ? 'كرسي' : 'seats'}
-                      </div>
-                      <div
-                        className={`text-[9px] font-black mt-1 ${t.status === 'free' ? 'text-emerald-600' : t.status === 'occupied' ? 'text-red-500' : 'text-amber-600'}`}
-                      >
-                        {t.status === 'free'
-                          ? isArabic
-                            ? 'فارغة'
-                            : 'Free'
-                          : t.status === 'occupied'
-                            ? isArabic
-                              ? 'مشغولة'
-                              : 'Occupied'
-                            : isArabic
-                              ? 'محجوزة'
-                              : 'Reserved'}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={addTable}
-                className="w-full mt-3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-black text-xs flex items-center justify-center gap-2"
-              >
-                <Plus size={14} /> {isArabic ? 'إضافة طاولة' : 'Add table'}
-              </button>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosTablesModal
+        show={showTables}
+        onClose={() => setShowTables(false)}
+        tables={tables}
+        selectedTableId={selectedTableId}
+        onSelect={selectTable}
+        onAdd={addTable}
+        isArabic={isArabic}
+      />
 
-      {/* Layaway modal */}
-      <AnimatePresence>
-        {showLayaway && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowLayaway(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-lg font-black flex items-center gap-2">
-                  <Clock size={18} className="text-amber-500" />{' '}
-                  {isArabic ? 'بيع بالتقسيط' : 'Layaway'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowLayaway(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="space-y-3">
-                <div className="p-3 rounded-xl bg-slate-50">
-                  <div className="flex justify-between text-xs font-black">
-                    <span className="text-slate-500">
-                      {isArabic ? 'إجمالي الطلب' : 'Order total'}
-                    </span>
-                    <span className="text-[#BD00FF]">ج.م {total.toFixed(2)}</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-black text-slate-500">
-                    {isArabic ? 'العربون (مقدم)' : 'Deposit'}
-                  </label>
-                  <input
-                    type="number"
-                    value={layawayDeposit || ''}
-                    onChange={(e) => setLayawayDeposit(Number(e.target.value) || 0)}
-                    className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-black text-center mt-1"
-                    min={0}
-                    max={total}
-                  />
-                </div>
-                <div className="p-3 rounded-xl bg-amber-50 border border-amber-100">
-                  <div className="flex justify-between text-xs font-black text-amber-700">
-                    <span>{isArabic ? 'المتبقي' : 'Remaining'}</span>
-                    <span>ج.م {Math.max(0, total - layawayDeposit).toFixed(2)}</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={createLayaway}
-                  disabled={cart.length === 0 || total <= 0}
-                  className="w-full py-3 rounded-2xl bg-amber-500 text-white font-black text-sm disabled:opacity-50"
-                >
-                  {isArabic ? 'إنشاء عقد التقسيط' : 'Create layaway'}
-                </button>
-                {layaways.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-slate-100">
-                    <div className="text-[10px] font-black text-slate-400">
-                      {isArabic ? 'العقود النشطة' : 'Active plans'} (
-                      {layaways.filter((l) => l.status === 'active').length})
-                    </div>
-                    {layaways
-                      .filter((l) => l.status === 'active')
-                      .slice(0, 5)
-                      .map((l) => (
-                        <div
-                          key={l.id}
-                          className="flex justify-between text-[10px] font-bold p-2 rounded-lg bg-slate-50"
-                        >
-                          <span>{l.id.slice(0, 12)}</span>
-                          <span className="text-amber-600">
-                            ج.م {l.paid}/{l.total}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosLayawayModal
+        show={showLayaway}
+        onClose={() => setShowLayaway(false)}
+        total={total}
+        cartLength={cart.length}
+        deposit={layawayDeposit}
+        onDepositChange={setLayawayDeposit}
+        onCreate={createLayaway}
+        layaways={layaways}
+        isArabic={isArabic}
+      />
 
       {/* Audit trail modal */}
       <PosAuditTrailModal
