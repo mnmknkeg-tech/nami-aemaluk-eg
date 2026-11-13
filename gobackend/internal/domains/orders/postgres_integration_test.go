@@ -82,6 +82,30 @@ func TestPostgresOrderIntegration(t *testing.T) {
         require.NotNil(t, retrieved)
         require.Equal(t, created.ID, retrieved.ID)
 
+        // Status transitions must work with the expected-current guard in
+        // place. The guard is a WHERE condition; when it wrongly sat in the
+        // SET clause every accept/update failed with PostgreSQL's "multiple
+        // assignments to same column" — the merchant dashboard could never
+        // confirm an order (HTTP 500).
+        confirmedStatus := "confirmed"
+        accepted, err := service.UpdateOrder(ctx, created.ID, UpdateOrderRequest{
+                Status: &confirmedStatus,
+        }, shopID, "MERCHANT")
+        require.NoError(t, err, "accepting a pending order must not fail")
+        require.Equal(t, OrderStatusConfirmed, accepted.Status)
+
+        stale := OrderStatusPending
+        moved, err := repo.UpdateStatus(ctx, created.ID, OrderStatusCancelled, nil, &stale)
+        require.NoError(t, err)
+        require.Nil(t, moved, "a stale expected-current status must update nothing")
+
+        preparing := OrderStatusPreparing
+        confirmed := OrderStatusConfirmed
+        courierMoved, err := repo.CourierUpdate(ctx, created.ID, &preparing, nil, &confirmed)
+        require.NoError(t, err)
+        require.NotNil(t, courierMoved)
+        require.Equal(t, OrderStatusPreparing, courierMoved.Status)
+
         retried, err := service.CreateGuestOrder(ctx, req)
         require.NoError(t, err)
         require.Equal(t, created.ID, retried.ID, "same idempotency key and payload must return the original order")

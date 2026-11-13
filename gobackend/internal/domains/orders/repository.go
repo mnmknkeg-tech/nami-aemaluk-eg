@@ -428,14 +428,20 @@ func (r *Repository) UpdateStatus(ctx context.Context, id string, status OrderSt
 	case OrderStatusPending, OrderStatusConfirmed, OrderStatusPreparing:
 		// No automatic timestamp.
 	}
+
+	// The expected-current guard belongs in the WHERE clause: putting it in
+	// SET duplicates the status assignment (PostgreSQL rejects the whole
+	// statement with "multiple assignments to same column"), and even if it
+	// were allowed it would overwrite the new status with the stale one.
+	where := fmt.Sprintf(" WHERE id = $%d", idx)
+	args = append(args, id)
+	idx++
 	if expectedCurrent != nil {
-		set = append(set, fmt.Sprintf("status = $%d", idx))
+		where += fmt.Sprintf(" AND status = $%d", idx)
 		args = append(args, *expectedCurrent)
-		idx++
 	}
 
-	args = append(args, id)
-	query := "UPDATE orders SET " + strings.Join(set, ", ") + fmt.Sprintf(" WHERE id = $%d RETURNING ", idx) + orderColumnsNoAlias
+	query := "UPDATE orders SET " + strings.Join(set, ", ") + where + " RETURNING " + orderColumnsNoAlias
 	row := r.pool.QueryRow(ctx, query, args...)
 	return scanOrder(row)
 }
@@ -486,16 +492,21 @@ func (r *Repository) CourierUpdate(ctx context.Context, id string, status *Order
 	if codCollected != nil && *codCollected {
 		set = append(set, "cod_collected_at = NOW()")
 	}
-	if expectedCurrent != nil {
-		set = append(set, fmt.Sprintf("status = $%d", idx))
-		args = append(args, *expectedCurrent)
-		idx++
-	}
 	if len(set) == 1 && expectedCurrent == nil {
 		return r.FindByID(ctx, id)
 	}
+	// Same guard placement as UpdateStatus: the expected-current status is a
+	// WHERE condition, never a second SET assignment (PostgreSQL rejects
+	// "multiple assignments to same column" outright).
+	where := fmt.Sprintf(" WHERE id = $%d", idx)
 	args = append(args, id)
-	query := "UPDATE orders SET " + strings.Join(set, ", ") + fmt.Sprintf(" WHERE id = $%d RETURNING ", idx) + orderColumnsNoAlias
+	idx++
+	if expectedCurrent != nil {
+		where += fmt.Sprintf(" AND status = $%d", idx)
+		args = append(args, *expectedCurrent)
+	}
+
+	query := "UPDATE orders SET " + strings.Join(set, ", ") + where + " RETURNING " + orderColumnsNoAlias
 	row := r.pool.QueryRow(ctx, query, args...)
 	return scanOrder(row)
 }

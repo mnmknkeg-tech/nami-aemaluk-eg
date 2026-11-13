@@ -319,43 +319,63 @@ const getCache = new Map<string, { at: number; raw: any }>();
 const inflightGets = new Map<string, Promise<any>>();
 const failedGets = new Map<string, { at: number; error: unknown }>();
 
+// The access/refresh tokens live in httpOnly cookies, so the CSRF cookie is
+// the only session identity marker readable from JS. Cache keys are scoped
+// by it and the whole cache is flushed when the value changes: a new login
+// (new session, new CSRF) can never read the previous account's cached
+// rows, even if some future auth path forgets to call clearApiCache().
+let cacheScopeSeen: string | null = null;
+
+function cacheScope(): string {
+  if (typeof document === 'undefined') return '';
+  return document.cookie.match(/ray_csrf=([^;]+)/)?.[1] || '';
+}
+
 export function clearApiCache(): void {
   getCache.clear();
   failedGets.clear();
 }
 
 function cachedGet(path: string, options: RequestInit): Promise<any> {
+  const scope = cacheScope();
+  if (scope !== cacheScopeSeen) {
+    // Identity changed under us (re-login, account switch) — nothing from
+    // the old identity may be served.
+    cacheScopeSeen = scope;
+    clearApiCache();
+  }
+  const key = scope ? `${scope}|${path}` : path;
   if (options.cache === 'no-store') {
-    getCache.delete(path);
-    failedGets.delete(path);
+    getCache.delete(key);
+    failedGets.delete(key);
     return execute(path, options, false).then(({ body }) => body);
   }
-  const hit = getCache.get(path);
+  const hit = getCache.get(key);
   if (hit && Date.now() - hit.at < GET_TTL_MS) {
     return Promise.resolve(hit.raw);
   }
-  const failed = failedGets.get(path);
+  const failed = failedGets.get(key);
   if (failed && Date.now() - failed.at < GET_ERROR_TTL_MS) {
     return Promise.reject(failed.error);
   }
-  if (failed) failedGets.delete(path);
-  const pending = inflightGets.get(path);
+  if (failed) failedGets.delete(key);
+  const pending = inflightGets.get(key);
   if (pending) return pending;
 
   const exec = execute(path, options, false)
     .then((result) => {
-      failedGets.delete(path);
-      getCache.set(path, { at: Date.now(), raw: result.body });
+      failedGets.delete(key);
+      getCache.set(key, { at: Date.now(), raw: result.body });
       return result.body;
     })
     .catch((error: unknown) => {
-      failedGets.set(path, { at: Date.now(), error });
+      failedGets.set(key, { at: Date.now(), error });
       throw error;
     })
     .finally(() => {
-      inflightGets.delete(path);
+      inflightGets.delete(key);
     });
-  inflightGets.set(path, exec);
+  inflightGets.set(key, exec);
   return exec;
 }
 
