@@ -51,206 +51,23 @@ import {
   type ActivityType,
   type UnifiedStatus,
 } from '@/lib/bookings/ui';
-
-/* ============================================================
- * Types & Constants
- * ============================================================ */
-
-type ViewMode = 'month' | 'week' | 'day' | 'year' | 'table' | 'agenda';
-
-type BookingItem = {
-  id: string;
-  source: 'website' | 'internal';
-  status: UnifiedStatus;
-  activityType: ActivityType;
-  itemName: string;
-  customerName: string;
-  customerPhone: string;
-  customerEmail?: string;
-  when: string; // ISO or YYYY-MM-DDTHH:mm
-  dateStr: string; // YYYY-MM-DD
-  timeStr: string; // HH:mm
-  price: number;
-  participants: number;
-  paymentStatus?: string;
-  notes?: string;
-  /** ترتيب طابور الانتظار (0 = عادي مش كوتة) */
-  queuePosition?: number;
-  /** الطبيب المعيّن من metadata */
-  doctorName?: string;
-  raw?: any;
-};
-
-const ARABIC_MONTHS = [
-  'يناير',
-  'فبراير',
-  'مارس',
-  'أبريل',
-  'مايو',
-  'يونيو',
-  'يوليو',
-  'أغسطس',
-  'سبتمبر',
-  'أكتوبر',
-  'نوفمبر',
-  'ديسمبر',
-];
-
-const WEEK_DAYS = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function inferActivityType(raw: any): ActivityType {
-  const t = String(
-    raw?.bookingActivityType || raw?.metadata?.bookingActivityType || raw?.type || ''
-  ).toLowerCase();
-  const name = String(raw?.itemName || raw?.serviceName || '').toLowerCase();
-  if (
-    t.includes('clinic') ||
-    name.includes('عيادة') ||
-    name.includes('دكتور') ||
-    name.includes('كشف') ||
-    name.includes('طبيب')
-  )
-    return 'clinic';
-  if (
-    t.includes('hotel') ||
-    t.includes('boarding') ||
-    name.includes('فندق') ||
-    name.includes('إيواء') ||
-    name.includes('استضافة')
-  )
-    return 'hotel';
-  if (
-    t.includes('table') ||
-    t.includes('restaurant') ||
-    name.includes('طاولة') ||
-    name.includes('مطعم') ||
-    name.includes('عشاء') ||
-    name.includes('غداء')
-  )
-    return 'table';
-  if (t.includes('consult') || name.includes('استشارة') || name.includes('جلسة'))
-    return 'consultation';
-  return 'general';
-}
-
-function getWeekNumber(d: Date): number {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-}
-
-function formatDateKey(d: Date): string {
-  return dfFormat(d, 'yyyy-MM-dd');
-}
-
-function parseDateKey(s: string): Date {
-  return dfParse(s, 'yyyy-MM-dd', new Date());
-}
-
-function timeToMinutes(t: string): number {
-  const [h, m] = String(t || '').split(':');
-  return (Number(h) || 0) * 60 + (Number(m) || 0);
-}
-
-function minutesToTime(min: number): string {
-  const m = Math.max(0, Math.min(23 * 60 + 59, Math.round(min)));
-  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-}
-
-/** 16:20 → «4:20 م» — نفس شكل الأوقات في المرجع */
-function fmtTime12(hhmm: string): string {
-  const min = timeToMinutes(hhmm);
-  const h24 = Math.floor(min / 60);
-  const h = h24 % 12 || 12;
-  return `${h}:${String(min % 60).padStart(2, '0')} ${h24 < 12 ? 'ص' : 'م'}`;
-}
-
-function paymentLabel(ps?: string): string {
-  const v = String(ps || '').trim();
-  if (!v) return '';
-  const u = v.toUpperCase();
-  if (u === 'PAID') return 'مدفوع';
-  if (u === 'UNPAID') return 'غير مدفوع';
-  if (u.includes('DEPOSIT')) return 'عربون محجوز';
-  return v;
-}
-
-/* ============================================================
- * عملاء الحجوزات → صفحة العملاء (من الموقع أو اليدوي)
- * كل عميل في أي حجز بيتأكد إن له سجل في /shops/{id}/customers —
- * الباكند بيعمل upsert بالتليفون فمفيش تكرار، وعلامة session-level
- * هنا بتمنع إعادة الإرسال لنفس العميل كل ما القايمة تعمل refresh.
- * ============================================================ */
-
-const syncedCustomerKeys = new Set<string>();
-let bookingCustomersCache: { at: number; phones: Set<string>; names: Set<string> } | null = null;
-
-function normNameKey(n: string): string {
-  return String(n || '')
-    .trim()
-    .replace(/\s+/g, ' ')
-    .toLowerCase();
-}
-
-async function ensureBookingCustomers(shopId: string, items: BookingItem[]): Promise<void> {
-  if (!shopId) return;
-  const candidates = new Map<string, { name: string; phone: string; src: string }>();
-  for (const b of items) {
-    const name = (b.customerName || '').trim();
-    if (!name || name === 'عميل') continue;
-    const phone = (b.customerPhone || '').trim();
-    const key = phone ? `p:${normPhoneKey(phone)}` : `n:${normNameKey(name)}`;
-    if (syncedCustomerKeys.has(key) || candidates.has(key)) continue;
-    candidates.set(key, { name, phone, src: b.source });
-  }
-  if (candidates.size === 0) return;
-
-  try {
-    if (!bookingCustomersCache || Date.now() - bookingCustomersCache.at > 5 * 60000) {
-      const res = await apiRequest<any>(`/shops/${shopId}/customers?limit=500`);
-      const list = Array.isArray(res)
-        ? res
-        : res?.data?.customers || res?.data || res?.customers || [];
-      const phones = new Set<string>();
-      const names = new Set<string>();
-      (Array.isArray(list) ? list : []).forEach((c: any) => {
-        if (c?.phone) phones.add(normPhoneKey(String(c.phone)));
-        if (c?.name) names.add(normNameKey(String(c.name)));
-      });
-      bookingCustomersCache = { at: Date.now(), phones, names };
-    }
-
-    for (const [key, c] of candidates) {
-      // نعلّم قبل الإرسال — فشل الرابط مش هيعيد المحاولة كل refresh
-      syncedCustomerKeys.add(key);
-      const exists = c.phone
-        ? bookingCustomersCache.phones.has(normPhoneKey(c.phone))
-        : bookingCustomersCache.names.has(normNameKey(c.name));
-      if (exists) continue;
-      apiRequest(`/shops/${shopId}/customers`, {
-        method: 'POST',
-        body: JSON.stringify({
-          name: c.name,
-          ...(c.phone ? { phone: c.phone } : {}),
-          source: 'bookings',
-          notes:
-            c.src === 'website' ? 'اتضاف تلقائيًا من حجز على الموقع' : 'اتضاف تلقائيًا من حجز يدوي',
-        }),
-      })
-        .then((res: any) => {
-          // الباكند ممكن يرجّع عميل موجود بدل الإنشاء (upsert بالتليفون)
-          if (res?.raw?.created !== false && c.phone) {
-            bookingCustomersCache?.phones.add(normPhoneKey(c.phone));
-          }
-        })
-        .catch(() => {});
-    }
-  } catch {}
-}
+import {
+  type ViewMode,
+  type BookingItem,
+  ARABIC_MONTHS,
+  WEEK_DAYS,
+  UUID_RE,
+  inferActivityType,
+  getWeekNumber,
+  formatDateKey,
+  parseDateKey,
+  timeToMinutes,
+  minutesToTime,
+  fmtTime12,
+  paymentLabel,
+  normNameKey,
+  ensureBookingCustomers,
+} from './shared';
 
 /* ============================================================
  * Main Page Component
