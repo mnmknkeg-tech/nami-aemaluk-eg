@@ -259,7 +259,7 @@ export default function TopNav({ onMenuClick, onSwitchNav }: TopNavProps) {
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
+    window.location.assign('/login');
   };
 
   const userName = user?.name || 'مستخدم';

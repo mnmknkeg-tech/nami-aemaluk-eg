@@ -31,7 +31,7 @@ export default function GuardedAdminLayout({ children }: { children: React.React
 
   const handleLogout = () => {
     logout();
-    router.replace('/login');
+    window.location.replace('/login');
   };
 
   const currentLabel = useMemo(

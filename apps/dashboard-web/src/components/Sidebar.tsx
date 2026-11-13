@@ -29,7 +29,11 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
+    // Hard reload (not soft router.push) so every module-level cache
+    // (bookingCustomersCache, syncedCustomerKeys, etc.) is wiped —
+    // soft navigation leaves them in memory and shows the previous
+    // account's data until a manual refresh.
+    window.location.assign('/login');
   };
 
   const isSectionView = activeSection !== null;

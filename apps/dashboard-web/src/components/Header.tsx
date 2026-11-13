@@ -37,7 +37,7 @@ export default function Header({
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
+    window.location.assign('/login');
   };
 
   const handleBellClick = () => {
