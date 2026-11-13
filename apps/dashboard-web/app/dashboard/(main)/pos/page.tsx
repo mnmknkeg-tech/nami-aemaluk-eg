@@ -135,6 +135,9 @@ import PosQuickKeysModal from '@/components/pos/PosQuickKeysModal';
 import PosReceiptSettingsModal from '@/components/pos/PosReceiptSettingsModal';
 import PosLoyaltySettingsModal from '@/components/pos/PosLoyaltySettingsModal';
 import PosSignatureModal from '@/components/pos/PosSignatureModal';
+import PosInvoicesModal from '@/components/pos/PosInvoicesModal';
+import PosQuickReturnModal from '@/components/pos/PosQuickReturnModal';
+import PosGateModal from '@/components/pos/PosGateModal';
 import { type CartItem, type PendingOrder } from './types';
 import { SHOW_UNPUBLISHED } from './constants';
 import {
@@ -3799,367 +3802,51 @@ const POSSystemPage: React.FC = () => {
         onToggle={handleToggleQuickKey}
         isArabic={isArabic}
       />
-      {/* Cashier invoices modal — quick access for the shift owner */}
-      <AnimatePresence>
-        {showInvoices && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setShowInvoices(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-2xl bg-white rounded-[2rem] p-5 max-h-[85vh] overflow-hidden flex flex-col"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-base font-black flex items-center gap-2">
-                  <Receipt size={16} className="text-[#0098a8]" />{' '}
-                  {isArabic ? 'فواتير الكاشير' : 'Cashier Invoices'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowInvoices(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto space-y-2">
-                {invoicesLoading ? (
-                  <div className="flex items-center justify-center py-12 text-slate-300">
-                    <Loader2 size={28} className="animate-spin" />
-                  </div>
-                ) : posInvoices.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-slate-300">
-                    <Receipt size={48} className="mb-3 opacity-30" />
-                    <p className="font-black text-sm">
-                      {isArabic ? 'لا توجد فواتير كاشير بعد' : 'No cashier invoices yet'}
-                    </p>
-                  </div>
-                ) : (
-                  posInvoices.map((inv: any) => {
-                    const returned =
-                      String(inv?.status || '').toUpperCase() === 'RETURNED' ||
-                      String(inv?.status || '').toUpperCase() === 'REFUNDED';
-                    return (
-                      <div
-                        key={inv.id}
-                        className={`border rounded-2xl p-3 ${returned ? 'border-red-100 bg-red-50/40' : 'border-slate-100 bg-white'}`}
-                      >
-                        <div className="flex items-center justify-between gap-2 mb-2 flex-row-reverse">
-                          <div className="text-right min-w-0">
-                            <div className="text-xs font-black text-slate-900 flex items-center gap-2 justify-end">
-                              <span>#{String(inv.id || '').slice(0, 8)}</span>
-                              <span
-                                className={`px-1.5 py-0.5 rounded-md text-[9px] font-black ${invoiceStatusStyle(inv.status)}`}
-                              >
-                                {returned ? 'مرتجعة' : 'مكتملة'}
-                              </span>
-                            </div>
-                            <div className="text-[10px] font-bold text-slate-400 mt-0.5">
-                              {String(inv.createdAt || '')
-                                .replace('T', ' ')
-                                .slice(0, 16)}
-                              {inv.customerPhone ? ` • ${inv.customerPhone}` : ''}
-                            </div>
-                          </div>
-                          <span className="text-sm font-black text-slate-900 shrink-0">
-                            ج.م {Number(inv.total || 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-row-reverse">
-                          <button
-                            type="button"
-                            onClick={() => reprintInvoice(inv)}
-                            className="flex-1 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-600 hover:bg-slate-100 flex items-center justify-center gap-1"
-                          >
-                            <Printer size={12} /> {isArabic ? 'طباعة' : 'Print'}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={returned}
-                            onClick={() => startReturn(inv)}
-                            className="flex-1 py-2 rounded-xl bg-red-50 border border-red-100 text-[10px] font-black text-red-600 hover:bg-red-100 flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            <RotateCcw size={12} /> {isArabic ? 'مرتجع سريع' : 'Return'}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={returned}
-                            onClick={() => startEditOrder(inv)}
-                            className="flex-1 py-2 rounded-xl bg-[#00E5FF]/10 border border-[#00E5FF]/30 text-[10px] font-black text-[#0098a8] hover:bg-[#00E5FF]/20 flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            <Sliders size={12} /> {isArabic ? 'تعديل' : 'Edit'}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosInvoicesModal
+        show={showInvoices}
+        onClose={() => setShowInvoices(false)}
+        invoices={posInvoices}
+        loading={invoicesLoading}
+        statusStyle={invoiceStatusStyle}
+        onReprint={reprintInvoice}
+        onReturn={startReturn}
+        onEdit={startEditOrder}
+        isArabic={isArabic}
+      />
 
-      {/* Quick return modal */}
-      <AnimatePresence>
-        {returnOrder && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[960] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => !returnSubmitting && setReturnOrder(null)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5 max-h-[85vh] overflow-y-auto"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-1 flex-row-reverse">
-                <h3 className="text-base font-black flex items-center gap-2">
-                  <RotateCcw size={16} className="text-red-500" />{' '}
-                  {isArabic ? 'مرتجع سريع' : 'Quick Return'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setReturnOrder(null)}
-                  disabled={returnSubmitting}
-                  className="p-2 rounded-xl hover:bg-slate-100 disabled:opacity-40"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <p className="text-[10px] font-bold text-slate-400 mb-3">
-                {isArabic
-                  ? `فاتورة #${String(returnOrder.id || '').slice(0, 8)} — حدّد الكمية المرتجعة من كل صنف`
-                  : `Invoice #${String(returnOrder.id || '').slice(0, 8)}`}
-              </p>
-              <div className="space-y-2 mb-3">
-                {(Array.isArray(returnOrder.items) ? returnOrder.items : []).map((it: any) => {
-                  const qty = returnQtys[String(it.id)] || 0;
-                  const orig = Number(it.quantity) || 0;
-                  return (
-                    <div
-                      key={it.id}
-                      className={`border rounded-xl p-2.5 flex items-center justify-between gap-2 ${qty > 0 ? 'border-red-200 bg-red-50/40' : 'border-slate-100'}`}
-                    >
-                      <div className="min-w-0 text-right">
-                        <div className="text-xs font-black text-slate-900 truncate">
-                          {it.productName || it.productId}
-                        </div>
-                        <div className="text-[10px] font-bold text-slate-400">
-                          ج.م {Number(it.price || 0).toFixed(2)} × {orig}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setReturnQtys((prev) => ({
-                              ...prev,
-                              [String(it.id)]: Math.max(0, (prev[String(it.id)] || 0) - 1),
-                            }))
-                          }
-                          className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center hover:border-red-400 hover:text-red-500"
-                        >
-                          <Minus size={14} />
-                        </button>
-                        <span className="w-6 text-center font-black text-sm">{qty}</span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setReturnQtys((prev) => ({
-                              ...prev,
-                              [String(it.id)]: Math.min(orig, (prev[String(it.id)] || 0) + 1),
-                            }))
-                          }
-                          className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center hover:border-red-400 hover:text-red-500"
-                        >
-                          <Plus size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <label className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2.5 mb-2 cursor-pointer">
-                <span className="text-xs font-black text-slate-600">
-                  {isArabic ? 'إرجاع الأصناف للمخزون' : 'Return items to stock'}
-                </span>
-                <input
-                  type="checkbox"
-                  checked={returnToStock}
-                  onChange={(e) => setReturnToStock(e.target.checked)}
-                  className="w-4 h-4 accent-red-500"
-                />
-              </label>
-              <input
-                type="text"
-                value={returnReason}
-                onChange={(e) => setReturnReason(e.target.value)}
-                placeholder={isArabic ? 'السبب (اختياري)' : 'Reason (optional)'}
-                className="w-full bg-slate-50 border rounded-xl py-2.5 px-4 outline-none text-xs font-bold mb-3"
-              />
-              <div className="flex items-center justify-between bg-red-50 rounded-xl px-3 py-2.5 mb-3">
-                <span className="text-xs font-black text-red-600">
-                  {isArabic ? 'إجمالي المرتجع' : 'Return total'}
-                </span>
-                <span className="text-sm font-black text-red-600">
-                  ج.م {returnTotal.toFixed(2)}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={submitReturn}
-                disabled={returnTotal <= 0 || returnSubmitting}
-                className="w-full py-3 rounded-2xl bg-red-500 text-white font-black text-sm hover:bg-red-600 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {returnSubmitting && <Loader2 size={14} className="animate-spin" />}
-                {isArabic ? 'تأكيد المرتجع' : 'Confirm Return'}
-              </button>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosQuickReturnModal
+        order={returnOrder}
+        onClose={() => setReturnOrder(null)}
+        qtys={returnQtys}
+        onQtysChange={setReturnQtys}
+        toStock={returnToStock}
+        onToStockChange={setReturnToStock}
+        reason={returnReason}
+        onReasonChange={setReturnReason}
+        total={returnTotal}
+        submitting={returnSubmitting}
+        onSubmit={submitReturn}
+        isArabic={isArabic}
+      />
 
-      {/* ─── POS gate — full-screen blocking card shown INSTEAD of the checkout
-              UI until the shift/cashier session is ready ─── */}
-      {isGated &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[10050] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
-            dir="rtl"
-          >
-            <div className="w-full max-w-sm bg-white rounded-[2rem] border border-slate-100 shadow-2xl p-6 space-y-4">
-              <div className="text-center">
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-[#BD00FF]/10 flex items-center justify-center mb-3">
-                  {gateMode === 'open' ? (
-                    <Play size={26} className="text-[#BD00FF]" />
-                  ) : (
-                    <Lock size={26} className="text-[#BD00FF]" />
-                  )}
-                </div>
-                <h2 className="text-xl font-black text-slate-900">
-                  {gateMode === 'open' ? 'ابدأ الوردية' : 'سجّل الكاشير'}
-                </h2>
-                <p className="text-xs font-bold text-slate-400 mt-1">
-                  {gateMode === 'open'
-                    ? 'افتح وردية جديدة لتبدأ البيع'
-                    : 'الوردية مفتوحة — سجّل دخولك لتكمل البيع'}
-                </p>
-              </div>
-
-              {gateMode === 'open' && (
-                <div className="space-y-2">
-                  <label className="text-xs font-black text-slate-500">العهدة الافتتاحية</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={gateOpeningCash || ''}
-                    onChange={(e) => setGateOpeningCash(Number(e.target.value) || 0)}
-                    placeholder="مبلغ العهدة"
-                    className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-black text-center focus:ring-2 focus:ring-[#BD00FF]"
-                  />
-                </div>
-              )}
-
-              {(gateCashiers.length > 0 || Boolean(loadPosSettings(shop).adminPin)) && (
-                <>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-500">اسم الكاشير</label>
-                    <select
-                      value={gateCashierId}
-                      onChange={(e) => setGateCashierId(e.target.value)}
-                      className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-black text-right focus:ring-2 focus:ring-[#BD00FF]"
-                    >
-                      <option value="">اختار الكاشير...</option>
-                      <option value="__admin__">الإدارة (صاحب المحل)</option>
-                      {gateCashiers.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-500">الرقم السري</label>
-                    <div className="relative">
-                      <input
-                        type={gateShowPin ? 'text' : 'password'}
-                        inputMode="numeric"
-                        value={gatePin}
-                        onChange={(e) => setGatePin(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        placeholder="أدخل الرقم السري"
-                        className="w-full bg-slate-50 border rounded-xl py-3 px-4 outline-none text-sm font-black text-center tracking-[0.4em] focus:ring-2 focus:ring-[#BD00FF]"
-                        autoComplete="off"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setGateShowPin((v) => !v)}
-                        className="absolute inset-y-0 left-3 flex items-center text-slate-400 hover:text-slate-600"
-                        tabIndex={-1}
-                        aria-label="إظهار الرقم السري"
-                      >
-                        {gateShowPin ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {gateError && (
-                <div className="p-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold text-center">
-                  {gateError}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={submitGate}
-                disabled={gateSubmitting}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-l from-[#BD00FF] to-[#8A00C2] text-white font-black text-sm shadow-lg shadow-[#BD00FF]/25 hover:from-[#8A00C2] hover:to-[#BD00FF] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {gateSubmitting ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <Play size={18} />
-                )}
-                {gateMode === 'open' ? 'فتح الوردية ودخول الكاشير' : 'دخول'}
-              </button>
-
-              {gateMode === 'open' && !hasCashiers && (
-                <button
-                  type="button"
-                  onClick={submitGate}
-                  disabled={gateSubmitting}
-                  className="w-full text-center text-xs font-black text-slate-400 hover:text-slate-600 underline"
-                >
-                  فتح بدون كاشير
-                </button>
-              )}
-
-              {gateMode === 'open' && hasCashiers && gateCashiers.length === 0 && (
-                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-100 text-amber-700 text-[11px] font-bold text-center">
-                  مفيش كاشير عنده صلاحية فتح الوردية — عدّل الصلاحيات من{' '}
-                  <Link href="/dashboard/pos/settings" className="underline font-black">
-                    إعدادات الكاشير
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>,
-          document.body
-        )}
+      <PosGateModal
+        show={isGated}
+        mode={gateMode}
+        openingCash={gateOpeningCash}
+        onOpeningCashChange={setGateOpeningCash}
+        cashierId={gateCashierId}
+        onCashierIdChange={setGateCashierId}
+        cashiers={gateCashiers}
+        pin={gatePin}
+        onPinChange={setGatePin}
+        showPin={gateShowPin}
+        onToggleShowPin={() => setGateShowPin((v) => !v)}
+        error={gateError}
+        submitting={gateSubmitting}
+        onSubmit={submitGate}
+        hasAdminPin={Boolean(loadPosSettings(shop).adminPin)}
+        hasCashiers={hasCashiers}
+      />
     </div>
   );
 };
