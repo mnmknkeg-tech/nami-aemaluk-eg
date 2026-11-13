@@ -157,7 +157,9 @@ export default function MapPage() {
 
       marker.on('click', () => {
         if (isShop && p.slug) {
-          router.push(`/shop/${p.slug}`);
+          // من الخريطة الموقع يفتح بشكلِه الأصلي (ثيم موقع التاجر) — جوّه
+          // التطبيق المتاجر بتظهر بالثيم الموحد عبر /shop/[slug] العادي.
+          router.push(`/shop/${p.slug}?view=site`);
         } else if (!isShop && p.id) {
           router.push(`/map/listing/${p.id}`);
         }

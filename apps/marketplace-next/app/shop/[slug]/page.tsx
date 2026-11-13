@@ -17,6 +17,7 @@ import { FollowButton } from '@/components/FollowButton';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { siteConfig } from '@/lib/config';
 import ShopRenderer from '@/components/ShopRenderer';
+import { UnifiedShopView } from '@/components/UnifiedShopView';
 import { serializeJsonLd } from '@/lib/jsonld';
 
 // Builder publication must be visible immediately; render this route per request.
@@ -33,6 +34,7 @@ export async function generateStaticParams() {
 
 interface Props {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ view?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -66,8 +68,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ShopPage({ params }: Props) {
+export default async function ShopPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const { view } = await searchParams;
   const shop = await getShopBySlug(slug, true);
   if (!shop) notFound();
 
@@ -135,17 +138,27 @@ export default async function ShopPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbLd) }}
       />
 
-      {/* Only the published snapshot is public. Unpublished/legacy shops keep
-          their established pageDesign layout; draft builderConfig is never used. */}
-      {publishedConfig ? (
-        <ShopRenderer shop={{ ...shop, builderConfig: publishedConfig }} products={products} />
+      {/* الشكل الأصلي لموقع التاجر — يفتح فقط عبر ?view=site (ودي اللي الخريطة
+          بتفتحها) أو زر «الموقع الرسمي». جوّه التطبيق العرض الافتراضي
+          الثيم الموحد بتاع «من مكانك» لكل المتاجر بغض النظر عن نشر التاجر
+          لموقعه أو ألوانه. */}
+      {view === 'site' ? (
+        publishedConfig ? (
+          <ShopRenderer shop={{ ...shop, builderConfig: publishedConfig }} products={products} />
+        ) : (
+          <LegacyShopLayout
+            shop={shop}
+            products={products}
+            design={design}
+            primaryColor={primaryColor}
+            bgColor={bgColor}
+          />
+        )
       ) : (
-        <LegacyShopLayout
+        <UnifiedShopView
           shop={shop}
           products={products}
-          design={design}
-          primaryColor={primaryColor}
-          bgColor={bgColor}
+          hasOfficialSite={Boolean(publishedConfig)}
         />
       )}
     </>
