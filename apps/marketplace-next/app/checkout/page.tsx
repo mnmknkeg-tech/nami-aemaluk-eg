@@ -20,6 +20,7 @@ import { useCart } from '@/lib/cart';
 import { useSiteCart } from '@/lib/site-cart';
 import { formatPrice } from '@/lib/utils';
 import { isSessionActive, jsonRequest } from '@/lib/api';
+import { trackCartEvent } from '@/lib/cartEvents';
 import { LocationPicker } from '@/components/LocationPicker';
 import { playOrderNotifSound } from '@/lib/sounds';
 
@@ -283,6 +284,9 @@ export default function CheckoutPage() {
     setLoading(true);
     setError('');
 
+    // Abandoned-cart funnel: the customer reached the checkout submit.
+    trackCartEvent('checkout_started', items);
+
     // تحقق من رقم الهاتف المصري قبل الإرسال — نفس قاعدة التحقق على السيرفر،
     // مع تطبيع الأرقام العربية ومقدمة +20 عشان مايبانش خطأ غامض بعد الرفع.
     const normalizedPhone = toEgyptianPhoneDigits(phone);
@@ -371,6 +375,10 @@ export default function CheckoutPage() {
           : '/';
 
       clearCart();
+      // Abandoned-cart funnel: payment completed — the backend auto-recovers
+      // this session's earlier add_to_cart / checkout_started events, so the
+      // merchant's abandoned list only shows carts that never converted.
+      trackCartEvent('payment_completed', items);
       setSuccess({
         orders,
         count: orders.length,

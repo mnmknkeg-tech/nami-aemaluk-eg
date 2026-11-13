@@ -2,17 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
-  User,
-  ShoppingBag,
-  Heart,
-  MapPin,
-  Settings,
-  LogOut,
   Save,
   Lock,
-  ChevronRight,
   Check,
   Phone,
   Plus,
@@ -20,14 +12,13 @@ import {
   AlertTriangle,
   Loader2,
 } from 'lucide-react';
-import { api, clearStoredAuthToken, isSessionActive } from '@/lib/api';
+import { api, clearStoredAuthToken } from '@/lib/api';
 import { normalizeEgyptianPhone, phoneDisplay, toLocalEgyptianPhone } from '@/lib/phone';
-import { ProfileShellSkeleton } from '@/components/Skeleton';
+import { useProfileUser } from '../layout';
 
 export default function ProfileSettingsPage() {
+  const { user, refresh } = useProfileUser();
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -44,42 +35,19 @@ export default function ProfileSettingsPage() {
   const [newExtraPhone, setNewExtraPhone] = useState('');
 
   useEffect(() => {
-    if (!isSessionActive()) {
-      router.push('/login');
-      return;
-    }
-
-    const loadData = async () => {
-      try {
-        // /users/me returns the full profile (name, phone, extraPhones)
-        // and — unlike /auth/me — is the same object PATCH /users/me accepts.
-        const userData = await api.get('/users/me');
-        const u = (userData as any)?.data ?? (userData as any)?.user ?? userData;
-        setUser(u);
-        setForm({
-          name: u?.name || '',
-          email: u?.email || '',
-          // القيمة المخزنة E.164 (+20…) — نعرضها محلية بدون الكود عشان الكود
-          // ثابت جنب الحقل ويبقى الشكل "01012345678".
-          phone: u?.phone ? (toLocalEgyptianPhone(u.phone) ?? u.phone) : '',
-          currentPassword: '',
-          newPassword: '',
-        });
-        setExtraPhones(Array.isArray(u?.extraPhones) ? u.extraPhones : []);
-      } catch (error) {
-        console.error('Failed to fetch profile:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [router]);
-
-  const handleLogout = () => {
-    clearStoredAuthToken();
-    router.push('/');
-  };
+    // The shared profile user arrives from the layout (fetched once there).
+    // Re-sync the form whenever it lands or changes.
+    if (!user) return;
+    setForm((prev) => ({
+      ...prev,
+      name: user?.name || '',
+      email: user?.email || '',
+      // القيمة المخزنة E.164 (+20…) — نعرضها محلية بدون الكود عشان الكود
+      // ثابت جنب الحقل ويبقى الشكل "01012345678".
+      phone: user?.phone ? (toLocalEgyptianPhone(user.phone) ?? user.phone) : '',
+    }));
+    setExtraPhones(Array.isArray(user?.extraPhones) ? user.extraPhones : []);
+  }, [user]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,6 +80,7 @@ export default function ProfileSettingsPage() {
         });
       }
 
+      await refresh(); // keep the shared profile user in sync
       setSuccessMsg('تم حفظ البيانات بنجاح');
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err: any) {
@@ -168,87 +137,8 @@ export default function ProfileSettingsPage() {
     }
   };
 
-  if (loading) {
-    return <ProfileShellSkeleton rows={3} />;
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pb-24 md:pb-12">
-      {/* Header */}
-      <div className="bg-brand-black text-white py-8 px-4 md:px-6">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-brand-cyan/20 rounded-xl flex items-center justify-center">
-              <User className="w-10 h-10 text-brand-cyan" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">{user?.name || 'مستخدم'}</h1>
-              <p className="text-white/60 text-sm font-bold" dir="ltr">
-                {user?.phone ? phoneDisplay(user.phone) : user?.email}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-              <nav className="space-y-2">
-                <Link
-                  href="/profile"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition-colors"
-                >
-                  <User className="w-5 h-5" />
-                  <span>الملف الشخصي</span>
-                  <ChevronRight className="w-4 h-4 mr-auto" />
-                </Link>
-                <Link
-                  href="/profile/orders"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition-colors"
-                >
-                  <ShoppingBag className="w-5 h-5" />
-                  <span>طلباتي</span>
-                  <ChevronRight className="w-4 h-4 mr-auto" />
-                </Link>
-                <Link
-                  href="/profile/wishlist"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition-colors"
-                >
-                  <Heart className="w-5 h-5" />
-                  <span>المفضلة</span>
-                  <ChevronRight className="w-4 h-4 mr-auto" />
-                </Link>
-                <Link
-                  href="/profile/addresses"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold transition-colors"
-                >
-                  <MapPin className="w-5 h-5" />
-                  <span>العناوين</span>
-                  <ChevronRight className="w-4 h-4 mr-auto" />
-                </Link>
-                <Link
-                  href="/profile/settings"
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-brand-cyan/10 text-brand-cyan font-semibold"
-                >
-                  <Settings className="w-5 h-5" />
-                  <span>الإعدادات</span>
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 font-semibold transition-colors mt-4"
-                >
-                  <LogOut className="w-5 h-5" />
-                  <span>تسجيل الخروج</span>
-                </button>
-              </nav>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+    <>
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
               <h2 className="text-xl font-bold mb-2">إعدادات الحساب</h2>
               <p className="text-sm text-slate-500 mb-6">تحديث بياناتك الشخصية وكلمة المرور</p>
@@ -473,9 +363,6 @@ export default function ProfileSettingsPage() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

@@ -18,6 +18,7 @@ import { isSessionActive } from './api';
 // test/cart-stage5.test.ts, where the root tsconfig maps '@/*' to
 // packages/shared/src — an app-level alias import breaks that typecheck.
 import { AuthGateModal } from '../components/AuthGateModal';
+import { trackCartEvent } from './cartEvents';
 
 export interface CartItem {
   id: string;
@@ -217,6 +218,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
       if (openDrawer) setCartOpen(true);
       playCartSound();
+      // Abandoned-cart funnel: the merchant dashboard's "السلة المتروكة"
+      // reads these. Fire-and-forget — never block or break adding to cart.
+      // Uses the raw product id (the cart key can carry variant/addon suffixes).
+      if (product.shopId) {
+        trackCartEvent('add_to_cart', [
+          {
+            shopId: product.shopId,
+            productId: product.id,
+            quantity,
+            price: finalPrice,
+            name: product.name,
+          },
+        ]);
+      }
     },
     [pathname]
   );
