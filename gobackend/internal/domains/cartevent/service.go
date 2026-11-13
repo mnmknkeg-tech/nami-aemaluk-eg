@@ -78,12 +78,11 @@ func (s *Service) Track(ctx context.Context, req TrackRequest, userID *string) (
         // user) left in the cart for this shop is no longer "abandoned", so
         // auto-recover it. Best-effort — never fail the track call.
         if event == "payment_completed" {
-                s.repo.RecoverBySession(ctx, shopID, req.SessionID, func() string {
-                        if userID != nil {
-                                return *userID
-                        }
-                        return ""
-                }())
+                uid := ""
+                if userID != nil {
+                        uid = *userID
+                }
+                s.repo.RecoverBySession(ctx, shopID, req.SessionID, uid)
         }
         resp := shapeEvent(*created)
         return &resp, nil
