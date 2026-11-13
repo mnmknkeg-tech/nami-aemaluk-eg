@@ -125,6 +125,8 @@ import PosGiftCardPrompt from '@/components/pos/PosGiftCardPrompt';
 import PosEmailReceiptModal from '@/components/pos/PosEmailReceiptModal';
 import PosTablesModal from '@/components/pos/PosTablesModal';
 import PosLayawayModal from '@/components/pos/PosLayawayModal';
+import PosCameraScannerModal from '@/components/pos/PosCameraScannerModal';
+import PosPriceOverrideModal from '@/components/pos/PosPriceOverrideModal';
 import { type CartItem, type PendingOrder } from './types';
 import { SHOW_UNPUBLISHED } from './constants';
 import {
@@ -3615,113 +3617,22 @@ const POSSystemPage: React.FC = () => {
         onDeleteHeldOrder={deleteHeldOrder}
       />
 
-      {/* Camera barcode scanner modal */}
-      <AnimatePresence>
-        {showCameraScanner && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/80 flex items-center justify-center p-4"
-            onClick={() => setShowCameraScanner(false)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-md bg-white rounded-[2rem] p-5"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-lg font-black flex items-center gap-2">
-                  <Camera size={18} /> {isArabic ? 'مسح الباركود' : 'Scan Barcode'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowCameraScanner(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              {cameraError ? (
-                <div className="p-4 rounded-xl bg-red-50 text-red-600 text-sm font-bold text-center">
-                  {cameraError}
-                </div>
-              ) : (
-                <div className="relative rounded-2xl overflow-hidden bg-black aspect-square">
-                  <video
-                    ref={cameraVideoRef}
-                    className="w-full h-full object-cover"
-                    muted
-                    playsInline
-                  />
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                    <div className="w-3/4 h-1 bg-[#00E5FF] shadow-[0_0_12px_#00E5FF]" />
-                  </div>
-                </div>
-              )}
-              <p className="text-center text-xs text-slate-400 font-bold mt-3">
-                {isArabic ? 'وجّه الكاميرا نحو الباركود' : 'Point the camera at the barcode'}
-              </p>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosCameraScannerModal
+        show={showCameraScanner}
+        onClose={() => setShowCameraScanner(false)}
+        videoRef={cameraVideoRef}
+        error={cameraError}
+        isArabic={isArabic}
+      />
 
-      {/* Price override modal (per-line) */}
-      <AnimatePresence>
-        {priceOverrideId && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[950] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => setPriceOverrideId(null)}
-          >
-            <MotionDiv
-              initial={{ y: 18, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 18, opacity: 0 }}
-              className="w-full max-w-xs bg-white rounded-[2rem] p-5"
-              onClick={(e: any) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4 flex-row-reverse">
-                <h3 className="text-base font-black flex items-center gap-2">
-                  <Tag size={16} className="text-[#BD00FF]" />{' '}
-                  {isArabic ? 'تعديل السعر' : 'Price Override'}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setPriceOverrideId(null)}
-                  className="p-2 rounded-xl hover:bg-slate-100"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <input
-                type="number"
-                autoFocus
-                value={priceOverrideValue}
-                onChange={(e) => setPriceOverrideValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') applyPriceOverride();
-                }}
-                className="w-full bg-white border rounded-2xl py-3 px-4 outline-none text-center text-lg font-black focus:ring-2 focus:ring-[#BD00FF]"
-                min={0}
-                step="0.01"
-              />
-              <button
-                type="button"
-                onClick={applyPriceOverride}
-                className="w-full mt-3 py-3 rounded-2xl bg-slate-900 text-white font-black text-sm hover:bg-black"
-              >
-                {isArabic ? 'تطبيق' : 'Apply'}
-              </button>
-            </MotionDiv>
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosPriceOverrideModal
+        overrideId={priceOverrideId}
+        onClose={() => setPriceOverrideId(null)}
+        value={priceOverrideValue}
+        onValueChange={setPriceOverrideValue}
+        onApply={applyPriceOverride}
+        isArabic={isArabic}
+      />
 
       {/* Keyboard shortcuts help (long-press barcode button shows a hint) */}
       {barcodeListening && (
