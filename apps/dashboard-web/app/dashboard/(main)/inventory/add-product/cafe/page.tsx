@@ -227,11 +227,11 @@ export default function CafeAddProductPage() {
       const m = parseNumberInput(baseSizeMedium);
       const l = parseNumberInput(baseSizeLarge);
       if (Number.isFinite(s) && s >= 0)
-        sizes.push({ label: 'صغير', price: Math.round(s * 100) / 100 });
+        sizes.push({ id: 'small', label: 'صغير', price: Math.round(s * 100) / 100 });
       if (Number.isFinite(m) && m >= 0)
-        sizes.push({ label: 'وسط', price: Math.round(m * 100) / 100 });
+        sizes.push({ id: 'medium', label: 'وسط', price: Math.round(m * 100) / 100 });
       if (Number.isFinite(l) && l >= 0)
-        sizes.push({ label: 'كبير', price: Math.round(l * 100) / 100 });
+        sizes.push({ id: 'large', label: 'كبير', price: Math.round(l * 100) / 100 });
       if (sizes.length > 0) {
         const min = Math.min(...sizes.map((t) => Number(t.price || 0)));
         if (Number.isFinite(min)) resolvedBasePrice = min;

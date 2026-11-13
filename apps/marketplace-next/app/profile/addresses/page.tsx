@@ -272,6 +272,7 @@ export default function ProfileAddressesPage() {
                 onAddressResolved={(addr) => {
                   setForm((p) => ({
                     ...p,
+                    governorate: p.governorate || addr.governorate || '',
                     city: p.city || addr.city || '',
                     street: p.street || addr.district || '',
                   }));

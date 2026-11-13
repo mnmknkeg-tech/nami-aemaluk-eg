@@ -83,6 +83,24 @@ export default async function ShopPage({ params, searchParams }: Props) {
   const products = allProducts.filter(
     (p) => (p as any).isActive !== false && (p as any).is_active !== false
   );
+
+  // اقتراحات متاجر تانية لنهاية الصفحة — نفس النشاط أولاً ثم الباقي.
+  let suggestions: Shop[] = [];
+  try {
+    const allShops = (await getShops(300, true)).filter((s) => s.slug !== shop.slug);
+    const sameActivity = allShops.filter(
+      (s) => s.activity && shop.activity && s.activity === shop.activity
+    );
+    const sameCategory = allShops.filter(
+      (s) => !sameActivity.includes(s) && s.category && s.category === shop.category
+    );
+    suggestions = [...sameActivity, ...sameCategory, ...allShops]
+      .filter((s, i, arr) => arr.findIndex((x) => x.id === s.id) === i)
+      .slice(0, 8);
+  } catch {
+    suggestions = [];
+  }
+
   const design = shop.pageDesign || {};
   const primaryColor = design.primaryColor || '#00E5FF';
   const bgColor = design.pageBackgroundColor || design.backgroundColor || '#FFFFFF';
@@ -159,6 +177,7 @@ export default async function ShopPage({ params, searchParams }: Props) {
           shop={shop}
           products={products}
           hasOfficialSite={Boolean(publishedConfig)}
+          suggestions={suggestions}
         />
       )}
     </>

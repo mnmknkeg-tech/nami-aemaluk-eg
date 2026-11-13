@@ -10,6 +10,7 @@ import { siteConfig } from '@/lib/config';
 import ShareButton from '@/components/ShareButton';
 import { CommerceAction } from '@/components/CommerceAction';
 import { MarketProductConfigurator } from '@/components/MarketProductConfigurator';
+import { ProductUpsellStrip } from '@/components/ProductUpsellStrip';
 import { productHasOptions } from '@/lib/product-options';
 import { resolveCommerce } from '@/lib/commerce';
 import { ReviewsSection } from '@/components/ReviewsSection';
@@ -91,7 +92,7 @@ export default async function ProductPage({ params }: Props) {
   if (product.shopId) {
     try {
       const shopProducts = await getProducts(product.shopId, 12);
-      relatedProducts = shopProducts.filter((p) => p.id !== product.id).slice(0, 4);
+      relatedProducts = shopProducts.filter((p) => p.id !== product.id).slice(0, 8);
     } catch {}
   }
 
@@ -148,14 +149,12 @@ export default async function ProductPage({ params }: Props) {
     ],
   };
 
-  // Apply builder config product page styling if available.
-  const builderConfig = (shop?.builderConfig || shop?.pageDesign || {}) as Record<string, any>;
-  const pageBg =
-    builderConfig.productPageBackgroundColor || builderConfig.pageBackgroundColor || undefined;
-  const pageText = builderConfig.productPageTextColor || undefined;
-  const priceColor = builderConfig.productPagePriceColor || builderConfig.primaryColor || undefined;
-  const buttonColor =
-    builderConfig.productPageButtonColor || builderConfig.primaryColor || undefined;
+  // الهوية الموحدة للتطبيق: صفحة المنتج جوّه التطبيق بتعرض بألوان "من مكانك"
+  // (برتقالي/حبر) بغض النظر عن ثيم موقع التاجر — زي ما المستخدم طلب.
+  const pageBg: string | undefined = undefined;
+  const pageText: string | undefined = undefined;
+  const priceColor = '#EA580C'; // brand.orange-dark
+  const buttonColor = '#F97316'; // brand.orange
 
   return (
     <div
@@ -322,9 +321,25 @@ export default async function ProductPage({ params }: Props) {
             Boolean((product as any)?.extraData?.calories) ||
             Boolean((product as any)?.extraData?.digital)) ? (
             <div className="mb-6">
-              <MarketProductConfigurator product={product} buttonColor={buttonColor} />
+              <MarketProductConfigurator
+                product={product}
+                buttonColor={buttonColor}
+                suggestions={relatedProducts}
+              />
             </div>
           ) : null}
+
+          {/* اقتراحات «ضيف على طلبك» للمنتجات البسيطة — المنتجات بخيارات
+              عندها نفس الشريط جوّه الكونفيجيراتور نفسه */}
+          {!(
+            product.isAvailable !== false &&
+            (productHasOptions(product) ||
+              Boolean((product as any)?.addons?.length) ||
+              Boolean((product as any)?.menuVariants?.length) ||
+              Boolean((product as any)?.extraData?.calories) ||
+              Boolean((product as any)?.extraData?.digital))
+          ) &&
+            decision.showAddToCart && <ProductUpsellStrip suggestions={relatedProducts} />}
 
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-3 mt-auto" data-testid="product-actions">

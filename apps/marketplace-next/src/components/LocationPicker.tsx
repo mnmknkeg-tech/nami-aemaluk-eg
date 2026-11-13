@@ -1,14 +1,59 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MapPin, Locate, Loader2, Check } from 'lucide-react';
+import { MapPin, Locate, Loader2, Check, AlertCircle } from 'lucide-react';
+import { guessGovernorate } from '@/lib/eg-geo';
+
+interface ResolvedAddress {
+  city?: string;
+  district?: string;
+  governorate?: string;
+  fullAddress?: string;
+  /** من أين جه الاسم — للتلميح في الواجهة */
+  source: 'nominatim' | 'offline';
+}
 
 interface LocationPickerProps {
   onLocationSelect: (lat: number, lng: number) => void;
-  onAddressResolved?: (address: { city?: string; district?: string; fullAddress?: string }) => void;
+  onAddressResolved?: (address: ResolvedAddress) => void;
   initialCoords?: { lat: number; lng: number } | null;
 }
 
+/** Nominatim reverse geocode — بمهلة قصيرة عشان متعلّقش الواجهة. */
+async function reverseGeocode(lat: number, lng: number): Promise<ResolvedAddress | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar&addressdetails=1`,
+      { signal: controller.signal, headers: { Accept: 'application/json' } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data?.address) return null;
+    const addr = data.address;
+    const city = addr.city || addr.town || addr.village || addr.state || addr.county || '';
+    const district = addr.suburb || addr.neighbourhood || addr.district || addr.road || '';
+    return {
+      city,
+      district,
+      governorate: addr.state || addr.region || '',
+      fullAddress: data.display_name || '',
+      source: 'nominatim',
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * تحديد موقع على الخريطة — باليد (ضغطة على الخريطة) أو تلقائي (GPS).
+ *
+ * العنوان بيتحل دايمًا: أولاً Nominatim، ولو فشل بتخمين المحافظة من
+ * الإحداثيات محليًا — فمفيش حالة بتعطل الحفظ بخطأ "المحافظة والمدينة مطلوبتان".
+ */
 export function LocationPicker({
   onLocationSelect,
   onAddressResolved,
@@ -20,10 +65,12 @@ export function LocationPicker({
   const leafletRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [selected, setSelected] = useState<{ lat: number; lng: number } | null>(
     initialCoords || null
   );
   const [error, setError] = useState('');
+  const [resolveHint, setResolveHint] = useState('');
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -73,7 +120,7 @@ export function LocationPicker({
         }
       } catch (err) {
         console.error('Leaflet load error:', err);
-        setError('فشل تحميل الخريطة');
+        setError('فشل تحميل الخريطة — جرّب تحديث الصفحة أو اكتب العنوان يدويًا');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -87,7 +134,37 @@ export function LocationPicker({
         markerRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** يحل العنوان من الإحداثيات مع fallback محلي مضمون. */
+  const resolveAddress = async (lat: number, lng: number) => {
+    if (!onAddressResolved) return;
+    setResolving(true);
+    setResolveHint('');
+    // 1) تخمين محلي فوري (يعمل دايمًا) — المحافظة على الأقل تتعبأ من أول لحظة
+    const offline = guessGovernorate(lat, lng);
+    if (offline) {
+      onAddressResolved({
+        city: offline.city,
+        governorate: offline.governorate,
+        source: 'offline',
+      });
+    }
+    // 2) محاولة تحسين الاسم من Nominatim (شارع/حي/مدينة أدق)
+    const resolved = await reverseGeocode(lat, lng);
+    setResolving(false);
+    if (resolved) {
+      onAddressResolved(resolved);
+      setResolveHint(
+        resolved.district || resolved.city ? 'تم تعبئة العنوان تلقائيًا من الموقع ✅' : ''
+      );
+    } else if (offline) {
+      setResolveHint('تم تعبئة المحافظة من الموقع — أكمل اسم المدينة/الشارع يدويًا');
+    } else {
+      setResolveHint('اكتب المحافظة والمدينة يدويًا لإنهاء العنوان');
+    }
+  };
 
   const placeMarker = (lat: number, lng: number) => {
     const L = leafletRef.current;
@@ -98,29 +175,18 @@ export function LocationPicker({
       markerRef.current = L.marker([lat, lng]).addTo(mapRef.current);
     }
     setSelected({ lat, lng });
+    setError('');
     onLocationSelect(lat, lng);
-
-    // Reverse geocode using Nominatim (note: the param is `lon`, not `lng`)
-    if (onAddressResolved) {
-      fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ar`
-      )
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (!data?.address) return;
-          const addr = data.address;
-          const city = addr.city || addr.town || addr.village || addr.state || addr.county || '';
-          const district = addr.suburb || addr.neighbourhood || addr.district || addr.road || '';
-          const fullAddress = data.display_name || '';
-          onAddressResolved({ city, district, fullAddress });
-        })
-        .catch(() => {});
-    }
+    resolveAddress(lat, lng);
   };
 
   const handleLocate = () => {
     if (!navigator.geolocation) {
-      setError('المتصفح لا يدعم تحديد الموقع');
+      setError('متصفحك لا يدعم تحديد الموقع — اضغط على الخريطة يدويًا بدلًا من ده');
+      return;
+    }
+    if (typeof window !== 'undefined' && !(window as any).isSecureContext) {
+      setError('تحديد الموقع التلقائي يحتاج اتصال آمن (HTTPS) — اضغط على الخريطة يدويًا');
       return;
     }
     setLocating(true);
@@ -135,16 +201,23 @@ export function LocationPicker({
         setLocating(false);
       },
       (err) => {
-        setError('فشل تحديد موقعك. تأكد من السماح بالوصول للموقع');
         setLocating(false);
+        const code = err?.code;
+        if (code === 1) {
+          setError('صلاحية الموقع مرفوضة — اسمح بالوصول من إعدادات المتصفح، أو اضغط على الخريطة يدويًا');
+        } else if (code === 2) {
+          setError('الموقع مش متاح حاليًا — اضغط على الخريطة يدويًا بدلًا من ده');
+        } else {
+          setError('انتهت مهلة تحديد الموقع — اضغط على الخريطة يدويًا بدلًا من ده');
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <label className="text-xs font-bold text-slate-500">موقعك على الخريطة (اختياري)</label>
         <button
           type="button"
@@ -172,22 +245,40 @@ export function LocationPicker({
           />
         )}
         <div ref={containerRef} className="w-full h-full" />
+        {/* تلميح ثابت فوق الخريطة */}
+        {!selected && !loading && (
+          <div className="absolute top-2 inset-x-2 z-[500] pointer-events-none">
+            <p className="mx-auto w-fit px-3 py-1.5 rounded-full bg-white/95 shadow text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-brand-cyan" />
+              اضغط على الخريطة في مكان موقعك — أو استخدم زر التحديد التلقائي
+            </p>
+          </div>
+        )}
+        {resolving && (
+          <div className="absolute bottom-2 inset-x-2 z-[500] pointer-events-none">
+            <p className="mx-auto w-fit px-3 py-1.5 rounded-full bg-white/95 shadow text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-cyan" />
+              جاري تعبئة العنوان تلقائيًا...
+            </p>
+          </div>
+        )}
       </div>
 
-      {error && <p className="text-xs font-bold text-red-500">{error}</p>}
-
-      {selected && (
-        <div className="flex items-center gap-2 text-xs font-bold text-green-500">
-          <Check className="w-4 h-4" />
-          تم تحديد الموقع: {selected.lat.toFixed(4)}, {selected.lng.toFixed(4)}
-        </div>
+      {error && (
+        <p className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          {error}
+        </p>
       )}
 
-      {!selected && !loading && (
-        <p className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-          <MapPin className="w-3.5 h-3.5" />
-          اضغط على الخريطة لتحديد موقع التوصيل
-        </p>
+      {selected && (
+        <div className="flex items-center gap-2 text-xs font-bold text-green-600 flex-wrap">
+          <Check className="w-4 h-4" />
+          تم تحديد الموقع: <span dir="ltr">{selected.lat.toFixed(4)}, {selected.lng.toFixed(4)}</span>
+          {resolveHint && (
+            <span className="text-slate-400 font-semibold">— {resolveHint}</span>
+          )}
+        </div>
       )}
     </div>
   );

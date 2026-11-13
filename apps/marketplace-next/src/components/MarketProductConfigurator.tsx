@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import Image from 'next/image';
 import { productStockState } from '@/lib/stock';
 import {
   Check,
@@ -45,14 +46,18 @@ interface AddonOption {
 export function MarketProductConfigurator({
   product,
   buttonColor,
+  suggestions,
 }: {
   product: Product;
   buttonColor?: string;
+  /** منتجات من نفس المتجر تُعرض كاقتراحات «ضيف على طلبك». */
+  suggestions?: Product[];
 }) {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const [customerNote, setCustomerNote] = useState('');
+  const [quickAdded, setQuickAdded] = useState<Record<string, boolean>>({});
 
   const unavailable = product.isAvailable === false;
   // أصناف التجزئة بتتبع المخزون → نفاد يمنع الطلب والعدّاد بسقف المتبقي.
@@ -62,10 +67,21 @@ export function MarketProductConfigurator({
   const maxQuantity = stockState.maxQuantity;
 
   // 1. استخراج مجموعات الأحجام/الأنواع (menuVariants / sizes / colors)
+  //    مع توحيد الأسماء: بعض محررات اللوحة بتبعت أحجام بدون id — بنولّد
+  //    id مستقر من الترتيب عشان الاختيار والسعر يشتغلوا صح دايمًا.
   const menuVariants: MenuVariantGroup[] = useMemo(() => {
     const raw = (product as any)?.menuVariants || (product as any)?.menu_variants;
-    if (Array.isArray(raw) && raw.length > 0) return raw;
-    return [];
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    return raw.map((grp: any, gi: number) => ({
+      ...grp,
+      id: String(grp?.id ?? `group-${gi}`),
+      sizes: Array.isArray(grp?.sizes)
+        ? grp.sizes.map((s: any, si: number) => ({
+            ...s,
+            id: String(s?.id ?? s?.label ?? `size-${gi}-${si}`),
+          }))
+        : undefined,
+    }));
   }, [product]);
 
   const simpleSizes: string[] = useMemo(() => {
@@ -130,6 +146,15 @@ export function MarketProductConfigurator({
   const [selectedSizeId, setSelectedSizeId] = useState<string>(() => defaultSize?.id || '');
   const [selectedSimpleSize, setSelectedSimpleSize] = useState<string>(() => simpleSizes[0] || '');
   const [selectedColor, setSelectedColor] = useState<string>(() => colors[0] || '');
+
+  // لما مجموعات الأحجام تتغيّر (منتج مختلف مثلًا) نرجّع الاختيار لأول حجم
+  useEffect(() => {
+    if (currentGroup?.sizes?.length) {
+      const exists = currentGroup.sizes.some((s) => s.id === selectedSizeId);
+      if (!exists) setSelectedSizeId(currentGroup.sizes[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentGroup?.id]);
 
   // الإضافات المختارة: خريطة addonId -> { name, price, variantLabel? }
   const [selectedAddons, setSelectedAddons] = useState<
@@ -229,6 +254,14 @@ export function MarketProductConfigurator({
     window.setTimeout(() => setAdded(false), 2000);
   };
 
+  // 7. إضافة سريعة لمنتج مقترح (من غير فتح السلة) — أسلوب تطبيقات الطلبات
+  const handleQuickAdd = (suggestion: Product) => {
+    if (suggestion.isAvailable === false) return;
+    addItem(suggestion, 1, false);
+    setQuickAdded((prev) => ({ ...prev, [suggestion.id]: true }));
+    window.setTimeout(() => setQuickAdded((prev) => ({ ...prev, [suggestion.id]: false })), 2000);
+  };
+
   const extra = (product as any)?.extraData || {};
   const isDigital = (product as any)?.unit === 'digital' || extra.digital || extra.digitalProduct;
   const isBooking = (product as any)?.unit === 'booking' || extra.booking || extra.bookingDetails;
@@ -237,8 +270,63 @@ export function MarketProductConfigurator({
   const weight = extra.weight;
   const brand = (product as any)?.brand || extra.brand;
 
+  /** اقتراحات «ضيف على طلبك» — من نفس المتجر بدون المنتج الحالي. */
+  const upsellItems = (suggestions || []).filter(
+    (s) => s.id !== product.id && s.isAvailable !== false
+  );
+
+  const addRow = (
+    <div className="flex flex-wrap items-center gap-3">
+      {/* عداد الكمية */}
+      <div className="flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setQuantity((value) => Math.max(1, value - 1))}
+          className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 transition hover:bg-slate-200 dark:hover:bg-slate-600"
+          aria-label="تقليل الكمية"
+        >
+          <Minus className="h-4 w-4" />
+        </button>
+        <span className="min-w-7 text-center text-base font-black text-slate-900 dark:text-white">
+          {quantity}
+          {maxQuantity ? (
+            <span className="block text-[10px] font-bold text-slate-400">
+              متاح {maxQuantity}
+            </span>
+          ) : null}
+        </span>
+        <button
+          type="button"
+          onClick={() =>
+            setQuantity((value) =>
+              maxQuantity ? Math.min(value + 1, maxQuantity) : value + 1
+            )
+          }
+          className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 transition hover:bg-slate-200 dark:hover:bg-slate-600"
+          aria-label="زيادة الكمية"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* زر الإضافة للسلة */}
+      <button
+        type="button"
+        onClick={handleAddToCart}
+        className="flex-1 inline-flex min-h-14 items-center justify-between gap-3 rounded-2xl px-6 font-black text-white shadow-lg transition hover:-translate-y-0.5 active:translate-y-0"
+        style={{ backgroundColor: buttonColor || '#F97316' }}
+      >
+        <span className="flex items-center gap-2 text-sm">
+          {added ? <Check className="h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />}
+          {added ? 'تمت الإضافة للسلة!' : 'إضافة إلى السلة'}
+        </span>
+        <span className="text-base font-black tabular-nums">{formatPrice(grandTotal)}</span>
+      </button>
+    </div>
+  );
+
   return (
-    <div className="w-full space-y-6 pt-2">
+    <div className="w-full space-y-6 pt-2 pb-24 lg:pb-0">
       {/* ── شارات المواصفات السريعة (سعرات، تحضير، وزن، ماركة) ── */}
       {(calories || prepTime || weight || brand) && (
         <div className="flex flex-wrap items-center gap-2.5">
@@ -534,72 +622,94 @@ export function MarketProductConfigurator({
         />
       </div>
 
-      {/* ── شريط الإضافة للسلة مع الإجمالي ── */}
-      <div className="pt-2">
-        {unavailable ? (
-          <p
-            role="status"
-            className="rounded-xl bg-slate-100 dark:bg-slate-800 p-4 font-bold text-slate-500 text-center"
-          >
-            المنتج غير متوفر حالياً
-          </p>
-        ) : soldOut ? (
-          <p
-            role="status"
-            className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-4 font-bold text-amber-600 dark:text-amber-400 text-center"
-          >
-            نفدت الكمية — متاح تاني لما التاجر يحدّث المخزون
-          </p>
-        ) : (
-          <div className="flex flex-wrap items-center gap-3">
-            {/* عداد الكمية */}
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 shadow-xs">
-              <button
-                type="button"
-                onClick={() => setQuantity((value) => Math.max(1, value - 1))}
-                className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 transition hover:bg-slate-200 dark:hover:bg-slate-600"
-                aria-label="تقليل الكمية"
-              >
-                <Minus className="h-4 w-4" />
-              </button>
-              <span className="min-w-7 text-center text-base font-black text-slate-900 dark:text-white">
-                {quantity}
-                {maxQuantity ? (
-                  <span className="block text-[10px] font-bold text-slate-400">
-                    متاح {maxQuantity}
-                  </span>
-                ) : null}
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  setQuantity((value) =>
-                    maxQuantity ? Math.min(value + 1, maxQuantity) : value + 1
-                  )
-                }
-                className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 transition hover:bg-slate-200 dark:hover:bg-slate-600"
-                aria-label="زيادة الكمية"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* زر الإضافة للسلة */}
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              className="flex-1 inline-flex min-h-14 items-center justify-between gap-3 rounded-2xl px-6 font-black text-white shadow-lg transition hover:-translate-y-0.5 active:translate-y-0"
-              style={{ backgroundColor: buttonColor || '#0ea5e9' }}
-            >
-              <span className="flex items-center gap-2 text-sm">
-                {added ? <Check className="h-5 w-5" /> : <ShoppingCart className="h-5 w-5" />}
-                {added ? 'تمت الإضافة للسلة!' : 'إضافة إلى السلة'}
-              </span>
-              <span className="text-base font-black tabular-nums">{formatPrice(grandTotal)}</span>
-            </button>
+      {/* ── اقتراحات «ضيف على طلبك» — من نفس المتجر ── */}
+      {upsellItems.length > 0 && (
+        <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-brand-orange" />
+              ضيف على طلبك — من نفس المتجر
+            </label>
+            <span className="text-[11px] font-bold text-slate-400">ضغطة واحدة وتتضاف للسلة</span>
           </div>
-        )}
-      </div>
+          <div className="flex gap-2.5 overflow-x-auto pb-1.5 [scrollbar-width:thin]">
+            {upsellItems.slice(0, 10).map((s) => {
+              const isQuickAdded = Boolean(quickAdded[s.id]);
+              const img = s.imageUrl || s.images?.[0];
+              return (
+                <div
+                  key={s.id}
+                  className="shrink-0 w-[150px] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden"
+                >
+                  <div className="relative aspect-[4/3] bg-slate-100 dark:bg-slate-700">
+                    {img ? (
+                      <Image
+                        src={img}
+                        alt={s.name || 'منتج'}
+                        fill
+                        sizes="150px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ShoppingCart className="w-6 h-6 text-slate-300" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2.5 space-y-1.5">
+                    <p className="text-[11px] font-bold text-slate-800 dark:text-slate-100 line-clamp-1">
+                      {s.name}
+                    </p>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-black text-brand-orange-dark">
+                        {formatPrice(s.price ?? 0, s.currency)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickAdd(s)}
+                        aria-label={`إضافة ${s.name || ''} للسلة`}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                          isQuickAdded
+                            ? 'bg-green-500 text-white'
+                            : 'bg-brand-cyan text-black hover:opacity-85'
+                        }`}
+                      >
+                        {isQuickAdded ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── الحالة النهائية: غير متوفر / نفدت الكمية / صفوف الإضافة ── */}
+      {unavailable ? (
+        <p
+          role="status"
+          className="rounded-xl bg-slate-100 dark:bg-slate-800 p-4 font-bold text-slate-500 text-center"
+        >
+          المنتج غير متوفر حالياً
+        </p>
+      ) : soldOut ? (
+        <p
+          role="status"
+          className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-4 font-bold text-amber-600 dark:text-amber-400 text-center"
+        >
+          نفدت الكمية — متاح تاني لما التاجر يحدّث المخزون
+        </p>
+      ) : (
+        <>
+          {/* صف الإضافة على الديسكتوب */}
+          <div className="hidden lg:block pt-2">{addRow}</div>
+          {/* شريط ثابت أسفل الشاشة على الموبايل — كال تطبيقات الطلبات */}
+          <div className="lg:hidden fixed bottom-0 inset-x-0 z-[110] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_-12px_rgba(15,23,42,0.25)]">
+            {addRow}
+          </div>
+        </>
+      )}
     </div>
   );
 }

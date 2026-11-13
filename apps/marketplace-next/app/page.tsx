@@ -7,6 +7,7 @@ import { getActivityTheme } from '@/lib/activity-catalog';
 import { SectionHeader } from '@/components/SectionHeader';
 import { ActivityStories } from '@/components/ActivityStories';
 import { ProductRail } from '@/components/ProductRail';
+import { HomeLocationFeed } from '@/components/HomeLocationFeed';
 
 import { HeroSearch } from '@/components/HeroSearch';
 import { WelcomeToast } from '@/components/WelcomeToast';
@@ -197,6 +198,11 @@ export default async function HomePage() {
           />
         </div>
       </section>
+
+      {/* ===== الأقرب ليك — تابات متاجر + منتجات مرتبة بالمسافة =====
+          بيتفاعل مع موقع المستخدم من شيب الهيدر أو تحديد الخريطة —
+          ومن غير موقع بيرتب افتراضي ويشجع المستخدم يحدد موقعه. */}
+      <HomeLocationFeed shops={shops} products={latestProducts} />
 
       {/* ===== مختارات مميزة ===== */}
       <section className="py-8 md:py-14 bg-gradient-to-b from-white to-slate-50 dark:from-brand-black dark:to-slate-950/60">

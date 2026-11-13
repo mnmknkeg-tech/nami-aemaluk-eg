@@ -9,8 +9,12 @@ export interface Shop {
   logo?: string;
   logoUrl?: string;
   banner?: string;
+  governorate?: string;
   city?: string;
   district?: string;
+  /** إحداثيات المتجر — للترتيب حسب الأقرب والخريطة */
+  latitude?: number;
+  longitude?: number;
   address?: string;
   phone?: string;
   whatsapp?: string;

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import type { Shop, Product } from '@/lib/services';
 import { ShopProducts } from '@/components/ShopProducts';
+import { ShopCard } from '@/components/ShopCard';
 import ShareButton from '@/components/ShareButton';
 import { FollowButton } from '@/components/FollowButton';
 import { ReviewsSection } from '@/components/ReviewsSection';
@@ -35,9 +36,11 @@ interface UnifiedShopViewProps {
   products: Product[];
   /** هل التاجر عنده موقع منشور؟ ساعتها بنضيف زر «الموقع الرسمي» يفتح الشكل الأصلي. */
   hasOfficialSite?: boolean;
+  /** متاجر مقترحة تظهر آخر الصفحة — نفس النشاط أولاً. */
+  suggestions?: Shop[];
 }
 
-export function UnifiedShopView({ shop, products, hasOfficialSite }: UnifiedShopViewProps) {
+export function UnifiedShopView({ shop, products, hasOfficialSite, suggestions }: UnifiedShopViewProps) {
   const router = useRouter();
 
   const design = (shop.pageDesign || {}) as Record<string, any>;
@@ -275,6 +278,33 @@ export function UnifiedShopView({ shop, products, hasOfficialSite }: UnifiedShop
         <section className="bg-white rounded-3xl border border-slate-200/70 shadow-card p-5 md:p-6">
           <ReviewsSection type="shop" targetId={shop.id} />
         </section>
+
+        {/* ─── متاجر تانية ممكن تعجبك ─── */}
+        {suggestions && suggestions.length > 0 && (
+          <section
+            aria-label="متاجر مقترحة"
+            className="bg-white rounded-3xl border border-slate-200/70 shadow-card p-5 md:p-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="flex items-center gap-2 text-lg md:text-xl font-black text-slate-900">
+                <span className="w-8 h-8 rounded-xl bg-brand-orange-soft flex items-center justify-center">
+                  <Store className="w-4 h-4 text-brand-orange-dark" />
+                </span>
+                متاجر تانية ممكن تعجبك
+              </h3>
+              <Link href="/dalil" className="text-xs font-black text-brand-orange-dark hover:underline">
+                كل المتاجر
+              </Link>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:thin] snap-x">
+              {suggestions.map((s) => (
+                <div key={s.id} className="shrink-0 w-[220px] md:w-[240px] snap-start">
+                  <ShopCard shop={s} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ختم الهوية الموحدة أسفل الصفحة */}
         <p className="text-center text-[11px] font-black text-slate-400 pt-1 pb-2">
