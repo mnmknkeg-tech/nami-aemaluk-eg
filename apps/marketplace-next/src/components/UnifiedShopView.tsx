@@ -76,7 +76,6 @@ export function UnifiedShopView({ shop, products, hasOfficialSite }: UnifiedShop
             className="flex items-center gap-1.5 shrink-0 px-2.5 py-1.5 rounded-xl bg-brand-orange-soft/70 hover:bg-brand-orange-soft transition-colors"
             title="من مكانك"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/brand/logo.png" alt="من مكانك" className="w-5 h-5 rounded-md object-cover" />
             <span className="hidden sm:inline text-[10px] font-black text-brand-orange-dark">
               من مكانك
@@ -111,8 +110,14 @@ export function UnifiedShopView({ shop, products, hasOfficialSite }: UnifiedShop
           ) : (
             /* بديل البنر: تدرج الهوية بتاعة التطبيق مع أيقونة متجر شفافة */
             <div className="absolute inset-0 bg-brand-gradient">
-              <Store className="absolute -bottom-6 -left-6 w-40 h-40 text-white/15" strokeWidth={1.2} />
-              <Store className="absolute top-6 right-10 w-16 h-16 text-white/10" strokeWidth={1.2} />
+              <Store
+                className="absolute -bottom-6 -left-6 w-40 h-40 text-white/15"
+                strokeWidth={1.2}
+              />
+              <Store
+                className="absolute top-6 right-10 w-16 h-16 text-white/10"
+                strokeWidth={1.2}
+              />
             </div>
           )}
           {/* تدرّج خفيف أسفل البنر يبرز اللوجو */}
