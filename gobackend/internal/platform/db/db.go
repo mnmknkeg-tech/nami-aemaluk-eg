@@ -78,6 +78,22 @@ func New(ctx context.Context, cfg config.DBConfig, log *zap.Logger) (*Pool, erro
 		}
 	}
 
+	// The schema stores booking instants in naive TIMESTAMP(3) columns
+	// (start_at/end_at on bookings and booking_slots). The data layer is
+	// written against one contract: those columns carry UTC wall clock —
+	// Go scans them back as UTC instants and renders Cairo times only at
+	// the edge (FormatCairoClock / cairoPartsFromIso). If the server (or a
+	// provider env default) gives the session a different time zone —
+	// Africa/Cairo included — every written instant is first cast to that
+	// zone's wall clock and then re-labeled UTC on read: a booking made at
+	// 16:45 Cairo is stored as "16:45" and displayed as 18:45 (+2h). Pin
+	// every pooled connection to UTC so the contract holds wherever the
+	// database runs.
+	pgxCfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		_, err := conn.Exec(ctx, "SET TIME ZONE 'UTC'")
+		return err
+	}
+
 	// Resolve the effective pool budget. MaxOpenConns is the hard per-process
 	// cap; MaxIdleConns is also a session budget (idle connections consume a
 	// pooler session). The sum must stay under the project's pooler limit.
