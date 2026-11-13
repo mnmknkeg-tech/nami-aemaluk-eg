@@ -30,6 +30,9 @@ import {
   Eye,
   ExternalLink,
   Sparkles,
+  Printer,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
 import { useModuleGuard } from '@/hooks/useModuleGuard';
@@ -51,7 +54,7 @@ import {
  * Types & Constants
  * ============================================================ */
 
-type ViewMode = 'month' | 'week' | 'day' | 'agenda';
+type ViewMode = 'month' | 'week' | 'day' | 'year' | 'table' | 'agenda';
 
 type BookingItem = {
   id: string;
@@ -143,6 +146,41 @@ function formatDateKey(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+function parseDateKey(s: string): Date {
+  const [y, m, d] = String(s || '')
+    .split('-')
+    .map(Number);
+  return new Date(y || new Date().getFullYear(), (m || 1) - 1, d || 1);
+}
+
+function timeToMinutes(t: string): number {
+  const [h, m] = String(t || '').split(':');
+  return (Number(h) || 0) * 60 + (Number(m) || 0);
+}
+
+function minutesToTime(min: number): string {
+  const m = Math.max(0, Math.min(23 * 60 + 59, Math.round(min)));
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
+/** 16:20 → «4:20 م» — نفس شكل الأوقات في المرجع */
+function fmtTime12(hhmm: string): string {
+  const min = timeToMinutes(hhmm);
+  const h24 = Math.floor(min / 60);
+  const h = h24 % 12 || 12;
+  return `${h}:${String(min % 60).padStart(2, '0')} ${h24 < 12 ? 'ص' : 'م'}`;
+}
+
+function paymentLabel(ps?: string): string {
+  const v = String(ps || '').trim();
+  if (!v) return '';
+  const u = v.toUpperCase();
+  if (u === 'PAID') return 'مدفوع';
+  if (u === 'UNPAID') return 'غير مدفوع';
+  if (u.includes('DEPOSIT')) return 'عربون محجوز';
+  return v;
 }
 
 /* ============================================================
@@ -244,6 +282,7 @@ function BookingsMainContent() {
   const [selectedBooking, setSelectedBooking] = useState<BookingItem | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [modalInitialDate, setModalInitialDate] = useState<string>('');
+  const [modalInitialTime, setModalInitialTime] = useState<string>('');
   // The merchant's own shop id, resolved from /shops/me — the manual
   // booking modal sends it so the backend never has to guess.
   const [myShopId, setMyShopId] = useState<string>('');
@@ -255,6 +294,8 @@ function BookingsMainContent() {
 
   // تخصيص الأنشطة — إعدادات التاجر من layoutConfig.booking.activityTypes
   const [bookingConfig, setBookingConfig] = useState<ShopBookingConfig>({});
+  // اسم المتجر — يظهر في رأس فاتورة الحجز المطبوعة
+  const [shopName, setShopName] = useState('');
 
   // الأنشطة المفعّلة: فاضي = كل الأنشطة، وغير كده الأنشطة المختارة فقط
   // (بتفصل الأجندة ونموذج الإضافة حسب نشاط التاجر)
@@ -283,8 +324,9 @@ function BookingsMainContent() {
       try {
         const shop = await apiRequest('/shops/me');
         shopId = shop?.id;
-        // نحتفظ بإعدادات الحجز (تخصيص الأنشطة) من نفس الاستجابة
+        // نحتفظ بإعدادات الحجز (تخصيص الأنشطة) واسم المتجر من نفس الاستجابة
         setBookingConfig(readShopBookingConfig(shop));
+        setShopName(String(shop?.name || shop?.title || ''));
       } catch {}
       if (shopId) setMyShopId(String(shopId));
 
@@ -391,6 +433,7 @@ function BookingsMainContent() {
       if (viewMode === 'month') d.setMonth(d.getMonth() - 1);
       else if (viewMode === 'week') d.setDate(d.getDate() - 7);
       else if (viewMode === 'day') d.setDate(d.getDate() - 1);
+      else if (viewMode === 'year') d.setFullYear(d.getFullYear() - 1);
       else d.setMonth(d.getMonth() - 1);
       return d;
     });
@@ -402,6 +445,7 @@ function BookingsMainContent() {
       if (viewMode === 'month') d.setMonth(d.getMonth() + 1);
       else if (viewMode === 'week') d.setDate(d.getDate() + 7);
       else if (viewMode === 'day') d.setDate(d.getDate() + 1);
+      else if (viewMode === 'year') d.setFullYear(d.getFullYear() + 1);
       else d.setMonth(d.getMonth() + 1);
       return d;
     });
@@ -411,8 +455,9 @@ function BookingsMainContent() {
     setCurrentDate(new Date());
   };
 
-  const openAddModal = (dateStr?: string) => {
+  const openAddModal = (dateStr?: string, timeStr?: string) => {
     setModalInitialDate(dateStr || formatDateKey(currentDate));
+    setModalInitialTime(timeStr || '');
     setIsAddModalOpen(true);
   };
 
@@ -505,8 +550,13 @@ function BookingsMainContent() {
     );
   }
 
-  // Month Title e.g. "سبتمبر 2026"
-  const monthTitle = `${ARABIC_MONTHS[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+  // Month Title e.g. "سبتمبر 2026" — يتغير حسب العرض (سنة / جدول)
+  const monthTitle =
+    viewMode === 'year'
+      ? String(currentDate.getFullYear())
+      : viewMode === 'table'
+        ? `كل الحجوزات (${bookings.length})`
+        : `${ARABIC_MONTHS[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
 
   // طابور اليوم — حجوزات الموقع بالانتظار (كوتة) النهاردة، مرتبين بالترتيب.
   // حساب عادي مش useMemo: بنكون بعد الـ early returns فقواعد الـ hooks مبتسمحش.
@@ -613,6 +663,24 @@ function BookingsMainContent() {
           </button>
           <button
             type="button"
+            onClick={() => setViewMode('year')}
+            className={`px-4 py-1.5 rounded-md transition-all ${
+              viewMode === 'year' ? 'bg-[#0f172a] text-white shadow-sm' : 'hover:text-white'
+            }`}
+          >
+            سنة
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('table')}
+            className={`px-4 py-1.5 rounded-md transition-all ${
+              viewMode === 'table' ? 'bg-[#0f172a] text-white shadow-sm' : 'hover:text-white'
+            }`}
+          >
+            جدول
+          </button>
+          <button
+            type="button"
             onClick={() => setViewMode('agenda')}
             className={`px-4 py-1.5 rounded-md transition-all ${
               viewMode === 'agenda' ? 'bg-[#0f172a] text-white shadow-sm' : 'hover:text-white'
@@ -677,14 +745,31 @@ function BookingsMainContent() {
             currentDate={currentDate}
             bookings={bookings}
             onSelectBooking={(b) => setSelectedBooking(b)}
-            onDayClick={(dateStr) => openAddModal(dateStr)}
+            onSlotClick={(dateStr, timeStr) => openAddModal(dateStr, timeStr)}
           />
         ) : viewMode === 'day' ? (
           <DayCalendarView
             currentDate={currentDate}
             bookings={bookings}
             onSelectBooking={(b) => setSelectedBooking(b)}
+            onSlotClick={(dateStr, timeStr) => openAddModal(dateStr, timeStr)}
             onAddBooking={() => openAddModal(formatDateKey(currentDate))}
+          />
+        ) : viewMode === 'year' ? (
+          <YearCalendarView
+            currentDate={currentDate}
+            bookings={bookings}
+            onDayClick={(dateStr) => {
+              setCurrentDate(parseDateKey(dateStr));
+              setViewMode('day');
+            }}
+          />
+        ) : viewMode === 'table' ? (
+          <BookingsTableView
+            bookings={bookings}
+            typeOptions={enabledActivities}
+            onSelectBooking={(b) => setSelectedBooking(b)}
+            onPrint={(b) => printBookingInvoice(b, shopName)}
           />
         ) : (
           <AgendaView
@@ -705,6 +790,7 @@ function BookingsMainContent() {
       {selectedBooking && (
         <BookingDetailModal
           booking={selectedBooking}
+          shopName={shopName}
           onClose={() => setSelectedBooking(null)}
           onUpdateStatus={handleUpdateStatus}
         />
@@ -713,6 +799,7 @@ function BookingsMainContent() {
       {isAddModalOpen && (
         <AddBookingModal
           initialDate={modalInitialDate}
+          initialTime={modalInitialTime}
           shopId={myShopId}
           enabledActivities={enabledActivities}
           onClose={() => setIsAddModalOpen(false)}
@@ -923,19 +1010,243 @@ function MonthCalendarView({
 }
 
 /* ============================================================
- * Week View Component
+ * TimeGrid — شبكة المواعيد (اليوم/الأسبوع)
+ * صفحة مسطّرة: خط كل ربع ساعة في عرض اليوم، خط أسود يحاكي الوقت
+ * اللحظي ويتحدّث كل 30 ثانية، والضغط على أي وقت فاضي يفتح نموذج
+ * حجز جديد مُعبأ مسبقًا بهذا التاريخ والوقت.
+ * ============================================================ */
+
+const PX_PER_HOUR = 64;
+const GRID_START_HOUR = 8;
+const GRID_END_HOUR = 24;
+/** العرض البصري الافتراضي للحجز داخل الشبكة — مش مدة حقيقية من الباكند */
+const BLOCK_MINUTES = 60;
+
+/** خطاف الوقت اللحظي — يحدّث كل 30 ثانية فقط لما العرض فيه النهاردة */
+function useNow(enabled: boolean): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!enabled) return;
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(id);
+  }, [enabled]);
+  return now;
+}
+
+type GridBlock = { b: BookingItem; start: number; end: number; col: number; cols: number };
+
+/** توزيع الحجوزات المتقاطعة على أعمدة جنب بعض (نفس أسلوب تقويم جوجل) */
+function layoutGridBlocks(items: BookingItem[]): GridBlock[] {
+  const intervals = items
+    .map((b) => ({
+      b,
+      start: timeToMinutes(b.timeStr),
+      end: timeToMinutes(b.timeStr) + BLOCK_MINUTES,
+    }))
+    .sort((x, y) => x.start - y.start || x.end - y.end);
+  const colEnds: number[] = [];
+  const placed = intervals.map((it) => {
+    let col = colEnds.findIndex((end) => end <= it.start);
+    if (col === -1) {
+      col = colEnds.length;
+      colEnds.push(it.end);
+    } else {
+      colEnds[col] = it.end;
+    }
+    return { ...it, col };
+  });
+  const cols = Math.max(1, colEnds.length);
+  return placed.map((p) => ({ ...p, cols }));
+}
+
+function TimeGrid({
+  days,
+  bookings,
+  onSelectBooking,
+  onSlotClick,
+  quarterLines = false,
+  pxPerHour = PX_PER_HOUR,
+}: {
+  days: Date[];
+  bookings: BookingItem[];
+  onSelectBooking: (b: BookingItem) => void;
+  onSlotClick: (dateStr: string, timeStr: string) => void;
+  /** مسطرة ربع ساعة — لعرض اليوم، الأسبوع يكفيه خط كل ساعة */
+  quarterLines?: boolean;
+  pxPerHour?: number;
+}) {
+  const todayStr = formatDateKey(new Date());
+  const showsToday = days.some((d) => formatDateKey(d) === todayStr);
+  const now = useNow(showsToday);
+
+  // توسيع المدى تلقائيًا لو فيه حجوزات قبل 8 ص أو بعد 11 م
+  let startHour = GRID_START_HOUR;
+  let endHour = GRID_END_HOUR;
+  for (const b of bookings) {
+    if (!days.some((d) => formatDateKey(d) === b.dateStr)) continue;
+    const mins = timeToMinutes(b.timeStr);
+    startHour = Math.min(startHour, Math.floor(mins / 60));
+    endHour = Math.max(endHour, Math.ceil((mins + BLOCK_MINUTES) / 60));
+  }
+  startHour = Math.max(0, Math.min(23, startHour));
+  endHour = Math.min(24, Math.max(endHour, startHour + 1));
+  const startMinutes = startHour * 60;
+  const endMinutes = endHour * 60;
+  const gridHeight = ((endMinutes - startMinutes) * pxPerHour) / 60;
+
+  const hourLines: number[] = [];
+  for (let h = startHour + 1; h < endHour; h++) hourLines.push(h);
+  const quarterSteps: number[] = [];
+  if (quarterLines) {
+    for (let m = startMinutes + 15; m < endMinutes; m += 15) {
+      if (m % 60 !== 0) quarterSteps.push(m);
+    }
+  }
+
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const showNow = showsToday && nowMinutes >= startMinutes && nowMinutes <= endMinutes;
+  const nowTop = ((nowMinutes - startMinutes) * pxPerHour) / 60;
+
+  return (
+    <div className="flex" dir="rtl">
+      {/* عمود الساعات — يمين الشاشة */}
+      <div className="w-14 shrink-0 relative select-none" style={{ height: gridHeight }}>
+        {hourLines.map((h) => (
+          <span
+            key={h}
+            className="absolute w-full pr-2 text-left text-[10px] font-bold text-slate-400 tabular-nums"
+            style={{ top: ((h * 60 - startMinutes) * pxPerHour) / 60 - 7 }}
+            dir="ltr"
+          >
+            {fmtTime12(minutesToTime(h * 60))}
+          </span>
+        ))}
+        <span
+          className="absolute w-full pr-2 text-left text-[10px] font-bold text-slate-400 tabular-nums"
+          style={{ top: 0 }}
+          dir="ltr"
+        >
+          {fmtTime12(minutesToTime(startMinutes))}
+        </span>
+      </div>
+
+      {/* أعمدة الأيام */}
+      <div className="flex-1 flex border-r border-slate-200">
+        {days.map((d) => {
+          const dStr = formatDateKey(d);
+          const dayBookings = bookings.filter((b) => b.dateStr === dStr);
+          const blocks = layoutGridBlocks(dayBookings);
+          const isToday = dStr === todayStr;
+          return (
+            <div
+              key={dStr}
+              className={`relative flex-1 border-l border-slate-100 cursor-pointer transition-colors ${
+                isToday ? 'bg-slate-50/40' : 'hover:bg-slate-50/30'
+              }`}
+              style={{ height: gridHeight }}
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                const minutes = Math.min(
+                  endMinutes - 15,
+                  Math.max(startMinutes, startMinutes + Math.floor(y / (pxPerHour / 4)) * 15)
+                );
+                onSlotClick(dStr, minutesToTime(minutes));
+              }}
+              title="اضغط على أي وقت لإضافة حجز في هذا الموعد"
+            >
+              {/* خطوط الساعات */}
+              {hourLines.map((h) => (
+                <div
+                  key={`h${h}`}
+                  className="absolute inset-x-0 border-t border-slate-200 pointer-events-none"
+                  style={{ top: ((h * 60 - startMinutes) * pxPerHour) / 60 }}
+                />
+              ))}
+              {/* مسطرة ربع الساعة */}
+              {quarterSteps.map((m) => (
+                <div
+                  key={`q${m}`}
+                  className="absolute inset-x-0 border-t border-slate-100 pointer-events-none"
+                  style={{ top: ((m - startMinutes) * pxPerHour) / 60 }}
+                />
+              ))}
+
+              {/* كروت الحجوزات */}
+              {blocks.map(({ b, start, end, col }) => {
+                const act = ACTIVITY_META[b.activityType];
+                const top = ((start - startMinutes) * pxPerHour) / 60;
+                const blockHeight = Math.max(30, ((end - start) * pxPerHour) / 60 - 2);
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectBooking(b);
+                    }}
+                    className={`absolute rounded-lg border px-1.5 py-1 overflow-hidden text-right shadow-sm hover:brightness-95 transition-all ${act.chip}`}
+                    style={{
+                      top,
+                      height: blockHeight,
+                      right: col * 8,
+                      width: `calc(100% - ${col * 8}px)`,
+                    }}
+                    title={`${b.itemName} — ${b.customerName} (${b.timeStr})`}
+                  >
+                    <span className="block text-[10px] font-black tabular-nums" dir="ltr">
+                      {fmtTime12(b.timeStr)}
+                    </span>
+                    <span className="block text-[10px] font-bold truncate">{b.customerName}</span>
+                    {blockHeight > 46 && (
+                      <span className="block text-[9px] font-semibold truncate opacity-80">
+                        {b.itemName}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+
+              {/* خط الوقت اللحظي */}
+              {isToday && showNow && (
+                <div
+                  className="absolute inset-x-0 z-10 pointer-events-none"
+                  style={{ top: nowTop }}
+                >
+                  <div className="relative border-t-2 border-slate-900">
+                    <span className="absolute -right-1.5 -top-[5px] w-3 h-3 rounded-full bg-slate-900 shadow" />
+                    <span
+                      className="absolute right-3 -top-[9px] bg-slate-900 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md tabular-nums"
+                      dir="ltr"
+                    >
+                      {fmtTime12(minutesToTime(nowMinutes))}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+ * Week View — أعمدة الأيام السبعة على شبكة المواعيد
  * ============================================================ */
 
 function WeekCalendarView({
   currentDate,
   bookings,
   onSelectBooking,
-  onDayClick,
+  onSlotClick,
 }: {
   currentDate: Date;
   bookings: BookingItem[];
   onSelectBooking: (b: BookingItem) => void;
-  onDayClick: (dateStr: string) => void;
+  onSlotClick: (dateStr: string, timeStr: string) => void;
 }) {
   // Start on Saturday
   const startOfWeek = new Date(currentDate);
@@ -952,8 +1263,8 @@ function WeekCalendarView({
   const todayStr = formatDateKey(new Date());
 
   return (
-    <div className="divide-y divide-slate-100">
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center py-3 text-xs font-extrabold text-slate-700">
+    <div>
+      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center py-3 text-xs font-extrabold text-slate-700 pr-14">
         {days.map((d, i) => (
           <div key={i} className="space-y-1">
             <div>{WEEK_DAYS[i]}</div>
@@ -965,81 +1276,44 @@ function WeekCalendarView({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 divide-x divide-x-reverse divide-slate-100 min-h-[420px]">
-        {days.map((d) => {
-          const dStr = formatDateKey(d);
-          const dayBookings = bookings.filter((b) => b.dateStr === dStr);
-          return (
-            <div
-              key={dStr}
-              onClick={() => onDayClick(dStr)}
-              className="p-2 space-y-2 hover:bg-slate-50/50 transition-colors cursor-pointer"
-            >
-              {dayBookings.length === 0 ? (
-                <div className="text-center py-12 text-slate-300 text-[11px] font-semibold">
-                  لا حجوزات
-                </div>
-              ) : (
-                dayBookings.map((b) => {
-                  const act = ACTIVITY_META[b.activityType];
-                  const st = STATUS_META[b.status];
-                  return (
-                    <div
-                      key={b.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectBooking(b);
-                      }}
-                      className="p-2.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all shadow-sm space-y-1"
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <span
-                          className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${act.chip}`}
-                        >
-                          {act.label}
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-500 tabular-nums">
-                          {b.timeStr}
-                        </span>
-                      </div>
-                      <p className="text-xs font-bold text-slate-900 truncate">{b.itemName}</p>
-                      <p className="text-[10px] text-slate-500 truncate">{b.customerName}</p>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          );
-        })}
+      <div className="overflow-x-auto">
+        <div className="min-w-[820px]">
+          <TimeGrid
+            days={days}
+            bookings={bookings}
+            onSelectBooking={onSelectBooking}
+            onSlotClick={onSlotClick}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
 /* ============================================================
- * Day View Component
+ * Day View — صفحة اليوم المسطّرة (خط كل ربع ساعة + الوقت اللحظي)
  * ============================================================ */
 
 function DayCalendarView({
   currentDate,
   bookings,
   onSelectBooking,
+  onSlotClick,
   onAddBooking,
 }: {
   currentDate: Date;
   bookings: BookingItem[];
   onSelectBooking: (b: BookingItem) => void;
+  onSlotClick: (dateStr: string, timeStr: string) => void;
   onAddBooking: () => void;
 }) {
-  const dateStr = formatDateKey(currentDate);
-  const dayBookings = bookings.filter((b) => b.dateStr === dateStr);
+  const dayBookings = bookings.filter((b) => b.dateStr === formatDateKey(currentDate));
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+    <div>
+      <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
         <div>
-          <h3 className="text-base font-extrabold text-slate-900">
-            حجوزات يوم{' '}
+          <h3 className="text-sm font-extrabold text-slate-900">
             {currentDate.toLocaleDateString('ar-EG', {
               weekday: 'long',
               day: 'numeric',
@@ -1047,7 +1321,10 @@ function DayCalendarView({
               year: 'numeric',
             })}
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">إجمالي {dayBookings.length} موعد مسجل</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            إجمالي {dayBookings.length} موعد مسجل • اضغط على أي وقت في المسطرة لإضافة حجز عند هذا
+            الموعد
+          </p>
         </div>
         <button
           type="button"
@@ -1055,72 +1332,19 @@ function DayCalendarView({
           className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold flex items-center gap-1 hover:bg-slate-800"
         >
           <Plus size={13} />
-          إضافة موعد اليوم
+          إضافة موعد
         </button>
       </div>
-
-      {dayBookings.length === 0 ? (
-        <div className="py-16 text-center space-y-2">
-          <CalendarDays size={36} className="text-slate-300 mx-auto" />
-          <p className="text-sm font-bold text-slate-600">لا توجد مواعيد محجوزة في هذا اليوم</p>
-          <p className="text-xs text-slate-400">
-            يمكنك النقر على الزر أعلاه لإضافة حجز يدوي مباشر.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2 divide-y divide-slate-50">
-          {dayBookings
-            .sort((a, b) => a.timeStr.localeCompare(b.timeStr))
-            .map((b) => {
-              const act = ACTIVITY_META[b.activityType];
-              const st = STATUS_META[b.status];
-              return (
-                <div
-                  key={b.id}
-                  onClick={() => onSelectBooking(b)}
-                  className="pt-3 first:pt-0 flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 flex flex-col items-center justify-center shrink-0">
-                      <span className="text-xs font-extrabold text-slate-900 tabular-nums">
-                        {b.timeStr}
-                      </span>
-                      <span className="text-[9px] text-slate-400 font-medium">موعد</span>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${act.chip}`}
-                        >
-                          {act.label}
-                        </span>
-                        <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 truncate">
-                          {b.itemName}
-                        </h4>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-1">
-                        العميل: <span className="font-bold text-slate-700">{b.customerName}</span>{' '}
-                        {b.customerPhone && `• ${b.customerPhone}`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    {b.price > 0 && (
-                      <span className="text-xs font-black text-slate-900 tabular-nums">
-                        {b.price.toLocaleString('en-US')} ج.م
-                      </span>
-                    )}
-                    <span
-                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${st.chip}`}
-                    >
-                      {st.label}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-      )}
+      <div className="overflow-y-auto max-h-[640px]">
+        <TimeGrid
+          days={[currentDate]}
+          bookings={bookings}
+          onSelectBooking={onSelectBooking}
+          onSlotClick={onSlotClick}
+          quarterLines
+          pxPerHour={72}
+        />
+      </div>
     </div>
   );
 }
@@ -1286,6 +1510,413 @@ function AgendaView({
 }
 
 /* ============================================================
+ * Year View — 12 شهر مصغر، الأيام اللي فيها حجوزات معلّمة،
+ * والضغط على أي يوم بينقلك لصفحة ذلك اليوم مباشرة.
+ * ============================================================ */
+
+const WEEK_DAYS_SHORT = ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'];
+
+function YearCalendarView({
+  currentDate,
+  bookings,
+  onDayClick,
+}: {
+  currentDate: Date;
+  bookings: BookingItem[];
+  onDayClick: (dateStr: string) => void;
+}) {
+  const year = currentDate.getFullYear();
+  const countsByDate = useMemo(() => {
+    const m = new Map<string, number>();
+    bookings.forEach((b) => m.set(b.dateStr, (m.get(b.dateStr) || 0) + 1));
+    return m;
+  }, [bookings]);
+  const todayStr = formatDateKey(new Date());
+
+  return (
+    <div
+      className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 bg-slate-50/50"
+      dir="rtl"
+    >
+      {ARABIC_MONTHS.map((name, mi) => {
+        const firstWeekday = (new Date(year, mi, 1).getDay() + 1) % 7; // 0 = السبت
+        const daysInMonth = new Date(year, mi + 1, 0).getDate();
+        const cells: (number | null)[] = [
+          ...Array<null>(firstWeekday).fill(null),
+          ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+        ];
+        while (cells.length % 7 !== 0) cells.push(null);
+        return (
+          <div key={mi} className="bg-white rounded-xl border border-slate-200 p-3 shadow-sm">
+            <div className="text-sm font-black text-slate-900 text-center mb-2">
+              {name} {year}
+            </div>
+            <div className="grid grid-cols-7 text-center text-[9px] font-bold text-slate-400 mb-1">
+              {WEEK_DAYS_SHORT.map((s, i) => (
+                <span key={i}>{s}</span>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-y-0.5">
+              {cells.map((day, i) => {
+                if (day === null) return <span key={`e${i}`} />;
+                const dStr = formatDateKey(new Date(year, mi, day));
+                const count = countsByDate.get(dStr) || 0;
+                const isToday = dStr === todayStr;
+                return (
+                  <button
+                    key={dStr}
+                    type="button"
+                    onClick={() => onDayClick(dStr)}
+                    className={`relative h-7 rounded-md text-[11px] font-bold tabular-nums transition-colors ${
+                      isToday
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : count > 0
+                          ? 'text-pink-600 bg-pink-50 hover:bg-pink-100'
+                          : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                    title={count > 0 ? `${count} حجز في ${dStr}` : dStr}
+                  >
+                    {day}
+                    {count > 0 && (
+                      <span
+                        className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${isToday ? 'bg-white' : 'bg-pink-500'}`}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ============================================================
+ * Table View — جدول الحجوزات الكامل (شيبس الحالة بعداد، بحث،
+ * فرز بالأعمدة، باجينيشن، وإجراءات لكل صف: تفاصيل + طباعة فاتورة)
+ * ============================================================ */
+
+function BookingsTableView({
+  bookings,
+  typeOptions,
+  onSelectBooking,
+  onPrint,
+}: {
+  bookings: BookingItem[];
+  /** الأنشطة المفعّلة من تخصيص التاجر */
+  typeOptions: ActivityType[];
+  onSelectBooking: (b: BookingItem) => void;
+  onPrint: (b: BookingItem) => void;
+}) {
+  const [statusChip, setStatusChip] = useState<'all' | UnifiedStatus>('all');
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [sortKey, setSortKey] = useState<'when' | 'price' | 'customer'>('when');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 25;
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {
+      all: bookings.length,
+      PENDING: 0,
+      CONFIRMED: 0,
+      COMPLETED: 0,
+      CANCELLED: 0,
+      EXPIRED: 0,
+    };
+    bookings.forEach((b) => {
+      c[b.status] = (c[b.status] || 0) + 1;
+    });
+    return c;
+  }, [bookings]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const arr = bookings.filter((b) => {
+      if (statusChip !== 'all' && b.status !== statusChip) return false;
+      if (typeFilter !== 'all' && b.activityType !== typeFilter) return false;
+      if (q) {
+        const hit =
+          b.customerName.toLowerCase().includes(q) ||
+          b.itemName.toLowerCase().includes(q) ||
+          b.customerPhone.includes(q) ||
+          String(b.raw?.bookingNumber || '')
+            .toLowerCase()
+            .includes(q);
+        if (!hit) return false;
+      }
+      return true;
+    });
+    arr.sort((a, b) => {
+      let r = 0;
+      if (sortKey === 'when') r = a.when.localeCompare(b.when);
+      else if (sortKey === 'price') r = a.price - b.price;
+      else r = a.customerName.localeCompare(b.customerName, 'ar');
+      return sortDir === 'asc' ? r : -r;
+    });
+    return arr;
+  }, [bookings, search, statusChip, typeFilter, sortKey, sortDir]);
+
+  // الترقيم يرجع لأول صفحة عند تغيير الفلاتر
+  useEffect(() => {
+    setPage(1);
+  }, [statusChip, search, typeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const chips: Array<{ key: 'all' | UnifiedStatus; label: string; chip: string; count: number }> = [
+    {
+      key: 'all',
+      label: 'الكل',
+      chip: 'bg-slate-900 text-white border-slate-900',
+      count: counts.all,
+    },
+    ...(['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] as UnifiedStatus[]).map((s) => ({
+      key: s,
+      label: STATUS_META[s].label,
+      chip: STATUS_META[s].chip,
+      count: counts[s] || 0,
+    })),
+    ...(counts.EXPIRED > 0
+      ? [
+          {
+            key: 'EXPIRED' as UnifiedStatus,
+            label: STATUS_META.EXPIRED.label,
+            chip: STATUS_META.EXPIRED.chip,
+            count: counts.EXPIRED,
+          },
+        ]
+      : []),
+  ];
+
+  const toggleSort = (k: 'when' | 'price' | 'customer') => {
+    if (sortKey === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else {
+      setSortKey(k);
+      setSortDir('desc');
+    }
+  };
+
+  const SortTh = ({ k, label }: { k: 'when' | 'price' | 'customer'; label: string }) => (
+    <th className="py-2.5 px-2">
+      <button
+        type="button"
+        onClick={() => toggleSort(k)}
+        className="inline-flex items-center gap-1 text-[10px] font-extrabold text-slate-400 hover:text-slate-700 transition-colors"
+      >
+        {label}
+        {sortKey === k ? (
+          sortDir === 'asc' ? (
+            <ChevronUp size={11} />
+          ) : (
+            <ChevronDown size={11} />
+          )
+        ) : (
+          <ChevronUp size={11} className="opacity-20" />
+        )}
+      </button>
+    </th>
+  );
+
+  return (
+    <div className="p-4 sm:p-5 space-y-4" dir="rtl">
+      {/* شيبس الحالة مع العداد */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {chips.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => setStatusChip(c.key)}
+            className={`h-9 px-4 rounded-xl border text-xs font-bold flex items-center gap-2 transition-all ${
+              statusChip === c.key
+                ? `${c.chip} shadow-sm`
+                : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+            }`}
+          >
+            {c.label}
+            <span
+              className={`text-[10px] font-black ${statusChip === c.key ? 'opacity-80' : 'text-slate-400'}`}
+            >
+              {c.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* البحث والتصفية */}
+      <div className="flex flex-col sm:flex-row items-center gap-2">
+        <div className="relative flex-1 w-full">
+          <Search
+            size={14}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="بحث باسم العميل / رقم العميل / رقم الحجز / الخدمة"
+            className="w-full pr-9 pl-3 py-2 text-xs font-medium rounded-xl border border-slate-200 focus:outline-none focus:border-slate-400"
+          />
+        </div>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className="h-9 px-3 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none"
+        >
+          <option value="all">كل الأنشطة</option>
+          {typeOptions.map((t) => (
+            <option key={t} value={t}>
+              {ACTIVITY_META[t].label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* الجدول */}
+      {pageItems.length === 0 ? (
+        <div className="py-16 text-center text-slate-400 text-xs font-bold">
+          لا توجد حجوزات مطابقة لمعايير البحث
+        </div>
+      ) : (
+        <div className="overflow-x-auto border border-slate-100 rounded-xl">
+          <table className="w-full text-right min-w-[860px]">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-400">
+                <th className="py-2.5 px-2">إجراءات</th>
+                <th className="py-2.5 px-2">الخدمة</th>
+                <SortTh k="when" label="وقت الحجز" />
+                <th className="py-2.5 px-2">رقم الحجز</th>
+                <th className="py-2.5 px-2">المصدر</th>
+                <SortTh k="customer" label="العميل" />
+                <th className="py-2.5 px-2">الحالة</th>
+                <SortTh k="price" label="المبلغ" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {pageItems.map((b) => {
+                const act = ACTIVITY_META[b.activityType];
+                const st = STATUS_META[b.status];
+                const pay = paymentLabel(b.paymentStatus);
+                return (
+                  <tr
+                    key={b.id}
+                    onClick={() => onSelectBooking(b)}
+                    className="hover:bg-slate-50/70 transition-colors cursor-pointer text-xs"
+                  >
+                    <td className="py-2.5 px-2">
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => onSelectBooking(b)}
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                          title="عرض التفاصيل"
+                        >
+                          <Eye size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onPrint(b)}
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                          title="طباعة الفاتورة"
+                        >
+                          <Printer size={13} />
+                        </button>
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-2">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${act.chip}`}
+                        >
+                          {act.label}
+                        </span>
+                        <span className="font-bold text-slate-900">{b.itemName}</span>
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-2 text-slate-600 font-medium tabular-nums">
+                      <span className="block">{b.dateStr}</span>
+                      <span className="block text-[10px] text-slate-400" dir="ltr">
+                        {fmtTime12(b.timeStr)}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-2 text-slate-600 font-bold tabular-nums" dir="ltr">
+                      {String(b.raw?.bookingNumber || '—')}
+                    </td>
+                    <td className="py-2.5 px-2">
+                      <span
+                        className={`text-[10px] font-bold ${b.source === 'website' ? 'text-sky-600' : 'text-slate-500'}`}
+                      >
+                        {b.source === 'website' ? 'الموقع' : 'داخلي'}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-2">
+                      <span className="font-bold text-slate-800 block">{b.customerName}</span>
+                      {b.customerPhone && (
+                        <span className="text-[10px] text-slate-400 block tabular-nums" dir="ltr">
+                          {b.customerPhone}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-2">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${st.chip}`}
+                      >
+                        {st.label}
+                      </span>
+                      {pay && (
+                        <span className="block text-[9px] font-bold text-slate-400 mt-1">
+                          {pay}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-2 font-black text-slate-900 tabular-nums whitespace-nowrap">
+                      {b.price > 0 ? `${b.price.toLocaleString('en-US')} ج.م` : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* الباجينيشن */}
+      <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+        <span>إجمالي الحجوزات: {filtered.length}</span>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            disabled={safePage >= totalPages}
+            onClick={() => setPage(safePage + 1)}
+            className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 flex items-center justify-center transition-colors"
+            title="التالي"
+          >
+            <ChevronRight size={13} />
+          </button>
+          <span className="px-2 tabular-nums">
+            صفحة {safePage} من {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={safePage <= 1}
+            onClick={() => setPage(safePage - 1)}
+            className="w-7 h-7 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 flex items-center justify-center transition-colors"
+            title="السابق"
+          >
+            <ChevronLeft size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
  * Add Manual Booking Modal (حجز يدوي لجميع الأنشطة)
  * ============================================================ */
 
@@ -1301,12 +1932,15 @@ const QUICK_TIMES: string[] = Array.from({ length: 30 }, (_, i) => {
 
 function AddBookingModal({
   initialDate,
+  initialTime,
   shopId,
   enabledActivities,
   onClose,
   onSuccess,
 }: {
   initialDate: string;
+  /** وقت مبدئي من الضغط على شبكة اليوم/الأسبوع — فاضي = الافتراضي بعد ٣٠ دقيقة */
+  initialTime?: string;
   shopId?: string;
   /** الأنشطة المفعّلة من تخصيص التاجر — الشبكة تعرضها فقط وتختار الأول افتراضيًا */
   enabledActivities: ActivityType[];
@@ -1320,11 +1954,16 @@ function AddBookingModal({
   const [bookingDate, setBookingDate] = useState(initialDate || formatDateKey(new Date()));
   // Walk-in default: ~30 minutes from now, rounded to 5 minutes — the
   // secretary usually registers a client standing right there.
-  const [bookingTime, setBookingTime] = useState(() => {
-    const d = new Date(Date.now() + 30 * 60000);
-    d.setMinutes(Math.round(d.getMinutes() / 5) * 5, 0, 0);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  });
+  // أو الوقت اللي اتضغط عليه من شبكة اليوم/الأسبوع (initialTime)
+  const [bookingTime, setBookingTime] = useState(
+    () =>
+      initialTime ||
+      (() => {
+        const d = new Date(Date.now() + 30 * 60000);
+        d.setMinutes(Math.round(d.getMinutes() / 5) * 5, 0, 0);
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      })()
+  );
   const [price, setPrice] = useState('200');
   const [participants, setParticipants] = useState('1');
   const [notes, setNotes] = useState('');
@@ -1615,10 +2254,13 @@ function AddBookingModal({
 
 function BookingDetailModal({
   booking,
+  shopName,
   onClose,
   onUpdateStatus,
 }: {
   booking: BookingItem;
+  /** اسم المتجر — يظهر في فاتورة الحجز المطبوعة */
+  shopName?: string;
   onClose: () => void;
   onUpdateStatus: (b: BookingItem, status: UnifiedStatus) => Promise<void>;
 }) {
@@ -1648,13 +2290,23 @@ function BookingDetailModal({
               {booking.itemName}
             </h3>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-slate-100 text-slate-400"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => printBookingInvoice(booking, shopName || '')}
+              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+              title="طباعة الفاتورة"
+            >
+              <Printer size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 rounded-lg hover:bg-slate-100 text-slate-400"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Body Details */}
@@ -1683,6 +2335,28 @@ function BookingDetailModal({
                 <span className="text-slate-400 font-semibold">القيمة الإجمالية:</span>
                 <span className="font-black text-slate-900 tabular-nums">
                   {booking.price.toLocaleString('en-US')} ج.م
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-slate-400 font-semibold">عدد الأفراد:</span>
+              <span className="font-bold text-slate-900 tabular-nums">
+                {booking.participants || 1}
+              </span>
+            </div>
+            {String(booking.raw?.bookingNumber || '') && (
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-semibold">رقم الحجز:</span>
+                <span className="font-bold text-slate-900 tabular-nums" dir="ltr">
+                  {String(booking.raw?.bookingNumber)}
+                </span>
+              </div>
+            )}
+            {paymentLabel(booking.paymentStatus) && (
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-semibold">حالة الدفع:</span>
+                <span className="font-bold text-slate-700">
+                  {paymentLabel(booking.paymentStatus)}
                 </span>
               </div>
             )}
@@ -1935,4 +2609,94 @@ function QueueTodayPanel({
       </div>
     </div>
   );
+}
+
+/* ============================================================
+ * طباعة فاتورة الحجز — إيصال RTL جاهز للطباعة يُفتح في iframe
+ * مخفي ويُرسل للطابعة مباشرة (بدون صفحات منبثقة يحجبها المتصفح).
+ * ============================================================ */
+
+function printBookingInvoice(b: BookingItem, shopName: string): void {
+  const esc = (v: any): string =>
+    String(v ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  const act = ACTIVITY_META[b.activityType];
+  const st = STATUS_META[b.status];
+  const pay = paymentLabel(b.paymentStatus) || 'غير محدد';
+  const bookingNo = String(b.raw?.bookingNumber || b.id.replace(/^(web|int)-/, ''));
+
+  const rows: Array<[string, string]> = [
+    ['رقم الحجز', bookingNo],
+    ['الخدمة / النشاط', `${b.itemName} (${act.label})`],
+    ['العميل', b.customerName],
+    ['رقم الهاتف', b.customerPhone || '—'],
+    ['تاريخ الموعد', b.dateStr],
+    ['وقت الموعد', fmtTime12(b.timeStr)],
+    ['عدد الأفراد', String(b.participants || 1)],
+    ['حالة الدفع', pay],
+    ['حالة الحجز', st.label],
+  ];
+  if (b.notes) rows.push(['ملاحظات', b.notes]);
+
+  const rowsHtml = rows
+    .map(([k, v]) => `<tr><td class="k">${esc(k)}:</td><td class="v">${esc(v)}</td></tr>`)
+    .join('\n  ');
+
+  const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>فاتورة حجز ${esc(bookingNo)}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Cairo', 'Tahoma', 'Segoe UI', sans-serif; color: #0f172a; padding: 28px; max-width: 640px; margin: 0 auto; }
+  .head { text-align: center; border-bottom: 3px solid #0f172a; padding-bottom: 14px; margin-bottom: 18px; }
+  .head h1 { font-size: 22px; font-weight: 900; }
+  .head p { font-size: 12px; color: #64748b; margin-top: 4px; }
+  .stamp { display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 800; padding: 3px 12px; border: 1.5px solid #0f172a; border-radius: 999px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; vertical-align: top; }
+  td.k { color: #64748b; font-weight: 600; width: 130px; }
+  td.v { font-weight: 800; }
+  tr.total td { background: #f1f5f9; font-size: 15px; font-weight: 900; }
+  .foot { margin-top: 24px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px dashed #cbd5e1; padding-top: 12px; }
+  @media print { body { padding: 12px; } }
+</style></head><body>
+<div class="head">
+  <h1>${esc(shopName || 'فاتورة حجز')}</h1>
+  <p>فاتورة / إيصال حجز — ${esc(new Date().toLocaleDateString('ar-EG'))}</p>
+  <span class="stamp">${esc(st.label)}</span>
+</div>
+<table>
+  ${rowsHtml}
+  <tr class="total"><td class="k">الإجمالي المستحق:</td><td class="v">${esc((b.price || 0).toLocaleString('en-US'))} ج.م</td></tr>
+</table>
+<div class="foot">شكرًا لزيارتكم — هذا الإيصال صادر آليًا من نظام إدارة الحجوزات</div>
+</body></html>`;
+
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.position = 'fixed';
+  frame.style.width = '0';
+  frame.style.height = '0';
+  frame.style.border = '0';
+  frame.style.opacity = '0';
+  document.body.appendChild(frame);
+  const win = frame.contentWindow;
+  const doc = win?.document;
+  if (!win || !doc) {
+    frame.remove();
+    return;
+  }
+  doc.open();
+  doc.write(html);
+  doc.close();
+  const doPrint = () => {
+    try {
+      win.focus();
+      win.print();
+    } catch {}
+    setTimeout(() => frame.remove(), 1500);
+  };
+  if (doc.readyState === 'complete') setTimeout(doPrint, 120);
+  else frame.onload = () => setTimeout(doPrint, 120);
 }
