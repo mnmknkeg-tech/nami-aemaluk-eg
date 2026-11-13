@@ -30,9 +30,11 @@ interface BookingSettingsTabProps {
   onSaved: () => void;
 }
 
+const EMPTY_PAGE_DESIGN: Record<string, any> = {};
+
 export default function BookingSettingsTab({ shop, onSaved }: BookingSettingsTabProps) {
   const { toast } = useToast();
-  const pd = shop?.pageDesign || {};
+  const pd = shop?.pageDesign || EMPTY_PAGE_DESIGN;
 
   const initial = useMemo(
     () => ({
@@ -219,9 +221,7 @@ export default function BookingSettingsTab({ shop, onSaved }: BookingSettingsTab
         <CardContent className="space-y-4 pt-2">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-800">
-                مدة العميل الواحد (دقائق)
-              </Label>
+              <Label className="text-xs font-bold text-slate-800">مدة العميل الواحد (دقائق)</Label>
               <select
                 value={form.bookingSlotDuration}
                 onChange={(e) => setForm({ ...form, bookingSlotDuration: Number(e.target.value) })}
@@ -236,9 +236,7 @@ export default function BookingSettingsTab({ shop, onSaved }: BookingSettingsTab
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-800">
-                الفاصل بين العملاء (دقائق)
-              </Label>
+              <Label className="text-xs font-bold text-slate-800">الفاصل بين العملاء (دقائق)</Label>
               <Input
                 type="number"
                 min="0"

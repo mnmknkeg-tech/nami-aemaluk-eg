@@ -11,9 +11,11 @@ interface InventorySettingsTabProps {
   onSaved: () => void;
 }
 
+const EMPTY_PAGE_DESIGN: Record<string, any> = {};
+
 export default function InventorySettingsTab({ shop, onSaved }: InventorySettingsTabProps) {
   const { toast } = useToast();
-  const pd = shop?.pageDesign || {};
+  const pd = shop?.pageDesign || EMPTY_PAGE_DESIGN;
 
   const initial = useMemo(
     () => ({

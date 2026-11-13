@@ -26,9 +26,11 @@ const MONTHS = [
   { value: '12', label: 'ديسمبر' },
 ];
 
+const EMPTY_PAGE_DESIGN: Record<string, any> = {};
+
 export default function AccountingSettingsTab({ shop, onSaved }: AccountingSettingsTabProps) {
   const { toast } = useToast();
-  const pd = shop?.pageDesign || {};
+  const pd = shop?.pageDesign || EMPTY_PAGE_DESIGN;
 
   const initial = useMemo(
     () => ({

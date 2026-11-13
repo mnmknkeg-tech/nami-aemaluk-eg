@@ -11,9 +11,11 @@ interface BranchesSettingsTabProps {
   onSaved: () => void;
 }
 
+const EMPTY_PAGE_DESIGN: Record<string, any> = {};
+
 export default function BranchesSettingsTab({ shop, onSaved }: BranchesSettingsTabProps) {
   const { toast } = useToast();
-  const pd = shop?.pageDesign || {};
+  const pd = shop?.pageDesign || EMPTY_PAGE_DESIGN;
 
   const initial = useMemo(
     () => ({

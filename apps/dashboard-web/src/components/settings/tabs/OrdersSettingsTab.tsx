@@ -20,9 +20,11 @@ interface OrdersSettingsTabProps {
   onSaved: () => void;
 }
 
+const EMPTY_PAGE_DESIGN: Record<string, any> = {};
+
 export default function OrdersSettingsTab({ shop, onSaved }: OrdersSettingsTabProps) {
   const { toast } = useToast();
-  const pd = shop?.pageDesign || {};
+  const pd = shop?.pageDesign || EMPTY_PAGE_DESIGN;
   const layout = shop?.layoutConfig || {};
 
   const initial = useMemo(
