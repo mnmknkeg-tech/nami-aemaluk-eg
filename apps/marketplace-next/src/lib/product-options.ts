@@ -15,8 +15,15 @@ export function productHasOptions(product: Product): boolean {
     menu_variants?: unknown;
     sizes?: unknown;
     colors?: unknown;
+    packOptions?: unknown;
+    pack_options?: unknown;
   };
   return (
-    nonEmpty(p.menuVariants) || nonEmpty(p.menu_variants) || nonEmpty(p.sizes) || nonEmpty(p.colors)
+    nonEmpty(p.menuVariants) ||
+    nonEmpty(p.menu_variants) ||
+    nonEmpty(p.sizes) ||
+    nonEmpty(p.colors) ||
+    nonEmpty(p.packOptions) ||
+    nonEmpty(p.pack_options)
   );
 }

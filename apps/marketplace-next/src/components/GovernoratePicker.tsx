@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, MapPin, LocateFixed, X } from 'lucide-react';
 import { LocationPicker } from '@/components/LocationPicker';
-import { getResolvedLocation, notifyLocationChanged, savePreciseLocation } from '@/lib/user-location';
+import { getResolvedLocation, savePreciseLocation, clearPreciseLocation } from '@/lib/user-location';
 
 export const LOCATION_KEY = 'mnmknk_location';
 
@@ -47,9 +47,14 @@ export function GovernoratePicker() {
   const [open, setOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [isPrecise, setIsPrecise] = useState(false);
-  const [pending, setPending] = useState<{ lat: number; lng: number } | null>(null);
-  const [pendingLabel, setPendingLabel] = useState('موقعي');
   const ref = useRef<HTMLDivElement>(null);
+
+  // آخر إحداثيات وعنوان — المرجع بيحل مشكلة الـ stale closure: كولباك
+  // LocationPicker بيتنادى من نفس الـ render اللي اتسجل فيه الـ click handler،
+  // فالحالة العادية بتفضل قديمة. بالـ ref بنضمن إن العنوان المُحل بيتحفظ
+  // بالإحداثيات الصح في كل مرة.
+  const pendingRef = useRef<{ lat: number; lng: number } | null>(null);
+  const labelRef = useRef('موقعي');
 
   useEffect(() => {
     const load = () => {
@@ -89,7 +94,9 @@ export function GovernoratePicker() {
     } catch {
       /* ignore */
     }
-    notifyLocationChanged();
+    // اختيار محافظة من القائمة = إلغاء التحديد الدقيق القديم —
+    // الموقع الدقيق كان بياخد أولوية في القراءة فكان بيتجاهل اختيار المحافظة.
+    clearPreciseLocation();
   };
 
   return (
@@ -179,19 +186,24 @@ export function GovernoratePicker() {
             </div>
             <LocationPicker
               onLocationSelect={(lat, lng) => {
-                setPending({ lat, lng });
-                savePreciseLocation({ lat, lng, label: pendingLabel });
+                const coords = { lat, lng };
+                pendingRef.current = coords;
+                // حفظ فوري بالإحداثيات — وبأحدث عنوان معروف (لو فيه)
+                savePreciseLocation({ lat, lng, label: labelRef.current });
               }}
               onAddressResolved={(addr) => {
                 const label =
                   [addr.district, addr.city].filter(Boolean).join('، ') ||
                   addr.governorate ||
                   'موقعي';
-                setPendingLabel(label);
-                if (pending) {
+                labelRef.current = label;
+                // من الـ ref — آخر إحداثيات اتحصلت عليها من onLocationSelect،
+                // مش من الحالة اللي ممكن تكون لسه قديمة.
+                const coords = pendingRef.current;
+                if (coords) {
                   savePreciseLocation({
-                    lat: pending.lat,
-                    lng: pending.lng,
+                    lat: coords.lat,
+                    lng: coords.lng,
                     label,
                     governorate: addr.governorate,
                   });

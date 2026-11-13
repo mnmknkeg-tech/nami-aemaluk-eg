@@ -17,6 +17,7 @@ import {
   Layers,
   Utensils,
   StickyNote,
+  Package,
 } from 'lucide-react';
 import { useSiteCart } from '@/lib/site-cart';
 import { productStockState } from '@/lib/stock';
@@ -66,18 +67,81 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
 
   const simpleSizes: string[] = useMemo(() => {
     const raw = product?.sizes;
-    if (Array.isArray(raw) && raw.length > 0) {
-      return raw.map((s) => (typeof s === 'string' ? s : s?.name || s?.label || String(s)));
-    }
-    return [];
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    return raw
+      .filter(
+        (s: any) =>
+          !(
+            s &&
+            typeof s === 'object' &&
+            Number.isFinite(Number(s.price)) &&
+            Number(s.price) > 0
+          )
+      )
+      .map((s: any) =>
+        typeof s === 'string' ? s : s?.name || s?.label || String(s)
+      )
+      .filter(Boolean);
   }, [product]);
 
-  const colors: string[] = useMemo(() => {
+  /** أحجام مُسعّرة — محررات اللوحة بتبعت objects فيها سعر لكل حجم. */
+  const pricedSizes: VariantOption[] = useMemo(() => {
+    const raw = product?.sizes;
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    return raw
+      .filter(
+        (s: any) =>
+          s &&
+          typeof s === 'object' &&
+          Number.isFinite(Number(s.price)) &&
+          Number(s.price) > 0 &&
+          (s.label || s.name || s.id)
+      )
+      .map((s: any, i: number) => ({
+        id: String(s.id ?? s.label ?? s.name ?? `size-${i}`),
+        label: String(s.label ?? s.name ?? s.id),
+        price: Number(s.price),
+      }));
+  }, [product]);
+
+  /** باقات/عبوات — خيارات الكمية بسعرها الكامل. */
+  const packs: Array<{ id: string; label: string; price: number; qty: number; unit?: string }> =
+    useMemo(() => {
+      const raw = product?.packOptions || product?.pack_options;
+      if (!Array.isArray(raw) || raw.length === 0) return [];
+      return raw
+        .filter(
+          (p: any) =>
+            p &&
+            Number.isFinite(Number(p.qty)) &&
+            Number(p.qty) > 0 &&
+            Number.isFinite(Number(p.price)) &&
+            Number(p.price) > 0
+        )
+        .map((p: any, i: number) => {
+          const qty = Number(p.qty);
+          const unit = p.unit ? String(p.unit) : undefined;
+          return {
+            id: String(p.id ?? `pack-${i}`),
+            qty,
+            unit,
+            price: Number(p.price),
+            label: `${qty}${unit ? ` ${unit}` : ''}`,
+          };
+        })
+        .sort((a: any, b: any) => a.qty - b.qty);
+    }, [product]);
+
+  const colors: Array<{ name: string; value?: string }> = useMemo(() => {
     const raw = product?.colors;
-    if (Array.isArray(raw) && raw.length > 0) {
-      return raw.map((c) => (typeof c === 'string' ? c : c?.name || c?.label || String(c)));
-    }
-    return [];
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    return raw
+      .map((c: any) =>
+        typeof c === 'string'
+          ? { name: c }
+          : { name: String(c?.name || c?.label || ''), value: c?.value || c?.hex || undefined }
+      )
+      .filter((c: { name: string }) => c.name);
   }, [product]);
 
   // 2. استخراج الإضافات (addons)
@@ -126,8 +190,12 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
   }, [currentGroup]);
 
   const [selectedSizeId, setSelectedSizeId] = useState<string>(() => defaultSize?.id || '');
+  const [selectedPricedSizeId, setSelectedPricedSizeId] = useState<string>(
+    () => pricedSizes[0]?.id || ''
+  );
+  const [selectedPackId, setSelectedPackId] = useState<string>('');
   const [selectedSimpleSize, setSelectedSimpleSize] = useState<string>(() => simpleSizes[0] || '');
-  const [selectedColor, setSelectedColor] = useState<string>(() => colors[0] || '');
+  const [selectedColor, setSelectedColor] = useState<string>(() => colors[0]?.name || '');
 
   // الإضافات المختارة: خريطة addonId -> { name, price, variantLabel? }
   const [selectedAddons, setSelectedAddons] = useState<
@@ -138,6 +206,9 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
   const basePrice = Number(product.price || 0);
 
   const activeSizePrice = useMemo(() => {
+    // الباقة المختارة بتحدد السعر الكامل للوحدة
+    const pack = packs.find((p) => p.id === selectedPackId);
+    if (pack) return pack.price;
     if (currentGroup?.sizes && currentGroup.sizes.length > 0) {
       const found =
         currentGroup.sizes.find((s) => s.id === selectedSizeId) || currentGroup.sizes[0];
@@ -145,8 +216,11 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
         return found.price;
       }
     }
+    // حجم مُسعّر من محررات اللوحة (مقهى/مطعم/ملابس/تجزئة)
+    const priced = pricedSizes.find((s) => s.id === selectedPricedSizeId);
+    if (priced && typeof priced.price === 'number' && priced.price > 0) return priced.price;
     return basePrice;
-  }, [currentGroup, selectedSizeId, basePrice]);
+  }, [currentGroup, selectedSizeId, selectedPackId, packs, pricedSizes, selectedPricedSizeId, basePrice]);
 
   const addonsTotal = useMemo(() => {
     return Object.values(selectedAddons).reduce((sum, a) => sum + (Number(a.price) || 0), 0);
@@ -183,7 +257,16 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
 
     // تجهيز كائن variantSelection
     let variantSelection: any = null;
-    if (currentGroup?.sizes && currentGroup.sizes.length > 0) {
+    const selectedPack = packs.find((p) => p.id === selectedPackId);
+    if (selectedPack) {
+      variantSelection = {
+        pack: selectedPack.label,
+        qty: selectedPack.qty,
+        label: `باقة ${selectedPack.label}`,
+        price: selectedPack.price,
+        ...(selectedColor ? { color: selectedColor } : {}),
+      };
+    } else if (currentGroup?.sizes && currentGroup.sizes.length > 0) {
       const curSize =
         currentGroup.sizes.find((s) => s.id === selectedSizeId) || currentGroup.sizes[0];
       const typeLabel = currentGroup.id !== 'base' ? currentGroup.name : '';
@@ -195,6 +278,16 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
         sizeLabel,
         label: [typeLabel, sizeLabel].filter(Boolean).join(' - '),
         price: curSize?.price,
+      };
+    } else if (pricedSizes.length > 0) {
+      const priced =
+        pricedSizes.find((s) => s.id === selectedPricedSizeId) || pricedSizes[0];
+      variantSelection = {
+        size: priced.label,
+        sizeLabel: priced.label,
+        label: [priced.label, selectedColor].filter(Boolean).join(' / '),
+        price: priced.price,
+        ...(selectedColor ? { color: selectedColor } : {}),
       };
     } else if (selectedSimpleSize || selectedColor) {
       variantSelection = {
@@ -383,6 +476,86 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
         </div>
       )}
 
+      {/* ── أحجام مُسعّرة من اللوحة (مقهى/مطعم/ملابس/تجزئة) ── */}
+      {menuVariants.length === 0 && pricedSizes.length > 0 && (
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700">
+              <Utensils className="w-3.5 h-3.5 text-amber-600" />
+              اختر الحجم / المقاس:
+            </label>
+            <span className="text-[11px] font-bold text-slate-400">مطلوب تحديد الحجم</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {pricedSizes.map((s) => {
+              const active = s.id === (selectedPricedSizeId || pricedSizes[0]?.id);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setSelectedPricedSizeId(s.id)}
+                  className={`p-3 rounded-2xl text-right transition-all border flex flex-col justify-between ${
+                    active
+                      ? 'border-brand-cyan bg-brand-cyan/5 ring-2 ring-brand-cyan/20'
+                      : 'border-slate-200 bg-white hover:border-slate-300'
+                  }`}
+                >
+                  <span className="font-extrabold text-xs text-slate-900">{s.label}</span>
+                  <span className="text-xs font-black text-brand-cyan mt-1">
+                    {formatPrice(s.price!)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── باقات / عبوات (packOptions من اللوحة) ── */}
+      {packs.length > 0 && (
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700">
+              <Package className="w-3.5 h-3.5 text-brand-purple" />
+              اختر الباقة / العبوة:
+            </label>
+            <span className="text-[11px] font-bold text-slate-400">وفّر مع الباقات الأكبر</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <button
+              type="button"
+              onClick={() => setSelectedPackId('')}
+              className={`p-3 rounded-2xl text-right transition-all border flex flex-col justify-between ${
+                selectedPackId === ''
+                  ? 'border-brand-cyan bg-brand-cyan/5 ring-2 ring-brand-cyan/20'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              }`}
+            >
+              <span className="font-extrabold text-xs text-slate-900">وحدة واحدة</span>
+              <span className="text-xs font-black text-brand-cyan mt-1">{formatPrice(basePrice)}</span>
+            </button>
+            {packs.map((p) => {
+              const active = p.id === selectedPackId;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setSelectedPackId(p.id)}
+                  className={`p-3 rounded-2xl text-right transition-all border flex flex-col justify-between ${
+                    active
+                      ? 'border-brand-cyan bg-brand-cyan/5 ring-2 ring-brand-cyan/20'
+                      : 'border-slate-200 bg-white hover:border-slate-300'
+                  }`}
+                >
+                  <span className="font-extrabold text-xs text-slate-900">{p.label}</span>
+                  <span className="text-xs font-black text-brand-cyan mt-1">{formatPrice(p.price)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── المقاسات البسيطة (الملابس والأزياء) إن لم توجد menuVariants ── */}
       {menuVariants.length === 0 && simpleSizes.length > 0 && (
         <div className="space-y-2">
@@ -409,25 +582,59 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
         </div>
       )}
 
-      {/* ── الألوان إن وجدت ── */}
+      {/* ── الألوان إن وجدت — دواير بألوان حقيقية لما القيمة متاحة ── */}
       {colors.length > 0 && (
-        <div className="space-y-2">
-          <label className="text-xs font-extrabold text-slate-700 block">اختر اللون:</label>
-          <div className="flex flex-wrap gap-2">
+        <div className="space-y-2.5">
+          <label className="text-xs font-extrabold text-slate-700 block">
+            اختر اللون:
+            <span className="text-slate-400 font-bold mr-1.5">{selectedColor}</span>
+          </label>
+          <div className="flex flex-wrap gap-2.5">
             {colors.map((c) => {
-              const active = c === selectedColor;
+              const active = c.name === selectedColor;
+              const swatch =
+                c.value &&
+                (/^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(c.value.trim()) ||
+                  /^(rgb|hsl)a?\(/i.test(c.value.trim()))
+                  ? c.value
+                  : null;
+              if (swatch) {
+                return (
+                  <button
+                    key={c.name}
+                    type="button"
+                    onClick={() => setSelectedColor(c.name)}
+                    aria-label={c.name}
+                    aria-pressed={active}
+                    title={c.name}
+                    className={`relative w-10 h-10 rounded-full border border-slate-200 transition-all ${
+                      active
+                        ? 'ring-2 ring-brand-cyan ring-offset-2 ring-offset-white scale-105'
+                        : 'hover:scale-105'
+                    }`}
+                  >
+                    <span
+                      className="absolute inset-1 rounded-full"
+                      style={{ backgroundColor: swatch }}
+                    />
+                    {active && (
+                      <Check className="absolute inset-0 m-auto w-4 h-4 text-white mix-blend-difference" />
+                    )}
+                  </button>
+                );
+              }
               return (
                 <button
-                  key={c}
+                  key={c.name}
                   type="button"
-                  onClick={() => setSelectedColor(c)}
+                  onClick={() => setSelectedColor(c.name)}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all ${
                     active
                       ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
                       : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'
                   }`}
                 >
-                  {c}
+                  {c.name}
                 </button>
               );
             })}
