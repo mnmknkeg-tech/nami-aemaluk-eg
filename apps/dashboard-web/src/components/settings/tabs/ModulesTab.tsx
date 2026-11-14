@@ -139,7 +139,10 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
   }, [savedFeatures]);
 
   const persistFeatures = useCallback(
-    async (nextFeatures: Record<string, Set<string>>, opts?: { onError?: () => void }) => {
+    async (
+      nextFeatures: Record<string, Set<string>>,
+      opts?: { onError?: () => void }
+    ): Promise<boolean> => {
       setSaving(true);
       try {
         const featuresObj: Record<string, string[]> = {};
@@ -183,6 +186,7 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
         );
 
         onSaved?.();
+        return true;
       } catch (e: any) {
         opts?.onError?.();
         toast({
@@ -190,6 +194,7 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
           description: e?.message || 'فشل حفظ الميزات',
           variant: 'destructive',
         });
+        return false;
       } finally {
         setSaving(false);
       }
@@ -208,31 +213,32 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
       setModuleFeatures((prev) => ({ ...prev, [moduleId]: current }));
     };
 
+    // Compute nextState from the CURRENT state (event handler — state is fresh).
+    // Side effects (setTogglingFeature + persistFeatures) live OUTSIDE any
+    // setState updater: React may invoke updaters twice (StrictMode /
+    // concurrent rendering), which used to fire duplicate PATCH requests —
+    // one winning, one failing + reverting, so the toggle "needed many clicks".
+    let nextState: Record<string, Set<string>>;
     if (isModuleActive) {
-      setModuleFeatures((prev) => {
-        const nextState = { ...prev, [moduleId]: new Set<string>() };
-        setTogglingFeature(moduleId);
-        persistFeatures(nextState, { onError: revert }).finally(() => setTogglingFeature(null));
-        return nextState;
-      });
-      toast({
-        title: 'تم الإيقاف',
-        description: `تم إيقاف قسم ${groupDef?.label || ''} بنجاح`,
-      });
+      nextState = { ...moduleFeatures, [moduleId]: new Set<string>() };
     } else {
       const featuresToEnable = groupFeatures.filter((f) => f.defaultEnabled).map((f) => f.id);
       const toAdd = featuresToEnable.length > 0 ? featuresToEnable : groupFeatures.map((f) => f.id);
-      setModuleFeatures((prev) => {
-        const nextState = { ...prev, [moduleId]: new Set<string>(toAdd) };
-        setTogglingFeature(moduleId);
-        persistFeatures(nextState, { onError: revert }).finally(() => setTogglingFeature(null));
-        return nextState;
-      });
-      toast({
-        title: 'تم التفعيل',
-        description: `تم تفعيل قسم ${groupDef?.label || ''} بنجاح`,
-      });
+      nextState = { ...moduleFeatures, [moduleId]: new Set<string>(toAdd) };
     }
+
+    setModuleFeatures(nextState);
+    setTogglingFeature(moduleId);
+    void persistFeatures(nextState, { onError: revert })
+      .then((ok) => {
+        if (ok) {
+          toast({
+            title: isModuleActive ? 'تم الإيقاف' : 'تم التفعيل',
+            description: `تم ${isModuleActive ? 'إيقاف' : 'تفعيل'} قسم ${groupDef?.label || ''} بنجاح`,
+          });
+        }
+      })
+      .finally(() => setTogglingFeature(null));
   };
 
   const toggleFeature = (moduleId: string, featureId: string) => {
@@ -251,33 +257,25 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
       });
     };
 
-    if (isCurrentlyEnabled) {
-      setModuleFeatures((prev) => {
-        const next = new Set(prev[moduleId] || new Set<string>());
-        next.delete(featureId);
-        const nextState = { ...prev, [moduleId]: next };
-        setTogglingFeature(featureKey);
-        persistFeatures(nextState, { onError: revert }).finally(() => setTogglingFeature(null));
-        return nextState;
-      });
-      toast({
-        title: 'تم الإيقاف',
-        description: `تم إيقاف ${featureName} بنجاح`,
-      });
-    } else {
-      setModuleFeatures((prev) => {
-        const next = new Set(prev[moduleId] || new Set<string>());
-        next.add(featureId);
-        const nextState = { ...prev, [moduleId]: next };
-        setTogglingFeature(featureKey);
-        persistFeatures(nextState, { onError: revert }).finally(() => setTogglingFeature(null));
-        return nextState;
-      });
-      toast({
-        title: 'تم التفعيل',
-        description: `تم تفعيل ${featureName} فوراً في لوحتك`,
-      });
-    }
+    const next = new Set(current);
+    if (isCurrentlyEnabled) next.delete(featureId);
+    else next.add(featureId);
+    const nextState = { ...moduleFeatures, [moduleId]: next };
+
+    setModuleFeatures(nextState);
+    setTogglingFeature(featureKey);
+    void persistFeatures(nextState, { onError: revert })
+      .then((ok) => {
+        if (ok) {
+          toast({
+            title: isCurrentlyEnabled ? 'تم الإيقاف' : 'تم التفعيل',
+            description: isCurrentlyEnabled
+              ? `تم إيقاف ${featureName} بنجاح`
+              : `تم تفعيل ${featureName} فوراً في لوحتك`,
+          });
+        }
+      })
+      .finally(() => setTogglingFeature(null));
   };
 
   // Emit changes

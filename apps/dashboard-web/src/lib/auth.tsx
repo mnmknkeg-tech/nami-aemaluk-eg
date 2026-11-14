@@ -27,7 +27,14 @@ const AuthContext = createContext<AuthContextType>({
   refreshUser: async () => {},
 });
 
-import { clearToken, clearUserJSON, readUserJSON, writeUserJSON, clearMerchantScopedCaches, dispatchAuthIdentityChanged } from '@/lib/session-keys';
+import {
+  clearToken,
+  clearUserJSON,
+  readUserJSON,
+  writeUserJSON,
+  clearMerchantScopedCaches,
+  dispatchAuthIdentityChanged,
+} from '@/lib/session-keys';
 // All request/refresh/401 logic lives in the unified core — this provider
 // only owns React state. The re-export below feeds the 674 call sites.
 import { apiRequest, clearApiCache, noteAuthSuccess, refreshSession } from '@/lib/api/core';
@@ -97,6 +104,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // تفريغ كاشهم حتى لا تعرض الشاشات بيانات جلسة سابقة.
       clearMerchantScopedCaches();
       dispatchAuthIdentityChanged();
+      // Redirect to login immediately. Without this the user stayed on a
+      // zombie dashboard: every click fired a doomed API call → a doomed
+      // /auth/refresh 401 → repeated console errors and dead UI.
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.assign('/login');
+      }
     };
     const onUserRefreshed = () => {
       try {
