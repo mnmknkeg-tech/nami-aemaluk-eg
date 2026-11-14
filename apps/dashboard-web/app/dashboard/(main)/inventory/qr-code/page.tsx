@@ -250,7 +250,7 @@ export default function QRCodePage() {
         <div className="text-right flex-1">
           <div className="flex items-center gap-2">
             <PageBack fallback="/dashboard/inventory" title="رجوع إلى المخزون" />
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">QR Code</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">QR Code</h1>
             <button
               onClick={() => setGuideOpen(true)}
               className="p-1.5 rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all"

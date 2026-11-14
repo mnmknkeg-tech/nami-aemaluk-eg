@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import PageBack from '@/components/PageBack';
 import {
   BarChart3,
   Loader2,
@@ -218,10 +219,10 @@ const POSReportsPage: React.FC = () => {
     <div className="bg-white p-4 sm:p-6 md:p-8 rounded-[2rem] md:rounded-[3.5rem] border border-slate-100 shadow-sm min-h-[60vh]">
       <div className="flex flex-col gap-4 md:gap-6 mb-6 md:flex-row md:items-center md:justify-between md:flex-row-reverse">
         <div className="text-right">
-          <h3 className="text-xl sm:text-2xl md:text-3xl font-black flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
             <ShoppingCart size={24} className="text-[#BD00FF]" />
             {isArabic ? 'تقارير الكاشير' : 'POS Reports'}
-          </h3>
+          </h1>
           <p className="mt-1 text-xs sm:text-sm font-bold text-slate-400">
             {isArabic
               ? 'تقارير نقطة البيع + تصدير + رسوم بيانية'
@@ -238,13 +239,7 @@ const POSReportsPage: React.FC = () => {
             <Download size={16} />
             {isArabic ? 'تصدير CSV' : 'Export CSV'}
           </button>
-          <Link
-            href="/dashboard/pos"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white font-black text-sm hover:bg-black transition-all w-fit"
-          >
-            <ChevronRight size={16} className="rotate-180" />
-            {isArabic ? 'العودة للكاشير' : 'Back to POS'}
-          </Link>
+          <PageBack fallback="/dashboard/pos" title={isArabic ? 'العودة للكاشير' : 'Back to POS'} />
         </div>
       </div>
 

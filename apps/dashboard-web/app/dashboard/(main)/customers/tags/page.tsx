@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import PageBack from '@/components/PageBack';
 import {
   Tag,
   Search,
@@ -324,7 +325,8 @@ export default function CustomerTagsPage() {
         </div>
         <div className="text-right">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">وسوم العملاء</h1>
+                        <PageBack fallback="/dashboard/customers" title="رجوع إلى العملاء" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">وسوم العملاء</h1>
             <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-200">
               قريباً · محلي فقط
             </span>

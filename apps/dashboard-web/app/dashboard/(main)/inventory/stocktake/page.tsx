@@ -345,6 +345,7 @@ export default function StocktakePage() {
 
   return (
     <InventoryPage
+      back="/dashboard/inventory"
       title="جرد المخزون"
       subtitle={<>إدارة عمليات جرد المخزون — {stats[4].value} اختلاف مسجل</>}
       onInfo={() => setGuideOpen(true)}

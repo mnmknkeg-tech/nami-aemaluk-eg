@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import PageBack from '@/components/PageBack';
 import {
   ShoppingCart,
   RefreshCw,
@@ -246,7 +247,8 @@ export default function SalesAbandonedCartPage() {
           </div>
           <div className="text-right">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900">السلات المتروكة</h1>
+                            <PageBack fallback="/dashboard/sales" title="رجوع إلى المبيعات" />
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">السلات المتروكة</h1>
               <button
                 onClick={() => setGuideOpen(true)}
                 className="p-1.5 rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all"

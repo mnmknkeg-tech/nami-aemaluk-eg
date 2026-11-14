@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
+import PageBack from '@/components/PageBack';
 import {
   Plus,
   Trash2,
@@ -407,6 +408,7 @@ function ProductsPageContent() {
         <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2">
+                            <PageBack fallback="/dashboard/inventory" title="رجوع إلى المخزون" />
               <h1 className="text-xl font-bold text-slate-900">المنتجات</h1>
               <button
                 onClick={() => setGuideOpen(true)}

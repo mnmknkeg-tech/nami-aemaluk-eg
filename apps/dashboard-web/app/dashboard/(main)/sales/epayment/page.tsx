@@ -236,7 +236,7 @@ function SalesEpaymentContent() {
         <div className="text-right">
           <div className="flex items-center gap-2">
             <PageBack fallback="/dashboard/pos" title="رجوع إلى الكاشير" />
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">الدفع الإلكتروني</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">الدفع الإلكتروني</h1>
             <button
               onClick={() => setGuideOpen(true)}
               className="p-1.5 rounded-full text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all"

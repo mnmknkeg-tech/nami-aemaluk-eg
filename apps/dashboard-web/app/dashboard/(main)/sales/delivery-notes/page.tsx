@@ -78,7 +78,7 @@ export default function DeliveryNotesPage() {
       <div className="flex items-start justify-between flex-wrap gap-3 mb-5">
         <div className="flex items-center gap-3">
           <PageBack fallback="/dashboard/sales" title="رجوع إلى المبيعات" />
-          <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
+          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <PackageCheck size={22} className="text-emerald-600" />
             أوراق الصرف
           </h1>

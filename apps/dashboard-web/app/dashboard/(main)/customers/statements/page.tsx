@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import PageBack from '@/components/PageBack';
 import Link from 'next/link';
 import { Loader2, Search, AlertCircle, ChevronLeft, Download, RefreshCw } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
@@ -106,9 +107,12 @@ export default function StatementsPage() {
           <div>
             {selected ? (
               <>
-                <h1 className="text-xl font-bold text-slate-900">
-                  كشف حساب: {selected.name || selected.fullName || 'عميل'}
-                </h1>
+                <div className="flex items-center gap-2">
+                  <PageBack fallback="/dashboard/customers" title="رجوع إلى العملاء" />
+                  <h1 className="text-xl font-bold text-slate-900">
+                    كشف حساب: {selected.name || selected.fullName || 'عميل'}
+                  </h1>
+                </div>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {selected.phone || '—'} · إجمالي المشتريات ج.م{' '}
                   {(purchasesByCustomer.get(selected.id)?.total || 0).toLocaleString()} ·{' '}
@@ -118,6 +122,7 @@ export default function StatementsPage() {
             ) : (
               <>
                 <div className="flex items-center gap-2">
+                  <PageBack fallback="/dashboard/customers" title="رجوع إلى العملاء" />
                   <h1 className="text-xl font-bold text-slate-900">كشوف الحساب</h1>
                   <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-200">
                     قريباً · محلي فقط

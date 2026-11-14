@@ -384,6 +384,7 @@ export default function PurchaseOrdersPage() {
 
   return (
     <InventoryPage
+      back="/dashboard/inventory"
       title="أوامر الشراء"
       subtitle={<>إدارة أوامر الشراء من الموردين — {stats[5].value}</>}
       onInfo={() => setGuideOpen(true)}

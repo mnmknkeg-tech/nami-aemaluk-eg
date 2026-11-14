@@ -6,6 +6,7 @@
  * نفس بيانات المورد تُفتح كذلك من المالية → الموردون والدائنون (ملف واحد بلا نسخ).
  */
 import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import PageBack from '@/components/PageBack';
 import {
   Truck,
   Plus,
@@ -103,6 +104,7 @@ function SuppliersPageContent() {
         <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2">
+                            <PageBack fallback="/dashboard/inventory" title="رجوع إلى المخزون" />
               <h1 className="text-xl font-bold text-slate-900">الموردون</h1>
               <Info size={15} className="text-slate-300" />
             </div>
