@@ -117,7 +117,7 @@ export default function WholesalePricingPage() {
           <Loader2 size={24} className="animate-spin text-slate-300" />
         </div>
       ) : tiers.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
           <Tags size={48} className="text-slate-200 mx-auto mb-4" />
           <p className="text-sm font-bold text-slate-400">لا توجد شرائح جملة بعد</p>
         </div>

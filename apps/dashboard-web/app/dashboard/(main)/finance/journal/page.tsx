@@ -305,50 +305,58 @@ export default function JournalPage() {
                     )}
                   </div>
                 </div>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-xs text-slate-400 font-black border-b border-slate-100">
-                      <th className="px-4 py-2 text-right">الحساب</th>
-                      <th className="px-4 py-2 text-right">البيان</th>
-                      <th className="px-4 py-2 text-left">مدين</th>
-                      <th className="px-4 py-2 text-left">دائن</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(e.lines || []).map((l) => (
-                      <tr key={l.id} className="border-b border-slate-50 last:border-0">
-                        <td className="px-4 py-2">
-                          <span className="font-mono text-xs text-slate-400">{l.account_code}</span>{' '}
-                          <span className="font-bold text-slate-700">{l.account_name}</span>
+                <div className="overflow-x-auto -mx-1 px-1">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-slate-400 font-black border-b border-slate-100">
+                        <th className="px-4 py-2 text-right">الحساب</th>
+                        <th className="px-4 py-2 text-right">البيان</th>
+                        <th className="px-4 py-2 text-left">مدين</th>
+                        <th className="px-4 py-2 text-left">دائن</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(e.lines || []).map((l) => (
+                        <tr key={l.id} className="border-b border-slate-50 last:border-0">
+                          <td className="px-4 py-2">
+                            <span className="font-mono text-xs text-slate-400">
+                              {l.account_code}
+                            </span>{' '}
+                            <span className="font-bold text-slate-700">{l.account_name}</span>
+                          </td>
+                          <td className="px-4 py-2 text-slate-500 text-xs">
+                            {l.description || '—'}
+                          </td>
+                          <td className="px-4 py-2 text-left font-mono tabular-nums text-slate-800 font-bold">
+                            {l.debit
+                              ? l.debit.toLocaleString('en-US', { minimumFractionDigits: 2 })
+                              : '—'}
+                          </td>
+                          <td className="px-4 py-2 text-left font-mono tabular-nums text-slate-800 font-bold">
+                            {l.credit
+                              ? l.credit.toLocaleString('en-US', { minimumFractionDigits: 2 })
+                              : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr className="bg-slate-50 font-black text-xs">
+                        <td className="px-4 py-2" colSpan={2}>
+                          الإجمالي
                         </td>
-                        <td className="px-4 py-2 text-slate-500 text-xs">{l.description || '—'}</td>
-                        <td className="px-4 py-2 text-left font-mono tabular-nums text-slate-800 font-bold">
-                          {l.debit
-                            ? l.debit.toLocaleString('en-US', { minimumFractionDigits: 2 })
-                            : '—'}
+                        <td className="px-4 py-2 text-left font-mono tabular-nums">
+                          {(e.total_debit || 0).toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                          })}
                         </td>
-                        <td className="px-4 py-2 text-left font-mono tabular-nums text-slate-800 font-bold">
-                          {l.credit
-                            ? l.credit.toLocaleString('en-US', { minimumFractionDigits: 2 })
-                            : '—'}
+                        <td className="px-4 py-2 text-left font-mono tabular-nums">
+                          {(e.total_credit || 0).toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                          })}
                         </td>
                       </tr>
-                    ))}
-                    <tr className="bg-slate-50 font-black text-xs">
-                      <td className="px-4 py-2" colSpan={2}>
-                        الإجمالي
-                      </td>
-                      <td className="px-4 py-2 text-left font-mono tabular-nums">
-                        {(e.total_debit || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-4 py-2 text-left font-mono tabular-nums">
-                        {(e.total_credit || 0).toLocaleString('en-US', {
-                          minimumFractionDigits: 2,
-                        })}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             );
           })
@@ -405,77 +413,79 @@ export default function JournalPage() {
             </div>
 
             <div className="border border-slate-200 rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 text-xs text-slate-500 font-black border-b border-slate-200">
-                    <th className="px-3 py-2 text-right w-2/5">الحساب</th>
-                    <th className="px-3 py-2 text-right">البيان</th>
-                    <th className="px-3 py-2 text-left w-28">مدين</th>
-                    <th className="px-3 py-2 text-left w-28">دائن</th>
-                    <th className="w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((l, i) => (
-                    <tr key={i} className="border-b border-slate-50 last:border-0">
-                      <td className="px-3 py-1.5">
-                        <select
-                          value={l.account_id}
-                          onChange={(e) => setLine(i, { account_id: e.target.value })}
-                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold bg-white"
-                        >
-                          <option value="">— اختر الحساب —</option>
-                          {leafAccounts.map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.code} — {a.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-3 py-1.5">
-                        <input
-                          value={l.description}
-                          onChange={(e) => setLine(i, { description: e.target.value })}
-                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
-                        />
-                      </td>
-                      <td className="px-3 py-1.5">
-                        <input
-                          type="number"
-                          min="0"
-                          value={l.debit || ''}
-                          onChange={(e) =>
-                            setLine(i, { debit: Number(e.target.value) || 0, credit: 0 })
-                          }
-                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-mono text-left"
-                          dir="ltr"
-                        />
-                      </td>
-                      <td className="px-3 py-1.5">
-                        <input
-                          type="number"
-                          min="0"
-                          value={l.credit || ''}
-                          onChange={(e) =>
-                            setLine(i, { credit: Number(e.target.value) || 0, debit: 0 })
-                          }
-                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-mono text-left"
-                          dir="ltr"
-                        />
-                      </td>
-                      <td className="px-1 py-1.5">
-                        <button
-                          onClick={() => removeLine(i)}
-                          className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-400"
-                          title="حذف السطر"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </td>
+              <div className="overflow-x-auto -mx-1 px-1">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-xs text-slate-500 font-black border-b border-slate-200">
+                      <th className="px-3 py-2 text-right w-2/5">الحساب</th>
+                      <th className="px-3 py-2 text-right">البيان</th>
+                      <th className="px-3 py-2 text-left w-28">مدين</th>
+                      <th className="px-3 py-2 text-left w-28">دائن</th>
+                      <th className="w-10"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {lines.map((l, i) => (
+                      <tr key={i} className="border-b border-slate-50 last:border-0">
+                        <td className="px-3 py-1.5">
+                          <select
+                            value={l.account_id}
+                            onChange={(e) => setLine(i, { account_id: e.target.value })}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold bg-white"
+                          >
+                            <option value="">— اختر الحساب —</option>
+                            {leafAccounts.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.code} — {a.name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <input
+                            value={l.description}
+                            onChange={(e) => setLine(i, { description: e.target.value })}
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                          />
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <input
+                            type="number"
+                            min="0"
+                            value={l.debit || ''}
+                            onChange={(e) =>
+                              setLine(i, { debit: Number(e.target.value) || 0, credit: 0 })
+                            }
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-mono text-left"
+                            dir="ltr"
+                          />
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <input
+                            type="number"
+                            min="0"
+                            value={l.credit || ''}
+                            onChange={(e) =>
+                              setLine(i, { credit: Number(e.target.value) || 0, debit: 0 })
+                            }
+                            className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-mono text-left"
+                            dir="ltr"
+                          />
+                        </td>
+                        <td className="px-1 py-1.5">
+                          <button
+                            onClick={() => removeLine(i)}
+                            className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-400"
+                            title="حذف السطر"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               <button
                 onClick={addLine}
                 className="w-full py-2 text-xs font-black text-blue-600 hover:bg-blue-50 flex items-center justify-center gap-1.5 border-t border-slate-100"

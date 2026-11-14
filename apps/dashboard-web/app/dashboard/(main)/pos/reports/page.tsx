@@ -268,7 +268,7 @@ const POSReportsPage: React.FC = () => {
       ) : (
         <div className="space-y-4">
           {/* KPI cards */}
-          <div className="grid grid-cols-3 gap-2 md:gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3">
             <div className="p-3 md:p-4 rounded-2xl bg-cyan-50 border border-cyan-100">
               <div className="w-8 h-8 rounded-xl bg-cyan-100 flex items-center justify-center mb-2">
                 <DollarSign size={16} className="text-cyan-600" />
@@ -335,7 +335,7 @@ const POSReportsPage: React.FC = () => {
                 <Clock size={14} />
                 {isArabic ? 'ملخص الورديات' : 'Shifts Summary'}
               </h4>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 <div className="text-center">
                   <div className="text-[10px] text-blue-500 font-black">
                     {isArabic ? 'الإجمالي' : 'Total'}

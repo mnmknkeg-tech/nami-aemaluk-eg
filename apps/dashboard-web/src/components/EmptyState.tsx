@@ -52,7 +52,7 @@ export default function EmptyState({
   secondaryAction,
 }: EmptyStateProps) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
       <div className="flex justify-center mb-4">{icon || iconMap.default}</div>
       <h3 className="text-lg font-bold text-slate-900 mb-2">{title}</h3>
       <p className="text-slate-400 font-medium text-sm mb-6 max-w-md mx-auto">{description}</p>

@@ -110,7 +110,7 @@ export default function CreditLimitsPage() {
     >
       {/* هيدر موحد: عنوان + وصف — الإجراءات في الطرف المقابل */}
       <div className="bg-white border-b border-slate-200">
-        <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-slate-900">حدود الائتمان</h1>

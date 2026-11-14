@@ -322,7 +322,7 @@ export default function QRCodePage() {
           <div className="w-10 h-10 border-4 border-slate-200 border-t-[#00E5FF] rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
           <QrCode size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-slate-400 font-bold text-sm">لا توجد منتجات حالياً</p>
         </div>

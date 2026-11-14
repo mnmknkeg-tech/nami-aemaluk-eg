@@ -44,7 +44,7 @@ export default function CourierOrdersPage() {
           <h1 className="text-2xl font-black text-slate-900">طلبات التوصيل</h1>
         </div>
         {orders.length === 0 ? (
-          <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center">
+          <div className="bg-white border border-slate-100 rounded-2xl p-6 sm:p-8 md:p-12 text-center">
             <MapPin size={32} className="mx-auto mb-3 text-slate-300" />
             <p className="text-slate-400 font-bold text-sm">لا توجد طلبات حالياً</p>
           </div>

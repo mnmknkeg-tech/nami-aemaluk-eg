@@ -749,7 +749,7 @@ function OffersPageContent() {
               </button>
             </div>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">
                     الاسم (إنجليزي)
@@ -775,7 +775,7 @@ function OffersPageContent() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">النوع</label>
                   <select
@@ -816,7 +816,7 @@ function OffersPageContent() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">
                     الحد الأدنى للطلب
@@ -844,7 +844,7 @@ function OffersPageContent() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">تاريخ البدء</label>
                   <input
@@ -921,7 +921,7 @@ function OffersPageContent() {
               </button>
             </div>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">كود الكوبون</label>
                   <input
@@ -943,7 +943,7 @@ function OffersPageContent() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">نوع الخصم</label>
                   <select
@@ -981,7 +981,7 @@ function OffersPageContent() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">الحد الأدنى</label>
                   <input
@@ -1017,7 +1017,7 @@ function OffersPageContent() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">تاريخ البدء</label>
                   <input
@@ -1081,7 +1081,7 @@ function OffersPageContent() {
               </button>
             </div>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">
                     اسم الموسم / العرض
@@ -1105,7 +1105,7 @@ function OffersPageContent() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">نوع الخصم</label>
                   <select
@@ -1139,7 +1139,7 @@ function OffersPageContent() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">تاريخ البدء</label>
                   <input

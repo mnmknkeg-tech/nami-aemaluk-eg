@@ -56,7 +56,7 @@ export default function PosSignatureModal({
               height={200}
               className="w-full bg-white border-2 border-slate-200 rounded-2xl touch-none"
             />
-            <div className="grid grid-cols-3 gap-2 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
               <button
                 type="button"
                 onClick={onClear}

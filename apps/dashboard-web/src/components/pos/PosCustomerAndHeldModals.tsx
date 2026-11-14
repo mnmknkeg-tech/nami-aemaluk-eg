@@ -75,7 +75,7 @@ export default function PosCustomerAndHeldModals({
             animate={{ opacity: 1, scale: 1 }}
             className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/20 backdrop-blur-sm"
           >
-            <div className="bg-white rounded-[3rem] p-12 text-center shadow-2xl">
+            <div className="bg-white rounded-[3rem] p-6 sm:p-8 md:p-12 text-center shadow-2xl">
               <CheckCircle2 size={64} className="text-green-500 mx-auto mb-4" />
               <h3 className="text-2xl font-black">{isArabic ? 'تم بنجاح!' : 'Success!'}</h3>
             </div>

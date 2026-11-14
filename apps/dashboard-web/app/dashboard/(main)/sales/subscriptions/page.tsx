@@ -392,7 +392,7 @@ export default function SalesSubscriptionsPage() {
           <Loader2 className="animate-spin text-slate-300" size={32} />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
           <Repeat size={48} className="mx-auto mb-3 text-slate-200" />
           <p className="text-slate-400 font-bold text-sm">لا توجد اشتراكات</p>
         </div>

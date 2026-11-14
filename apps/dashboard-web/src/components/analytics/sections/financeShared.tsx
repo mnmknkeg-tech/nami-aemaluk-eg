@@ -302,7 +302,7 @@ export function SectionSkeleton() {
 
 export function EmptyCard({ title = 'لا توجد بيانات', hint }: { title?: string; hint?: string }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+    <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
       <Inbox size={32} className="mx-auto mb-3 text-slate-300" />
       <p className="text-slate-400 font-bold text-sm">{title}</p>
       {hint && <p className="text-slate-400 text-xs mt-1.5 font-semibold">{hint}</p>}

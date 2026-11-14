@@ -131,7 +131,7 @@ export default function BranchesPage() {
           <Loader2 size={24} className="animate-spin text-slate-300" />
         </div>
       ) : branches.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
           <Building2 size={48} className="text-slate-200 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-slate-900 mb-2">لا توجد فروع مسجلة بعد</h3>
           <p className="text-slate-400 font-medium text-sm mb-6 max-w-md mx-auto">

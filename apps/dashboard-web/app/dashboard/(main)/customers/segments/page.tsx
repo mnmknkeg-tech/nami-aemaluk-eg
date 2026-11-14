@@ -541,7 +541,7 @@ export default function CustomerSegmentsPage() {
                     </div>
                   </div>
                   <p className="text-sm text-slate-600 mb-3">{segment.description}</p>
-                  <div className="grid grid-cols-3 gap-4 mb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
                     <div className="flex items-center gap-2">
                       <Users size={16} className="text-slate-400" />
                       <span className="text-sm text-slate-600">{segment.customerCount} عميل</span>
@@ -644,7 +644,7 @@ export default function CustomerSegmentsPage() {
                   className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold focus:outline-none focus:border-slate-400 resize-none"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">أقل إنفاق</label>
                   <input
@@ -664,7 +664,7 @@ export default function CustomerSegmentsPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">أقل طلبات</label>
                   <input
@@ -684,7 +684,7 @@ export default function CustomerSegmentsPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">
                     أقل نقاط ولاء
@@ -773,7 +773,7 @@ export default function CustomerSegmentsPage() {
                   className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold focus:outline-none focus:border-slate-400 resize-none"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1">أقل إنفاق</label>
                   <input

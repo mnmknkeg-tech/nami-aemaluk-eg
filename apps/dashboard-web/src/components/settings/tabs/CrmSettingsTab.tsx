@@ -116,7 +116,7 @@ export default function CrmSettingsTab({ shop, onSaved }: CrmSettingsTabProps) {
     value: boolean;
     onChange: (v: boolean) => void;
   }) => (
-    <div className="flex items-center justify-between gap-4 py-3.5 border-b border-slate-50 last:border-0">
+    <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 py-3.5 border-b border-slate-50 last:border-0">
       <div className="min-w-0">
         <div className="font-bold text-sm text-slate-900">{title}</div>
         {desc && <div className="text-xs text-slate-400 font-medium mt-0.5">{desc}</div>}
@@ -252,7 +252,7 @@ export default function CrmSettingsTab({ shop, onSaved }: CrmSettingsTabProps) {
             </div>
           )}
 
-          <div className="flex items-center justify-between gap-4 pt-2 border-t border-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 pt-2 border-t border-slate-100">
             <div>
               <Label className="font-bold text-sm text-slate-900">
                 إغلاق التذاكر غير النشطة تلقائيًا

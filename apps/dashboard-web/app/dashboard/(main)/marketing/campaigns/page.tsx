@@ -629,7 +629,7 @@ function CampaignsPage() {
             </div>
             <div className="space-y-5">
               {/* الأساسيات */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">
                     اسم الحملة (إنجليزي)
@@ -695,7 +695,7 @@ function CampaignsPage() {
               </div>
 
               {/* الجمهور — من نظام العملاء */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 flex items-center gap-1.5 block">
                     <Users size={14} className="text-slate-400" />
@@ -762,7 +762,7 @@ function CampaignsPage() {
                 <label className="text-sm font-bold text-slate-700 mb-1.5 block">
                   قنوات الحملة (اختر واحدة أو أكثر)
                 </label>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
                   {CHANNELS.map((ch) => {
                     const Icon = ch.icon;
                     const active = form.channels.includes(ch.id);
@@ -802,7 +802,7 @@ function CampaignsPage() {
               </div>
 
               {/* المحتوى */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 flex items-center gap-1.5 block">
                     <LinkIcon size={13} className="text-slate-400" />
@@ -855,7 +855,7 @@ function CampaignsPage() {
               </div>
 
               {/* الجدولة + الميزانية */}
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="text-sm font-bold text-slate-700 mb-1 block">
                     تاريخ البداية

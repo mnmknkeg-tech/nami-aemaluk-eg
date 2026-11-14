@@ -475,7 +475,7 @@ export default function ChatsPage() {
           </>
         }
       >
-        <div className="hidden md:block overflow-x-auto touch-auto rounded-xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto touch-auto rounded-xl border border-slate-200 bg-white">
           <table className="w-full text-right border-collapse min-w-[1400px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">

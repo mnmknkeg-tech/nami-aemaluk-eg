@@ -404,7 +404,7 @@ function ProductsPageContent() {
     >
       {/* هيدر بنفس هيكل قائمة الطلبات: عنوان + وصف — الإجراءات في الطرف المقابل */}
       <div className="bg-white border-b border-slate-200">
-        <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-slate-900">المنتجات</h1>
@@ -476,7 +476,7 @@ function ProductsPageContent() {
                   disabled={products.length === 0}
                   sheetName="المنتجات"
                 />
-                <div className="relative hidden lg:block">
+                <div className="relative">
                   <button
                     onClick={() => setTemplateMenuOpen((v) => !v)}
                     className="h-10 px-4 rounded-full border border-slate-200 bg-white text-[12px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5"
@@ -699,7 +699,7 @@ function ProductsPageContent() {
                 <div className="w-10 h-10 border-4 border-slate-200 border-t-[#00E5FF] rounded-full animate-spin" />
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+              <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
                 <Package size={32} className="mx-auto mb-3 text-slate-300" />
                 <p className="text-slate-400 font-bold text-sm">لا توجد منتجات</p>
               </div>

@@ -286,7 +286,7 @@ export default function SettingsShell({ shop, onSaved }: SettingsShellProps) {
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-row-reverse">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 flex-row-reverse">
         <div className="flex items-center gap-4 flex-row-reverse">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0284C7] to-[#00B4D8] text-white flex items-center justify-center shrink-0 shadow-md shadow-[#0284C7]/20">
             <SettingsIcon size={24} className="text-white" />

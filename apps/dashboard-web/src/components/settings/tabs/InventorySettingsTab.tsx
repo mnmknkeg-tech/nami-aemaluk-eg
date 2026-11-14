@@ -113,7 +113,7 @@ export default function InventorySettingsTab({ shop, onSaved }: InventorySetting
     value: boolean;
     onChange: (v: boolean) => void;
   }) => (
-    <div className="flex items-center justify-between gap-4 py-3.5 border-b border-slate-50 last:border-0">
+    <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 py-3.5 border-b border-slate-50 last:border-0">
       <div className="min-w-0">
         <div className="font-bold text-sm text-slate-900">{title}</div>
         {desc && <div className="text-xs text-slate-400 font-medium mt-0.5">{desc}</div>}
@@ -163,7 +163,7 @@ export default function InventorySettingsTab({ shop, onSaved }: InventorySetting
           />
 
           {form.lowStockAlerts && (
-            <div className="flex items-center justify-between gap-4 pt-1 pb-3 border-b border-slate-50">
+            <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 pt-1 pb-3 border-b border-slate-50">
               <div>
                 <Label className="font-bold text-sm text-slate-900">
                   الحد الأدنى الافتراضي للكمية
@@ -229,7 +229,7 @@ export default function InventorySettingsTab({ shop, onSaved }: InventorySetting
             onChange={(v) => setForm((f) => ({ ...f, requirePoApproval: v }))}
           />
 
-          <div className="flex items-center justify-between gap-4 pt-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 pt-2">
             <div>
               <Label className="font-bold text-sm text-slate-900">
                 وحدة القياس الافتراضية للمنتجات

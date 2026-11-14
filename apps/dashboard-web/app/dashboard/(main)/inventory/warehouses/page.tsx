@@ -99,7 +99,7 @@ function WarehousesPageContent() {
     <div className="min-h-full bg-[#F4F5F7] text-slate-900" style={INV_PAGE_FONT}>
       {/* الهيدر */}
       <div className="bg-white border-b border-slate-200">
-        <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-slate-900">المخازن</h1>

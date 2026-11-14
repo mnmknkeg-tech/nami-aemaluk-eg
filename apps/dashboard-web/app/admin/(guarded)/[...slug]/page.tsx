@@ -7,7 +7,7 @@ import { Construction, LayoutDashboard } from 'lucide-react';
 export default function AdminCatchAll() {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm p-12 text-center max-w-md">
+      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6 sm:p-8 md:p-12 text-center max-w-md">
         <div className="w-16 h-16 mx-auto mb-6 rounded-3xl bg-amber-50 flex items-center justify-center">
           <Construction size={28} className="text-amber-600" />
         </div>

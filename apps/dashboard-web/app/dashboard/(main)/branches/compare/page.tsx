@@ -33,7 +33,7 @@ export default function BranchComparePage() {
       </div>
 
       {branches.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
           <GitBranch size={48} className="text-slate-200 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-slate-900 mb-2">لا توجد فروع للمقارنة</h3>
           <p className="text-slate-400 font-medium text-sm">

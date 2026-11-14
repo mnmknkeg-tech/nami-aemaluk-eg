@@ -457,11 +457,13 @@ export default function SettingsModal() {
             className="relative z-10 w-full max-w-5xl h-[88vh] max-h-[780px] bg-white rounded-3xl shadow-2xl border border-slate-100 flex flex-col md:flex-row overflow-hidden"
             data-settings-modal="true"
           >
-            {/* ── Inner Sidebar (Right side in RTL) ── */}
+            {/* ── Inner Sidebar (Right side in RTL) ──
+             * موبايل: الشريط الجانبي بينضغط لصف واحد بحث + شريط chips أفقي
+             * بدل قائمة طويلة تاكل نص شاشة الموبايل */}
             <div className="w-full md:w-64 lg:w-72 bg-slate-50/80 border-b md:border-b-0 md:border-l border-slate-100 flex flex-col shrink-0">
               {/* Sidebar Header */}
-              <div className="p-4 border-b border-slate-100/80 bg-white/60 shrink-0">
-                <div className="flex items-center gap-2 mb-3">
+              <div className="p-3 md:p-4 border-b border-slate-100/80 bg-white/60 shrink-0">
+                <div className="hidden md:flex items-center gap-2 mb-3">
                   <div className="w-7 h-7 rounded-lg bg-[#0284C7]/10 flex items-center justify-center text-[#0284C7]">
                     <SettingsIcon size={16} />
                   </div>
@@ -492,8 +494,8 @@ export default function SettingsModal() {
                 </div>
               </div>
 
-              {/* Sidebar Tabs List */}
-              <div className="flex-1 overflow-y-auto p-2.5 space-y-4 text-right">
+              {/* Sidebar Tabs List — vertical on md+, horizontal chips on mobile */}
+              <div className="hidden md:block flex-1 overflow-y-auto p-2.5 space-y-4 text-right">
                 {filteredCategories.length === 0 ? (
                   <div className="p-4 text-center text-xs text-slate-400 font-bold">
                     لا توجد نتائج مطابقة
@@ -535,6 +537,38 @@ export default function SettingsModal() {
                     </div>
                   ))
                 )}
+              </div>
+
+              {/* Mobile chips scroller — نفس نتائج البحث لكن صف أفقي واحد */}
+              <div className="md:hidden px-2.5 py-2 text-right">
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                  {filteredCategories.length === 0 ? (
+                    <div className="w-full py-1 text-center text-xs text-slate-400 font-bold">
+                      لا توجد نتائج مطابقة
+                    </div>
+                  ) : (
+                    filteredCategories
+                      .flatMap((cat) => cat.tabs)
+                      .map((tab) => {
+                        const TabIcon = tab.icon;
+                        const active = state.tab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => setTab(tab.id)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 transition-all ${
+                              active
+                                ? 'bg-[#0284C7] text-white shadow-sm'
+                                : 'bg-white text-slate-600 border border-slate-200/80'
+                            }`}
+                          >
+                            <TabIcon size={13} className="shrink-0" />
+                            <span>{tab.label}</span>
+                          </button>
+                        );
+                      })
+                  )}
+                </div>
               </div>
             </div>
 

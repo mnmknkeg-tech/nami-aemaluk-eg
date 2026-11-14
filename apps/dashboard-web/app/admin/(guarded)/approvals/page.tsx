@@ -223,7 +223,7 @@ export default function AdminApprovalsPage() {
                     onApprove={() => handleModuleApprove(String(r.id))}
                     onReject={() => handleModuleReject(String(r.id))}
                   >
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                       <div>
                         <h4 className="text-xl font-black text-slate-900">{shopName || 'متجر'}</h4>
                         <div className="text-slate-500 text-xs font-bold mt-1">

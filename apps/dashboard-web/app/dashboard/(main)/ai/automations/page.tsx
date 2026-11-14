@@ -569,17 +569,19 @@ export default function AiAutomationsPage() {
           <div className="w-10 h-10 border-4 border-slate-200 border-t-[#00E5FF] rounded-full animate-spin" />
         </div>
       ) : featureUnavailable ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
           <Zap size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-slate-400 font-bold text-sm">لا توجد أتمتة</p>
           <p className="text-slate-400 text-xs mt-2">
             ميزة أتمتة AI قيد التطوير — سيتم تفعيلها عند إضافة نقطة نهاية
-            <code className="mx-1 px-1 py-0.5 bg-slate-100 rounded font-mono">/ai/automations/shop/:id</code>
+            <code className="mx-1 px-1 py-0.5 bg-slate-100 rounded font-mono">
+              /ai/automations/shop/:id
+            </code>
             في الخادم.
           </p>
         </div>
       ) : paginatedData.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
           <Zap size={32} className="mx-auto mb-3 text-slate-300" />
           <p className="text-slate-400 font-bold text-sm">لا توجد أتمتة</p>
         </div>

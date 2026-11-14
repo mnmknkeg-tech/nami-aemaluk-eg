@@ -225,7 +225,7 @@ export function InvEmpty({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+    <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
       <Icon size={32} className="mx-auto mb-3 text-slate-300" />
       <p className="text-slate-400 font-bold text-sm">{title}</p>
       {children && <div className="mt-3">{children}</div>}
@@ -278,7 +278,7 @@ export function InventoryPage({
     <div className="min-h-full bg-[#F4F5F7] text-slate-900" style={INV_PAGE_FONT}>
       {/* شريط الهيدر — نفس هيكل المنتجات/الطلبات */}
       <div className="bg-white border-b border-slate-200">
-        <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-slate-900">{title}</h1>
@@ -294,7 +294,7 @@ export function InventoryPage({
             </div>
             {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
           </div>
-          <div className="flex items-center gap-2">{actions}</div>
+          <div className="flex flex-wrap items-center gap-2">{actions}</div>
         </div>
       </div>
 
@@ -380,7 +380,7 @@ export function InventoryPage({
             <div className="w-10 h-10 border-4 border-slate-200 border-t-[#00E5FF] rounded-full animate-spin" />
           </div>
         ) : empty ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
             {empty}
           </div>
         ) : (
@@ -396,30 +396,39 @@ export function InventoryPage({
 
 export type InvColumn = { label: string; className: string };
 
-/** بطاقة الجدول — هيدر grid-cols-12 وصفوف بنفس النظام */
+/** بطاقة الجدول — هيدر grid-cols-12 وصفوف بنفس النظام.
+ * موبايل: الجدول كله (هيدر + صفوف) يلف في overflow-x-auto مع min-width
+ * بدل ما الأعمدة تنضغط/تتقص — العنوان ظاهر أثناء السحب.
+ * الجداول العريضة تبعت minWidthClass أكبر (مثال: min-w-[860px]). */
 export function InvTableCard({
   columns,
   headerExtra,
   children,
+  minWidthClass = 'min-w-[640px]',
 }: {
   columns: InvColumn[];
   headerExtra?: React.ReactNode;
   children: React.ReactNode;
+  minWidthClass?: string;
 }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="hidden md:grid grid-cols-12 px-4 py-3 bg-slate-50 border-b border-slate-200">
-        {headerExtra}
-        {columns.map((c) => (
-          <div
-            key={c.label}
-            className={`${c.className} text-right text-xs font-bold text-slate-500`}
-          >
-            {c.label}
+      <div className="overflow-x-auto">
+        <div className={minWidthClass}>
+          <div className="grid grid-cols-12 px-4 py-3 bg-slate-50 border-b border-slate-200">
+            {headerExtra}
+            {columns.map((c) => (
+              <div
+                key={c.label}
+                className={`${c.className} text-right text-xs font-bold text-slate-500`}
+              >
+                {c.label}
+              </div>
+            ))}
           </div>
-        ))}
+          {children}
+        </div>
       </div>
-      {children}
     </div>
   );
 }

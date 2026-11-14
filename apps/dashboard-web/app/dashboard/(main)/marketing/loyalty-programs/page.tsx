@@ -1957,7 +1957,7 @@ function LoyaltyProgramsContent() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Toggle Points */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-4">
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                 <div>
                   <div className="flex items-center gap-2">
                     <Coins size={16} className="text-amber-600" />
@@ -1992,7 +1992,7 @@ function LoyaltyProgramsContent() {
               </div>
 
               {/* Toggle Cards */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-4">
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
                 <div>
                   <div className="flex items-center gap-2">
                     <CreditCard size={16} className="text-purple-600" />

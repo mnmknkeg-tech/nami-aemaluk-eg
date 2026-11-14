@@ -475,7 +475,7 @@ export default function CustomerProfilePage() {
   if (notFound || !customer) {
     return (
       <div className="min-h-screen bg-[#F4F5F7] p-6 flex items-center justify-center">
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center max-w-md w-full shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 md:p-12 text-center max-w-md w-full shadow-sm">
           <AlertTriangle size={36} className="mx-auto mb-3 text-amber-500" />
           <h2 className="text-base font-bold text-slate-900 mb-1">العميل غير موجود</h2>
           <p className="text-xs text-slate-400 mb-4">قد يكون تم حذفه أو أن الرابط غير صحيح</p>
@@ -498,7 +498,7 @@ export default function CustomerProfilePage() {
     >
       {/* هيدر الصفحة — سهم الرجوع لقائمة العملاء كالصورة 2 + أزرار التعديل والحذف */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
-        <div className="px-4 sm:px-6 py-4 max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 py-4 max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           {/* الجانب الأيمن: سهم الرجوع الدائري + عنوان تفاصيل العميل */}
           <div className="flex items-center gap-3">
             <Link

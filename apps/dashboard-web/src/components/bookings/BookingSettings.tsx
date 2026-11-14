@@ -96,7 +96,7 @@ export function BookingSettings() {
 
         {/* Save Bar — التاب الجديد فيه زرار حفظه الخاص */}
         {activeSettingsTab !== 'booking-queue' && activeSettingsTab !== 'booking-activities' && (
-          <div className="mt-8 pt-5 border-t border-slate-100 flex items-center justify-between gap-4">
+          <div className="mt-8 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
             <div className="text-xs text-slate-400 font-medium">
               يتم تطبيق التغييرات فور حفظ الإعدادات على جميع الحجوزات والموقع العام.
             </div>
@@ -392,7 +392,7 @@ function QueueDoctorsSettings() {
       </div>
 
       {/* Save bar */}
-      <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-4">
+      <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div className="text-xs font-medium">
           {saveState === 'error' ? (
             <span className="text-red-600 flex items-center gap-1.5">
@@ -597,7 +597,7 @@ function ActivitiesSettings() {
         </div>
       )}
 
-      <div className="pt-5 border-t border-slate-100 flex items-center justify-between gap-4">
+      <div className="pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div className="text-xs text-slate-400 font-medium">
           بتطبق فورًا على أجندة الحجوزات ونموذج الإضافة اليدوية بعد الحفظ.
         </div>

@@ -201,53 +201,63 @@ function IncomeView({
         <div className="px-4 py-3 bg-emerald-50 border-b border-emerald-100 font-black text-emerald-800 text-sm">
           الإيرادات ({income.from_date} → {income.to_date})
         </div>
-        <table className="w-full">
-          <tbody>
-            {income.revenue?.length ? (
-              income.revenue.map((l) => <LineRow key={l.code} l={l} color="text-emerald-700" />)
-            ) : (
-              <tr>
-                <td colSpan={3} className="px-3 py-8 text-center text-slate-400 font-bold text-sm">
-                  لا إيرادات في الفترة
+        <div className="overflow-x-auto -mx-1 px-1">
+          <table className="w-full">
+            <tbody>
+              {income.revenue?.length ? (
+                income.revenue.map((l) => <LineRow key={l.code} l={l} color="text-emerald-700" />)
+              ) : (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="px-3 py-8 text-center text-slate-400 font-bold text-sm"
+                  >
+                    لا إيرادات في الفترة
+                  </td>
+                </tr>
+              )}
+              <tr className="bg-emerald-50 font-black">
+                <td className="px-3 py-2.5" colSpan={2}>
+                  إجمالي الإيرادات
+                </td>
+                <td className="px-3 py-2.5 text-left font-mono tabular-nums text-emerald-800">
+                  {fmt(income.total_revenue)}
                 </td>
               </tr>
-            )}
-            <tr className="bg-emerald-50 font-black">
-              <td className="px-3 py-2.5" colSpan={2}>
-                إجمالي الإيرادات
-              </td>
-              <td className="px-3 py-2.5 text-left font-mono tabular-nums text-emerald-800">
-                {fmt(income.total_revenue)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <div className="px-4 py-3 bg-rose-50 border-b border-rose-100 font-black text-rose-800 text-sm">
           المصروفات
         </div>
-        <table className="w-full">
-          <tbody>
-            {income.expenses?.length ? (
-              income.expenses.map((l) => <LineRow key={l.code} l={l} color="text-rose-700" />)
-            ) : (
-              <tr>
-                <td colSpan={3} className="px-3 py-8 text-center text-slate-400 font-bold text-sm">
-                  لا مصروفات في الفترة
+        <div className="overflow-x-auto -mx-1 px-1">
+          <table className="w-full">
+            <tbody>
+              {income.expenses?.length ? (
+                income.expenses.map((l) => <LineRow key={l.code} l={l} color="text-rose-700" />)
+              ) : (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="px-3 py-8 text-center text-slate-400 font-bold text-sm"
+                  >
+                    لا مصروفات في الفترة
+                  </td>
+                </tr>
+              )}
+              <tr className="bg-rose-50 font-black">
+                <td className="px-3 py-2.5" colSpan={2}>
+                  إجمالي المصروفات
+                </td>
+                <td className="px-3 py-2.5 text-left font-mono tabular-nums text-rose-800">
+                  {fmt(income.total_expenses)}
                 </td>
               </tr>
-            )}
-            <tr className="bg-rose-50 font-black">
-              <td className="px-3 py-2.5" colSpan={2}>
-                إجمالي المصروفات
-              </td>
-              <td className="px-3 py-2.5 text-left font-mono tabular-nums text-rose-800">
-                {fmt(income.total_expenses)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
       <div
         className={`lg:col-span-2 rounded-2xl p-5 flex items-center justify-between border ${income.net_profit >= 0 ? 'bg-emerald-600 border-emerald-700' : 'bg-rose-600 border-rose-700'} text-white`}
@@ -277,90 +287,96 @@ function BalanceView({
           <div className="px-4 py-3 bg-blue-50 border-b border-blue-100 font-black text-blue-800 text-sm">
             الأصول (حتى {balance.as_of})
           </div>
-          <table className="w-full">
-            <tbody>
-              {balance.assets?.length ? (
-                balance.assets.map((l) => <LineRow key={l.code} l={l} />)
-              ) : (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="px-3 py-8 text-center text-slate-400 font-bold text-sm"
-                  >
-                    لا أصول
+          <div className="overflow-x-auto -mx-1 px-1">
+            <table className="w-full">
+              <tbody>
+                {balance.assets?.length ? (
+                  balance.assets.map((l) => <LineRow key={l.code} l={l} />)
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="px-3 py-8 text-center text-slate-400 font-bold text-sm"
+                    >
+                      لا أصول
+                    </td>
+                  </tr>
+                )}
+                <tr className="bg-blue-50 font-black">
+                  <td className="px-3 py-2.5" colSpan={2}>
+                    إجمالي الأصول
+                  </td>
+                  <td className="px-3 py-2.5 text-left font-mono tabular-nums text-blue-800">
+                    {fmt(balance.total_assets)}
                   </td>
                 </tr>
-              )}
-              <tr className="bg-blue-50 font-black">
-                <td className="px-3 py-2.5" colSpan={2}>
-                  إجمالي الأصول
-                </td>
-                <td className="px-3 py-2.5 text-left font-mono tabular-nums text-blue-800">
-                  {fmt(balance.total_assets)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 bg-amber-50 border-b border-amber-100 font-black text-amber-800 text-sm">
             الالتزامات
           </div>
-          <table className="w-full">
-            <tbody>
-              {balance.liabilities?.length ? (
-                balance.liabilities.map((l) => <LineRow key={l.code} l={l} />)
-              ) : (
-                <tr>
-                  <td
-                    colSpan={3}
-                    className="px-3 py-8 text-center text-slate-400 font-bold text-sm"
-                  >
-                    لا التزامات
+          <div className="overflow-x-auto -mx-1 px-1">
+            <table className="w-full">
+              <tbody>
+                {balance.liabilities?.length ? (
+                  balance.liabilities.map((l) => <LineRow key={l.code} l={l} />)
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="px-3 py-8 text-center text-slate-400 font-bold text-sm"
+                    >
+                      لا التزامات
+                    </td>
+                  </tr>
+                )}
+                <tr className="bg-amber-50 font-black">
+                  <td className="px-3 py-2.5" colSpan={2}>
+                    إجمالي الالتزامات
+                  </td>
+                  <td className="px-3 py-2.5 text-left font-mono tabular-nums text-amber-800">
+                    {fmt(balance.total_liabilities)}
                   </td>
                 </tr>
-              )}
-              <tr className="bg-amber-50 font-black">
-                <td className="px-3 py-2.5" colSpan={2}>
-                  إجمالي الالتزامات
-                </td>
-                <td className="px-3 py-2.5 text-left font-mono tabular-nums text-amber-800">
-                  {fmt(balance.total_liabilities)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 bg-purple-50 border-b border-purple-100 font-black text-purple-800 text-sm">
             حقوق الملكية
           </div>
-          <table className="w-full">
-            <tbody>
-              {balance.equity?.length
-                ? balance.equity.map((l) => <LineRow key={l.code} l={l} />)
-                : null}
-              <tr className="border-b border-slate-50">
-                <td className="px-3 py-2 font-mono text-xs text-slate-400 font-bold">—</td>
-                <td className="px-3 py-2 font-bold text-slate-700 text-sm">
-                  صافي ربح الفترة (متراكم)
-                </td>
-                <td
-                  className={`px-3 py-2 text-left font-mono tabular-nums font-bold text-sm ${balance.net_profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}
-                >
-                  {fmt(balance.net_profit)}
-                </td>
-              </tr>
-              <tr className="bg-purple-50 font-black">
-                <td className="px-3 py-2.5" colSpan={2}>
-                  إجمالي حقوق الملكية
-                </td>
-                <td className="px-3 py-2.5 text-left font-mono tabular-nums text-purple-800">
-                  {fmt(balance.total_equity)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="overflow-x-auto -mx-1 px-1">
+            <table className="w-full">
+              <tbody>
+                {balance.equity?.length
+                  ? balance.equity.map((l) => <LineRow key={l.code} l={l} />)
+                  : null}
+                <tr className="border-b border-slate-50">
+                  <td className="px-3 py-2 font-mono text-xs text-slate-400 font-bold">—</td>
+                  <td className="px-3 py-2 font-bold text-slate-700 text-sm">
+                    صافي ربح الفترة (متراكم)
+                  </td>
+                  <td
+                    className={`px-3 py-2 text-left font-mono tabular-nums font-bold text-sm ${balance.net_profit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}
+                  >
+                    {fmt(balance.net_profit)}
+                  </td>
+                </tr>
+                <tr className="bg-purple-50 font-black">
+                  <td className="px-3 py-2.5" colSpan={2}>
+                    إجمالي حقوق الملكية
+                  </td>
+                  <td className="px-3 py-2.5 text-left font-mono tabular-nums text-purple-800">
+                    {fmt(balance.total_equity)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
       <div
@@ -635,7 +651,7 @@ function CashflowView({ from, to }: { from: string; to: string }) {
 
   if (!hasData) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
         <p className="text-slate-400 font-bold text-sm">
           لا حركات نقدية في الفترة ({from || 'البداية'} → {to || 'اليوم'})
         </p>
@@ -690,35 +706,43 @@ function CashflowView({ from, to }: { from: string; to: string }) {
         <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 font-black text-slate-700 text-sm">
           تفصيل الأنشطة
         </div>
-        <table className="w-full">
-          <tbody>
-            <tr className="border-b border-slate-50">
-              <td className="px-4 py-3 font-bold text-slate-700 text-sm">التدفقات من التشغيل</td>
-              <td className="px-4 py-3 text-left font-mono tabular-nums font-bold text-sm text-slate-800">
-                {fmt(operating)}
-              </td>
-            </tr>
-            <tr className="border-b border-slate-50">
-              <td className="px-4 py-3 font-bold text-slate-700 text-sm">التدفقات من الاستثمار</td>
-              <td className="px-4 py-3 text-left font-mono tabular-nums font-bold text-sm text-slate-800">
-                {fmt(investing)}
-              </td>
-            </tr>
-            <tr className="border-b border-slate-50">
-              <td className="px-4 py-3 font-bold text-slate-700 text-sm">التدفقات من التمويل</td>
-              <td className="px-4 py-3 text-left font-mono tabular-nums font-bold text-sm text-slate-800">
-                {fmt(financing)}
-              </td>
-            </tr>
-            {operating === 0 && investing === 0 && financing === 0 && (
-              <tr>
-                <td colSpan={2} className="px-4 py-3 text-center text-slate-400 text-xs font-bold">
-                  تفصيل الأنشطة يكتمل عند تسجيل حركات أصول وتمويل — حاليًا التدفقات تشغيلية بالكامل
+        <div className="overflow-x-auto -mx-1 px-1">
+          <table className="w-full">
+            <tbody>
+              <tr className="border-b border-slate-50">
+                <td className="px-4 py-3 font-bold text-slate-700 text-sm">التدفقات من التشغيل</td>
+                <td className="px-4 py-3 text-left font-mono tabular-nums font-bold text-sm text-slate-800">
+                  {fmt(operating)}
                 </td>
               </tr>
-            )}
-          </tbody>
-        </table>
+              <tr className="border-b border-slate-50">
+                <td className="px-4 py-3 font-bold text-slate-700 text-sm">
+                  التدفقات من الاستثمار
+                </td>
+                <td className="px-4 py-3 text-left font-mono tabular-nums font-bold text-sm text-slate-800">
+                  {fmt(investing)}
+                </td>
+              </tr>
+              <tr className="border-b border-slate-50">
+                <td className="px-4 py-3 font-bold text-slate-700 text-sm">التدفقات من التمويل</td>
+                <td className="px-4 py-3 text-left font-mono tabular-nums font-bold text-sm text-slate-800">
+                  {fmt(financing)}
+                </td>
+              </tr>
+              {operating === 0 && investing === 0 && financing === 0 && (
+                <tr>
+                  <td
+                    colSpan={2}
+                    className="px-4 py-3 text-center text-slate-400 text-xs font-bold"
+                  >
+                    تفصيل الأنشطة يكتمل عند تسجيل حركات أصول وتمويل — حاليًا التدفقات تشغيلية
+                    بالكامل
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

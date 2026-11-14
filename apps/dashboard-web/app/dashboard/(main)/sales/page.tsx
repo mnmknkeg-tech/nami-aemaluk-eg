@@ -768,7 +768,7 @@ export default function SalesPage() {
     >
       {/* هيدر بسيط: عنوان + وصف — الإجراءات في الطرف المقابل */}
       <div className="bg-white border-b border-slate-200">
-        <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <h1 className="text-xl font-bold text-slate-900">قائمة الطلبات</h1>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -882,7 +882,7 @@ export default function SalesPage() {
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value as any)}
@@ -906,7 +906,7 @@ export default function SalesPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="hidden md:block h-10 px-3 rounded-full border border-slate-200 text-[12px] font-bold text-slate-600 bg-white focus:outline-none"
+                className="h-10 px-3 rounded-full border border-slate-200 text-[12px] font-bold text-slate-600 bg-white focus:outline-none"
               >
                 <option value="date">الأحدث أولاً</option>
                 <option value="amount">الأعلى قيمة</option>
@@ -1015,7 +1015,7 @@ export default function SalesPage() {
             <p className="text-[12px] font-bold text-slate-400">جاري تحميل الطلبات…</p>
           </div>
         ) : filteredOrders.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
             <Package2 size={32} className="mx-auto mb-3 text-slate-300" />
             <p className="text-slate-400 font-bold text-sm">لا توجد طلبات</p>
           </div>

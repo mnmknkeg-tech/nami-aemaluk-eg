@@ -23,7 +23,7 @@ export default function PagePlaceholder({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white border border-slate-100 rounded-3xl p-12 text-center max-w-2xl mx-auto"
+        className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 md:p-12 text-center max-w-2xl mx-auto"
       >
         <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
           <Icon size={32} className="text-amber-500" />

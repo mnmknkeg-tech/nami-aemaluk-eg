@@ -26,7 +26,7 @@ export default function AddProductPage() {
       style={{ fontFamily: "'Cairo','Tajawal',system-ui,sans-serif" }}
     >
       <div className="bg-white border-b border-slate-200">
-        <div className="px-4 sm:px-6 py-5 max-w-[900px] mx-auto flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 py-5 max-w-[900px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <h1 className="text-xl font-bold text-slate-900">إضافة منتج</h1>
             <p className="text-xs text-slate-400 mt-0.5">

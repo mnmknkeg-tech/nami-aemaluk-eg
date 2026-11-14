@@ -13,7 +13,7 @@ export default function NewCustomerPage() {
     >
       {/* هيدر موحد: سهم رجوع + عنوان */}
       <div className="bg-white border-b border-slate-200">
-        <div className="px-4 sm:px-6 py-4 max-w-[1100px] mx-auto flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 py-4 max-w-[1100px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-3">
             <Link
               href="/dashboard/customers"

@@ -431,7 +431,7 @@ function WalletsContent() {
   return (
     <div className="min-h-full bg-[#F4F5F7] text-slate-900" style={INV_PAGE_FONT}>
       <div className="bg-white border-b border-slate-200">
-        <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-slate-900">النقدية والبنوك والمحافظ</h1>
@@ -659,7 +659,7 @@ function WalletsContent() {
               const totalOut = detailMovements.reduce((s, m) => s + Number(m.line.credit || 0), 0);
               return (
                 <>
-                  <div className="grid grid-cols-4 gap-3 mb-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                     <div className="bg-slate-50 rounded-xl p-3">
                       <div className="text-[11px] font-bold text-slate-400">الرصيد الحالي</div>
                       <div

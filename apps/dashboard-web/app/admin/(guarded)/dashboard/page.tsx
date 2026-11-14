@@ -154,7 +154,7 @@ export default function AdminDashboardPage() {
       {fin && (
         <Link
           href="/admin/finance"
-          className="flex items-center justify-between gap-4 flex-wrap bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4 hover:bg-emerald-100 transition-colors"
+          className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-4 hover:bg-emerald-100 transition-colors"
         >
           <span className="flex items-center gap-2 text-emerald-800 font-black text-sm">
             <Wallet size={16} /> مالية المنصة

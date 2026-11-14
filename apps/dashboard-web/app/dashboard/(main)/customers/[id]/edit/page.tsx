@@ -63,7 +63,7 @@ export default function EditCustomerPage() {
       style={{ fontFamily: "'Cairo','Tajawal',system-ui,sans-serif" }}
     >
       <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
-        <div className="px-4 sm:px-6 py-4 max-w-[1100px] mx-auto flex items-center justify-between gap-4">
+        <div className="px-4 sm:px-6 py-4 max-w-[1100px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-3">
             <Link
               href={`/dashboard/customers/${customerId}`}
@@ -93,7 +93,7 @@ export default function EditCustomerPage() {
             <Loader2 size={24} className="animate-spin text-slate-300" />
           </div>
         ) : notFound || !initial ? (
-          <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+          <div className="bg-white border border-slate-200 rounded-xl p-6 sm:p-8 md:p-12 text-center">
             <p className="text-slate-400 font-bold text-sm">العميل غير موجود</p>
             <button
               onClick={() => router.push('/dashboard/customers')}
