@@ -32,6 +32,7 @@ import {
   Loader2,
   Save,
   Search,
+  Sparkles,
   Trash2,
   Wand2,
   X,
@@ -48,6 +49,8 @@ import {
   readWebsiteFile,
   writeWebsiteFile,
   type WebsiteFileEntry,
+  type Website,
+  type BuilderPage,
 } from '@ray-eg/shared/builder';
 
 const GROUPS: Array<{
@@ -88,13 +91,20 @@ const fileHint = (file: WebsiteFileEntry): string => {
   }
 };
 
-// ─── Quick CSS presets ────────────────────────────────────────────────────
-// One-click dramatic transformations for theme/global.css. Each preset is a
-// complete, safe CSS body (no external @import, no JS) that overrides theme
-// variables AND adds visible effects (animations, gradients, hover states) so
-// the merchant SEES the live-preview pipeline work the moment they click.
-// Apply replaces the current draft for the active CSS file; saving commits
-// it to history, publishing pushes it live — same Shopify preview-first flow.
+// ─── Quick CSS presets (additive enhancements) ────────────────────────────
+// Each preset is an ADDITIVE effect that layers ON TOP of the merchant's
+// current template — it does NOT override --ray-color-primary / accent /
+// background, so the chosen template keeps its identity. The preset only
+// adds shadows, transitions, typography tweaks, or animations that are
+// visible regardless of the underlying template.
+//
+// (Earlier rev shipped full-theme replacements like 'Neon Night' that wiped
+// the pharmacy template's green identity — merchant feedback: 'I picked a
+// template, I want to see changes ON the template, not from scratch'.)
+//
+// 'ابدأ من الصفر' is a SEPARATE action below the preset row: it clears the
+// website's components and CSS so the canvas becomes blank, then the merchant
+// builds via CSS — also handled here so the two flows live together.
 interface CssPreset {
   id: string;
   name: string;
@@ -105,148 +115,96 @@ interface CssPreset {
 
 const CSS_PRESETS: CssPreset[] = [
   {
-    id: 'test-connection',
-    name: 'اختبار المعاينة',
-    blurb: 'لو الكانفاس اتحول لأحمر يبقى الكود بيشتغل صح',
-    swatch: 'linear-gradient(135deg, #ef4444 0%, #facc15 100%)',
-    css: `/* اختبار اتصال المعاينة — لو الموقع اتحول لأحمر/أصفر يبقى الـ CSS شغال */
+    id: 'shadows-motion',
+    name: 'ظلال وحركات',
+    blurb: 'ظلال ناعمة + الأزرار بترتفع عند المرور عليها',
+    swatch: 'linear-gradient(135deg, rgba(99,102,241,0.6) 0%, rgba(168,85,247,0.6) 100%)',
+    css: `/* ظلال وحركات — طبقة فوق ثيمك الحالي، بلا تغيير الألوان */
 :root {
-  --ray-color-primary: #ef4444;
-  --ray-color-primary-hover: #dc2626;
-  --ray-color-accent: #facc15;
-  --ray-color-background: #fef2f2;
-  --ray-color-surface: #ffffff;
-  --ray-color-text-primary: #7f1d1d;
-}
-.ray-site-root h1,
-.ray-site-root h2 {
-  background: linear-gradient(90deg, #ef4444, #facc15);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.ray-site-root button {
-  background: #ef4444 !important;
-  color: #fff !important;
-  border: 3px solid #facc15 !important;
-}
-`,
-  },
-  {
-    id: 'pharmacy',
-    name: 'صيدلية احترافية',
-    blurb: 'أخضر طبي ناعم + ظلال + حركة عند المرور',
-    swatch: 'linear-gradient(135deg, #10b981 0%, #0ea5e9 100%)',
-    css: `/* ثيم الصيدلية الاحترافي */
-:root {
-  --ray-color-primary: #10b981;
-  --ray-color-primary-hover: #059669;
-  --ray-color-accent: #0ea5e9;
-  --ray-radius-sm: 8px;
-  --ray-radius-md: 14px;
-  --ray-radius-lg: 22px;
-  --ray-shadow-sm: 0 4px 10px rgba(16, 185, 129, 0.08);
-  --ray-shadow-md: 0 14px 32px rgba(16, 185, 129, 0.18);
-  --ray-shadow-lg: 0 28px 56px rgba(16, 185, 129, 0.25);
+  --ray-shadow-sm: 0 4px 10px rgba(15, 23, 42, 0.06);
+  --ray-shadow-md: 0 12px 28px rgba(15, 23, 42, 0.10);
+  --ray-shadow-lg: 0 24px 50px rgba(15, 23, 42, 0.14);
 }
 .ray-site-root { scroll-behavior: smooth; }
-.ray-site-root h1,
-.ray-site-root h2 { letter-spacing: -0.4px; }
 .ray-site-root button {
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 .ray-site-root button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 32px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.18);
 }
+.ray-site-root img {
+  transition: transform 0.25s ease;
+}
+.ray-site-root img:hover { transform: scale(1.02); }
 `,
   },
   {
-    id: 'neon-night',
-    name: 'نيون ليلي',
-    blurb: 'خلفية داكنة + أزرار متوهجة بنفسجي',
-    swatch: 'linear-gradient(135deg, #0b0b14 0%, #d946ef 100%)',
-    css: `/* ثيم النيون الليلي */
-:root {
-  --ray-color-primary: #d946ef;
-  --ray-color-primary-hover: #c026d3;
-  --ray-color-accent: #22d3ee;
-  --ray-color-background: #0b0b14;
-  --ray-color-surface: #15152a;
-  --ray-color-text-primary: #f5f5ff;
-  --ray-color-text-secondary: #c7c7e6;
-  --ray-color-border: rgba(255, 255, 255, 0.08);
-  --ray-shadow-md: 0 0 24px rgba(217, 70, 239, 0.35);
-  --ray-shadow-lg: 0 0 40px rgba(217, 70, 239, 0.5);
-}
-.ray-site-root {
-  background: radial-gradient(ellipse at top, #1a0b2e 0%, #0b0b14 60%);
-}
-.ray-site-root button {
-  box-shadow: 0 0 12px rgba(217, 70, 239, 0.4);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
-}
-.ray-site-root button:hover {
-  box-shadow: 0 0 28px rgba(217, 70, 239, 0.75);
-  transform: translateY(-1px);
-}
-`,
-  },
-  {
-    id: 'egyptian-warm',
-    name: 'دافئ مصري',
-    blurb: 'برتقالي صحراوي + أزرار دائرية + خلفية كريمي',
-    swatch: 'linear-gradient(135deg, #ea580c 0%, #facc15 100%)',
-    css: `/* ثيم دافئ مصري */
-:root {
-  --ray-color-primary: #ea580c;
-  --ray-color-primary-hover: #c2410c;
-  --ray-color-accent: #facc15;
-  --ray-color-background: #fffbeb;
-  --ray-color-surface: #ffffff;
-  --ray-radius-md: 16px;
-  --ray-radius-lg: 24px;
-  --ray-shadow-sm: 0 4px 10px rgba(234, 88, 12, 0.08);
-  --ray-shadow-md: 0 14px 28px rgba(234, 88, 12, 0.15);
-}
+    id: 'typography',
+    name: 'خطوط أنيقة',
+    blurb: 'تباعد بين الحروف + ارتفاع سطر مريح للقراءة',
+    swatch: 'linear-gradient(135deg, rgba(244,63,94,0.6) 0%, rgba(251,146,60,0.6) 100%)',
+    css: `/* خطوط أنيقة — تحسين القراءة دون تغيير الألوان */
 .ray-site-root h1,
-.ray-site-root h2 {
-  font-weight: 800;
-  letter-spacing: -0.3px;
+.ray-site-root h2,
+.ray-site-root h3 {
+  letter-spacing: -0.4px;
+  line-height: 1.15;
 }
+.ray-site-root p {
+  line-height: 1.8;
+  letter-spacing: 0.1px;
+}
+.ray-site-root { scroll-behavior: smooth; }
+`,
+  },
+  {
+    id: 'pill-buttons',
+    name: 'أزرار دائرية',
+    blurb: 'كل الأزرار بقت شكل دوائر (pill shape)',
+    swatch: 'linear-gradient(135deg, rgba(16,185,129,0.6) 0%, rgba(34,211,238,0.6) 100%)',
+    css: `/* أزرار دائرية — pill shape فوق كل الأزرار */
 .ray-site-root button {
   border-radius: 999px !important;
+  padding-inline: 1.5rem !important;
   transition: transform 0.18s ease;
 }
-.ray-site-root button:hover { transform: scale(1.04); }
+.ray-site-root button:hover { transform: scale(1.03); }
 `,
   },
   {
-    id: 'elegant',
-    name: 'كلاسيكي أنيق',
-    blurb: 'خطوط Serif + فراغات واسعة + ظلال ناعمة',
-    swatch: 'linear-gradient(135deg, #1f2937 0%, #9ca3af 100%)',
-    css: `/* ثيم كلاسيكي أنيق */
-:root {
-  --ray-font-heading: 'Playfair Display', 'Amiri', Georgia, serif;
-  --ray-font-body: 'Cairo', system-ui, sans-serif;
-  --ray-color-primary: #1f2937;
-  --ray-color-primary-hover: #111827;
-  --ray-color-accent: #b45309;
-  --ray-radius-sm: 2px;
-  --ray-radius-md: 4px;
-  --ray-radius-lg: 8px;
-  --ray-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
-  --ray-shadow-md: 0 8px 20px rgba(0, 0, 0, 0.06);
+    id: 'glass-surfaces',
+    name: 'تأثير زجاجي',
+    blurb: 'خلفيات شفافة مع blur ناعم على البطاقات',
+    swatch: 'linear-gradient(135deg, rgba(56,189,248,0.5) 0%, rgba(232,232,255,0.6) 100%)',
+    css: `/* تأثير زجاجي — glassmorphism على العناصر السطحية */
+.ray-site-root [class*="card"],
+.ray-site-root [class*="surface"],
+.ray-site-root section {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background-color: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+`,
+  },
+  {
+    id: 'entrance-animations',
+    name: 'حركات دخول',
+    blurb: 'العناوين بتظهر بـ fade-in-up ناعم عند فتح الصفحة',
+    swatch: 'linear-gradient(135deg, rgba(168,85,247,0.6) 0%, rgba(236,72,153,0.6) 100%)',
+    css: `/* حركات دخول — fade-in-up للعناوين والصور */
+@keyframes rayFadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .ray-site-root h1,
-.ray-site-root h2 {
-  letter-spacing: -0.5px;
-  line-height: 1.15;
-  font-weight: 700;
+.ray-site-root h2,
+.ray-site-root img {
+  animation: rayFadeInUp 0.55s ease-out both;
 }
-.ray-site-root p { line-height: 1.8; }
-.ray-site-root button { transition: background 0.2s ease; }
+.ray-site-root h2 { animation-delay: 0.1s; }
+.ray-site-root img { animation-delay: 0.2s; }
 `,
   },
 ];
@@ -447,6 +405,58 @@ export const CodeEnvironment: React.FC = () => {
     },
     [activeFile, activePath, drafts, website, flash, flushDraftSync]
   );
+
+  // Start a brand-new site from scratch: clears all components and CSS from
+  // the current draft so the canvas becomes blank, then the merchant builds
+  // via CSS. The published version is untouched (this only edits the draft).
+  // Preserves shop identity (id, tenant, domain, activity) and theme so the
+  // merchant doesn't lose their account or domain — only the page content.
+  const handleStartFromScratch = useCallback(() => {
+    const ok = window.confirm(
+      'بدء موقع من الصفر؟ كل الأقسام والمكوّنات والكود في المسودة الحالية هيتمسحوا. ' +
+        'النسخة المنشورة على الإنترنت مش هتتأثر — بس الكانفاس هيفضي وتبدأ تاني. ' +
+        'تقدر تراجع (Undo) لو غلطت.'
+    );
+    if (!ok) return;
+    const now = new Date().toISOString();
+    const blankPage: BuilderPage = {
+      id: 'page_home',
+      name: 'الرئيسية',
+      slug: 'home',
+      rootNodeId: 'root_blank',
+      metadata: {
+        title: website.name || 'موقعي',
+        description: 'موقعي الجديد — ابدأ بإضافة الأقسام من القائمة الجانبية.',
+        slug: 'home',
+        isHomePage: true,
+      },
+      customHeadCode: '',
+      customBodyCode: '',
+      createdAt: now,
+      updatedAt: now,
+    };
+    const blankWebsite: Website = {
+      ...website,
+      pages: [blankPage],
+      components: {},
+      globalHeaderId: undefined,
+      globalFooterId: undefined,
+      settings: {
+        ...(website.settings || {}),
+        branding: { ...(website.settings?.branding || {}), customCss: '' },
+      },
+    };
+    // Drop any pending code drafts so the canvas shows the truly blank state.
+    Object.keys(drafts).forEach((path) => setCodeDraftFile(path, null));
+    pendingSyncRef.current.clear();
+    setDrafts({});
+    recordHistory('بدء موقع من الصفر', blankWebsite);
+    setActivePath('theme/global.css');
+    flash(
+      'ok',
+      'بدأنا من الصفر — الكانفاس فاضي دلوقتي. اكتب CSS أو أضف أقسام من القائمة الجانبية.'
+    );
+  }, [website, drafts, recordHistory, setCodeDraftFile, flash]);
 
   const handleDeleteFile = useCallback(
     (file: WebsiteFileEntry) => {
@@ -697,10 +707,11 @@ export const CodeEnvironment: React.FC = () => {
             </div>
           )}
 
-          {/* Quick CSS Presets — one-click dramatic transformations.
-              Only shown for CSS files; applying replaces the draft and
-              streams to the canvas immediately so the merchant sees the
-              change live. */}
+          {/* Quick CSS Presets — additive effects that layer ON TOP of the
+              merchant's current template (don't override primary colors, so
+              the chosen template keeps its identity). Only shown for CSS
+              files; applying replaces the draft and streams to the canvas
+              immediately so the merchant sees the change live. */}
           {activeFile?.language === 'css' && (
             <div
               className="flex shrink-0 flex-col gap-2 border-b border-slate-800 bg-slate-900/80 px-3 py-2.5"
@@ -708,7 +719,7 @@ export const CodeEnvironment: React.FC = () => {
             >
               <div className="flex items-center gap-2 text-[11px] font-bold text-cyan-300">
                 <Wand2 className="size-3.5" />
-                <span>قوالب جاهزة — اضغط وحد يطبّق فورًا على المعاينة</span>
+                <span>تأثيرات على القالب الحالي — طبقة فوق ثيمك، بلا تغيير الألوان</span>
               </div>
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {CSS_PRESETS.map((preset) => (
@@ -734,6 +745,26 @@ export const CodeEnvironment: React.FC = () => {
                     </span>
                   </button>
                 ))}
+              </div>
+
+              {/* Second row: destructive / reset actions, visually separated.
+                  'Start from scratch' wipes the page content so the merchant
+                  can build a brand new site via CSS — independent of any
+                  template. The published site is untouched (only the draft). */}
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-[10px] font-bold text-slate-500 shrink-0">خيارات:</span>
+                <button
+                  type="button"
+                  onClick={handleStartFromScratch}
+                  title="يمسح كل الأقسام والمكوّنات من المسودة — الكانفاس يفضل فاضي وتبدأ تكتب CSS من الصفر"
+                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-red-900 bg-red-950/40 px-2.5 py-1.5 text-[11px] font-bold text-red-300 hover:bg-red-900/50 hover:border-red-700 transition-colors cursor-pointer"
+                >
+                  <Sparkles className="size-3.5" />
+                  <span>ابدأ من الصفر</span>
+                </button>
+                <span className="text-[9px] text-slate-500 leading-tight">
+                  يمسح المسودة بس (المنشور زي ما هو) — تقدر تراجع Undo.
+                </span>
               </div>
             </div>
           )}
