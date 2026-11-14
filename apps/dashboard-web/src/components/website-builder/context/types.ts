@@ -155,6 +155,8 @@ export interface BuilderContextType {
   canRedo: boolean;
   undo: () => void;
   redo: () => void;
+  /** Record an arbitrary website mutation as one undoable history entry. */
+  recordHistory: (actionDesc: string, newWebsite: Website) => void;
   historyLog: string[];
   autosaveStatus: 'saved' | 'saving' | 'unsaved' | 'error';
   saveDraft: (manual?: boolean) => Promise<boolean>;
@@ -169,7 +171,7 @@ export interface BuilderContextType {
 
   // Publishing Pipeline
   publishingStatus: PublishingPipelineStatus;
-  runPublishPipeline: () => void;
+  runPublishPipeline: () => Promise<void>;
   publishedSiteUrl: string;
   /** Draft-vs-published badge state (what visitors see vs what the editor has). */
   publishState: BuilderPublishState;

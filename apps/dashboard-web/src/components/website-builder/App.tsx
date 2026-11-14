@@ -7,7 +7,7 @@ import { PublishModal } from './components/header/PublishModal';
 import { LeftSidebar } from './components/sidebar/LeftSidebar';
 import { CanvasArea } from './components/canvas/CanvasArea';
 import { RightInspector } from './components/inspector/RightInspector';
-import { CodeWorkspace } from './components/code/CodeWorkspace';
+import { CodeEnvironment } from './components/code/CodeEnvironment';
 import { AiAssistantModal } from './components/ai/AiAssistantModal';
 import { SecurePreview } from './components/preview/SecurePreview';
 import { DeveloperModeDrawer } from './components/dev/DeveloperModeDrawer';
@@ -86,8 +86,10 @@ const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = fal
         <RightInspector />
       </div>
 
-      {/* Bottom Scoped Code Workspace Dock — LOCAL-ONLY */}
-      {!HIDE_UNPUBLISHED && <CodeWorkspace />}
+      {/* Code environment — file-tree code workspace. Ships in production
+          (merchant-facing, like Shopify "Edit code") — the old bottom drawer
+          was dev-gated which is why its CSS button silently did nothing. */}
+      <CodeEnvironment />
 
       {/* Modals, Drawers & Overlays */}
       <PublishModal />

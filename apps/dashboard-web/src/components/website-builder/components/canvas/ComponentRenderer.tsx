@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   applyWebsiteBackgroundToPageRoot,
+  applyThemeVariables,
   computeThemeResponsiveNodeStyles,
   resolveWebsiteLinkDestination,
 } from '@ray-eg/shared/builder';
@@ -118,10 +119,15 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
   const isSelected = selectedNodeId === node.id && !isInteractivePreview;
   const isHovered = hoveredNodeId === node.id && !isSelected && !isInteractivePreview;
 
-  // Compute responsive styles merged by current breakpoint
+  // Compute responsive styles merged by current breakpoint. Theme tokens baked
+  // into node styles resolve to live CSS variables (parity with the published
+  // site renderer).
   const getComputedStyles = (): React.CSSProperties =>
     applyWebsiteBackgroundToPageRoot(
-      computeThemeResponsiveNodeStyles(node, currentViewport, website.theme?.typography),
+      applyThemeVariables(
+        computeThemeResponsiveNodeStyles(node, currentViewport, website.theme?.typography),
+        website.theme
+      ),
       node.id === activePage?.rootNodeId,
       website.settings?.background
     );

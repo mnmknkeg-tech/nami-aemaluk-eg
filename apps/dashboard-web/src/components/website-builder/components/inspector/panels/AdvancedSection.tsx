@@ -77,8 +77,12 @@ export const AdvancedSection: React.FC<AdvancedSectionProps> = ({
           <button
             type="button"
             disabled={!canEditCss}
-            aria-label="فتح محرر CSS للمكوّن المحدد"
-            title={canEditCss ? 'فتح ملف CSS للمكوّن المحدد' : 'وضع HTML فقط لا يسمح بتحرير CSS'}
+            aria-label="فتح بيئة الكود على ملف CSS لهذا العنصر"
+            title={
+              canEditCss
+                ? 'فتح بيئة الكود — ملف CSS الخاص بهذا العنصر'
+                : 'وضع HTML فقط لا يسمح بتحرير CSS'
+            }
             onClick={() => {
               setCodeActiveFile('styles.css');
               setIsCodeWorkspaceOpen(true);

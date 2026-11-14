@@ -819,6 +819,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         canRedo,
         undo,
         redo,
+        recordHistory,
         historyLog,
         autosaveStatus,
         saveDraft: saveDraftWithWebsite,

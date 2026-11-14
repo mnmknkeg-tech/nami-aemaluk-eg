@@ -417,13 +417,13 @@ export const TopBar: React.FC = () => {
                   <span>معاينة حية تفاعلية</span>
                 </button>
 
-                {/* Code Workspace IDE */}
+                {/* Code Environment — file-tree code workspace (Shopify "Edit code" model) */}
                 <button
                   onClick={() => setIsCodeWorkspaceOpen(!isCodeWorkspaceOpen)}
                   className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right"
                 >
                   <Code2 className="w-4 h-4 text-blue-600" />
-                  <span>محرر الكود (Code IDE)</span>
+                  <span>الكود — بيئة تحرير الملفات</span>
                 </button>
 
                 {/* Dev AST Drawer */}

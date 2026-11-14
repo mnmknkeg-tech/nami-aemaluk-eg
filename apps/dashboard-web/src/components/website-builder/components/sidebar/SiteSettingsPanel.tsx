@@ -8,17 +8,18 @@ import { FloatingActionsSection } from './settings/FloatingActionsSection';
 import { SeoSettingsSection } from './settings/SeoSettingsSection';
 import { CartSettingsSection } from './settings/CartSettingsSection';
 import { BackgroundSettingsSection } from './settings/BackgroundSettingsSection';
+import { BrandingSettingsSection } from './settings/BrandingSettingsSection';
 
 export const SiteSettingsPanel: React.FC = () => {
   const { website } = useBuilder();
   const settings: WebsiteSettings = website.settings || {};
 
   const [activeSection, setActiveSection] = useState<
-    'cart' | 'auth' | 'announcement' | 'floating' | 'seo' | 'background' | null
+    'cart' | 'auth' | 'announcement' | 'floating' | 'seo' | 'background' | 'branding' | null
   >('cart');
 
   const toggleSection = (
-    sec: 'cart' | 'auth' | 'announcement' | 'floating' | 'seo' | 'background'
+    sec: 'cart' | 'auth' | 'announcement' | 'floating' | 'seo' | 'background' | 'branding'
   ) => {
     setActiveSection(activeSection === sec ? null : sec);
   };
@@ -79,6 +80,13 @@ export const SiteSettingsPanel: React.FC = () => {
       <BackgroundSettingsSection
         isOpen={activeSection === 'background'}
         onToggle={() => toggleSection('background')}
+        settings={settings}
+      />
+
+      {/* 7. CSS المخصص العام (theme/global.css in the code environment) */}
+      <BrandingSettingsSection
+        isOpen={activeSection === 'branding'}
+        onToggle={() => toggleSection('branding')}
         settings={settings}
       />
     </div>

@@ -4,21 +4,17 @@ import { useBuilder } from '../../context/BuilderContext';
 import { ComponentRenderer } from './ComponentRenderer';
 import { SelectionOverlay } from './SelectionOverlay';
 import { ContextToolbar } from './ContextToolbar';
-import { PREVIEW_VIEWPORT_WIDTHS, SiteSkeleton, computeWebsiteBackgroundStyles } from '@ray-eg/shared/builder';
+import {
+  PREVIEW_VIEWPORT_WIDTHS,
+  SiteSkeleton,
+  computeWebsiteBackgroundStyles,
+  buildWebsiteStylesheet,
+} from '@ray-eg/shared/builder';
 import { FloatingCartButton } from '../cart/FloatingCartButton';
 import { CartDrawer } from '../cart/CartDrawer';
 
 export const CanvasArea: React.FC = () => {
-  const {
-    website,
-    activePage,
-    viewport,
-    zoom,
-    selectNode,
-    isRtl,
-    isThemeLoading,
-    isCodeWorkspaceOpen,
-  } = useBuilder();
+  const { website, activePage, viewport, zoom, selectNode, isRtl, isThemeLoading } = useBuilder();
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const previewFrameRef = useRef<HTMLIFrameElement>(null);
   const [previewFrameRoot, setPreviewFrameRoot] = useState<HTMLElement | null>(null);
@@ -65,7 +61,7 @@ export const CanvasArea: React.FC = () => {
     <main
       ref={canvasContainerRef}
       id="canvas_main_container"
-      className={`flex-1 h-[calc(100vh-3.5rem)] bg-slate-100/80 overflow-y-auto overflow-x-hidden sm:overflow-x-auto relative flex flex-col items-center min-h-0 transition-all ${isCodeWorkspaceOpen ? 'pb-[26rem]' : ''}`}
+      className={`flex-1 h-[calc(100vh-3.5rem)] bg-slate-100/80 overflow-y-auto overflow-x-hidden sm:overflow-x-auto relative flex flex-col items-center min-h-0 transition-all`}
       onClick={handleCanvasClick}
       style={{
         backgroundImage: 'radial-gradient(#cbd5e1 1.2px, transparent 1.2px)',
@@ -118,7 +114,7 @@ export const CanvasArea: React.FC = () => {
           {previewFrameRoot &&
             createPortal(
               <div
-                className="w-full min-h-[900px] flex flex-col overflow-x-hidden max-w-full relative"
+                className="ray-site-root w-full min-h-[900px] flex flex-col overflow-x-hidden max-w-full relative"
                 style={{
                   backgroundColor: website.theme?.colors?.background || '#ffffff',
                   color: website.theme?.colors?.textPrimary || '#0f172a',
@@ -127,6 +123,13 @@ export const CanvasArea: React.FC = () => {
                   ...computeWebsiteBackgroundStyles(website.settings?.background),
                 }}
               >
+                {/* Parity with the published site: theme variables + merchant
+                    site-wide CSS + per-component scoped CSS apply live in the
+                    canvas while editing in the code environment. */}
+                <style
+                  aria-label="merchant-custom-css-preview"
+                  dangerouslySetInnerHTML={{ __html: buildWebsiteStylesheet(website) }}
+                />
                 {isThemeLoading ? (
                   <SiteSkeleton
                     website={website}
