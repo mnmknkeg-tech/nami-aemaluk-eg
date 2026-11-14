@@ -35,7 +35,9 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
   overrideViewport,
 }) => {
   const {
-    website,
+    // Render from the PREVIEW composite (saved website + unsaved code drafts)
+    // so the canvas shows merchant code changes live, before saving.
+    previewWebsite: website,
     selectedNodeId,
     hoveredNodeId,
     selectNode,

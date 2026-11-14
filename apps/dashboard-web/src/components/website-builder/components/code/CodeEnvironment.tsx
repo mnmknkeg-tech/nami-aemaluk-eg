@@ -13,20 +13,23 @@
 //   • pages/<slug>/head|body.html → per-page injections
 //   • components/<name>--<id>.html|css|js → per-component sandboxed code
 //
-// Edits are kept as local drafts; "حفظ" applies them into builder history
-// (undoable, autosaved) and "حفظ ونشر" additionally runs the publish pipeline.
+// Shopify preview-first model: every keystroke streams (debounced) into
+// BuilderContext.codeDrafts, and the canvas renders the overlaid preview
+// website — merchants SEE changes live WITHOUT saving. "حفظ" commits the
+// drafts into builder history (undoable, autosaved). Publishing happens
+// from the normal external publish button; it commits pending drafts first.
 // ---------------------------------------------------------------------------
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Braces,
   Code2,
+  Eye,
   FileCode2,
   FileJson,
   FilePlus2,
   FileType2,
   Loader2,
-  Rocket,
   Save,
   Search,
   Trash2,
@@ -90,24 +93,47 @@ export const CodeEnvironment: React.FC = () => {
     setIsCodeWorkspaceOpen,
     codeActiveFile,
     website,
+    codeDrafts: contextDrafts,
+    setCodeDraftFile,
     selectedNodeId,
     selectedNode,
     activePage,
     recordHistory,
     insertNode,
-    runPublishPipeline,
     autosaveStatus,
   } = useBuilder();
 
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  // Local mirror of the drafts for instant typing; synced (debounced) into the
+  // context so the canvas preview picks changes up without any save. Seeded
+  // from the context so drafts made before (re)opening are shown and remain
+  // editable in place.
+  const [drafts, setDrafts] = useState<Record<string, string>>({ ...contextDrafts });
   const [activePath, setActivePath] = useState<string>('theme/global.css');
   const [search, setSearch] = useState('');
   const [notice, setNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
   const [createdNodeId, setCreatedNodeId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [publishing, setPublishing] = useState(false);
   const noticeTimerRef = useRef<number | null>(null);
   const initializedForOpenRef = useRef(false);
+  // Debounced streaming of drafts into the context (canvas live preview).
+  const pendingSyncRef = useRef<Map<string, string>>(new Map());
+  const syncTimerRef = useRef<number | null>(null);
+
+  const flushDraftSync = useCallback(() => {
+    if (syncTimerRef.current) {
+      window.clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
+    if (pendingSyncRef.current.size === 0) return;
+    pendingSyncRef.current.forEach((content, path) => setCodeDraftFile(path, content));
+    pendingSyncRef.current.clear();
+  }, [setCodeDraftFile]);
+
+  // Flush on unmount so closing the environment never drops pending edits —
+  // the preview keeps showing (and publishing commits) exactly what was typed.
+  useEffect(() => {
+    return () => flushDraftSync();
+  }, [flushDraftSync]);
 
   useEffect(() => {
     setMounted(true);
@@ -176,11 +202,19 @@ export const CodeEnvironment: React.FC = () => {
   const handleChange = useCallback(
     (value: string) => {
       setDrafts((prev) => ({ ...prev, [activePath]: value }));
+      // Stream into the context (debounced) → canvas preview updates live.
+      pendingSyncRef.current.set(activePath, value);
+      if (syncTimerRef.current) window.clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = window.setTimeout(() => {
+        syncTimerRef.current = null;
+        flushDraftSync();
+      }, 400);
     },
-    [activePath]
+    [activePath, flushDraftSync]
   );
 
   const applyDrafts = useCallback((): boolean => {
+    flushDraftSync();
     const paths = Object.keys(drafts);
     if (paths.length === 0) return true;
     let next = website;
@@ -204,7 +238,9 @@ export const CodeEnvironment: React.FC = () => {
         next
       );
     }
-    // Successful drafts are cleared; failed ones stay so nothing is lost.
+    // Successful drafts are cleared (locally AND from the context overlay —
+    // they are now the saved state); failed ones stay so nothing is lost.
+    applied.forEach((path) => setCodeDraftFile(path, null));
     setDrafts((prev) => {
       const remaining: Record<string, string> = {};
       paths.forEach((path) => {
@@ -213,27 +249,14 @@ export const CodeEnvironment: React.FC = () => {
       return remaining;
     });
     if (applied.length > 0 && failed.size === 0) {
-      flash('ok', 'تم تطبيق التعديلات على المسودة.');
+      flash('ok', 'تم تثبيت التعديلات — المعاينة بتعرضها، والنشر من زرار النشر.');
     }
     return failed.size === 0;
-  }, [drafts, website, recordHistory, flash]);
+  }, [drafts, website, recordHistory, flash, flushDraftSync, setCodeDraftFile]);
 
   const handleSaveDraft = useCallback(() => {
     applyDrafts();
   }, [applyDrafts]);
-
-  const handleSaveAndPublish = useCallback(async () => {
-    if (!applyDrafts()) return;
-    setPublishing(true);
-    try {
-      await runPublishPipeline();
-      flash('ok', 'تم حفظ التعديلات ونشرها على موقعك.');
-    } catch {
-      flash('error', 'تعذّر النشر — راجع اتصالك ثم أعد المحاولة.');
-    } finally {
-      setPublishing(false);
-    }
-  }, [applyDrafts, runPublishPipeline, flash]);
 
   const handleDeleteFile = useCallback(
     (file: WebsiteFileEntry) => {
@@ -243,6 +266,8 @@ export const CodeEnvironment: React.FC = () => {
       if (result?.changed) {
         recordHistory(`حذف كود (${file.label})`, result.website);
       }
+      pendingSyncRef.current.delete(file.path);
+      setCodeDraftFile(file.path, null);
       setDrafts((prev) => {
         const next = { ...prev };
         delete next[file.path];
@@ -251,7 +276,7 @@ export const CodeEnvironment: React.FC = () => {
       if (file.path === activePath) setActivePath('theme/global.css');
       flash('ok', 'تم مسح الكود.');
     },
-    [website, recordHistory, activePath, flash]
+    [website, recordHistory, activePath, flash, setCodeDraftFile]
   );
 
   const handleCreateComponent = useCallback(() => {
@@ -337,24 +362,20 @@ export const CodeEnvironment: React.FC = () => {
           <span className="hidden px-1 text-[10px] text-slate-400 lg:inline" aria-live="polite">
             {saveStateLabel}
           </span>
+          {isDirty && (
+            <span
+              className="hidden items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300 sm:flex"
+              title="المعاينة خلف المحرر بتعرض تعديلاتك فورًا حتى بدون حفظ"
+            >
+              <Eye className="size-3" /> المعاينة بتعرض تعديلاتك
+            </span>
+          )}
           <button
             onClick={handleSaveDraft}
-            disabled={!isDirty || publishing}
+            disabled={!isDirty}
             className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Save className="size-3.5" /> حفظ المسودة
-          </button>
-          <button
-            onClick={handleSaveAndPublish}
-            disabled={publishing}
-            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {publishing ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Rocket className="size-3.5" />
-            )}
-            حفظ ونشر
+            <Save className="size-3.5" /> حفظ
           </button>
           <button
             onClick={() => setIsCodeWorkspaceOpen(false)}
@@ -464,8 +485,8 @@ export const CodeEnvironment: React.FC = () => {
               <FilePlus2 className="size-3.5" /> مكوّن كود جديد
             </button>
             <p className="mt-2 px-1 text-[10px] leading-5 text-slate-500">
-              كل ملف يتطابق مع عنصر أو صفحة في موقعك — التعديل يظهر فورًا في المعاينة وينشر بضغطة
-              واحدة.
+              اكتب الكود والمعاينة بتعرضه فورًا حتى بدون حفظ. اضغط حفظ لتثبيت التعديل، والنشر يتم من
+              زرار النشر العادي بره بيئة الكود — والنشر بيلحق معاه أي كود مش محفوظ.
             </p>
           </div>
         </aside>

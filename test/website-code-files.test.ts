@@ -1,5 +1,6 @@
 import {
   applyThemeVariables,
+  applyWebsiteFileDrafts,
   buildWebsiteStylesheet,
   listWebsiteFiles,
   readWebsiteFile,
@@ -190,6 +191,33 @@ describe('CSS scoping', () => {
     expect(scoped).not.toContain('</style>');
     expect(scoped).toContain('<\\/style');
   });
+
+  it('maps :root to the site root even with a comment before it (merchant bug)', () => {
+    // Regression: `/* note */ :root { … }` used to become
+    // `.ray-site-root /* note */ :root`, which matches nothing — theme
+    // variable overrides silently died. Comments are stripped pre-parse.
+    const scoped = scopeGlobalCss(
+      '/* تجربة: اقلب الثيم كله */\n:root { --ray-color-primary: #7c3aed; }'
+    );
+    expect(scoped).not.toContain('/*');
+    expect(scoped).toContain('.ray-site-root{');
+    expect(scoped).toContain('--ray-color-primary: #7c3aed');
+  });
+
+  it('strips comments so ; and , inside them cannot corrupt rules', () => {
+    const scoped = scopeGlobalCss(
+      [
+        '/* note; with comma, and brace { */',
+        'h2 { letter-spacing: -0.5px; }',
+        'button { transition: box-shadow 0.2s ease; /* keep; calm */ box-shadow: none; }',
+      ].join('\n')
+    );
+    expect(scoped).not.toContain('/*');
+    expect(scoped).toContain('.ray-site-root h2');
+    expect(scoped).toContain('.ray-site-root button');
+    expect(scoped).toContain('letter-spacing: -0.5px;');
+    expect(scoped).toContain('box-shadow: none;');
+  });
 });
 
 describe('published stylesheet', () => {
@@ -233,5 +261,46 @@ describe('splitHeadCode', () => {
     expect(meta).toEqual({ 'google-site-verification': 'abc123' });
     expect(rest).toContain('pixel.js');
     expect(rest).not.toContain('google-site-verification');
+  });
+});
+
+describe('applyWebsiteFileDrafts', () => {
+  it('overlays unsaved drafts onto the website without mutating the source', () => {
+    const site = buildWebsite();
+    const preview = applyWebsiteFileDrafts(site, {
+      'theme/global.css': '.ray-site-root h2 { color: purple; }',
+      'pages/about/head.html': '<meta name="draft" content="1">',
+    });
+    expect(preview.settings?.branding?.customCss).toBe('.ray-site-root h2 { color: purple; }');
+    expect((preview.pages[1] as any).customHeadCode).toBe('<meta name="draft" content="1">');
+    // Source untouched — drafts are preview-only until saved.
+    expect(site.settings?.branding?.customCss).toBeUndefined();
+  });
+
+  it('skips invalid payloads and unknown paths so the preview stays renderable', () => {
+    const site = buildWebsite();
+    const preview = applyWebsiteFileDrafts(site, {
+      'theme/tokens.json': '{oops',
+      'no/such/file.css': '.a{}',
+      'theme/global.css': '.ray-site-root button { box-shadow: none; }',
+    });
+    expect(preview.settings?.branding?.customCss).toBe(
+      '.ray-site-root button { box-shadow: none; }'
+    );
+    expect(preview.theme).toBe(site.theme);
+    expect(applyWebsiteFileDrafts(site, null)).toBe(site);
+  });
+
+  it('feeds the published stylesheet exactly like a saved website would', () => {
+    const site = buildWebsite();
+    const preview = applyWebsiteFileDrafts(site, {
+      'theme/global.css': '/* تجربة */\n:root { --ray-color-accent: #f59e0b; }',
+    });
+    const sheet = buildWebsiteStylesheet(preview);
+    expect(sheet).toContain('--ray-color-accent: #f59e0b');
+    // The override lands after the theme variable block → it wins over the theme.
+    expect(sheet.indexOf('--ray-color-accent: #f59e0b')).toBeGreaterThan(
+      sheet.indexOf(':root, .ray-site-root {')
+    );
   });
 });

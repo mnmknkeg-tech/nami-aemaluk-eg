@@ -14,7 +14,17 @@ import { FloatingCartButton } from '../cart/FloatingCartButton';
 import { CartDrawer } from '../cart/CartDrawer';
 
 export const CanvasArea: React.FC = () => {
-  const { website, activePage, viewport, zoom, selectNode, isRtl, isThemeLoading } = useBuilder();
+  // The canvas renders the PREVIEW composite (saved website + unsaved code
+  // environment drafts) so merchant code shows live, before any save.
+  const {
+    previewWebsite: website,
+    activePage,
+    viewport,
+    zoom,
+    selectNode,
+    isRtl,
+    isThemeLoading,
+  } = useBuilder();
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const previewFrameRef = useRef<HTMLIFrameElement>(null);
   const [previewFrameRoot, setPreviewFrameRoot] = useState<HTMLElement | null>(null);

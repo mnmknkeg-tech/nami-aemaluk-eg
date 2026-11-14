@@ -93,34 +93,38 @@ const renderRootAt = (overrideViewport?: 'desktop' | 'tablet' | 'mobile') =>
   );
 
 const setBuilderState = () => {
-  useBuilderMock.mockReturnValue({
-    website: {
-      name: 'Test site',
-      components: {
-        root: {
-          id: 'root',
-          name: 'Root',
-          type: 'container',
-          category: 'layout',
-          parentId: null,
-          childrenIds: [],
-          props: {},
-          styles: {
-            desktop: {
-              display: 'flex',
-              flexDirection: 'column',
-              width: '100%',
-              minHeight: '100vh',
-              backgroundColor: '#ffffff',
-            },
-            tablet: { minHeight: '80vh' },
-            mobile: { minHeight: '60vh' },
+  const website = {
+    name: 'Test site',
+    components: {
+      root: {
+        id: 'root',
+        name: 'Root',
+        type: 'container',
+        category: 'layout',
+        parentId: null,
+        childrenIds: [],
+        props: {},
+        styles: {
+          desktop: {
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+            minHeight: '100vh',
+            backgroundColor: '#ffffff',
           },
+          tablet: { minHeight: '80vh' },
+          mobile: { minHeight: '60vh' },
         },
       },
-      pages: [{ id: 'home', name: 'Home', slug: '/' }],
-      theme: {},
     },
+    pages: [{ id: 'home', name: 'Home', slug: '/' }],
+    theme: {},
+  };
+  useBuilderMock.mockReturnValue({
+    // ComponentRenderer renders from the preview composite (saved website +
+    // unsaved code drafts). With no drafts they are identical.
+    website,
+    previewWebsite: website,
     selectedNodeId: null,
     hoveredNodeId: null,
     selectNode: jest.fn(),

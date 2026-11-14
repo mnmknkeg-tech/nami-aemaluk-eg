@@ -215,6 +215,11 @@ function appendImportant(declaration: string): string {
 /**
  * Full scoping pass. Implemented as a single walk (prelude+body pairs) so
  * selector rewriting and nesting rules stay in one place.
+ *
+ * Comments are stripped BEFORE the walk: our parser has no string awareness,
+ * and a comment merged into a prelude breaks the `:root`→site-root mapping
+ * (`/* note *\/ :root` would become `.ray-site-root /* note *\/ :root`, which
+ * matches nothing) as well as comment-embedded `;`/`,` splitting.
  */
 function scopeStylesheet(
   css: string,
@@ -222,7 +227,9 @@ function scopeStylesheet(
   nodeId: string | undefined,
   important: boolean
 ): string {
-  const source = sanitizeCssText(css);
+  const source = sanitizeCssText(css)
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/\/\*[\s\S]*$/i, ' ');
   if (!source.trim()) return '';
   let result = '';
   let i = 0;
@@ -619,6 +626,29 @@ export function writeWebsiteFile(
   }
 
   return null;
+}
+
+/**
+ * Overlay unsaved virtual-file drafts onto a website, producing the PREVIEW
+ * website the canvas (and the publish pre-step) should render. Pure and
+ * immutable: unknown paths and invalid payloads (bad JSON) are skipped so the
+ * preview always shows the last good version of a file.
+ *
+ * This is what makes merchant code "live without saving": the editor streams
+ * keystrokes into `drafts`, the canvas renders this overlay, and the real
+ * website state (history/autosave/publish) only changes on explicit save.
+ */
+export function applyWebsiteFileDrafts(
+  website: Website,
+  drafts: Record<string, string> | null | undefined
+): Website {
+  let next = website;
+  if (!drafts) return next;
+  for (const [path, content] of Object.entries(drafts)) {
+    const result = writeWebsiteFile(next, path, content);
+    if (result && !result.error) next = result.website;
+  }
+  return next;
 }
 
 // ── Head-code meta extraction (published <head> parity) ─────────────────────

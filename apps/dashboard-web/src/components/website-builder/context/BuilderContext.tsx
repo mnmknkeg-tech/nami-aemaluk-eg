@@ -61,7 +61,7 @@ import {
 // استيراد نسبي مقصود (برنامج الـ typecheck الجذري بيخلي `@/*` على packages/shared)
 import { readUserId } from '../../../lib/session-keys';
 import { getMergedThemeTokens } from '../data/themes/utils';
-import { normalizeCatalogProduct } from '@ray-eg/shared/builder';
+import { applyWebsiteFileDrafts, normalizeCatalogProduct } from '@ray-eg/shared/builder';
 
 // Types
 import { BuilderContextType } from './types';
@@ -269,6 +269,70 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     [saveDraft]
   );
 
+  // ── Code environment live drafts (Shopify preview-first model) ───────────
+  // Typing in the code environment streams drafts here; the canvas renders
+  // `previewWebsite` (website + drafts) so merchants SEE code changes without
+  // saving. Nothing enters history/autosave until حفظ (or publish) commits.
+  // Drafts survive editor close and reloads within the browser session.
+  const [codeDrafts, setCodeDrafts] = useState<Record<string, string>>({});
+  const codeDraftsRef = useRef(codeDrafts);
+  const draftsStorageKey = builderShopId || readUserId() || 'anon';
+  const restoredDraftsKeyRef = useRef<string | null>(null);
+
+  // Restore this session's drafts once per storage key, BEFORE any persist
+  // pass can run for the same key (ordering of the two effects below).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (restoredDraftsKeyRef.current === draftsStorageKey) return;
+    restoredDraftsKeyRef.current = draftsStorageKey;
+    try {
+      const raw = window.sessionStorage.getItem(`ray_builder_code_drafts_${draftsStorageKey}`);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const clean: Record<string, string> = {};
+        Object.entries(parsed as Record<string, unknown>).forEach(([path, content]) => {
+          if (path && typeof content === 'string') clean[path] = content;
+        });
+        if (Object.keys(clean).length > 0) setCodeDrafts(clean);
+      }
+    } catch {
+      // Corrupt drafts are discarded, never trusted.
+    }
+  }, [draftsStorageKey]);
+
+  useEffect(() => {
+    codeDraftsRef.current = codeDrafts;
+    if (typeof window === 'undefined') return;
+    // Hold off persisting until the restore pass for this key has run.
+    if (restoredDraftsKeyRef.current !== draftsStorageKey) return;
+    try {
+      const key = `ray_builder_code_drafts_${draftsStorageKey}`;
+      if (Object.keys(codeDrafts).length === 0) window.sessionStorage.removeItem(key);
+      else window.sessionStorage.setItem(key, JSON.stringify(codeDrafts));
+    } catch {
+      // sessionStorage unavailable — drafts just live in memory.
+    }
+  }, [codeDrafts, draftsStorageKey]);
+
+  const setCodeDraftFile = useCallback((path: string, content: string | null) => {
+    setCodeDrafts((prev) => {
+      if (content === null) {
+        if (!(path in prev)) return prev;
+        const next = { ...prev };
+        delete next[path];
+        return next;
+      }
+      if (prev[path] === content) return prev;
+      return { ...prev, [path]: content };
+    });
+  }, []);
+
+  const previewWebsite = useMemo(
+    () => applyWebsiteFileDrafts(website, codeDrafts),
+    [website, codeDrafts]
+  );
+  const hasCodeDrafts = Object.keys(codeDrafts).length > 0;
+
   // ── Cart sub-hook ────────────────────────────────────────────────────────
   const cart = useBuilderCart({ currentTenant });
 
@@ -323,6 +387,31 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     draftVersionRef,
     autosaveStatus
   );
+
+  // ── Publish wrapper: unsaved code drafts go live with the publish ────────
+  // The code environment no longer publishes by itself ("النشر من بره").
+  // Merchants preview draft code in the canvas first; when they hit the
+  // normal external publish button, whatever they previewed must go live —
+  // so pending drafts are committed here as ONE undoable history entry
+  // before the pipeline saves the draft. Invalid files (bad JSON) are
+  // skipped by applyWebsiteFileDrafts, matching the preview exactly.
+  const publishWithDrafts = useCallback(async () => {
+    const drafts = codeDraftsRef.current;
+    const draftCount = Object.keys(drafts).length;
+    if (draftCount > 0) {
+      const next = applyWebsiteFileDrafts(websiteRef.current, drafts);
+      if (next !== websiteRef.current) {
+        recordHistory(
+          draftCount === 1
+            ? 'تطبيق ملف كود غير محفوظ قبل النشر'
+            : `تطبيق ${draftCount} ملفات كود غير محفوظة قبل النشر`,
+          next
+        );
+      }
+      setCodeDrafts({});
+    }
+    await publishing.runPublishPipeline();
+  }, [publishing, recordHistory]);
 
   // ── AI sub-hook ──────────────────────────────────────────────────────────
   const aiOps = useBuilderAI({
@@ -829,6 +918,13 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
 
         // Publishing
         ...publishing,
+        runPublishPipeline: publishWithDrafts,
+
+        // Code environment live drafts
+        codeDrafts,
+        setCodeDraftFile,
+        previewWebsite,
+        hasCodeDrafts,
 
         // AI
         ...aiOps,

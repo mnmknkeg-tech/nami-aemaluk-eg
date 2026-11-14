@@ -125,6 +125,19 @@ export interface BuilderContextType {
   ) => void;
   updateScopedComponentCode: (id: string, file: string, code: string) => void;
 
+  // ── Code environment live drafts ────────────────────────────────────────
+  // Shopify model: typing code shows it in the preview immediately, WITHOUT
+  // committing it to history/autosave. Drafts overlay the website via
+  // applyWebsiteFileDrafts; only "حفظ" (or publish) commits them.
+  /** Unsaved virtual-file edits from the code environment (path → content). */
+  codeDrafts: Record<string, string>;
+  /** Set/replace a draft (content) or clear it (null) — e.g. after save. */
+  setCodeDraftFile: (path: string, content: string | null) => void;
+  /** website overlaid with codeDrafts — what the canvas preview must render. */
+  previewWebsite: Website;
+  /** True when at least one unsaved code draft exists. */
+  hasCodeDrafts: boolean;
+
   // Editing mode (Visual / HTML-only / CSS-only / Full-code).
   // The backend is the source of truth for mode capability policy; this
   // state only tells the server which mode the client believes it is in.
