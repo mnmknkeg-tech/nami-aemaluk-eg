@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '@/lib/auth';
 import { readUserJSON } from '@/lib/session-keys';
 
@@ -98,8 +98,13 @@ function currentShopId(): string {
  */
 export function useOrderBell(onOrder?: (evt: OrderBellEvent) => void) {
   const [notifications, setNotifications] = useState<BellNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [soundOn, setSoundOn] = useState(true);
+
+  // Badge counts ONLY what the merchant can actually see. The server's
+  // /unread-count endpoint tallies every unread row on the channel — including
+  // admin-only notifications (NEW_SHOP, ADMIN_ALERT, …) that the list above
+  // filters out — which made the bell show a phantom "1" over an empty list.
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
   const lastSeenTs = useRef<number>(Date.now());
   const firstLoad = useRef(true);
   const onOrderRef = useRef(onOrder);
@@ -139,22 +144,9 @@ export function useOrderBell(onOrder?: (evt: OrderBellEvent) => void) {
         (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
       );
       setNotifications(merged);
-
-      // unread from the authoritative counter endpoint, fallback to list
-      let count = merged.filter((n) => !n.read).length;
-      try {
-        let cntVal: any = null;
-        if (shopId) {
-          const s = await apiRequest(`/notifications/shop/${shopId}/unread-count`);
-          cntVal = s;
-        }
-        if (cntVal == null) {
-          cntVal = await apiRequest('/notifications/me/unread-count');
-        }
-        const c = Number(cntVal?.unread_count ?? cntVal?.UnreadCount ?? cntVal ?? 0);
-        if (!Number.isNaN(c) && c > 0) count = c;
-      } catch {}
-      setUnreadCount(count);
+      // unreadCount is derived from `notifications` (see useMemo above) — the
+      // server's unread-count endpoint is deliberately NOT used because it
+      // counts admin-only notifications the merchant can never see or read.
 
       // detect new order notifications created after our last checkpoint
       if (!firstLoad.current) {
@@ -233,7 +225,6 @@ export function useOrderBell(onOrder?: (evt: OrderBellEvent) => void) {
         },
         ...prev,
       ]);
-      setUnreadCount((c) => c + 1);
     };
     window.addEventListener('ray_new_website_order', onWebsiteOrder);
 
@@ -265,7 +256,6 @@ export function useOrderBell(onOrder?: (evt: OrderBellEvent) => void) {
       throw new Error('فشل تعليم الإشعارات كمقروءة');
     }
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    setUnreadCount(0);
   }, []);
 
   const markRead = useCallback(
@@ -277,7 +267,6 @@ export function useOrderBell(onOrder?: (evt: OrderBellEvent) => void) {
           : `/notifications/me/${id}/read`;
       await apiRequest(path, { method: 'PATCH' });
       setNotifications((prev) => prev.map((x) => (x.id === id ? { ...x, read: true } : x)));
-      setUnreadCount((c) => Math.max(0, c - 1));
     },
     [notifications]
   );
