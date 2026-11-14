@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import EmptyState from '@/components/EmptyState';
 import PageBack from '@/components/PageBack';
 import {
   Repeat,
@@ -247,7 +248,7 @@ export default function SalesSubscriptionsPage() {
         </div>
         <div className="text-right">
           <div className="flex items-center gap-2">
-                        <PageBack fallback="/dashboard/sales" title="رجوع إلى المبيعات" />
+            <PageBack fallback="/dashboard/sales" title="رجوع إلى المبيعات" />
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">الاشتراكات</h1>
             <button
               onClick={() => setGuideOpen(true)}
@@ -394,10 +395,11 @@ export default function SalesSubscriptionsPage() {
           <Loader2 className="animate-spin text-slate-300" size={32} />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
-          <Repeat size={48} className="mx-auto mb-3 text-slate-200" />
-          <p className="text-slate-400 font-bold text-sm">لا توجد اشتراكات</p>
-        </div>
+        <EmptyState
+          variant="compact"
+          icon={<Repeat size={32} className="text-slate-300" />}
+          title="لا توجد اشتراكات"
+        />
       ) : (
         <>
           <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">

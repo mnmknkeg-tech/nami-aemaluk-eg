@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import EmptyState from '@/components/EmptyState';
 import PageBack from '@/components/PageBack';
 import { PackageCheck, Loader2, Search, AlertCircle, RefreshCw, Printer } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
@@ -122,13 +123,12 @@ export default function DeliveryNotesPage() {
             <Loader2 size={24} className="animate-spin text-slate-300" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <PackageCheck size={40} className="text-slate-200 mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-400">لا توجد أوراق صرف حالياً</p>
-            <p className="text-[11px] font-bold text-slate-300 mt-1">
-              الطلبات اللي اتسلمت أو خرجت للتوصيل بتظهر هنا تلقائياً
-            </p>
-          </div>
+          <EmptyState
+            variant="compact"
+            icon={<PackageCheck size={32} className="text-slate-300" />}
+            title="لا توجد أوراق صرف حالياً"
+            description="الطلبات اللي اتسلمت أو خرجت للتوصيل بتظهر هنا تلقائياً"
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-right">

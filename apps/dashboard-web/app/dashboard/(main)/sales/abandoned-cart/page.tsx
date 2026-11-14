@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import EmptyState from '@/components/EmptyState';
 import PageBack from '@/components/PageBack';
 import {
   ShoppingCart,
@@ -247,7 +248,7 @@ export default function SalesAbandonedCartPage() {
           </div>
           <div className="text-right">
             <div className="flex items-center gap-2">
-                            <PageBack fallback="/dashboard/sales" title="رجوع إلى المبيعات" />
+              <PageBack fallback="/dashboard/sales" title="رجوع إلى المبيعات" />
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">السلات المتروكة</h1>
               <button
                 onClick={() => setGuideOpen(true)}
@@ -431,10 +432,12 @@ export default function SalesAbandonedCartPage() {
               <Loader2 className="animate-spin text-slate-300" size={32} />
             </div>
           ) : paginated.length === 0 ? (
-            <div className="py-12 text-center">
-              <ShoppingCart size={48} className="mx-auto mb-3 text-slate-200" />
-              <p className="text-slate-400 font-bold text-sm">لا توجد سلات متروكة</p>
-            </div>
+            <EmptyState
+              variant="compact"
+              icon={<ShoppingCart size={32} className="text-slate-300" />}
+              title="لا توجد سلات متروكة"
+              description="سلات العملاء اللي سابوها بدون إتمام الشراء بتظهر هنا"
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-[700px] w-full">

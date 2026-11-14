@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
+import EmptyState from '@/components/EmptyState';
 import PageBack from '@/components/PageBack';
 import {
   Plus,
@@ -408,7 +409,7 @@ function ProductsPageContent() {
         <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2">
-                            <PageBack fallback="/dashboard/inventory" title="رجوع إلى المخزون" />
+              <PageBack fallback="/dashboard/inventory" title="رجوع إلى المخزون" />
               <h1 className="text-xl font-bold text-slate-900">المنتجات</h1>
               <button
                 onClick={() => setGuideOpen(true)}
@@ -701,10 +702,12 @@ function ProductsPageContent() {
                 <div className="w-10 h-10 border-4 border-slate-200 border-t-[#00E5FF] rounded-full animate-spin" />
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 md:p-12 text-center">
-                <Package size={32} className="mx-auto mb-3 text-slate-300" />
-                <p className="text-slate-400 font-bold text-sm">لا توجد منتجات</p>
-              </div>
+              <EmptyState
+                variant="compact"
+                icon={<Package size={32} className="text-slate-300" />}
+                title="لا توجد منتجات"
+                description="عدّل البحث أو الفلاتر أو أضف منتج جديد"
+              />
             ) : (
               <>
                 <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">

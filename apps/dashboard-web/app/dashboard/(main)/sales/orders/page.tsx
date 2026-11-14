@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import EmptyState from '@/components/EmptyState';
 import PageBack from '@/components/PageBack';
 import {
   FileCheck,
@@ -128,13 +129,12 @@ export default function SalesOrdersPage() {
             <Loader2 size={24} className="animate-spin text-slate-300" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <FileCheck size={40} className="text-slate-200 mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-400">لا توجد أوامر بيع مفتوحة حالياً</p>
-            <p className="text-[11px] font-bold text-slate-300 mt-1">
-              الطلبات المؤكدة من المتجر أو الفواتير بتظهر هنا تلقائياً
-            </p>
-          </div>
+          <EmptyState
+            variant="compact"
+            icon={<FileCheck size={32} className="text-slate-300" />}
+            title="لا توجد أوامر بيع مفتوحة حالياً"
+            description="الطلبات المؤكدة من المتجر أو الفواتير بتظهر هنا تلقائياً"
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-right">

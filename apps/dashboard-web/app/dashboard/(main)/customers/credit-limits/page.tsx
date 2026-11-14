@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import EmptyState from '@/components/EmptyState';
 import PageBack from '@/components/PageBack';
 import { Loader2, AlertTriangle, ShieldAlert, Save, Search } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
@@ -199,12 +200,12 @@ export default function CreditLimitsPage() {
               <Loader2 size={24} className="animate-spin text-slate-300" />
             </div>
           ) : allRows.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-sm font-bold text-slate-400">لا يوجد عملاء بعد</p>
-              <p className="text-[11px] font-bold text-slate-300 mt-1">
-                حدد حدود الائتمان بعد ما يبدأ عملاؤك في الشراء
-              </p>
-            </div>
+            <EmptyState
+              variant="compact"
+              icon={<ShieldAlert size={32} className="text-slate-300" />}
+              title="لا يوجد عملاء بعد"
+              description="حدد حدود الائتمان بعد ما يبدأ عملاؤك في الشراء"
+            />
           ) : rows.length === 0 ? (
             <div className="text-center py-16">
               <AlertTriangle size={36} className="text-slate-200 mx-auto mb-3" />

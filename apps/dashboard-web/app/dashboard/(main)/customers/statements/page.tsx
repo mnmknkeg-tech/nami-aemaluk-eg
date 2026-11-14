@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import EmptyState from '@/components/EmptyState';
 import PageBack from '@/components/PageBack';
 import Link from 'next/link';
 import { Loader2, Search, AlertCircle, ChevronLeft, Download, RefreshCw } from 'lucide-react';
@@ -253,10 +254,11 @@ export default function StatementsPage() {
                   <Loader2 size={24} className="animate-spin text-slate-300" />
                 </div>
               ) : rows.length === 0 ? (
-                <div className="text-center py-16">
-                  <Search size={36} className="text-slate-200 mx-auto mb-3" />
-                  <p className="text-sm font-bold text-slate-400">لا يوجد عملاء بعد</p>
-                </div>
+                <EmptyState
+                  variant="compact"
+                  icon={<Search size={32} className="text-slate-300" />}
+                  title="لا يوجد عملاء بعد"
+                />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-right">

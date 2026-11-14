@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import EmptyState from '@/components/EmptyState';
 import PageBack from '@/components/PageBack';
 import {
   Layers,
@@ -358,7 +359,7 @@ export default function CustomerSegmentsPage() {
         </div>
         <div className="text-right">
           <div className="flex items-center gap-2">
-                        <PageBack fallback="/dashboard/customers" title="رجوع إلى العملاء" />
+            <PageBack fallback="/dashboard/customers" title="رجوع إلى العملاء" />
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">شرائح العملاء</h1>
             <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-200">
               قريباً · محلي فقط
@@ -474,10 +475,11 @@ export default function CustomerSegmentsPage() {
           <div className="w-10 h-10 border-4 border-slate-200 border-t-[#00E5FF] rounded-full animate-spin" />
         </div>
       ) : paginatedSegments.length === 0 ? (
-        <div className="text-center py-12">
-          <Layers size={48} className="text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-400 font-bold">لا توجد شرائح</p>
-        </div>
+        <EmptyState
+          variant="compact"
+          icon={<Layers size={32} className="text-slate-300" />}
+          title="لا توجد شرائح"
+        />
       ) : (
         <div className="space-y-3">
           {paginatedSegments.map((segment) => (

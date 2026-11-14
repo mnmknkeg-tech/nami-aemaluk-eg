@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import EmptyState from '@/components/EmptyState';
 import PageBack from '@/components/PageBack';
 import {
   Tag,
@@ -325,7 +326,7 @@ export default function CustomerTagsPage() {
         </div>
         <div className="text-right">
           <div className="flex items-center gap-2">
-                        <PageBack fallback="/dashboard/customers" title="رجوع إلى العملاء" />
+            <PageBack fallback="/dashboard/customers" title="رجوع إلى العملاء" />
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">وسوم العملاء</h1>
             <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-200">
               قريباً · محلي فقط
@@ -431,10 +432,11 @@ export default function CustomerTagsPage() {
           <div className="w-10 h-10 border-4 border-slate-200 border-t-[#00E5FF] rounded-full animate-spin" />
         </div>
       ) : paginatedTags.length === 0 ? (
-        <div className="text-center py-12">
-          <Tag size={48} className="text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-400 font-bold">لا توجد وسوم</p>
-        </div>
+        <EmptyState
+          variant="compact"
+          icon={<Tag size={32} className="text-slate-300" />}
+          title="لا توجد وسوم"
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {paginatedTags.map((tag) => (
