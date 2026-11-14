@@ -1,64 +1,9 @@
 'use client';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import {
-  Search,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  UserPlus,
-  X,
-  Plus,
-  Receipt,
-  RotateCcw,
-  Clock,
-  BarChart3,
-  Tag,
-  CreditCard,
-  Wallet,
-  Banknote,
-  Ruler,
-  SlidersHorizontal,
-  ShoppingCart,
-  Trash2,
-  Printer,
-  Minus,
-  Pause,
-  Play,
-  ScanLine,
-  Camera,
-  Mail,
-  Gift,
-  Users,
-  Table2,
-  Eraser,
-  Settings2,
-  Scale,
-  Send,
-  DollarSign,
-  Crown,
-  ShieldCheck,
-  Star,
-  FileText,
-  ArrowDownCircle,
-  ArrowUpCircle,
-  Calculator,
-  Zap,
-  Sliders,
-  UserRound,
-  CloudOff,
-  Lock,
-  Eye,
-  EyeOff,
-  WifiOff,
-  ChevronLeft,
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Search, X, Receipt, ScanLine, Camera, Gift, Scale, CloudOff, WifiOff } from 'lucide-react';
 import { apiRequest, useAuth } from '@/lib/auth';
 import { useShop } from '@/hooks/useShop';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { HIDE_UNPUBLISHED } from '@/config/sidebar';
 import {
@@ -117,7 +62,6 @@ import {
   cashierHasPermission,
   type PosCashier,
 } from '@/lib/posSettings';
-import PosProductToolbar from '@/components/pos/PosProductToolbar';
 import PosCustomerAndHeldModals from '@/components/pos/PosCustomerAndHeldModals';
 import PosAuditTrailModal from '@/components/pos/PosAuditTrailModal';
 import PosPriceLevelPopover from '@/components/pos/PosPriceLevelPopover';
@@ -141,7 +85,9 @@ import PosGateModal from '@/components/pos/PosGateModal';
 import PosProductGrid from '@/components/pos/PosProductGrid';
 import PosConfigModal from '@/components/pos/PosConfigModal';
 import PosCartPanel from '@/components/pos/PosCartPanel';
-import { type CartItem, type PendingOrder } from './types';
+import PosHeader from '@/components/pos/PosHeader';
+import PosMobileCartSheet from '@/components/pos/PosMobileCartSheet';
+import { type CartItem } from './types';
 import { SHOW_UNPUBLISHED } from './constants';
 import {
   readCachedList,
@@ -153,8 +99,6 @@ import {
   isNetworkError,
 } from './offline-queue';
 import { playCashRegisterSound } from './audio';
-
-const MotionDiv = motion.div as any;
 
 const POSSystemPage: React.FC = () => {
   if (HIDE_UNPUBLISHED) {
@@ -2056,6 +2000,99 @@ const POSSystemPage: React.FC = () => {
   // (filteredProducts + pagination are defined above with the new POS features)
 
   // ===== Cart content (shared between desktop sidebar and mobile sheet) =====
+  // Shared cart panel props (desktop sidebar + mobile sheet render the same panel)
+  const cartPanelProps: React.ComponentProps<typeof PosCartPanel> = {
+    addToCart,
+    canCheckout,
+    cart,
+    discountAmount,
+    discountType,
+    discountValue,
+    earnedPoints,
+    editingOrder,
+    giftCardAmount,
+    giftCardApplied,
+    handlePrintReceipt,
+    handleReadScale,
+    isArabic,
+    isProcessing,
+    loadReportData,
+    loyaltyCfg,
+    loyaltyRedeemValue,
+    openXReport,
+    openZReport,
+    paymentMethod,
+    priceLevel,
+    processPayment,
+    quickKeyProducts,
+    redeemPoints,
+    removeFromCart,
+    removeGiftCard,
+    scaleLoading,
+    scaleReading,
+    selectedTableId,
+    showAdvanced,
+    showAuditTrail,
+    showDiscount,
+    showPaymentMethods,
+    showQuickKeys,
+    showTipSection,
+    signatureData,
+    splitPayments,
+    splitValidation,
+    startPriceOverride,
+    startSignatureDrawing,
+    subtotal,
+    tables,
+    taxExempt,
+    tipAmount,
+    tipType,
+    tipValue,
+    total,
+    updateQuantity,
+    usingSplitPayment,
+    vatRatePct,
+    vatAmount,
+    SHOW_UNPUBLISHED,
+    isRestaurant,
+    setCart,
+    setCashMovementType,
+    setDiscountType,
+    setDiscountValue,
+    setEditingOrder,
+    setGiftCardApplied,
+    setGiftCardCode,
+    setIsProcessing,
+    setLoyaltyCfg,
+    setPaymentMethod,
+    setPriceLevel,
+    setRedeemPoints,
+    setScaleLoading,
+    setScaleReading,
+    setSelectedTableId,
+    setShowAdvanced,
+    setShowCashMovement,
+    setShowDiscount,
+    setShowDrawerDeclaration,
+    setShowEmailReceipt,
+    setShowLayaway,
+    setShowLoyaltySettings,
+    setShowPaymentMethods,
+    setShowPriceLevelMenu,
+    setShowQuickKeys,
+    setShowReceiptSettings,
+    setShowSignature,
+    setShowSplitPayment,
+    setShowTables,
+    setShowTipSection,
+    setSignatureData,
+    setSplitPayments,
+    setTables,
+    setTaxExempt,
+    setTipType,
+    setTipValue,
+    setVatRatePct,
+  };
   return (
     <div
       className="fixed inset-0 z-[200] bg-white flex flex-col md:flex-row font-sans text-right overflow-hidden"
@@ -2063,223 +2100,33 @@ const POSSystemPage: React.FC = () => {
     >
       {/* Products side */}
       <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden">
-        <header className="p-3 md:p-6 bg-white border-b flex items-center gap-2 md:gap-4 flex-wrap">
-          <Link href="/dashboard" className="p-2 hover:bg-slate-100 rounded-xl shrink-0">
-            <ChevronRight />
-          </Link>
-          <PosProductToolbar
-            isArabic={isArabic}
-            searchInputRef={searchInputRef}
-            search={search}
-            setSearch={setSearch}
-            categories={categories}
-            categoryFilter={categoryFilter}
-            setCategoryFilter={setCategoryFilter}
-            showCategoryFilter={showCategoryFilter}
-            setShowCategoryFilter={setShowCategoryFilter}
-          />
-          <div className="flex items-center">
-            <button
-              type="button"
-              onClick={() => setIsCustomerCardOpen(true)}
-              className="bg-white border rounded-r-2xl py-3 px-4 w-32 md:w-36 outline-none flex items-center justify-center gap-2 font-black text-sm hover:bg-slate-50 border-l-0"
-              title={isArabic ? 'بيانات العميل (F10)' : 'Customer (F10)'}
-            >
-              <UserPlus size={18} />
-              {String(customerPhone || '').trim()
-                ? isArabic
-                  ? 'تعديل'
-                  : 'Edit'
-                : isArabic
-                  ? 'عميل'
-                  : 'Customer'}
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenCustomerList}
-              className="bg-white border rounded-l-2xl py-3 px-3 outline-none flex items-center justify-center hover:bg-slate-50 border-r-0 text-slate-500 hover:text-[#BD00FF]"
-              title={isArabic ? 'اختيار عميل' : 'Select customer'}
-            >
-              <Plus size={18} />
-            </button>
-          </div>
-
-          {/* POS feature buttons: hold, resume, barcode */}
-          <div className="flex items-center gap-1.5 md:gap-2">
-            <button
-              type="button"
-              onClick={holdCurrentOrder}
-              disabled={cart.length === 0}
-              className="p-2.5 md:p-3 rounded-xl bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-all flex items-center gap-1.5 text-xs font-black text-amber-700 disabled:opacity-40"
-              title={isArabic ? 'تعليق الطلب (F6)' : 'Hold order (F6)'}
-            >
-              <Pause size={16} className="md:hidden" />
-              <Pause size={18} className="hidden md:block" />
-              <span className="hidden md:inline">{isArabic ? 'تعليق' : 'Hold'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowHeldOrders(true)}
-              className="relative p-2.5 md:p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-all flex items-center gap-1.5 text-xs font-black text-slate-600"
-              title={isArabic ? 'الطلبات المعلقة (F7)' : 'Held orders (F7)'}
-            >
-              <Play size={16} className="md:hidden" />
-              <Play size={18} className="hidden md:block" />
-              <span className="hidden md:inline">{isArabic ? 'معلقة' : 'Held'}</span>
-              {heldOrders.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-[9px] font-black rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
-                  {heldOrders.length}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setBarcodeListening((v) => !v)}
-              className={`p-2.5 md:p-3 rounded-xl border transition-all flex items-center gap-1.5 text-xs font-black ${barcodeListening ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'}`}
-              title={isArabic ? 'قارئ الباركود USB (F8)' : 'USB barcode (F8)'}
-            >
-              <ScanLine size={16} className="md:hidden" />
-              <ScanLine size={18} className="hidden md:block" />
-              <span className="hidden md:inline">
-                {barcodeListening ? (isArabic ? 'يعمل' : 'On') : isArabic ? 'باركود' : 'Scan'}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowCameraScanner(true)}
-              className="p-2.5 md:p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-all flex items-center gap-1.5 text-xs font-black text-slate-600"
-              title={isArabic ? 'مسح بالكاميرا' : 'Camera scan'}
-            >
-              <Camera size={16} className="md:hidden" />
-              <Camera size={18} className="hidden md:block" />
-            </button>
-          </div>
-
-          {/* Quick action buttons — hidden while the shift/cashier gate is up */}
-          {!isGated && (
-            <div className="flex items-center gap-1.5 md:gap-2">
-              {posCashier?.name && (
-                <div
-                  className="p-2.5 md:p-3 rounded-xl bg-purple-50 border border-purple-100 flex items-center gap-1.5 text-xs font-black text-[#BD00FF]"
-                  title={isArabic ? 'الكاشير الحالي' : 'Current cashier'}
-                >
-                  <UserRound size={16} className="md:hidden" />
-                  <UserRound size={18} className="hidden md:block" />
-                  <span className="hidden md:inline">
-                    {isArabic ? `الكاشير: ${posCashier.name}` : `Cashier: ${posCashier.name}`}
-                  </span>
-                  <span className="md:hidden">{posCashier.name}</span>
-                </div>
-              )}
-              {pendingCount > 0 && (
-                <div
-                  className="p-2.5 md:p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-1.5 text-xs font-black text-amber-700"
-                  title={
-                    isArabic
-                      ? 'طلبات محفوظة محليًا في انتظار المزامنة'
-                      : 'Orders saved locally, pending sync'
-                  }
-                >
-                  <CloudOff size={16} className="md:hidden" />
-                  <CloudOff size={18} className="hidden md:block" />
-                  <span className="hidden md:inline">
-                    {isArabic ? `${pendingCount} طلب معلق` : `${pendingCount} pending`}
-                  </span>
-                  <span className="md:hidden">{pendingCount}</span>
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={openInvoices}
-                className="p-2.5 md:p-3 rounded-xl bg-[#00E5FF]/10 border border-[#00E5FF]/30 text-[#0098a8] hover:bg-[#00E5FF]/20 transition-all flex items-center gap-1.5 text-xs font-black"
-                title={isArabic ? 'فواتير الكاشير — رجوع سريع وتعديل' : 'Cashier invoices'}
-              >
-                <Receipt size={16} className="md:hidden" />
-                <Receipt size={18} className="hidden md:block" />
-                <span className="hidden md:inline">{isArabic ? 'فواتير' : 'Invoices'}</span>
-              </button>
-              <Link
-                href="/dashboard/sales"
-                className="p-2.5 md:p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-all flex items-center gap-1.5 text-xs font-black text-slate-600"
-                title={isArabic ? 'الفواتير' : 'Invoices'}
-              >
-                <Receipt size={16} className="md:hidden" />
-                <Receipt size={18} className="hidden md:block" />
-                <span className="hidden md:inline">{isArabic ? 'الفواتير' : 'Invoices'}</span>
-              </Link>
-              <Link
-                href="/dashboard/sales"
-                className="p-2.5 md:p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-all flex items-center gap-1.5 text-xs font-black text-slate-600"
-                title={isArabic ? 'مرتجع من الطلبات' : 'Return from Orders'}
-              >
-                <RotateCcw size={16} className="md:hidden" />
-                <RotateCcw size={18} className="hidden md:block" />
-                <span className="hidden md:inline">
-                  {isArabic ? 'مرتجع من الطلبات' : 'Return from Orders'}
-                </span>
-              </Link>
-              <Link
-                href="/dashboard/pos/shifts"
-                className="p-2.5 md:p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-all flex items-center gap-1.5 text-xs font-black text-slate-600"
-                title={isArabic ? 'ورديتي' : 'My Shift'}
-              >
-                <Clock size={16} className="md:hidden" />
-                <Clock size={18} className="hidden md:block" />
-                <span className="hidden md:inline">{isArabic ? 'ورديتي' : 'Shift'}</span>
-              </Link>
-              <Link
-                href="/dashboard/pos/reports"
-                className="p-2.5 md:p-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-all flex items-center gap-1.5 text-xs font-black text-slate-600"
-                title={isArabic ? 'تقرير' : 'Report'}
-              >
-                <BarChart3 size={16} className="md:hidden" />
-                <BarChart3 size={18} className="hidden md:block" />
-                <span className="hidden md:inline">{isArabic ? 'تقرير' : 'Report'}</span>
-              </Link>
-            </div>
-          )}
-
-          {/* Live shift strip — hidden while the gate is up or no active shift */}
-          {!isGated && shiftStrip && (
-            <Link
-              href="/dashboard/pos/shifts"
-              className="w-full flex items-center justify-between gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-[11px] font-black text-emerald-700 hover:bg-emerald-100/60 transition-all"
-              title={isArabic ? 'فتح صفحة الورديات' : 'Open shifts'}
-            >
-              <span className="flex items-center gap-1.5 flex-wrap min-w-0">
-                <span>{isArabic ? 'الوردية مفتوحة' : 'Shift open'}</span>
-                <span className="text-emerald-300">•</span>
-                <span>
-                  {isArabic ? `الكاشير: ${shiftOwnerName}` : `Cashier: ${shiftOwnerName}`}
-                </span>
-                <span className="text-emerald-300">•</span>
-                <span dir="ltr">
-                  ⏱{' '}
-                  {isArabic
-                    ? `${shiftStrip.hours}س ${shiftStrip.minutes}د`
-                    : `${shiftStrip.hours}h ${shiftStrip.minutes}m`}
-                </span>
-                <span className="text-emerald-300">•</span>
-                <span>
-                  {isArabic
-                    ? `مبيعات: ج.م ${shiftStrip.totalSales}`
-                    : `Sales: EGP ${shiftStrip.totalSales}`}
-                </span>
-                <span className="text-emerald-300">•</span>
-                <span>
-                  {isArabic ? `${shiftStrip.ordersCount} طلب` : `${shiftStrip.ordersCount} orders`}
-                </span>
-                <span className="text-emerald-300">•</span>
-                <span>
-                  {isArabic
-                    ? `المتوقع في الدرج: ج.م ${shiftStrip.expectedDrawer}`
-                    : `Expected in drawer: EGP ${shiftStrip.expectedDrawer}`}
-                </span>
-              </span>
-              <ChevronLeft size={14} className="shrink-0" />
-            </Link>
-          )}
-        </header>
+        <PosHeader
+          isArabic={isArabic}
+          searchInputRef={searchInputRef}
+          search={search}
+          setSearch={setSearch}
+          categories={categories}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          showCategoryFilter={showCategoryFilter}
+          setShowCategoryFilter={setShowCategoryFilter}
+          setIsCustomerCardOpen={setIsCustomerCardOpen}
+          customerPhone={customerPhone}
+          handleOpenCustomerList={handleOpenCustomerList}
+          holdCurrentOrder={holdCurrentOrder}
+          cart={cart}
+          setShowHeldOrders={setShowHeldOrders}
+          heldOrders={heldOrders}
+          barcodeListening={barcodeListening}
+          setBarcodeListening={setBarcodeListening}
+          setShowCameraScanner={setShowCameraScanner}
+          isGated={isGated}
+          posCashier={posCashier}
+          pendingCount={pendingCount}
+          openInvoices={openInvoices}
+          shiftStrip={shiftStrip}
+          shiftOwnerName={shiftOwnerName}
+        />
         {usingOfflineData && (
           <div className="bg-amber-50 border-b border-amber-100 px-4 py-2 text-xs font-bold text-amber-700 flex items-center gap-2">
             <WifiOff size={14} />{' '}
@@ -2316,255 +2163,17 @@ const POSSystemPage: React.FC = () => {
 
       {/* Desktop cart sidebar */}
       <div className="hidden md:flex w-full md:w-[450px] bg-white border-r border-slate-100 flex-col shadow-2xl relative z-50">
-        <PosCartPanel
-          addToCart={addToCart}
-          canCheckout={canCheckout}
-          cart={cart}
-          discountAmount={discountAmount}
-          discountType={discountType}
-          discountValue={discountValue}
-          earnedPoints={earnedPoints}
-          editingOrder={editingOrder}
-          giftCardAmount={giftCardAmount}
-          giftCardApplied={giftCardApplied}
-          handlePrintReceipt={handlePrintReceipt}
-          handleReadScale={handleReadScale}
-          isArabic={isArabic}
-          isProcessing={isProcessing}
-          loadReportData={loadReportData}
-          loyaltyCfg={loyaltyCfg}
-          loyaltyRedeemValue={loyaltyRedeemValue}
-          openXReport={openXReport}
-          openZReport={openZReport}
-          paymentMethod={paymentMethod}
-          priceLevel={priceLevel}
-          processPayment={processPayment}
-          quickKeyProducts={quickKeyProducts}
-          redeemPoints={redeemPoints}
-          removeFromCart={removeFromCart}
-          removeGiftCard={removeGiftCard}
-          scaleLoading={scaleLoading}
-          scaleReading={scaleReading}
-          selectedTableId={selectedTableId}
-          showAdvanced={showAdvanced}
-          showAuditTrail={showAuditTrail}
-          showDiscount={showDiscount}
-          showPaymentMethods={showPaymentMethods}
-          showQuickKeys={showQuickKeys}
-          showTipSection={showTipSection}
-          signatureData={signatureData}
-          splitPayments={splitPayments}
-          splitValidation={splitValidation}
-          startPriceOverride={startPriceOverride}
-          startSignatureDrawing={startSignatureDrawing}
-          subtotal={subtotal}
-          tables={tables}
-          taxExempt={taxExempt}
-          tipAmount={tipAmount}
-          tipType={tipType}
-          tipValue={tipValue}
-          total={total}
-          updateQuantity={updateQuantity}
-          usingSplitPayment={usingSplitPayment}
-          vatRatePct={vatRatePct}
-          vatAmount={vatAmount}
-          SHOW_UNPUBLISHED={SHOW_UNPUBLISHED}
-          isRestaurant={isRestaurant}
-          setCart={setCart}
-          setCashMovementType={setCashMovementType}
-          setDiscountType={setDiscountType}
-          setDiscountValue={setDiscountValue}
-          setEditingOrder={setEditingOrder}
-          setGiftCardApplied={setGiftCardApplied}
-          setGiftCardCode={setGiftCardCode}
-          setIsProcessing={setIsProcessing}
-          setLoyaltyCfg={setLoyaltyCfg}
-          setPaymentMethod={setPaymentMethod}
-          setPriceLevel={setPriceLevel}
-          setRedeemPoints={setRedeemPoints}
-          setScaleLoading={setScaleLoading}
-          setScaleReading={setScaleReading}
-          setSelectedTableId={setSelectedTableId}
-          setShowAdvanced={setShowAdvanced}
-          setShowCashMovement={setShowCashMovement}
-          setShowDiscount={setShowDiscount}
-          setShowDrawerDeclaration={setShowDrawerDeclaration}
-          setShowEmailReceipt={setShowEmailReceipt}
-          setShowLayaway={setShowLayaway}
-          setShowLoyaltySettings={setShowLoyaltySettings}
-          setShowPaymentMethods={setShowPaymentMethods}
-          setShowPriceLevelMenu={setShowPriceLevelMenu}
-          setShowQuickKeys={setShowQuickKeys}
-          setShowReceiptSettings={setShowReceiptSettings}
-          setShowSignature={setShowSignature}
-          setShowSplitPayment={setShowSplitPayment}
-          setShowTables={setShowTables}
-          setShowTipSection={setShowTipSection}
-          setSignatureData={setSignatureData}
-          setSplitPayments={setSplitPayments}
-          setTables={setTables}
-          setTaxExempt={setTaxExempt}
-          setTipType={setTipType}
-          setTipValue={setTipValue}
-          setVatRatePct={setVatRatePct}
-        />
+        <PosCartPanel {...cartPanelProps} />
       </div>
 
-      {/* Mobile cart bottom bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-[120] md:hidden pointer-events-none">
-        <button
-          type="button"
-          onClick={() => setMobileCartOpen(true)}
-          className="pointer-events-auto w-full px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]"
-        >
-          <div className="mx-auto max-w-[1400px] rounded-[1.6rem] bg-slate-900 text-white shadow-2xl flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/10 w-10 h-10 rounded-2xl flex items-center justify-center">
-                <ShoppingCart size={18} />
-              </div>
-              <div className="text-right">
-                <div className="font-black text-sm">{isArabic ? 'السلة' : 'Cart'}</div>
-                <div className="text-xs text-white/70 font-bold">
-                  {itemsCount} {isArabic ? 'قطعة' : 'items'}
-                </div>
-              </div>
-            </div>
-            <div className="text-left">
-              <div className="text-xs text-white/70 font-bold">
-                {isArabic ? 'الإجمالي' : 'Total'}
-              </div>
-              <div className="font-black">ج.م {total.toFixed(2)}</div>
-            </div>
-          </div>
-        </button>
-      </div>
-
-      {/* Mobile cart sheet */}
-      <AnimatePresence>
-        {mobileCartOpen && (
-          <MotionDiv
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[130] md:hidden bg-black/40"
-            onClick={() => setMobileCartOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {mobileCartOpen && (
-          <MotionDiv
-            key="pos-cart-sheet"
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-            className="fixed bottom-0 left-0 right-0 z-[140] md:hidden bg-white rounded-t-[2rem] shadow-2xl flex flex-col h-[92vh]"
-          >
-            <div className="w-full flex justify-center pt-3 pb-2">
-              <div className="w-14 h-1.5 rounded-full bg-slate-200" />
-            </div>
-            <button
-              onClick={() => setMobileCartOpen(false)}
-              className="absolute top-3 left-3 p-2 rounded-xl hover:bg-slate-100 z-10"
-            >
-              <X size={20} className="text-slate-400" />
-            </button>
-            <PosCartPanel
-              addToCart={addToCart}
-              canCheckout={canCheckout}
-              cart={cart}
-              discountAmount={discountAmount}
-              discountType={discountType}
-              discountValue={discountValue}
-              earnedPoints={earnedPoints}
-              editingOrder={editingOrder}
-              giftCardAmount={giftCardAmount}
-              giftCardApplied={giftCardApplied}
-              handlePrintReceipt={handlePrintReceipt}
-              handleReadScale={handleReadScale}
-              isArabic={isArabic}
-              isProcessing={isProcessing}
-              loadReportData={loadReportData}
-              loyaltyCfg={loyaltyCfg}
-              loyaltyRedeemValue={loyaltyRedeemValue}
-              openXReport={openXReport}
-              openZReport={openZReport}
-              paymentMethod={paymentMethod}
-              priceLevel={priceLevel}
-              processPayment={processPayment}
-              quickKeyProducts={quickKeyProducts}
-              redeemPoints={redeemPoints}
-              removeFromCart={removeFromCart}
-              removeGiftCard={removeGiftCard}
-              scaleLoading={scaleLoading}
-              scaleReading={scaleReading}
-              selectedTableId={selectedTableId}
-              showAdvanced={showAdvanced}
-              showAuditTrail={showAuditTrail}
-              showDiscount={showDiscount}
-              showPaymentMethods={showPaymentMethods}
-              showQuickKeys={showQuickKeys}
-              showTipSection={showTipSection}
-              signatureData={signatureData}
-              splitPayments={splitPayments}
-              splitValidation={splitValidation}
-              startPriceOverride={startPriceOverride}
-              startSignatureDrawing={startSignatureDrawing}
-              subtotal={subtotal}
-              tables={tables}
-              taxExempt={taxExempt}
-              tipAmount={tipAmount}
-              tipType={tipType}
-              tipValue={tipValue}
-              total={total}
-              updateQuantity={updateQuantity}
-              usingSplitPayment={usingSplitPayment}
-              vatRatePct={vatRatePct}
-              vatAmount={vatAmount}
-              SHOW_UNPUBLISHED={SHOW_UNPUBLISHED}
-              isRestaurant={isRestaurant}
-              setCart={setCart}
-              setCashMovementType={setCashMovementType}
-              setDiscountType={setDiscountType}
-              setDiscountValue={setDiscountValue}
-              setEditingOrder={setEditingOrder}
-              setGiftCardApplied={setGiftCardApplied}
-              setGiftCardCode={setGiftCardCode}
-              setIsProcessing={setIsProcessing}
-              setLoyaltyCfg={setLoyaltyCfg}
-              setPaymentMethod={setPaymentMethod}
-              setPriceLevel={setPriceLevel}
-              setRedeemPoints={setRedeemPoints}
-              setScaleLoading={setScaleLoading}
-              setScaleReading={setScaleReading}
-              setSelectedTableId={setSelectedTableId}
-              setShowAdvanced={setShowAdvanced}
-              setShowCashMovement={setShowCashMovement}
-              setShowDiscount={setShowDiscount}
-              setShowDrawerDeclaration={setShowDrawerDeclaration}
-              setShowEmailReceipt={setShowEmailReceipt}
-              setShowLayaway={setShowLayaway}
-              setShowLoyaltySettings={setShowLoyaltySettings}
-              setShowPaymentMethods={setShowPaymentMethods}
-              setShowPriceLevelMenu={setShowPriceLevelMenu}
-              setShowQuickKeys={setShowQuickKeys}
-              setShowReceiptSettings={setShowReceiptSettings}
-              setShowSignature={setShowSignature}
-              setShowSplitPayment={setShowSplitPayment}
-              setShowTables={setShowTables}
-              setShowTipSection={setShowTipSection}
-              setSignatureData={setSignatureData}
-              setSplitPayments={setSplitPayments}
-              setTables={setTables}
-              setTaxExempt={setTaxExempt}
-              setTipType={setTipType}
-              setTipValue={setTipValue}
-              setVatRatePct={setVatRatePct}
-            />
-          </MotionDiv>
-        )}
-      </AnimatePresence>
+      <PosMobileCartSheet
+        cartPanelProps={cartPanelProps}
+        open={mobileCartOpen}
+        onOpenChange={setMobileCartOpen}
+        isArabic={isArabic}
+        total={total}
+        itemsCount={itemsCount}
+      />
 
       <PosConfigModal
         cart={cart}
