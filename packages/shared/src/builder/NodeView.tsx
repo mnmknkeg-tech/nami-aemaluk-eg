@@ -71,6 +71,7 @@ import {
   computeThemeResponsiveNodeStyles,
 } from './responsiveStyles';
 import { isCompleteChildBasedHero, resolveHeroContent } from './heroCompatibility';
+import { applyThemeVariables } from './codeFiles';
 import { CartIcon } from './CartIcon';
 import { isCartVisible, resolveCartIconType } from './cartPolicy';
 
@@ -734,7 +735,12 @@ const NodeViewInner: React.FC<{ node: ComponentNode; ctx: NodeViewContext }> = (
   // publishing.
   const getComputedStyles = (): React.CSSProperties =>
     applyWebsiteBackgroundToPageRoot(
-      computeThemeResponsiveNodeStyles(node, viewport, theme.typography),
+      // Theme tokens baked into old documents become live CSS variables here,
+      // so later theme changes propagate without rewriting every node.
+      applyThemeVariables(
+        computeThemeResponsiveNodeStyles(node, viewport, theme.typography),
+        theme
+      ),
       node.id === activePage.rootNodeId,
       website.settings?.background
     );

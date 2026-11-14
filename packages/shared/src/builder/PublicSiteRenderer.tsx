@@ -16,6 +16,7 @@ import { SiteSubscriptionModal } from './SiteSubscriptionModal';
 import { SiteCartDrawer, type SiteCartItem } from './SiteCartDrawer';
 import { useResponsiveViewport } from './responsiveViewport';
 import { computeWebsiteRootStyles } from './responsiveStyles';
+import { buildWebsiteStylesheet } from './codeFiles';
 import { resolveAnnouncementBar } from './publishedParity';
 import { inspectWebsiteTree, normalizeWebsiteTree } from './websiteTree';
 import { CartIcon } from './CartIcon';
@@ -294,13 +295,20 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
         </a>
       )}
       <div
-        className="published-site-renderer min-h-screen"
+        className="published-site-renderer ray-site-root min-h-screen"
         style={computeWebsiteRootStyles(
           theme,
           safeWebsite.defaultDirection === 'rtl' ? 'rtl' : 'ltr',
           safeWebsite.settings?.background
         )}
       >
+        {/* Merchant code files: theme variables → site-wide CSS → per-component
+            scoped CSS (auto-prefixed #nodeId). Kept in parity with the editor
+            canvas so the code environment matches the published site. */}
+        <style
+          aria-label="merchant-custom-css"
+          dangerouslySetInnerHTML={{ __html: buildWebsiteStylesheet(safeWebsite) }}
+        />
         {/* Global announcement bar — was edited in the builder but never
             painted on the published site; parity with the editor. */}
         {(() => {

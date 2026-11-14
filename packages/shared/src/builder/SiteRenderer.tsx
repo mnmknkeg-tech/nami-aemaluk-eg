@@ -9,6 +9,7 @@ import { SiteSubscriptionModal } from './SiteSubscriptionModal';
 import { SiteCartDrawer, type SiteCartItem } from './SiteCartDrawer';
 import { useResponsiveViewport } from './responsiveViewport';
 import { computeWebsiteRootStyles } from './responsiveStyles';
+import { buildWebsiteStylesheet } from './codeFiles';
 import { CartIcon } from './CartIcon';
 import { isCartVisible } from './cartPolicy';
 
@@ -190,7 +191,7 @@ export const SiteRenderer: React.FC<SiteRendererProps> = ({
   return (
     <div
       dir={website.defaultDirection || 'rtl'}
-      className="pub-site min-h-screen relative overflow-x-hidden w-full max-w-full"
+      className="pub-site ray-site-root min-h-screen relative overflow-x-hidden w-full max-w-full"
       style={{
         ...computeWebsiteRootStyles(
           theme,
@@ -232,6 +233,14 @@ export const SiteRenderer: React.FC<SiteRendererProps> = ({
             .pub-site h1, .pub-site h2, .pub-site h3, .pub-site h4 { font-family: ${theme.typography.fontHeading}; word-break: normal; overflow-wrap: break-word; }
           `,
         }}
+      />
+
+      {/* Merchant code files: theme variables → site-wide CSS → per-component
+          scoped CSS (auto-prefixed #nodeId). Same engine as the editor canvas
+          so the code environment edits appear live in the preview. */}
+      <style
+        aria-label="merchant-custom-css"
+        dangerouslySetInnerHTML={{ __html: buildWebsiteStylesheet(website) }}
       />
 
       <NodeView nodeId={activePage.rootNodeId} ctx={ctx} />
