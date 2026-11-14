@@ -33,6 +33,7 @@ import {
   Save,
   Search,
   Trash2,
+  Wand2,
   X,
 } from 'lucide-react';
 import CodeMirror from '@uiw/react-codemirror';
@@ -86,6 +87,169 @@ const fileHint = (file: WebsiteFileEntry): string => {
       return '';
   }
 };
+
+// ─── Quick CSS presets ────────────────────────────────────────────────────
+// One-click dramatic transformations for theme/global.css. Each preset is a
+// complete, safe CSS body (no external @import, no JS) that overrides theme
+// variables AND adds visible effects (animations, gradients, hover states) so
+// the merchant SEES the live-preview pipeline work the moment they click.
+// Apply replaces the current draft for the active CSS file; saving commits
+// it to history, publishing pushes it live — same Shopify preview-first flow.
+interface CssPreset {
+  id: string;
+  name: string;
+  blurb: string;
+  swatch: string; // CSS gradient for the chip preview
+  css: string;
+}
+
+const CSS_PRESETS: CssPreset[] = [
+  {
+    id: 'test-connection',
+    name: 'اختبار المعاينة',
+    blurb: 'لو الكانفاس اتحول لأحمر يبقى الكود بيشتغل صح',
+    swatch: 'linear-gradient(135deg, #ef4444 0%, #facc15 100%)',
+    css: `/* اختبار اتصال المعاينة — لو الموقع اتحول لأحمر/أصفر يبقى الـ CSS شغال */
+:root {
+  --ray-color-primary: #ef4444;
+  --ray-color-primary-hover: #dc2626;
+  --ray-color-accent: #facc15;
+  --ray-color-background: #fef2f2;
+  --ray-color-surface: #ffffff;
+  --ray-color-text-primary: #7f1d1d;
+}
+.ray-site-root h1,
+.ray-site-root h2 {
+  background: linear-gradient(90deg, #ef4444, #facc15);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.ray-site-root button {
+  background: #ef4444 !important;
+  color: #fff !important;
+  border: 3px solid #facc15 !important;
+}
+`,
+  },
+  {
+    id: 'pharmacy',
+    name: 'صيدلية احترافية',
+    blurb: 'أخضر طبي ناعم + ظلال + حركة عند المرور',
+    swatch: 'linear-gradient(135deg, #10b981 0%, #0ea5e9 100%)',
+    css: `/* ثيم الصيدلية الاحترافي */
+:root {
+  --ray-color-primary: #10b981;
+  --ray-color-primary-hover: #059669;
+  --ray-color-accent: #0ea5e9;
+  --ray-radius-sm: 8px;
+  --ray-radius-md: 14px;
+  --ray-radius-lg: 22px;
+  --ray-shadow-sm: 0 4px 10px rgba(16, 185, 129, 0.08);
+  --ray-shadow-md: 0 14px 32px rgba(16, 185, 129, 0.18);
+  --ray-shadow-lg: 0 28px 56px rgba(16, 185, 129, 0.25);
+}
+.ray-site-root { scroll-behavior: smooth; }
+.ray-site-root h1,
+.ray-site-root h2 { letter-spacing: -0.4px; }
+.ray-site-root button {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.ray-site-root button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 32px rgba(16, 185, 129, 0.35);
+}
+`,
+  },
+  {
+    id: 'neon-night',
+    name: 'نيون ليلي',
+    blurb: 'خلفية داكنة + أزرار متوهجة بنفسجي',
+    swatch: 'linear-gradient(135deg, #0b0b14 0%, #d946ef 100%)',
+    css: `/* ثيم النيون الليلي */
+:root {
+  --ray-color-primary: #d946ef;
+  --ray-color-primary-hover: #c026d3;
+  --ray-color-accent: #22d3ee;
+  --ray-color-background: #0b0b14;
+  --ray-color-surface: #15152a;
+  --ray-color-text-primary: #f5f5ff;
+  --ray-color-text-secondary: #c7c7e6;
+  --ray-color-border: rgba(255, 255, 255, 0.08);
+  --ray-shadow-md: 0 0 24px rgba(217, 70, 239, 0.35);
+  --ray-shadow-lg: 0 0 40px rgba(217, 70, 239, 0.5);
+}
+.ray-site-root {
+  background: radial-gradient(ellipse at top, #1a0b2e 0%, #0b0b14 60%);
+}
+.ray-site-root button {
+  box-shadow: 0 0 12px rgba(217, 70, 239, 0.4);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.ray-site-root button:hover {
+  box-shadow: 0 0 28px rgba(217, 70, 239, 0.75);
+  transform: translateY(-1px);
+}
+`,
+  },
+  {
+    id: 'egyptian-warm',
+    name: 'دافئ مصري',
+    blurb: 'برتقالي صحراوي + أزرار دائرية + خلفية كريمي',
+    swatch: 'linear-gradient(135deg, #ea580c 0%, #facc15 100%)',
+    css: `/* ثيم دافئ مصري */
+:root {
+  --ray-color-primary: #ea580c;
+  --ray-color-primary-hover: #c2410c;
+  --ray-color-accent: #facc15;
+  --ray-color-background: #fffbeb;
+  --ray-color-surface: #ffffff;
+  --ray-radius-md: 16px;
+  --ray-radius-lg: 24px;
+  --ray-shadow-sm: 0 4px 10px rgba(234, 88, 12, 0.08);
+  --ray-shadow-md: 0 14px 28px rgba(234, 88, 12, 0.15);
+}
+.ray-site-root h1,
+.ray-site-root h2 {
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.ray-site-root button {
+  border-radius: 999px !important;
+  transition: transform 0.18s ease;
+}
+.ray-site-root button:hover { transform: scale(1.04); }
+`,
+  },
+  {
+    id: 'elegant',
+    name: 'كلاسيكي أنيق',
+    blurb: 'خطوط Serif + فراغات واسعة + ظلال ناعمة',
+    swatch: 'linear-gradient(135deg, #1f2937 0%, #9ca3af 100%)',
+    css: `/* ثيم كلاسيكي أنيق */
+:root {
+  --ray-font-heading: 'Playfair Display', 'Amiri', Georgia, serif;
+  --ray-font-body: 'Cairo', system-ui, sans-serif;
+  --ray-color-primary: #1f2937;
+  --ray-color-primary-hover: #111827;
+  --ray-color-accent: #b45309;
+  --ray-radius-sm: 2px;
+  --ray-radius-md: 4px;
+  --ray-radius-lg: 8px;
+  --ray-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --ray-shadow-md: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+.ray-site-root h1,
+.ray-site-root h2 {
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+  font-weight: 700;
+}
+.ray-site-root p { line-height: 1.8; }
+.ray-site-root button { transition: background 0.2s ease; }
+`,
+  },
+];
 
 export const CodeEnvironment: React.FC = () => {
   const {
@@ -257,6 +421,32 @@ export const CodeEnvironment: React.FC = () => {
   const handleSaveDraft = useCallback(() => {
     applyDrafts();
   }, [applyDrafts]);
+
+  // Apply a preset CSS body to the active CSS file. Replaces the current
+  // draft (with confirmation if there's existing content) and streams it into
+  // the context — the canvas updates live within the 400ms debounce.
+  const handleApplyPreset = useCallback(
+    (preset: CssPreset) => {
+      if (!activeFile || activeFile.language !== 'css') {
+        flash('error', 'القوالب الجاهزة بتشتغل مع ملفات CSS فقط.');
+        return;
+      }
+      const existing = drafts[activePath] ?? readWebsiteFile(website, activePath) ?? '';
+      if (existing.trim() && existing.trim() !== preset.css.trim()) {
+        const ok = window.confirm(
+          `استبدال محتوى «${activeFile.label}» بالقالب «${preset.name}»؟ المحتوى الحالي هيتمسح من المسودة (مش من المنشور).`
+        );
+        if (!ok) return;
+      }
+      setDrafts((prev) => ({ ...prev, [activePath]: preset.css }));
+      pendingSyncRef.current.set(activePath, preset.css);
+      // Flush immediately so the merchant SEES the dramatic change at once —
+      // no 400ms wait for the first impressions of the live-preview pipeline.
+      flushDraftSync();
+      flash('ok', `تم تطبيق قالب «${preset.name}» — المعاينة بتعرضه فورًا.`);
+    },
+    [activeFile, activePath, drafts, website, flash, flushDraftSync]
+  );
 
   const handleDeleteFile = useCallback(
     (file: WebsiteFileEntry) => {
@@ -506,6 +696,48 @@ export const CodeEnvironment: React.FC = () => {
               </code>
             </div>
           )}
+
+          {/* Quick CSS Presets — one-click dramatic transformations.
+              Only shown for CSS files; applying replaces the draft and
+              streams to the canvas immediately so the merchant sees the
+              change live. */}
+          {activeFile?.language === 'css' && (
+            <div
+              className="flex shrink-0 flex-col gap-2 border-b border-slate-800 bg-slate-900/80 px-3 py-2.5"
+              dir="rtl"
+            >
+              <div className="flex items-center gap-2 text-[11px] font-bold text-cyan-300">
+                <Wand2 className="size-3.5" />
+                <span>قوالب جاهزة — اضغط وحد يطبّق فورًا على المعاينة</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {CSS_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handleApplyPreset(preset)}
+                    title={preset.blurb}
+                    className="group/preset flex shrink-0 items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-right hover:border-cyan-500 hover:bg-slate-900 transition-colors cursor-pointer"
+                  >
+                    <span
+                      aria-hidden
+                      className="size-5 shrink-0 rounded-md ring-1 ring-white/10"
+                      style={{ background: preset.swatch }}
+                    />
+                    <span className="flex flex-col">
+                      <span className="text-[11px] font-bold text-slate-100 group-hover/preset:text-cyan-300">
+                        {preset.name}
+                      </span>
+                      <span className="text-[9px] text-slate-500 group-hover/preset:text-slate-400 max-w-[140px] truncate">
+                        {preset.blurb}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="min-h-0 flex-1 overflow-hidden">
             {mounted && activeFile ? (
               <CodeMirror
