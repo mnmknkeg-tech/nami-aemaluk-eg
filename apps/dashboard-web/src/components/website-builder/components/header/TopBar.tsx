@@ -103,6 +103,7 @@ export const TopBar: React.FC = () => {
     saveDraft,
     isCodeWorkspaceOpen,
     setIsCodeWorkspaceOpen,
+    hasCodeDrafts,
     isLivePreviewOpen,
     setIsLivePreviewOpen,
     isPublishModalOpen,
@@ -356,6 +357,34 @@ export const TopBar: React.FC = () => {
         {/* Draft-vs-published badge — the truth about what visitors see */}
         <PublishStateBadge onOpenPublish={() => setIsPublishModalOpen(true)} />
 
+        {/* Code Environment Button — Shopify "Edit code" model.
+            Always visible (including production) so merchants can open the
+            file-tree code workspace directly from the header. The dot signals
+            unsaved drafts that are already showing in the canvas preview. */}
+        <button
+          id="open_code_workspace_btn"
+          onClick={() => setIsCodeWorkspaceOpen(!isCodeWorkspaceOpen)}
+          title="فتح بيئة تحرير الكود — عدّل CSS و HTML لكل صفحة ومكوّن"
+          aria-pressed={isCodeWorkspaceOpen}
+          className={`relative flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold border transition-all shrink-0 cursor-pointer ${
+            isCodeWorkspaceOpen
+              ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
+              : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-800 shadow-xs'
+          }`}
+        >
+          <Code2
+            className={`w-3.5 h-3.5 ${isCodeWorkspaceOpen ? 'text-cyan-300' : 'text-slate-600'}`}
+          />
+          <span>الكود</span>
+          {hasCodeDrafts && (
+            <span
+              aria-label="تعديلات كود غير مثبتة"
+              title="في تعديلات كود مش مثبتة بعد — المعاينة بتعرضها فعلًا"
+              className="absolute -top-1 -right-1 size-2 rounded-full bg-amber-400 ring-2 ring-white"
+            />
+          )}
+        </button>
+
         {/* Preview Button — always available: a merchant must see his site
             before publishing it (was hidden in production builds). */}
         <button
@@ -488,6 +517,24 @@ export const TopBar: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => {
+                setIsCodeWorkspaceOpen(!isCodeWorkspaceOpen);
+                setIsMobileMenuOpen(false);
+              }}
+              className={`relative flex items-center gap-2 p-2 rounded-lg border text-xs font-bold ${
+                isCodeWorkspaceOpen
+                  ? 'bg-slate-900 border-slate-900 text-white'
+                  : 'bg-slate-50 border-slate-200 text-slate-800'
+              }`}
+            >
+              <Code2 className="w-4 h-4 text-blue-600" />
+              <span>الكود</span>
+              {hasCodeDrafts && (
+                <span className="absolute top-1 right-1 size-1.5 rounded-full bg-amber-400" />
+              )}
+            </button>
+
             <button
               onClick={() => {
                 setIsLivePreviewOpen(true);

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Monitor, Tablet, Smartphone, ExternalLink, Languages } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
 import { ComponentRenderer } from '../canvas/ComponentRenderer';
+import { buildWebsiteStylesheet } from '@ray-eg/shared/builder';
 import type { ViewportBreakpoint } from '../../types/builder';
 
 import { FloatingCartButton } from '../cart/FloatingCartButton';
@@ -35,7 +36,10 @@ export const SecurePreview: React.FC = () => {
   const {
     isLivePreviewOpen,
     setIsLivePreviewOpen,
-    website,
+    // Render the PREVIEW composite (saved website + unsaved code drafts) so
+    // the live preview modal reflects what the merchant is editing in the
+    // code environment — exactly like the canvas already does.
+    previewWebsite: website,
     activePage,
     isRtl,
     setIsRtl,
@@ -137,7 +141,7 @@ export const SecurePreview: React.FC = () => {
           }}
         >
           <div
-            className="w-full flex-1 min-h-[85vh] overflow-y-auto overflow-x-hidden relative"
+            className="ray-site-root w-full flex-1 min-h-[85vh] overflow-y-auto overflow-x-hidden relative"
             style={{
               backgroundColor: website.theme?.colors?.background || '#ffffff',
               color: website.theme?.colors?.textPrimary || '#0f172a',
@@ -145,6 +149,15 @@ export const SecurePreview: React.FC = () => {
               direction: isRtl ? 'rtl' : 'ltr',
             }}
           >
+            {/* Parity with the editor canvas: theme variables + merchant
+                site-wide CSS + per-component scoped CSS all apply here so the
+                live preview modal matches what merchants see while editing
+                (and what visitors will see once published). Using
+                previewWebsite above means unsaved code drafts show too. */}
+            <style
+              aria-label="merchant-custom-css-live-preview"
+              dangerouslySetInnerHTML={{ __html: buildWebsiteStylesheet(website) }}
+            />
             {hasContent ? (
               <ComponentRenderer
                 nodeId={rootNodeId!}
