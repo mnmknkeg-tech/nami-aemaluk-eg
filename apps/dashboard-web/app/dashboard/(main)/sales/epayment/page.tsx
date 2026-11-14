@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import PageBack from '@/components/PageBack';
 import { useRouter } from 'next/navigation';
 import { HIDE_UNPUBLISHED } from '@/config/sidebar';
 import {
@@ -234,6 +235,7 @@ function SalesEpaymentContent() {
         </div>
         <div className="text-right">
           <div className="flex items-center gap-2">
+            <PageBack fallback="/dashboard/pos" title="رجوع إلى الكاشير" />
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900">الدفع الإلكتروني</h1>
             <button
               onClick={() => setGuideOpen(true)}

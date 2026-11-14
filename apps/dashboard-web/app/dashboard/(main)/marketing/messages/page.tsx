@@ -598,6 +598,7 @@ function MessagesPageContent() {
 
   return (
     <InventoryPage
+      back="/dashboard/marketing"
       title="الرسائل والتواصل"
       subtitle="الرسائل والقوالب وسجل الإرسال لكل القنوات — الإيميل والرسائل النصية والإشعارات"
       onInfo={() => setGuideOpen(true)}

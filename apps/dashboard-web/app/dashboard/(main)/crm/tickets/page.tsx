@@ -432,6 +432,7 @@ export default function TicketsPage() {
   return (
     <>
       <InventoryPage
+        back="/dashboard/crm"
         title="التذاكر"
         subtitle="إدارة تذاكر الدعم الفني وخدمة العملاء"
         onInfo={() => setGuideOpen(true)}

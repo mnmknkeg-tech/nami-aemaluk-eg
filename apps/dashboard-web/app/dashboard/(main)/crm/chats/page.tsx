@@ -367,6 +367,7 @@ export default function ChatsPage() {
   return (
     <>
       <InventoryPage
+        back="/dashboard/crm"
         title="المحادثات"
         subtitle="إدارة محادثات العملاء عبر القنوات المختلفة"
         onInfo={() => setGuideOpen(true)}

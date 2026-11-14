@@ -10,6 +10,7 @@ import React, { useCallback } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, ChevronLeft, Info, Search } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import PageBack from '@/components/PageBack';
 
 export const INV_PAGE_FONT = { fontFamily: "'Cairo','Tajawal',system-ui,sans-serif" };
 
@@ -238,6 +239,8 @@ type InventoryPageProps = {
   subtitle?: React.ReactNode;
   onInfo?: () => void;
   infoTitle?: string;
+  /** زر الرجوع الموحّد — قيمة true = fallback لـ /dashboard، أو نص رابط سيكشن مثل "/dashboard/crm" */
+  back?: boolean | string;
   actions?: React.ReactNode;
   error?: string;
   onDismissError?: () => void;
@@ -259,6 +262,7 @@ export function InventoryPage({
   subtitle,
   onInfo,
   infoTitle = 'معلومات / Info',
+  back,
   actions,
   error,
   onDismissError,
@@ -274,6 +278,7 @@ export function InventoryPage({
   footer,
   children,
 }: InventoryPageProps) {
+  const backFallback = typeof back === 'string' ? back : '/dashboard';
   return (
     <div className="min-h-full bg-[#F4F5F7] text-slate-900" style={INV_PAGE_FONT}>
       {/* شريط الهيدر — نفس هيكل المنتجات/الطلبات */}
@@ -281,6 +286,7 @@ export function InventoryPage({
         <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2">
+              {back && <PageBack fallback={backFallback} title={`رجوع من ${title}`} />}
               <h1 className="text-xl font-bold text-slate-900">{title}</h1>
               {onInfo && (
                 <button

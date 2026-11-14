@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import PageBack from '@/components/PageBack';
 import { Tags, Plus, Trash2, Percent, Info, Loader2 } from 'lucide-react';
 import { useLocalCollection } from '@/lib/localStore';
 import LocalDataNotice from '@/components/LocalDataNotice';
@@ -41,7 +42,8 @@ export default function WholesalePricingPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
-      <div className="mb-5">
+      <div className="mb-5 flex items-center gap-3">
+        <PageBack fallback="/dashboard/customers" title="رجوع إلى العملاء" />
         <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
           <Tags size={22} className="text-cyan-600" />
           أسعار الجملة

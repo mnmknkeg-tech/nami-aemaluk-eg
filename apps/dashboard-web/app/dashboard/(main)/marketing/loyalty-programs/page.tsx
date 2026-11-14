@@ -642,6 +642,7 @@ function LoyaltyProgramsContent() {
 
   return (
     <InventoryPage
+      back="/dashboard/marketing"
       title="برامج الولاء والمكافآت"
       subtitle="نظام النقاط والكروت الذكي"
       tabs={tabs}

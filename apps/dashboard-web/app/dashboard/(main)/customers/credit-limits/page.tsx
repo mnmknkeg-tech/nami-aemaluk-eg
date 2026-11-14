@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import PageBack from '@/components/PageBack';
 import { Loader2, AlertTriangle, ShieldAlert, Save, Search } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
 import { readLocalRecord, writeLocalRecord } from '@/lib/localStore';
@@ -113,6 +114,7 @@ export default function CreditLimitsPage() {
         <div className="px-4 sm:px-6 py-5 max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2">
+              <PageBack fallback="/dashboard/customers" title="رجوع إلى العملاء" />
               <h1 className="text-xl font-bold text-slate-900">حدود الائتمان</h1>
               <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-200">
                 قريباً · محلي فقط

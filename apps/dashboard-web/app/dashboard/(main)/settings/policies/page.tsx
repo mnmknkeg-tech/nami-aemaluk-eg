@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import React, { useState, useEffect } from 'react';
+import PageBack from '@/components/PageBack';
 import { Save, RefreshCw, Truck, RefreshCcw, Package } from 'lucide-react';
 
 interface Policy {
@@ -65,9 +66,12 @@ export default function PoliciesManagementPage() {
 
   return (
     <div className="p-6 max-w-4xl" dir="rtl">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">
-        إدارة سياسات المتجر
-      </h1>
+      <div className="flex items-center gap-3 mb-6">
+        <PageBack fallback="/dashboard/settings" title="رجوع إلى الإعدادات" />
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          إدارة سياسات المتجر
+        </h1>
+      </div>
 
       <div className="space-y-6">
         {policyTypes.map((pt) => {

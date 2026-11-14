@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import PageBack from '@/components/PageBack';
 import { PackageCheck, Loader2, Search, AlertCircle, RefreshCw, Printer } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
 
@@ -75,7 +76,8 @@ export default function DeliveryNotesPage() {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <div className="flex items-start justify-between flex-wrap gap-3 mb-5">
-        <div>
+        <div className="flex items-center gap-3">
+          <PageBack fallback="/dashboard/sales" title="رجوع إلى المبيعات" />
           <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
             <PackageCheck size={22} className="text-emerald-600" />
             أوراق الصرف

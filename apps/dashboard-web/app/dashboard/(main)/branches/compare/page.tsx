@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import PageBack from '@/components/PageBack';
 import { GitBranch, Building2, Target, TrendingUp, Users } from 'lucide-react';
 import { useLocalCollection } from '@/lib/localStore';
 
@@ -22,7 +23,8 @@ export default function BranchComparePage() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      <div className="mb-5">
+      <div className="mb-5 flex items-center gap-3">
+        <PageBack fallback="/dashboard/branches" title="رجوع إلى الفروع" />
         <h1 className="text-xl font-black text-slate-900 flex items-center gap-2">
           <GitBranch size={22} className="text-blue-600" />
           مقارنة الفروع

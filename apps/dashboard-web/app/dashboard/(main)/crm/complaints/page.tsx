@@ -466,6 +466,7 @@ export default function ComplaintsPage() {
   return (
     <>
       <InventoryPage
+        back="/dashboard/crm"
         title="الشكاوى"
         subtitle="إدارة شكاوى العملاء ومتابعة حلها"
         onInfo={() => setGuideOpen(true)}

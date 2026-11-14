@@ -455,6 +455,7 @@ function CampaignsPage() {
 
   return (
     <InventoryPage
+      back="/dashboard/marketing"
       title="الحملات"
       subtitle={
         <>

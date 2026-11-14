@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import PageBack from '@/components/PageBack';
 import {
   QrCode,
   Search,
@@ -248,6 +249,7 @@ export default function QRCodePage() {
         </div>
         <div className="text-right flex-1">
           <div className="flex items-center gap-2">
+            <PageBack fallback="/dashboard/inventory" title="رجوع إلى المخزون" />
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900">QR Code</h1>
             <button
               onClick={() => setGuideOpen(true)}

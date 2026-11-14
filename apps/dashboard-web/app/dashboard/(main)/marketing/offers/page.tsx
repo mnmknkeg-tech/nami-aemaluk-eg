@@ -590,6 +590,7 @@ function OffersPageContent() {
 
   return (
     <InventoryPage
+      back="/dashboard/marketing"
       title="العروض والخصومات"
       subtitle="كل العروض والخصومات والكوبونات في مكان واحد"
       onInfo={() => setGuideOpen(true)}

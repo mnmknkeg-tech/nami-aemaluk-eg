@@ -312,6 +312,7 @@ export default function ReviewsPage() {
   return (
     <>
       <InventoryPage
+        back="/dashboard/crm"
         title="التقييمات والمراجعات"
         subtitle={`عرض وإدارة تقييمات العملاء — المتوسط ${avgRatingVal.toFixed(1)} / 5 • نسبة الموافقة ${apprRate}%`}
         onInfo={() => setGuideOpen(true)}
