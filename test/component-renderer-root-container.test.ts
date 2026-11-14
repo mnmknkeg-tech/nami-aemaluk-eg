@@ -6,50 +6,91 @@ import { useBuilder } from '../apps/dashboard-web/src/components/website-builder
 jest.mock('../apps/dashboard-web/src/components/website-builder/context/BuilderContext', () => ({
   useBuilder: jest.fn(),
 }));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/HeaderRenderer', () => ({
-  HeaderRenderer: () => null,
-}));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/HeroRenderer', () => ({
-  HeroRenderer: () => null,
-}));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/ProductsRenderer', () => ({
-  ProductsRenderer: () => null,
-}));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/PricingRenderer', () => ({
-  PricingRenderer: () => null,
-}));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/AuthRenderer', () => ({
-  AuthRenderer: () => null,
-}));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/FeaturesRenderer', () => ({
-  FeaturesRenderer: () => null,
-}));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/FormRenderer', () => ({
-  FormRenderer: () => null,
-}));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/FooterRenderer', () => ({
-  FooterRenderer: () => null,
-}));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/FaqRenderer', () => ({
-  FaqRenderer: () => null,
-}));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/ContactRenderer', () => ({
-  ContactRenderer: () => null,
-}));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/UtilityRenderers', () => ({
-  UtilityRenderers: () => null,
-}));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/BasicElementsRenderer', () => ({
-  BasicElementsRenderer: () => null,
-}));
-jest.mock('../apps/dashboard-web/src/components/website-builder/components/code/CustomCodeRenderer', () => ({
-  CustomCodeRenderer: () => null,
-}));
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/HeaderRenderer',
+  () => ({
+    HeaderRenderer: () => null,
+  })
+);
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/HeroRenderer',
+  () => ({
+    HeroRenderer: () => null,
+  })
+);
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/ProductsRenderer',
+  () => ({
+    ProductsRenderer: () => null,
+  })
+);
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/PricingRenderer',
+  () => ({
+    PricingRenderer: () => null,
+  })
+);
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/AuthRenderer',
+  () => ({
+    AuthRenderer: () => null,
+  })
+);
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/FeaturesRenderer',
+  () => ({
+    FeaturesRenderer: () => null,
+  })
+);
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/FormRenderer',
+  () => ({
+    FormRenderer: () => null,
+  })
+);
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/FooterRenderer',
+  () => ({
+    FooterRenderer: () => null,
+  })
+);
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/FaqRenderer',
+  () => ({
+    FaqRenderer: () => null,
+  })
+);
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/ContactRenderer',
+  () => ({
+    ContactRenderer: () => null,
+  })
+);
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/UtilityRenderers',
+  () => ({
+    UtilityRenderers: () => null,
+  })
+);
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/canvas/renderers/BasicElementsRenderer',
+  () => ({
+    BasicElementsRenderer: () => null,
+  })
+);
+jest.mock(
+  '../apps/dashboard-web/src/components/website-builder/components/code/CustomCodeRenderer',
+  () => ({
+    CustomCodeRenderer: () => null,
+  })
+);
 
 const useBuilderMock = useBuilder as jest.Mock;
 
 const renderRootAt = (overrideViewport?: 'desktop' | 'tablet' | 'mobile') =>
-  renderToStaticMarkup(React.createElement(ComponentRenderer, { nodeId: 'root', overrideViewport }));
+  renderToStaticMarkup(
+    React.createElement(ComponentRenderer, { nodeId: 'root', overrideViewport })
+  );
 
 const setBuilderState = () => {
   useBuilderMock.mockReturnValue({
@@ -102,7 +143,9 @@ describe('ComponentRenderer root container', () => {
     const markup = renderRootAt('desktop');
 
     expect(markup).toContain('min-height:100vh');
-    expect(markup).toContain('background-color:#ffffff');
+    // The default background token (#ffffff) renders as a live CSS variable so
+    // later theme changes propagate without rewriting nodes.
+    expect(markup).toContain('background-color:var(--ray-color-background)');
     expect(markup).toContain('الكانفاس فارغ حالياً');
     expect(markup).toContain('ابدأ بإضافة أقسام');
   });

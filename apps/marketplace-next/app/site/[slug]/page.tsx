@@ -13,6 +13,8 @@ import {
   type SiteBookingService,
   type Website,
   normalizeWebsiteTree,
+  splitHeadCode,
+  readPageInjectionCode,
 } from '@ray-eg/shared/builder';
 import { SiteCartBridge } from '@/components/SiteCartBridge';
 import { serializeJsonLd } from '@/lib/jsonld';
@@ -138,12 +140,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const noIndex = /noindex/i.test(robotsDirective);
   const noFollow = /nofollow/i.test(robotsDirective);
 
+  // Merchant-authored <head> code (builder page "كود Head"): verification meta
+  // tags are hoisted into real <head> via metadata.other; scripts/styles are
+  // injected in the page body below.
+  const homePage = website?.pages?.find((p) => p.metadata?.isHomePage) || website?.pages?.[0];
+  const headMeta = homePage
+    ? splitHeadCode(readPageInjectionCode(website!, homePage.id, 'head')).meta
+    : {};
+
   return {
     title: { absolute: title },
     description,
     ...(noIndex || noFollow
       ? { robots: { index: noIndex ? false : undefined, follow: noFollow ? false : undefined } }
       : {}),
+    ...(Object.keys(headMeta).length > 0 ? { other: headMeta } : {}),
     ...(site.shop.logoUrl
       ? {
           icons: {
@@ -215,14 +226,27 @@ export default async function PublishedSitePage({ params }: Props) {
 
   // New-generation sites: render the exact builder component tree.
   if (website?.pages?.length && website?.components && Object.keys(website.components).length > 0) {
+    // Merchant head-code remainder (pixels/scripts/links that are not <meta>)
+    // plus the end-of-body code, authored in the builder code environment.
+    const homePage = website.pages.find((p) => p.metadata?.isHomePage) || website.pages[0];
+    const headRest = homePage
+      ? splitHeadCode(readPageInjectionCode(website, homePage.id, 'head')).rest
+      : '';
+    const bodyCode = homePage ? readPageInjectionCode(website, homePage.id, 'body') : '';
     return (
-      <SiteCartBridge
-        website={website}
-        shop={shopCtx}
-        products={siteProducts}
-        subscriptionPlans={subscriptionPlans}
-        realServices={realServices}
-      />
+      <>
+        {headRest && (
+          <div style={{ display: 'none' }} dangerouslySetInnerHTML={{ __html: headRest }} />
+        )}
+        <SiteCartBridge
+          website={website}
+          shop={shopCtx}
+          products={siteProducts}
+          subscriptionPlans={subscriptionPlans}
+          realServices={realServices}
+        />
+        {bodyCode && <div dangerouslySetInnerHTML={{ __html: bodyCode }} />}
+      </>
     );
   }
 

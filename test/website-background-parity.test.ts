@@ -122,7 +122,9 @@ describe('website background publish parity', () => {
     const website = makeWebsite([]);
     const markup = renderRootNode(website);
 
-    expect(markup).toContain('background-color:#ffffff');
+    // The default background token renders as a live CSS variable (theme
+    // substitution) while the long background image keeps painting on the root.
+    expect(markup).toContain('background-color:var(--ray-color-background)');
     expect(markup).toContain(`background-image:url(&quot;${BG_URL}&quot;)`);
     expect(markup).toContain('position:relative');
   });
