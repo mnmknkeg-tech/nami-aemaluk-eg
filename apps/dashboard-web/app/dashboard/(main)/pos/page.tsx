@@ -4,8 +4,6 @@ import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { Search, X, Receipt, ScanLine, Camera, Gift, Scale, CloudOff, WifiOff } from 'lucide-react';
 import { apiRequest, useAuth } from '@/lib/auth';
 import { useShop } from '@/hooks/useShop';
-import { notFound } from 'next/navigation';
-import { HIDE_UNPUBLISHED } from '@/config/sidebar';
 import {
   HeldOrders,
   startUsbBarcodeListener,
@@ -101,9 +99,6 @@ import {
 import { playCashRegisterSound } from './audio';
 
 const POSSystemPage: React.FC = () => {
-  if (HIDE_UNPUBLISHED) {
-    notFound();
-  }
   const { shop } = useShop();
   const shopId = shop?.id || '';
   const isArabic = true;
