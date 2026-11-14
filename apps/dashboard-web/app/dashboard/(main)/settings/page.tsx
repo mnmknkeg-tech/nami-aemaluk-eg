@@ -14,7 +14,9 @@ function SettingsPageInner() {
     setLoading(true);
     setError('');
     try {
-      const data = await apiRequest('/shops/me');
+      // no-store: settings drive mutations — the page must always render the
+      // server truth, never a cached snapshot from before the last save.
+      const data = await apiRequest('/shops/me', { cache: 'no-store' });
       setShop(data);
     } catch (err: any) {
       setError(err?.message || 'فشل تحميل الإعدادات');

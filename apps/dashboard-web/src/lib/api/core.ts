@@ -316,7 +316,7 @@ async function execute(
 // GET cache + in-flight dedup
 // ---------------------------------------------------------------------------
 const getCache = new Map<string, { at: number; raw: any }>();
-const inflightGets = new Map<string, Promise<any>>();
+const inflightGets = new Map<string, { gen: number; promise: Promise<any> }>();
 const failedGets = new Map<string, { at: number; error: unknown }>();
 
 // The access/refresh tokens live in httpOnly cookies, so the CSRF cookie is
@@ -331,9 +331,23 @@ function cacheScope(): string {
   return document.cookie.match(/ray_csrf=([^;]+)/)?.[1] || '';
 }
 
+/**
+ * Cache generation — bumps on every non-GET mutation (clearApiCache).
+ * GETs that STARTED before a mutation must never publish their
+ * (pre-mutation) response into the post-mutation cache, and must never be
+ * deduped onto by post-mutation callers. That race poisoned the cache after
+ * every toggle: PATCH /shops/me cleared the cache, an in-flight GET
+ * completed right after and re-wrote the OLD shop config into it, and the
+ * modal's post-save refetch then got served the stale body — the toggle
+ * visually reverted and only a manual refresh showed the saved state.
+ */
+let cacheGen = 0;
+
 export function clearApiCache(): void {
   getCache.clear();
   failedGets.clear();
+  inflightGets.clear();
+  cacheGen += 1;
 }
 
 function cachedGet(path: string, options: RequestInit): Promise<any> {
@@ -345,6 +359,7 @@ function cachedGet(path: string, options: RequestInit): Promise<any> {
     clearApiCache();
   }
   const key = scope ? `${scope}|${path}` : path;
+  const genAtStart = cacheGen;
   if (options.cache === 'no-store') {
     getCache.delete(key);
     failedGets.delete(key);
@@ -360,23 +375,33 @@ function cachedGet(path: string, options: RequestInit): Promise<any> {
   }
   if (failed) failedGets.delete(key);
   const pending = inflightGets.get(key);
-  if (pending) return pending;
+  // Dedup only onto an in-flight GET from the SAME generation — a promise
+  // started before the last mutation carries pre-mutation data.
+  if (pending && pending.gen === genAtStart) return pending.promise;
+  if (pending) inflightGets.delete(key);
 
-  const exec = execute(path, options, false)
+  const promise = execute(path, options, false)
     .then((result) => {
       failedGets.delete(key);
-      getCache.set(key, { at: Date.now(), raw: result.body });
+      if (cacheGen === genAtStart) {
+        getCache.set(key, { at: Date.now(), raw: result.body });
+      }
       return result.body;
     })
     .catch((error: unknown) => {
-      failedGets.set(key, { at: Date.now(), error });
+      if (cacheGen === genAtStart) {
+        failedGets.set(key, { at: Date.now(), error });
+      }
       throw error;
     })
     .finally(() => {
-      inflightGets.delete(key);
+      // Remove the entry only if it is still ours (a newer generation may
+      // have registered its own in-flight GET for the same key meanwhile).
+      const current = inflightGets.get(key);
+      if (current && current.promise === promise) inflightGets.delete(key);
     });
-  inflightGets.set(key, exec);
-  return exec;
+  inflightGets.set(key, { gen: genAtStart, promise });
+  return promise;
 }
 
 function unwrap(body: any): any {
@@ -410,7 +435,8 @@ export async function apiRequestWithMeta<T = any>(
 
   let body: any;
   if (method !== 'GET') {
-    getCache.clear();
+    // Full clear (incl. in-flight dedup + generation bump), same as apiRequest.
+    clearApiCache();
     ({ body } = await execute(path, options, false));
   } else {
     body = await cachedGet(path, options);

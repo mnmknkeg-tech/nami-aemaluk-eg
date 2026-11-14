@@ -306,7 +306,9 @@ export default function SettingsModal() {
   }, []);
 
   const handleSaved = useCallback(() => {
-    apiRequest('/shops/me')
+    // no-store: after a save the modal MUST render the server truth, never a
+    // cached snapshot — this refetch is what re-syncs the modules UI.
+    apiRequest('/shops/me', { cache: 'no-store' })
       .then((data) => setShop(data))
       .catch(() => {});
   }, []);
