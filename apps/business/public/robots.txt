@@ -1,18 +1,19 @@
+# robots.txt — نمّي أعمالك (nami-aemaluk-eg.vercel.app)
 User-agent: *
 Allow: /
-Allow: /shops
-Allow: /products
-Allow: /offers
-Allow: /restaurants
-Allow: /about
-Allow: /contact
-Allow: /dalil
 
+# مناطق داخلية / أدوات التجار — مش للتأريخ
 Disallow: /login
 Disallow: /signup
-Disallow: /business/
-Disallow: /admin/
-Disallow: /pos/
-Disallow: /builder/
+Disallow: /dashboard
+Disallow: /builder
+Disallow: /pos
+Disallow: /admin
+Disallow: /api
 
-Sitemap: https://mnmknk.com/sitemap.xml
+# صفحات قديمة أو بديلة مؤقتة للرئيسية — نمنع التشويش
+Disallow: /legacy
+Disallow: /home
+Disallow: /new
+
+Sitemap: https://nami-aemaluk-eg.vercel.app/sitemap.xml
