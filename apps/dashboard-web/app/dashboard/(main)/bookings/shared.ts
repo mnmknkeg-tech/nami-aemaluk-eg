@@ -1,4 +1,5 @@
 /** Shared types, constants, and pure helpers for the bookings page and its sub-components. */
+import { useState, useEffect } from 'react';
 import { format as dfFormat, parse as dfParse } from 'date-fns';
 import { apiRequest } from '@/lib/auth';
 import { normPhoneKey, type ActivityType, type UnifiedStatus } from '@/lib/bookings/ui';
@@ -190,3 +191,57 @@ export async function ensureBookingCustomers(shopId: string, items: BookingItem[
     }
   } catch {}
 }
+
+export function useNow(enabled: boolean): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!enabled) return;
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(id);
+  }, [enabled]);
+  return now;
+}
+
+export type GridBlock = { b: BookingItem; start: number; end: number; col: number; cols: number };
+
+export function layoutGridBlocks(items: BookingItem[]): GridBlock[] {
+  const intervals = items
+    .map((b) => ({
+      b,
+      start: timeToMinutes(b.timeStr),
+      end: timeToMinutes(b.timeStr) + BLOCK_MINUTES,
+    }))
+    .sort((x, y) => x.start - y.start || x.end - y.end);
+  const colEnds: number[] = [];
+  const placed = intervals.map((it) => {
+    let col = colEnds.findIndex((end) => end <= it.start);
+    if (col === -1) {
+      col = colEnds.length;
+      colEnds.push(it.end);
+    } else {
+      colEnds[col] = it.end;
+    }
+    return { ...it, col };
+  });
+  const cols = Math.max(1, colEnds.length);
+  return placed.map((p) => ({ ...p, cols }));
+}
+
+export const QUICK_TIMES: string[] = Array.from({ length: 30 }, (_, i) => {
+  const h = 8 + Math.floor(i / 2);
+  const m = i % 2 === 0 ? '00' : '30';
+  return `${String(h).padStart(2, '0')}:${m}`;
+});
+
+export function waMeLink(phone: string, text: string): string {
+  const digits = phone.replace(/\D/g, '');
+  const intl = digits.startsWith('0') ? `20${digits.slice(1)}` : digits;
+  return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
+}
+
+export const PX_PER_HOUR = 64;
+export const GRID_START_HOUR = 8;
+export const GRID_END_HOUR = 24;
+export const BLOCK_MINUTES = 60;
+export const WEEK_DAYS_SHORT = ['س', 'ح', 'ن', 'ث', 'ر', 'خ', 'ج'];
