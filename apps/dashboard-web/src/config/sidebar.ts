@@ -237,7 +237,7 @@ export const sidebarSections: SidebarSection[] = [
     moduleId: 'pos',
     icon: Calculator,
     mainHref: '/dashboard/pos',
-    published: false, // LOCAL-ONLY: الكاشير مخفي في الإنتاج
+    published: true, // منشور — merchant يقدر يقفلونه من لوحة الأقسام (settings → modules)
     items: [
       {
         id: 'posCheckout',
