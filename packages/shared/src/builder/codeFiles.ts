@@ -193,9 +193,48 @@ function scopeSelector(selector: string, mode: ScopeMode, nodeId?: string): stri
   if (bare === '' || /^(html|body|:host)$/i.test(bare)) {
     return mode === 'node' && nodeId ? `#${cssEscapeId(nodeId)}` : '.ray-site-root';
   }
+  // Bare HTML sectioning/content tag (e.g. `header`, `footer`, `nav`) in
+  // node mode: produce BOTH a self-match and a descendant match. Without
+  // this, a merchant writing `header { background: red }` in a header
+  // component's CSS file got `#gen_header header` (descendant only), which
+  // does NOT match the `<header id="gen_header">` element itself — the rule
+  // silently did nothing. Using `:is(<tag>)` keeps the self-match honest:
+  // it only fires when the component element actually IS that tag, so a
+  // stray `header { }` inside a button component's CSS still does nothing.
+  // Supported in all modern browsers since 2021 (Chrome 88+, FF 78+, S14+).
+  if (
+    mode === 'node' &&
+    nodeId &&
+    /^[a-zA-Z][a-zA-Z0-9]*$/i.test(raw) &&
+    BARE_HTML_TAGS.has(raw.toLowerCase())
+  ) {
+    const id = cssEscapeId(nodeId);
+    return `#${id}:is(${raw}), #${id} ${raw}`;
+  }
   if (mode === 'node' && nodeId) return `#${cssEscapeId(nodeId)} ${raw}`;
   return `.ray-site-root ${raw}`;
 }
+
+/** HTML tags whose bare form (`header { }`) commonly refers to the component
+ * element itself in merchant CSS — typically because the component IS that
+ * tag. Kept conservative on purpose: `div`/`span`/`p` are too generic to
+ * auto-self-match (a `div { }` rule in a container's CSS almost always means
+ * a nested div). */
+const BARE_HTML_TAGS = new Set([
+  'header',
+  'footer',
+  'nav',
+  'section',
+  'main',
+  'aside',
+  'article',
+  'form',
+  'figure',
+  'figcaption',
+  'details',
+  'summary',
+  'dialog',
+]);
 
 /** Minimal ID escape for selector use (ids are our own, but stay defensive). */
 function cssEscapeId(id: string): string {
