@@ -111,9 +111,21 @@ function readTokenPath(tokens: DesignTokens, path: string): unknown {
   return (tokens as unknown as Record<string, Record<string, unknown>>)[group]?.[key];
 }
 
+/**
+ * Structural (deep-partial) theme input — lets merchants/AI pass a subset of
+ * tokens (e.g. `{ colors: { primary: '#000' } }`) without the full shape.
+ */
+export type LooseDesignTokens = {
+  colors?: Record<string, unknown> | null;
+  typography?: Record<string, unknown> | null;
+  radius?: Record<string, unknown> | null;
+  shadows?: Record<string, unknown> | null;
+  spacingUnit?: unknown;
+};
+
 /** `:root` + `.ray-site-root` variable block generated from design tokens. */
-export function buildThemeVariablesCss(theme?: Partial<DesignTokens> | null): string {
-  const tokens = resolveTheme(theme);
+export function buildThemeVariablesCss(theme?: LooseDesignTokens | null): string {
+  const tokens = resolveTheme(theme as unknown as Partial<DesignTokens>);
   const lines = THEME_VARIABLE_MAP.map(([path, varName]) => {
     const value = sanitizeCssToken(readTokenPath(tokens, path), '');
     return value ? `  ${varName}: ${value};` : '';
@@ -137,9 +149,9 @@ const hexNormalize = (value: string): string =>
  */
 export function applyThemeVariables<T extends object>(
   styles: T,
-  theme?: Partial<DesignTokens> | null
+  theme?: LooseDesignTokens | null
 ): T {
-  const tokens = resolveTheme(theme);
+  const tokens = resolveTheme(theme as unknown as Partial<DesignTokens>);
   const valueToVariable = new Map<string, string>();
   THEME_VARIABLE_MAP.forEach(([path, varName]) => {
     // Radius/shadows keep unit-bearing values; colors normalize hex case.
