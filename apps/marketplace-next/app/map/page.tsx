@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, MapPin, Store, Briefcase, Hand } from 'lucide-react';
 import { apiPath } from '@/lib/api';
 import { buildShopMarkerHtml, buildListingMarkerHtml, escapeHtml } from '@/lib/mapUtils';
+import { getMerchantExternalUrl, MERCHANT_LINK_REL } from '@/lib/merchantUrl';
 import {
   requestDeviceLocation,
   requestApproxLocation,
@@ -200,9 +201,14 @@ export default function MapPage() {
 
       marker.on('click', () => {
         if (isShop && p.slug) {
-          // من الخريطة الموقع يفتح بشكلِه الأصلي (ثيم موقع التاجر) — جوّه
-          // التطبيق المتاجر بتظهر بالثيم الموحد عبر /shop/[slug] العادي.
-          router.push(`/shop/${p.slug}?view=site`);
+          // Merchant sites are decoupled from the marketplace app: open the
+          // merchant's standalone URL in a new tab. The customer sees the
+          // merchant's own site (own domain/subdomain, own header/footer,
+          // no marketplace chrome) and the marketplace SPA history stays
+          // clean. The merchant's site is reachable from three independent
+          // paths: their own URL (they market independently), the map here
+          // (we market the map), and the directory cards.
+          window.open(getMerchantExternalUrl(p.slug), '_blank', MERCHANT_LINK_REL);
         } else if (!isShop && p.id) {
           router.push(`/map/listing/${p.id}`);
         }
