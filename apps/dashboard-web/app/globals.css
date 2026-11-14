@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+/* بديل tailwindcss-animate لـ Tailwind v4 — يشغّل أنيميشن animate-in/fade-in/zoom-in/slide-in
+   المستخدم في ~57 مكان (التوست والمودالز كانت بتظهر بدون حركة) */
+@import 'tw-animate-css';
 @config "../tailwind.config.ts";
 
 :root {

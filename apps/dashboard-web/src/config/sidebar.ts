@@ -33,6 +33,7 @@ import {
   Receipt,
   ScanBarcode,
   Clock,
+  QrCode,
   ClipboardList,
   Truck,
   FileStack,
@@ -316,6 +317,13 @@ export const sidebarSections: SidebarSection[] = [
         labelAr: 'الموردون',
         icon: Truck,
         href: '/dashboard/inventory/suppliers',
+      },
+      {
+        id: 'qrCodes',
+        label: 'QR Codes',
+        labelAr: 'أكواد QR',
+        icon: QrCode,
+        href: '/dashboard/inventory/qr-code',
       },
       // ملاحظة: الفئات/المتغيرات/الباركود تبويبات داخل المنتجات، والنقل والحركات
       // تبويبات داخل المخازن، وتتبع الكميات وتنبيهات النفاد تبويبات داخل المخزون.
@@ -994,6 +1002,13 @@ export const sidebarSections: SidebarSection[] = [
         labelAr: 'المتجر والنشاط',
         icon: Store,
         href: '/dashboard/settings?tab=store',
+      },
+      {
+        id: 'storePolicies',
+        label: 'Store Policies',
+        labelAr: 'سياسات المتجر',
+        icon: ScrollText,
+        href: '/dashboard/settings/policies',
       },
       {
         id: 'settings_bookings',
