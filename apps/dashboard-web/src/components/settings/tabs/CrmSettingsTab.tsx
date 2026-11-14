@@ -56,40 +56,44 @@ export default function CrmSettingsTab({ shop, onSaved }: CrmSettingsTabProps) {
     } catch {}
   }, [form, initial]);
 
-  const saveCrmSettings = useCallback(async () => {
-    setSaving(true);
-    try {
-      const current = formRef.current;
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          pageDesign: {
-            ...pd,
-            crmAutoAssign: current.autoAssign,
-            crmResponseTargetHours: Number(current.responseTargetHours) || 2,
-            crmEscalationHours: Number(current.escalationHours) || 12,
-            crmSatisfactionSurvey: current.satisfactionSurvey,
-            crmAutoCloseDays: Number(current.autoCloseDays) || 3,
-            crmAwayAutoReply: current.awayAutoReply,
-            crmAwayMessage: current.awayMessage.trim(),
-          },
-        }),
-      });
+  const saveCrmSettings = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
+      try {
+        const current = formRef.current;
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            pageDesign: {
+              ...pd,
+              crmAutoAssign: current.autoAssign,
+              crmResponseTargetHours: Number(current.responseTargetHours) || 2,
+              crmEscalationHours: Number(current.escalationHours) || 12,
+              crmSatisfactionSurvey: current.satisfactionSurvey,
+              crmAutoCloseDays: Number(current.autoCloseDays) || 3,
+              crmAwayAutoReply: current.awayAutoReply,
+              crmAwayMessage: current.awayMessage.trim(),
+            },
+          }),
+        });
 
-      toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات خدمة العملاء بنجاح' });
-      onSaved();
-      return true;
-    } catch (e: any) {
-      toast({
-        title: 'خطأ',
-        description: e?.message || 'فشل حفظ إعدادات خدمة العملاء',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [pd, onSaved, toast]);
+        if (!opts?.silent)
+          toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات خدمة العملاء بنجاح' });
+        onSaved();
+        return true;
+      } catch (e: any) {
+        toast({
+          title: 'خطأ',
+          description: e?.message || 'فشل حفظ إعدادات خدمة العملاء',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [pd, onSaved, toast]
+  );
 
   useEffect(() => {
     try {

@@ -83,46 +83,50 @@ export default function OrdersSettingsTab({ shop, onSaved }: OrdersSettingsTabPr
     } catch {}
   }, [form, initial]);
 
-  const saveOrdersSettings = useCallback(async () => {
-    setSaving(true);
-    try {
-      const current = formRef.current;
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          minOrderAmount: current.minOrderAmount,
-          deliveryFee: current.deliveryFee,
-          freeDeliveryThreshold: current.freeDeliveryThreshold,
-          deliveryDisabled: !current.enableHomeDelivery,
-          pageDesign: {
-            ...pd,
+  const saveOrdersSettings = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
+      try {
+        const current = formRef.current;
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
             minOrderAmount: current.minOrderAmount,
-            autoConfirmOrders: current.autoConfirmOrders,
-            enableStorePickup: current.enableStorePickup,
             deliveryFee: current.deliveryFee,
             freeDeliveryThreshold: current.freeDeliveryThreshold,
-            allowOrderCancellation: current.allowCancellation,
-            cancellationWindowHours: current.cancellationWindowHours,
-            returnPolicyNotice: current.returnPolicyNotice,
-            orderInvoiceNotes: current.orderInvoiceNotes,
-          },
-        }),
-      });
+            deliveryDisabled: !current.enableHomeDelivery,
+            pageDesign: {
+              ...pd,
+              minOrderAmount: current.minOrderAmount,
+              autoConfirmOrders: current.autoConfirmOrders,
+              enableStorePickup: current.enableStorePickup,
+              deliveryFee: current.deliveryFee,
+              freeDeliveryThreshold: current.freeDeliveryThreshold,
+              allowOrderCancellation: current.allowCancellation,
+              cancellationWindowHours: current.cancellationWindowHours,
+              returnPolicyNotice: current.returnPolicyNotice,
+              orderInvoiceNotes: current.orderInvoiceNotes,
+            },
+          }),
+        });
 
-      toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات الطلبات والمبيعات بنجاح' });
-      onSaved();
-      return true;
-    } catch (e: any) {
-      toast({
-        title: 'خطأ',
-        description: e?.message || 'فشل حفظ إعدادات الطلبات',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [pd, onSaved, toast]);
+        if (!opts?.silent)
+          toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات الطلبات والمبيعات بنجاح' });
+        onSaved();
+        return true;
+      } catch (e: any) {
+        toast({
+          title: 'خطأ',
+          description: e?.message || 'فشل حفظ إعدادات الطلبات',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [pd, onSaved, toast]
+  );
 
   useEffect(() => {
     try {

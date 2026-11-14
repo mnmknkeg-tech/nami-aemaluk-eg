@@ -54,41 +54,45 @@ export default function HrSettingsTab({ shop, onSaved }: HrSettingsTabProps) {
     } catch {}
   }, [form, initial]);
 
-  const saveHrSettings = useCallback(async () => {
-    setSaving(true);
-    try {
-      const current = formRef.current;
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          pageDesign: {
-            ...pd,
-            hrShiftStart: current.shiftStart.trim() || '09:00',
-            hrShiftEnd: current.shiftEnd.trim() || '18:00',
-            hrLateGraceMinutes: Number(current.lateGraceMinutes) || 0,
-            hrAllowCashierDiscount: current.allowCashierDiscount,
-            hrMaxDiscountPercent: Number(current.maxDiscountPercent) || 0,
-            hrAllowCashierRefund: current.allowCashierRefund,
-            hrAutoApproveLeaves: current.autoApproveLeaves,
-            hrPayrollDay: Number(current.payrollDay) || 1,
-          },
-        }),
-      });
+  const saveHrSettings = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
+      try {
+        const current = formRef.current;
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            pageDesign: {
+              ...pd,
+              hrShiftStart: current.shiftStart.trim() || '09:00',
+              hrShiftEnd: current.shiftEnd.trim() || '18:00',
+              hrLateGraceMinutes: Number(current.lateGraceMinutes) || 0,
+              hrAllowCashierDiscount: current.allowCashierDiscount,
+              hrMaxDiscountPercent: Number(current.maxDiscountPercent) || 0,
+              hrAllowCashierRefund: current.allowCashierRefund,
+              hrAutoApproveLeaves: current.autoApproveLeaves,
+              hrPayrollDay: Number(current.payrollDay) || 1,
+            },
+          }),
+        });
 
-      toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات الفريق والصلاحيات بنجاح' });
-      onSaved();
-      return true;
-    } catch (e: any) {
-      toast({
-        title: 'خطأ',
-        description: e?.message || 'فشل حفظ إعدادات الفريق',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [pd, onSaved, toast]);
+        if (!opts?.silent)
+          toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات الفريق والصلاحيات بنجاح' });
+        onSaved();
+        return true;
+      } catch (e: any) {
+        toast({
+          title: 'خطأ',
+          description: e?.message || 'فشل حفظ إعدادات الفريق',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [pd, onSaved, toast]
+  );
 
   useEffect(() => {
     try {

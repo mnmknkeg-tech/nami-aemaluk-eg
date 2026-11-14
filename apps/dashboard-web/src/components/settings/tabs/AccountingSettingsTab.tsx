@@ -72,42 +72,46 @@ export default function AccountingSettingsTab({ shop, onSaved }: AccountingSetti
     } catch {}
   }, [form, initial]);
 
-  const saveAccountingSettings = useCallback(async () => {
-    setSaving(true);
-    try {
-      const current = formRef.current;
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          pageDesign: {
-            ...pd,
-            accTaxNumber: current.taxNumber.trim(),
-            accCommercialRegister: current.commercialRegister.trim(),
-            accVatRatePercent: Number(current.vatRatePercent) || 0,
-            accPricesIncludeVat: current.pricesIncludeVat,
-            accCurrency: current.currency,
-            accAutoJournal: current.autoJournal,
-            accFiscalStartMonth: current.fiscalStartMonth,
-            accLockPeriods: current.lockClosedPeriods,
-            accExpenseReceiptThreshold: Number(current.expenseReceiptThreshold) || 0,
-          },
-        }),
-      });
+  const saveAccountingSettings = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
+      try {
+        const current = formRef.current;
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            pageDesign: {
+              ...pd,
+              accTaxNumber: current.taxNumber.trim(),
+              accCommercialRegister: current.commercialRegister.trim(),
+              accVatRatePercent: Number(current.vatRatePercent) || 0,
+              accPricesIncludeVat: current.pricesIncludeVat,
+              accCurrency: current.currency,
+              accAutoJournal: current.autoJournal,
+              accFiscalStartMonth: current.fiscalStartMonth,
+              accLockPeriods: current.lockClosedPeriods,
+              accExpenseReceiptThreshold: Number(current.expenseReceiptThreshold) || 0,
+            },
+          }),
+        });
 
-      toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات المحاسبة والضرائب بنجاح' });
-      onSaved();
-      return true;
-    } catch (e: any) {
-      toast({
-        title: 'خطأ',
-        description: e?.message || 'فشل حفظ إعدادات المحاسبة',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [pd, onSaved, toast]);
+        if (!opts?.silent)
+          toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات المحاسبة والضرائب بنجاح' });
+        onSaved();
+        return true;
+      } catch (e: any) {
+        toast({
+          title: 'خطأ',
+          description: e?.message || 'فشل حفظ إعدادات المحاسبة',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [pd, onSaved, toast]
+  );
 
   useEffect(() => {
     try {

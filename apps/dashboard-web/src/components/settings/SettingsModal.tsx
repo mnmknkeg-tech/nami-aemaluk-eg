@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { useSettingsModal, parseSettingsHref } from '@/hooks/useSettingsModal';
 import { useToast } from './ToastProvider';
+import { beginLayoutDraft, clearLayoutDraft } from './layoutConfigDraft';
 
 // ─── Tab components ──────────────────────────────────────────────────────────
 import OverviewTab from './tabs/OverviewTab';
@@ -132,7 +133,7 @@ const TAB_LOOKUP: Record<string, { label: string; icon: any }> = Object.fromEntr
   ALL_TABS.map((t) => [t.id, { label: t.label, icon: t.icon }])
 );
 
-type SaveHandler = () => Promise<boolean>;
+type SaveHandler = (opts?: { silent?: boolean }) => Promise<boolean>;
 
 export default function SettingsModal() {
   const pathname = usePathname();
@@ -203,8 +204,10 @@ export default function SettingsModal() {
         return;
       }
       setSaving(true);
+      beginLayoutDraft();
       let okAll = true;
       const failedIds: string[] = [];
+      let firstError = '';
       for (const id of ids) {
         const fn = saveHandlersRef.current[id];
         if (!fn) {
@@ -213,16 +216,19 @@ export default function SettingsModal() {
           continue;
         }
         try {
-          const ok = await fn();
+          // Sections stay silent on success — this summary toast is the only one.
+          const ok = await fn({ silent: true });
           if (!ok) {
             okAll = false;
             failedIds.push(id);
           }
-        } catch {
+        } catch (err: any) {
           okAll = false;
           failedIds.push(id);
+          if (!firstError && err?.message) firstError = String(err.message);
         }
       }
+      clearLayoutDraft();
       if (okAll) {
         sectionChangeCountsRef.current = {};
         setSectionChangeCounts({});
@@ -233,7 +239,9 @@ export default function SettingsModal() {
           ? { title: 'تم الحفظ', description: 'تم حفظ الإعدادات بنجاح' }
           : {
               title: 'فشل الحفظ',
-              description: `تعذر حفظ: ${failedIds.join(' | ')}`,
+              description: `تعذر حفظ: ${failedIds.join(' | ')}${
+                firstError ? ` — ${firstError}` : ''
+              }`,
               variant: 'destructive',
             }
       );

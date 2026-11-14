@@ -15,6 +15,7 @@ import {
 import { useToast } from '../ToastProvider';
 import { apiRequest } from '@/lib/auth';
 import { uploadMediaFile } from '@/lib/api/upload';
+import { getLayoutBase, commitLayoutWrite } from '../layoutConfigDraft';
 
 interface StoreTabProps {
   shop: any;
@@ -375,36 +376,47 @@ export default function StoreTab({ shop, onSaved }: StoreTabProps) {
     }
   };
 
-  const saveStoreSettings = useCallback(async () => {
-    setSaving(true);
-    try {
-      const currentForm = formRef.current;
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          whatsapp: currentForm.whatsapp,
-          customDomain: currentForm.customDomain,
-          openingHours: currentForm.openingHours,
-          displayAddress: currentForm.displayAddress || null,
-          mapLabel: currentForm.mapLabel || null,
-          latitude: latitude,
-          longitude: longitude,
-        }),
-      });
-      toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات المتجر بنجاح' });
-      onSaved();
-      return true;
-    } catch (e: any) {
-      toast({
-        title: 'خطأ',
-        description: e?.message || 'فشل حفظ إعدادات المتجر',
-        variant: 'destructive',
-      });
-      throw e;
-    } finally {
-      setSaving(false);
-    }
-  }, [shop?.id, latitude, longitude, onSaved, toast]);
+  // Silent when invoked by the settings shell save-all: the shell fires ONE
+  // summary toast, so sections stay quiet on success to avoid toast storms.
+  const saveStoreSettings = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
+      try {
+        const currentForm = formRef.current;
+        // whatsapp/customDomain are read by the storefront from layoutConfig —
+        // the backend only accepts them inside layoutConfig (top-level keys
+        // were silently dropped, so these two fields never persisted).
+        const layout = getLayoutBase(shop);
+        layout.whatsapp = currentForm.whatsapp;
+        layout.customDomain = currentForm.customDomain;
+        commitLayoutWrite(layout);
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            layoutConfig: layout,
+            openingHours: currentForm.openingHours,
+            displayAddress: currentForm.displayAddress || null,
+            mapLabel: currentForm.mapLabel || null,
+            latitude: latitude,
+            longitude: longitude,
+          }),
+        });
+        if (!opts?.silent) toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات المتجر بنجاح' });
+        onSaved();
+        return true;
+      } catch (e: any) {
+        toast({
+          title: 'خطأ',
+          description: e?.message || 'فشل حفظ إعدادات المتجر',
+          variant: 'destructive',
+        });
+        throw e;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [shop?.id, latitude, longitude, onSaved, toast]
+  );
 
   useEffect(() => {
     try {

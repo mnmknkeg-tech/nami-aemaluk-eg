@@ -277,7 +277,7 @@ const rewriteTemplateBrandName = (website: Website, from: string, to: string): W
     if (typeof title === 'string' && title.includes(from)) metadata.title = replaceAll(title);
     if (typeof description === 'string' && description.includes(from))
       metadata.description = replaceAll(description);
-    return metadata === page.metadata ? page : { ...page, metadata };
+    return metadata === page.metadata ? page : ({ ...page, metadata } as typeof page);
   });
   return { ...website, name: replaceAll(website.name), pages, components };
 };

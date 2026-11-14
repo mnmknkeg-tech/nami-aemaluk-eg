@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Settings as SettingsIcon, Loader2, Save } from 'lucide-react';
 import { useToast } from './ToastProvider';
+import { beginLayoutDraft, clearLayoutDraft } from './layoutConfigDraft';
 
 import OverviewTab from './tabs/OverviewTab';
 import AccountTab from './tabs/AccountTab';
@@ -51,7 +52,7 @@ type SettingsTab =
   | 'hr_settings'
   | 'analytics_settings';
 
-type SaveHandler = () => Promise<boolean>;
+type SaveHandler = (opts?: { silent?: boolean }) => Promise<boolean>;
 
 const SETTINGS_CONTEXT: Record<string, string> = {
   dashboard: 'إعدادات لوحة التحكم والإشعارات',
@@ -171,8 +172,10 @@ export default function SettingsShell({ shop, onSaved }: SettingsShellProps) {
         return;
       }
       setSaving(true);
+      beginLayoutDraft();
       let okAll = true;
       const failedIds: string[] = [];
+      let firstError = '';
       for (const id of ids) {
         const fn = saveHandlersRef.current[id];
         if (!fn) {
@@ -181,16 +184,19 @@ export default function SettingsShell({ shop, onSaved }: SettingsShellProps) {
           continue;
         }
         try {
-          const ok = await fn();
+          // Sections stay silent on success — this summary toast is the only one.
+          const ok = await fn({ silent: true });
           if (!ok) {
             okAll = false;
             failedIds.push(id);
           }
-        } catch {
+        } catch (err: any) {
           okAll = false;
           failedIds.push(id);
+          if (!firstError && err?.message) firstError = String(err.message);
         }
       }
+      clearLayoutDraft();
       if (okAll) {
         sectionChangeCountsRef.current = {};
         setSectionChangeCounts({});
@@ -201,7 +207,9 @@ export default function SettingsShell({ shop, onSaved }: SettingsShellProps) {
           ? { title: 'تم الحفظ', description: 'تم حفظ الإعدادات بنجاح' }
           : {
               title: 'فشل الحفظ',
-              description: `تعذر حفظ بعض الأقسام: ${failedIds.join(' | ')}`,
+              description: `تعذر حفظ بعض الأقسام: ${failedIds.join(' | ')}${
+                firstError ? ` — ${firstError}` : ''
+              }`,
               variant: 'destructive',
             }
       );

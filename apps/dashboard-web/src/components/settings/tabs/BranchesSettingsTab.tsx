@@ -53,40 +53,43 @@ export default function BranchesSettingsTab({ shop, onSaved }: BranchesSettingsT
     } catch {}
   }, [form, initial]);
 
-  const saveBranchesSettings = useCallback(async () => {
-    setSaving(true);
-    try {
-      const current = formRef.current;
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          pageDesign: {
-            ...pd,
-            branchShowOnInvoices: current.showOnInvoices,
-            branchEnforceSelection: current.enforceSelection,
-            branchAllowTransfers: current.allowTransfers,
-            branchDefaultHours: current.defaultHours.trim(),
-            branchEnableClickAndCollect: current.enableClickAndCollect,
-            branchAutoRouteOnlineOrders: current.autoRouteOnlineOrders,
-            branchCrossBranchFulfillment: current.crossBranchFulfillment,
-          },
-        }),
-      });
+  const saveBranchesSettings = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
+      try {
+        const current = formRef.current;
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            pageDesign: {
+              ...pd,
+              branchShowOnInvoices: current.showOnInvoices,
+              branchEnforceSelection: current.enforceSelection,
+              branchAllowTransfers: current.allowTransfers,
+              branchDefaultHours: current.defaultHours.trim(),
+              branchEnableClickAndCollect: current.enableClickAndCollect,
+              branchAutoRouteOnlineOrders: current.autoRouteOnlineOrders,
+              branchCrossBranchFulfillment: current.crossBranchFulfillment,
+            },
+          }),
+        });
 
-      toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات الفروع بنجاح' });
-      onSaved();
-      return true;
-    } catch (e: any) {
-      toast({
-        title: 'خطأ',
-        description: e?.message || 'فشل حفظ إعدادات الفروع',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [pd, onSaved, toast]);
+        if (!opts?.silent) toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات الفروع بنجاح' });
+        onSaved();
+        return true;
+      } catch (e: any) {
+        toast({
+          title: 'خطأ',
+          description: e?.message || 'فشل حفظ إعدادات الفروع',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [pd, onSaved, toast]
+  );
 
   useEffect(() => {
     try {

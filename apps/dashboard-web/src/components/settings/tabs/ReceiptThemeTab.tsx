@@ -14,6 +14,7 @@ import {
 } from '../ui';
 import { useToast } from '../ToastProvider';
 import { apiRequest } from '@/lib/auth';
+import { getLayoutBase, commitLayoutWrite } from '../layoutConfigDraft';
 import { compressForUpload } from '@/lib/upload-image';
 
 interface ReceiptThemeTabProps {
@@ -126,22 +127,27 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
     reader.readAsDataURL(compressed);
   };
 
-  const handleSaveReceiptTheme = async () => {
+  // Silent when invoked by the settings shell save-all (one summary toast).
+  const handleSaveReceiptTheme = async (opts?: { silent?: boolean }) => {
     setSaving(true);
     try {
+      // The tab READS the theme from layoutConfig.receiptTheme, so it must
+      // also SAVE there — the old top-level receiptTheme key was silently
+      // dropped by the backend, so the theme never persisted.
+      const layout = getLayoutBase(shop);
+      layout.receiptTheme = {
+        shopName: receiptShopName,
+        phone: receiptPhone,
+        city: receiptCity,
+        address: receiptAddress,
+        logoDataUrl: receiptLogoDataUrl,
+        footerNote: receiptFooterNote,
+        vatRatePercent: Number(receiptVatRatePercent) || 0,
+      };
+      commitLayoutWrite(layout);
       await apiRequest('/shops/me', {
         method: 'PATCH',
-        body: JSON.stringify({
-          receiptTheme: {
-            shopName: receiptShopName,
-            phone: receiptPhone,
-            city: receiptCity,
-            address: receiptAddress,
-            logoDataUrl: receiptLogoDataUrl,
-            footerNote: receiptFooterNote,
-            vatRatePercent: Number(receiptVatRatePercent) || 0,
-          },
-        }),
+        body: JSON.stringify({ layoutConfig: layout }),
       });
       lastSavedRef.current = {
         shopName: receiptShopName,
@@ -159,7 +165,7 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
           })
         );
       } catch {}
-      toast({ title: 'تم الحفظ', description: 'تم حفظ ثيم الإيصال' });
+      if (!opts?.silent) toast({ title: 'تم الحفظ', description: 'تم حفظ ثيم الإيصال' });
       return true;
     } catch {
       toast({ title: 'خطأ', description: 'فشل حفظ ثيم الإيصال', variant: 'destructive' });

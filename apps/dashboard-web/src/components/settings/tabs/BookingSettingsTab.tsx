@@ -107,53 +107,57 @@ export default function BookingSettingsTab({ shop, onSaved }: BookingSettingsTab
     } catch {}
   }, [form, initial]);
 
-  const saveBookingSettings = useCallback(async () => {
-    setSaving(true);
-    try {
-      const current = formRef.current;
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          pageDesign: {
-            ...pd,
-            bookingSlotDuration: current.bookingSlotDuration,
-            bookingGapMinutes: current.bookingGapMinutes,
-            bookingAdvanceDays: current.bookingAdvanceDays,
-            bookingAutoConfirm: current.bookingAutoConfirm,
-            bookingPreventDuplicates: current.bookingPreventDuplicates,
-            bookingRequirePhoneVerify: current.bookingRequirePhoneVerify,
-            bookingNotifyOwner: current.bookingNotifyOwner,
-            bookingNotifyCustomer: current.bookingNotifyCustomer,
-            bookingNotifyWhatsapp: current.bookingNotifyWhatsapp,
-            bookingWorkStart: current.bookingWorkStart,
-            bookingWorkEnd: current.bookingWorkEnd,
-            bookingMaxPerSlot: current.bookingMaxPerSlot,
-            bookingAllowCancellation: current.bookingAllowCancellation,
-            bookingCancelWindowHours: current.bookingCancelWindowHours,
-            bookingPreventSameDayCancel: current.bookingPreventSameDayCancel,
-            bookingRequireDeposit: current.bookingRequireDeposit,
-            bookingDepositPercent: current.bookingDepositPercent,
-            bookingAllowPayAtVenue: current.bookingAllowPayAtVenue,
-            bookingShowPrices: current.bookingShowPrices,
-            bookingShowAvailableOnly: current.bookingShowAvailableOnly,
-          },
-        }),
-      });
+  const saveBookingSettings = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
+      try {
+        const current = formRef.current;
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            pageDesign: {
+              ...pd,
+              bookingSlotDuration: current.bookingSlotDuration,
+              bookingGapMinutes: current.bookingGapMinutes,
+              bookingAdvanceDays: current.bookingAdvanceDays,
+              bookingAutoConfirm: current.bookingAutoConfirm,
+              bookingPreventDuplicates: current.bookingPreventDuplicates,
+              bookingRequirePhoneVerify: current.bookingRequirePhoneVerify,
+              bookingNotifyOwner: current.bookingNotifyOwner,
+              bookingNotifyCustomer: current.bookingNotifyCustomer,
+              bookingNotifyWhatsapp: current.bookingNotifyWhatsapp,
+              bookingWorkStart: current.bookingWorkStart,
+              bookingWorkEnd: current.bookingWorkEnd,
+              bookingMaxPerSlot: current.bookingMaxPerSlot,
+              bookingAllowCancellation: current.bookingAllowCancellation,
+              bookingCancelWindowHours: current.bookingCancelWindowHours,
+              bookingPreventSameDayCancel: current.bookingPreventSameDayCancel,
+              bookingRequireDeposit: current.bookingRequireDeposit,
+              bookingDepositPercent: current.bookingDepositPercent,
+              bookingAllowPayAtVenue: current.bookingAllowPayAtVenue,
+              bookingShowPrices: current.bookingShowPrices,
+              bookingShowAvailableOnly: current.bookingShowAvailableOnly,
+            },
+          }),
+        });
 
-      toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات الحجوزات بنجاح' });
-      onSaved();
-      return true;
-    } catch (e: any) {
-      toast({
-        title: 'خطأ',
-        description: e?.message || 'فشل حفظ إعدادات الحجوزات',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [pd, onSaved, toast]);
+        if (!opts?.silent)
+          toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات الحجوزات بنجاح' });
+        onSaved();
+        return true;
+      } catch (e: any) {
+        toast({
+          title: 'خطأ',
+          description: e?.message || 'فشل حفظ إعدادات الحجوزات',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [pd, onSaved, toast]
+  );
 
   useEffect(() => {
     try {

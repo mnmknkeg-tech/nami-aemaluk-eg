@@ -58,43 +58,47 @@ export default function CustomersSettingsTab({ shop, onSaved }: CustomersSetting
     } catch {}
   }, [form, initial]);
 
-  const saveCustomersSettings = useCallback(async () => {
-    setSaving(true);
-    try {
-      const current = formRef.current;
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          pageDesign: {
-            ...pd,
-            custLoyaltyEnabled: current.loyaltyEnabled,
-            custCardsEnabled: current.cardsEnabled,
-            custLoyaltyEarnPer100: Number(current.loyaltyEarnPer100) || 5,
-            custLoyaltyPointValue: Number(current.loyaltyPointValue) || 1,
-            custMinRedeemPoints: Number(current.minRedeemPoints) || 50,
-            custBirthdayOffer: current.birthdayOffer,
-            custRequirePhone: current.requirePhone,
-            custAllowCredit: current.allowCredit,
-            custDefaultCreditLimit: Number(current.defaultCreditLimit) || 0,
-            custWelcomeMessage: current.welcomeMessage.trim(),
-          },
-        }),
-      });
+  const saveCustomersSettings = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
+      try {
+        const current = formRef.current;
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            pageDesign: {
+              ...pd,
+              custLoyaltyEnabled: current.loyaltyEnabled,
+              custCardsEnabled: current.cardsEnabled,
+              custLoyaltyEarnPer100: Number(current.loyaltyEarnPer100) || 5,
+              custLoyaltyPointValue: Number(current.loyaltyPointValue) || 1,
+              custMinRedeemPoints: Number(current.minRedeemPoints) || 50,
+              custBirthdayOffer: current.birthdayOffer,
+              custRequirePhone: current.requirePhone,
+              custAllowCredit: current.allowCredit,
+              custDefaultCreditLimit: Number(current.defaultCreditLimit) || 0,
+              custWelcomeMessage: current.welcomeMessage.trim(),
+            },
+          }),
+        });
 
-      toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات العملاء والولاء بنجاح' });
-      onSaved();
-      return true;
-    } catch (e: any) {
-      toast({
-        title: 'خطأ',
-        description: e?.message || 'فشل حفظ إعدادات العملاء',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [pd, onSaved, toast]);
+        if (!opts?.silent)
+          toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات العملاء والولاء بنجاح' });
+        onSaved();
+        return true;
+      } catch (e: any) {
+        toast({
+          title: 'خطأ',
+          description: e?.message || 'فشل حفظ إعدادات العملاء',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [pd, onSaved, toast]
+  );
 
   useEffect(() => {
     try {

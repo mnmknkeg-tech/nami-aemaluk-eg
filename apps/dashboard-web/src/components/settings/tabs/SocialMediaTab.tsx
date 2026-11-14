@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../ToastProvider';
 import { apiRequest } from '@/lib/auth';
+import { getLayoutBase, commitLayoutWrite } from '../layoutConfigDraft';
 
 interface SocialMediaTabProps {
   shop: any;
@@ -133,18 +134,22 @@ export default function SocialMediaTab({ shop, onSaved }: SocialMediaTabProps) {
     setSocialLinks((prev) => ({ ...prev, [platformId]: value }));
   };
 
-  const handleSave = async () => {
+  // Silent when invoked by the settings shell save-all (one summary toast).
+  const handleSave = async (opts?: { silent?: boolean }) => {
     setSaving(true);
     try {
-      const layout =
-        shop?.layoutConfig && typeof shop.layoutConfig === 'object' ? { ...shop.layoutConfig } : {};
+      // Build on the freshest layoutConfig draft so a save-all batch never
+      // wipes earlier writers' keys (whatsapp/customDomain/notifications...).
+      const layout = getLayoutBase(shop);
       const updated = { ...layout, socialLinks: { ...socialLinks } };
+      commitLayoutWrite(updated);
       await apiRequest('/shops/me', {
         method: 'PATCH',
         body: JSON.stringify({ layoutConfig: updated }),
       });
       setSavedLinks({ ...socialLinks });
-      toast({ title: 'تم حفظ الروابط', description: 'تم تحديث روابط السوشيال ميديا' });
+      if (!opts?.silent)
+        toast({ title: 'تم حفظ الروابط', description: 'تم تحديث روابط السوشيال ميديا' });
       onSaved?.();
       return true;
     } catch (err: any) {
@@ -245,7 +250,7 @@ export default function SocialMediaTab({ shop, onSaved }: SocialMediaTabProps) {
           {hasChanges ? 'تغييرات غير محفوظة' : 'كل الروابط محفوظة'}
         </p>
         <button
-          onClick={handleSave}
+          onClick={() => handleSave()}
           disabled={!hasChanges || saving}
           className={`px-6 py-3 rounded-2xl font-black text-xs flex items-center gap-2 transition-all ${hasChanges && !saving ? 'bg-slate-900 text-white hover:bg-black' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
         >

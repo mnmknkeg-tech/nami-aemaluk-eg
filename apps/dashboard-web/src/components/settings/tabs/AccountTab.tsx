@@ -71,36 +71,40 @@ export default function AccountTab({ shop, onSaved }: AccountTabProps) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const saveAccount = useCallback(async () => {
-    setIsSaving(true);
-    try {
-      const current = formRef.current;
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          name: current.name,
-          governorate: current.governorate,
-          city: current.city,
-          email: current.email,
-          phone: current.phone,
-          addressDetailed: current.address,
-          description: current.description,
-        }),
-      });
-      toast({ title: 'تم الحفظ', description: 'تم تحديث بيانات الحساب بنجاح' });
-      onSaved();
-      return true;
-    } catch (error: any) {
-      toast({
-        title: 'خطأ',
-        description: error?.message || 'فشل حفظ التغييرات',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [onSaved, toast]);
+  const saveAccount = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setIsSaving(true);
+      try {
+        const current = formRef.current;
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            name: current.name,
+            governorate: current.governorate,
+            city: current.city,
+            email: current.email,
+            phone: current.phone,
+            addressDetailed: current.address,
+            description: current.description,
+          }),
+        });
+        if (!opts?.silent)
+          toast({ title: 'تم الحفظ', description: 'تم تحديث بيانات الحساب بنجاح' });
+        onSaved();
+        return true;
+      } catch (error: any) {
+        toast({
+          title: 'خطأ',
+          description: error?.message || 'فشل حفظ التغييرات',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [onSaved, toast]
+  );
 
   // Register save handler
   useEffect(() => {

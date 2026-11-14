@@ -53,40 +53,44 @@ export default function InventorySettingsTab({ shop, onSaved }: InventorySetting
     } catch {}
   }, [form, initial]);
 
-  const saveInventorySettings = useCallback(async () => {
-    setSaving(true);
-    try {
-      const current = formRef.current;
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          pageDesign: {
-            ...pd,
-            invLowStockAlerts: current.lowStockAlerts,
-            invLowStockThreshold: Number(current.lowStockThreshold) || 5,
-            invAutoDeduct: current.autoDeduct,
-            invAllowNegative: current.allowNegative,
-            invTrackBatches: current.trackBatches,
-            invRequirePoApproval: current.requirePoApproval,
-            invDefaultUnit: current.defaultUnit.trim() || 'قطعة',
-          },
-        }),
-      });
+  const saveInventorySettings = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
+      try {
+        const current = formRef.current;
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            pageDesign: {
+              ...pd,
+              invLowStockAlerts: current.lowStockAlerts,
+              invLowStockThreshold: Number(current.lowStockThreshold) || 5,
+              invAutoDeduct: current.autoDeduct,
+              invAllowNegative: current.allowNegative,
+              invTrackBatches: current.trackBatches,
+              invRequirePoApproval: current.requirePoApproval,
+              invDefaultUnit: current.defaultUnit.trim() || 'قطعة',
+            },
+          }),
+        });
 
-      toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات المخزون بنجاح' });
-      onSaved();
-      return true;
-    } catch (e: any) {
-      toast({
-        title: 'خطأ',
-        description: e?.message || 'فشل حفظ إعدادات المخزون',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [pd, onSaved, toast]);
+        if (!opts?.silent)
+          toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات المخزون بنجاح' });
+        onSaved();
+        return true;
+      } catch (e: any) {
+        toast({
+          title: 'خطأ',
+          description: e?.message || 'فشل حفظ إعدادات المخزون',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [pd, onSaved, toast]
+  );
 
   useEffect(() => {
     try {

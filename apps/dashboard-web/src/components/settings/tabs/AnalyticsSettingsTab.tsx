@@ -63,43 +63,47 @@ export default function AnalyticsSettingsTab({ shop, onSaved }: AnalyticsSetting
     } catch {}
   }, [form, initial]);
 
-  const saveAnalyticsSettings = useCallback(async () => {
-    setSaving(true);
-    try {
-      const current = formRef.current;
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          pageDesign: {
-            ...pd,
-            anaDefaultRangeDays: current.defaultRangeDays,
-            anaTrackVisits: current.trackVisits,
-            anaExcludeStaff: current.excludeStaff,
-            anaAnonymizeIp: current.anonymizeIp,
-            anaWeeklySummary: current.weeklySummary,
-            anaGa4MeasurementId: current.ga4MeasurementId.trim(),
-            anaFacebookPixelId: current.facebookPixelId.trim(),
-            anaTiktokPixelId: current.tiktokPixelId.trim(),
-            anaSnapchatPixelId: current.snapchatPixelId.trim(),
-            anaGtmContainerId: current.gtmContainerId.trim(),
-          },
-        }),
-      });
+  const saveAnalyticsSettings = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
+      try {
+        const current = formRef.current;
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            pageDesign: {
+              ...pd,
+              anaDefaultRangeDays: current.defaultRangeDays,
+              anaTrackVisits: current.trackVisits,
+              anaExcludeStaff: current.excludeStaff,
+              anaAnonymizeIp: current.anonymizeIp,
+              anaWeeklySummary: current.weeklySummary,
+              anaGa4MeasurementId: current.ga4MeasurementId.trim(),
+              anaFacebookPixelId: current.facebookPixelId.trim(),
+              anaTiktokPixelId: current.tiktokPixelId.trim(),
+              anaSnapchatPixelId: current.snapchatPixelId.trim(),
+              anaGtmContainerId: current.gtmContainerId.trim(),
+            },
+          }),
+        });
 
-      toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات التحليلات والبكسل بنجاح' });
-      onSaved();
-      return true;
-    } catch (e: any) {
-      toast({
-        title: 'خطأ',
-        description: e?.message || 'فشل حفظ إعدادات التحليلات',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [pd, onSaved, toast]);
+        if (!opts?.silent)
+          toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات التحليلات والبكسل بنجاح' });
+        onSaved();
+        return true;
+      } catch (e: any) {
+        toast({
+          title: 'خطأ',
+          description: e?.message || 'فشل حفظ إعدادات التحليلات',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [pd, onSaved, toast]
+  );
 
   useEffect(() => {
     try {

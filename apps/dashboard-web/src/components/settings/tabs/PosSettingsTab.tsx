@@ -94,45 +94,49 @@ export default function PosSettingsTab({ shop, onSaved }: PosSettingsTabProps) {
     } catch {}
   }, [form, initial]);
 
-  const savePosSettings = useCallback(async () => {
-    setSaving(true);
-    try {
-      const current = formRef.current;
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          pageDesign: {
-            ...pd,
-            posReceiptPaperSize: current.receiptPaperSize,
-            posAutoPrintReceipt: current.autoPrintReceipt,
-            posShowLogoOnReceipt: current.showLogoOnReceipt,
-            posShowQrCodeOnReceipt: current.showQrCodeOnReceipt,
-            posBarcodeSound: current.barcodeSound,
-            posFastCheckout: current.fastCheckout,
-            posOpenCashDrawer: current.openCashDrawer,
-            posDefaultPaymentMethod: current.defaultPaymentMethod,
-            posRequireCashierPin: current.requireCashierPin,
-            posRequireShiftSession: current.requireShiftSession,
-            posReceiptHeaderCustom: current.receiptHeaderCustom,
-            posReceiptFooterCustom: current.receiptFooterCustom,
-          },
-        }),
-      });
+  const savePosSettings = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
+      try {
+        const current = formRef.current;
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            pageDesign: {
+              ...pd,
+              posReceiptPaperSize: current.receiptPaperSize,
+              posAutoPrintReceipt: current.autoPrintReceipt,
+              posShowLogoOnReceipt: current.showLogoOnReceipt,
+              posShowQrCodeOnReceipt: current.showQrCodeOnReceipt,
+              posBarcodeSound: current.barcodeSound,
+              posFastCheckout: current.fastCheckout,
+              posOpenCashDrawer: current.openCashDrawer,
+              posDefaultPaymentMethod: current.defaultPaymentMethod,
+              posRequireCashierPin: current.requireCashierPin,
+              posRequireShiftSession: current.requireShiftSession,
+              posReceiptHeaderCustom: current.receiptHeaderCustom,
+              posReceiptFooterCustom: current.receiptFooterCustom,
+            },
+          }),
+        });
 
-      toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات الكاشير ونقاط البيع بنجاح' });
-      onSaved();
-      return true;
-    } catch (e: any) {
-      toast({
-        title: 'خطأ',
-        description: e?.message || 'فشل حفظ إعدادات الكاشير',
-        variant: 'destructive',
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [pd, onSaved, toast]);
+        if (!opts?.silent)
+          toast({ title: 'تم الحفظ', description: 'تم حفظ إعدادات الكاشير ونقاط البيع بنجاح' });
+        onSaved();
+        return true;
+      } catch (e: any) {
+        toast({
+          title: 'خطأ',
+          description: e?.message || 'فشل حفظ إعدادات الكاشير',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [pd, onSaved, toast]
+  );
 
   useEffect(() => {
     try {

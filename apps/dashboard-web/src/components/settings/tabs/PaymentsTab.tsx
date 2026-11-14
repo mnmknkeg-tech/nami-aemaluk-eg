@@ -75,36 +75,40 @@ export default function PaymentsTab({ shop, onSaved }: PaymentsTabProps) {
     } catch {}
   }, [form]);
 
-  const savePayments = useCallback(async () => {
-    setSaving(true);
-    try {
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          paymentConfig: {
-            ...pc,
-            ...form,
-          },
-        }),
-      });
-      toast({ title: 'تم الحفظ', description: 'تم تحديث إعدادات الدفع بنجاح' });
-      baselineRef.current = form;
+  const savePayments = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
       try {
-        window.dispatchEvent(
-          new CustomEvent('merchant-settings-section-changes', {
-            detail: { sectionId: 'payments', count: 0 },
-          })
-        );
-      } catch {}
-      onSaved();
-      return true;
-    } catch {
-      toast({ title: 'خطأ', description: 'فشل حفظ إعدادات الدفع', variant: 'destructive' });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [shop?.id, form, pc, toast, onSaved]);
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            paymentConfig: {
+              ...pc,
+              ...form,
+            },
+          }),
+        });
+        if (!opts?.silent)
+          toast({ title: 'تم الحفظ', description: 'تم تحديث إعدادات الدفع بنجاح' });
+        baselineRef.current = form;
+        try {
+          window.dispatchEvent(
+            new CustomEvent('merchant-settings-section-changes', {
+              detail: { sectionId: 'payments', count: 0 },
+            })
+          );
+        } catch {}
+        onSaved();
+        return true;
+      } catch {
+        toast({ title: 'خطأ', description: 'فشل حفظ إعدادات الدفع', variant: 'destructive' });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [shop?.id, form, pc, toast, onSaved]
+  );
 
   useEffect(() => {
     try {

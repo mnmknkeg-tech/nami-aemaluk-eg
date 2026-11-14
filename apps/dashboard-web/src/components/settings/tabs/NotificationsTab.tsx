@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useToast } from '../ToastProvider';
 import { apiRequest } from '@/lib/auth';
+import { getLayoutBase, commitLayoutWrite } from '../layoutConfigDraft';
 import {
   Bell,
   Volume2,
@@ -91,47 +92,49 @@ export default function NotificationsTab({ shop }: NotificationsTabProps) {
     } catch {}
   }, [form]);
 
-  const saveNotifications = useCallback(async () => {
-    setSaving(true);
-    try {
-      await apiRequest('/shops/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          layoutConfig: {
-            ...(shop?.layoutConfig || {}),
-            notificationSoundId: form.soundId,
-            notifications: {
-              browserPush: form.browserPush,
-              emailAlerts: form.emailAlerts,
-              alertEmail: form.alertEmail,
-              whatsappAlerts: form.whatsappAlerts,
-              whatsappPhone: form.whatsappPhone,
-              notifyNewOrders: form.notifyNewOrders,
-              notifyLowStock: form.notifyLowStock,
-              notifyBookings: form.notifyBookings,
-              notifyReviews: form.notifyReviews,
-              notifyDailyDigest: form.notifyDailyDigest,
-            },
-          },
-        }),
-      });
-      toast({ title: 'تم الحفظ', description: 'تم تحديث تفضيلات الإشعارات بنجاح' });
-      baselineRef.current = form;
+  const saveNotifications = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      setSaving(true);
       try {
-        window.dispatchEvent(
-          new CustomEvent('merchant-settings-section-changes', {
-            detail: { sectionId: 'notifications', count: 0 },
-          })
-        );
-      } catch {}
-      return true;
-    } catch {
-      toast({ title: 'خطأ', description: 'فشل حفظ تفضيلات الإشعارات', variant: 'destructive' });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [shop?.id, form, shop?.layoutConfig, toast]);
+        const layout = getLayoutBase(shop);
+        layout.notificationSoundId = form.soundId;
+        layout.notifications = {
+          browserPush: form.browserPush,
+          emailAlerts: form.emailAlerts,
+          alertEmail: form.alertEmail,
+          whatsappAlerts: form.whatsappAlerts,
+          whatsappPhone: form.whatsappPhone,
+          notifyNewOrders: form.notifyNewOrders,
+          notifyLowStock: form.notifyLowStock,
+          notifyBookings: form.notifyBookings,
+          notifyReviews: form.notifyReviews,
+          notifyDailyDigest: form.notifyDailyDigest,
+        };
+        commitLayoutWrite(layout);
+        await apiRequest('/shops/me', {
+          method: 'PATCH',
+          body: JSON.stringify({ layoutConfig: layout }),
+        });
+        if (!opts?.silent)
+          toast({ title: 'تم الحفظ', description: 'تم تحديث تفضيلات الإشعارات بنجاح' });
+        baselineRef.current = form;
+        try {
+          window.dispatchEvent(
+            new CustomEvent('merchant-settings-section-changes', {
+              detail: { sectionId: 'notifications', count: 0 },
+            })
+          );
+        } catch {}
+        return true;
+      } catch {
+        toast({ title: 'خطأ', description: 'فشل حفظ تفضيلات الإشعارات', variant: 'destructive' });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [shop?.id, form, shop?.layoutConfig, toast]
+  );
 
   useEffect(() => {
     try {
