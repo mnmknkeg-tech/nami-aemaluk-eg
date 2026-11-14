@@ -592,7 +592,7 @@ function VendorStatementView({ initialEntity }: { initialEntity: string }) {
       </div>
 
       {selectedVendor && (
-        <div className="grid grid-cols-3 gap-3 mt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
           <div className="bg-white border border-slate-200 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <FileText size={16} className="text-rose-500" />
@@ -732,7 +732,7 @@ function VendorAgingView() {
         </InvToolButton>
       </InvToolbar>
 
-      <div className="grid grid-cols-3 gap-3 mt-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
         <div className="bg-white border border-slate-200 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <Wallet size={16} className="text-rose-500" />

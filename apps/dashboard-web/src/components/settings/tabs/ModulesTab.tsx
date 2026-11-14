@@ -324,7 +324,7 @@ export default function ModulesTab({ shop, onSaved }: ModulesTabProps) {
 
   return (
     <div className="space-y-10 text-right" dir="rtl">
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-8 text-white shadow-xl">
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 text-white shadow-xl">
         <h3 className="text-3xl font-black">ترقية الأقسام</h3>
         <p className="text-sm font-bold text-slate-300 mt-3 leading-relaxed max-w-2xl">
           فعّل أو أوقف أي ميزة إضافية بنفسك فوراً — بمراجعة ولا انتظار.

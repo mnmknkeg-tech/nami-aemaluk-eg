@@ -425,7 +425,7 @@ export default function CustomersPage() {
         </div>
       ) : (
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 mt-4 pb-6">
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-right border-collapse min-w-[1100px]">
                 <thead>
@@ -824,6 +824,177 @@ export default function CustomersPage() {
                   التالي
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* كروت الموبايل — بديل الجدول على الشاشات الصغيرة */}
+          <div className="md:hidden mt-4 space-y-3">
+            {paginated.map((c) => {
+              const isSelected = selectedIds.includes(c.id);
+              const isMenuOpen = menuOpenId === c.id;
+              return (
+                <div
+                  key={c.id}
+                  className={`bg-white border rounded-2xl p-4 space-y-3 ${
+                    isSelected ? 'border-purple-300 bg-purple-50/20' : 'border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedIds([...selectedIds, c.id]);
+                          else setSelectedIds(selectedIds.filter((id) => id !== c.id));
+                        }}
+                        className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <Link
+                          href={`/dashboard/customers/${c.id}`}
+                          className="text-sm font-black text-slate-900 hover:text-purple-700 hover:underline block truncate"
+                        >
+                          {c.name}
+                        </Link>
+                        <div className="text-[11px] text-slate-400 font-bold truncate">
+                          {c.customerType === 'company' ? c.companyName || 'شركة' : 'فرد'} •{' '}
+                          {SOURCE_LABELS[c.source] || c.source || 'المتجر الإلكتروني'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setMenuOpenId(isMenuOpen ? null : c.id)}
+                        className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all"
+                        title="المزيد من الخيارات"
+                      >
+                        <MoreVertical size={14} />
+                      </button>
+                      {isMenuOpen && (
+                        <>
+                          <div className="fixed inset-0 z-20" onClick={() => setMenuOpenId(null)} />
+                          <div className="absolute left-0 top-10 w-44 bg-white border border-slate-200 rounded-xl shadow-lg p-1.5 z-30 space-y-0.5 text-right">
+                            <Link
+                              href={`/dashboard/customers/${c.id}`}
+                              className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                              onClick={() => setMenuOpenId(null)}
+                            >
+                              <Eye size={13} className="text-purple-600" />
+                              عرض التفاصيل
+                            </Link>
+                            <Link
+                              href={`/dashboard/marketing/loyalty-programs?tab=cards`}
+                              className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                              onClick={() => setMenuOpenId(null)}
+                            >
+                              <CreditCard size={13} className="text-amber-600" />
+                              كروت وأختام الولاء
+                            </Link>
+                            <Link
+                              href={`/dashboard/customers/${c.id}/edit`}
+                              className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                              onClick={() => setMenuOpenId(null)}
+                            >
+                              <Pencil size={13} className="text-slate-500" />
+                              تعديل البيانات
+                            </Link>
+                            {c.phone && (
+                              <a
+                                href={`https://wa.me/2${(c.phone || '').replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                                onClick={() => setMenuOpenId(null)}
+                              >
+                                <MessageCircle size={13} />
+                                محادثة واتساب
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMenuOpenId(null);
+                                toggleArchive(c);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                              {c.archived ? (
+                                <>
+                                  <ArchiveRestore size={13} />
+                                  استعادة العميل
+                                </>
+                              ) : (
+                                <>
+                                  <Archive size={13} />
+                                  أرشفة العميل
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] font-bold">
+                    <div>
+                      <span className="text-slate-400">الجوال: </span>
+                      <span className="text-slate-700 tabular-nums" dir="ltr">
+                        {c.phone || '—'}
+                      </span>
+                    </div>
+                    <div className="truncate">
+                      <span className="text-slate-400">المدينة: </span>
+                      <span className="text-slate-700">{c.city || '—'}</span>
+                    </div>
+                    <div className="truncate col-span-2">
+                      <span className="text-slate-400">البريد: </span>
+                      <span className="text-slate-600" dir="ltr">
+                        {c.email || '—'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-4 text-[11px] font-bold">
+                      <span className="text-slate-400">
+                        الطلبات: <b className="text-slate-900 tabular-nums">{c.totalOrders ?? 0}</b>
+                      </span>
+                      <span className="text-slate-400">
+                        الولاء:{' '}
+                        <b className="text-slate-800 tabular-nums">{c.loyaltyBalance ?? 0}</b>
+                      </span>
+                    </div>
+                    <Link
+                      href={`/dashboard/customers/${c.id}/edit`}
+                      className="h-8 px-4 rounded-full bg-[#492770] hover:bg-[#3d1f5e] text-white text-[11px] font-bold flex items-center justify-center transition-all shadow-sm"
+                    >
+                      تعديل
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* تنقل الموبايل */}
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                السابق
+              </button>
+              <span className="text-xs font-bold text-slate-500 tabular-nums">
+                صفحة {currentPage} من {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                التالي
+              </button>
             </div>
           </div>
         </div>

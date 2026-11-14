@@ -531,73 +531,190 @@ function ShopsContent() {
                 }
               />
             ) : (
-              <AdminTable
-                minW="min-w-[1180px]"
-                head={
-                  <>
-                    <th className={TH}>المتجر</th>
-                    <th className={TH}>المالك</th>
-                    <th className={TH}>الموقع</th>
-                    <th className={TH}>التوصيل</th>
-                    <th className={TH}>الأزرار</th>
-                    <th className={TH}>الحالة</th>
-                    <th className={TH}>إجراءات</th>
-                  </>
-                }
-              >
-                {paginatedShops.map((shop) => {
-                  const status = String(shop.status || '').toUpperCase();
-                  const meta = STATUS_META[status] || STATUS_META.PENDING;
-                  const isActive = Boolean(shop?.isActive ?? shop?.is_active ?? true);
-                  const busy = actionId === String(shop?.id);
-                  return (
-                    <tr key={shop.id} className={TR}>
-                      <td className={TD}>
+              <>
+                <div className="hidden lg:block">
+                  <AdminTable
+                    minW="min-w-[1180px]"
+                    head={
+                      <>
+                        <th className={TH}>المتجر</th>
+                        <th className={TH}>المالك</th>
+                        <th className={TH}>الموقع</th>
+                        <th className={TH}>التوصيل</th>
+                        <th className={TH}>الأزرار</th>
+                        <th className={TH}>الحالة</th>
+                        <th className={TH}>إجراءات</th>
+                      </>
+                    }
+                  >
+                    {paginatedShops.map((shop) => {
+                      const status = String(shop.status || '').toUpperCase();
+                      const meta = STATUS_META[status] || STATUS_META.PENDING;
+                      const isActive = Boolean(shop?.isActive ?? shop?.is_active ?? true);
+                      const busy = actionId === String(shop?.id);
+                      return (
+                        <tr key={shop.id} className={TR}>
+                          <td className={TD}>
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={shop.logoUrl || shop.logo_url || '/default-shop.png'}
+                                className="w-10 h-10 rounded-xl object-cover bg-slate-100 border border-slate-200"
+                                loading="lazy"
+                              />
+                              <div className="min-w-0">
+                                <div className="text-slate-900 font-black truncate">
+                                  {shop.name}
+                                </div>
+                                <div className="text-slate-400 text-xs font-bold truncate">
+                                  /{shop.slug || '-'} • {shop.category || '-'}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className={TD + ' text-slate-700 font-bold text-sm'}>
+                            <div>{shop?.owner?.name || '-'}</div>
+                            <div className="text-slate-400 text-xs mt-1">
+                              {shop?.owner?.email || shop?.email || '-'}
+                            </div>
+                          </td>
+                          <td className={TD + ' text-slate-700 font-bold text-sm'}>
+                            {shop.governorate || '-'}
+                            <div className="text-slate-400 text-xs mt-1">{shop.city || '-'}</div>
+                          </td>
+                          <td className={TD + ' text-slate-700 font-bold text-sm'}>
+                            <button
+                              onClick={() => editShopDeliveryFee(shop)}
+                              className="hover:text-cyan-600 transition-colors"
+                            >
+                              {getShopDeliveryFee(shop) ?? 0} ج.م
+                            </button>
+                            <div className="text-slate-400 text-xs mt-1">
+                              {Boolean(shop?.deliveryDisabled ?? shop?.delivery_disabled)
+                                ? 'معطّل'
+                                : 'مفعّل'}
+                            </div>
+                          </td>
+                          <td className={TD + ' text-slate-700 font-bold text-sm'}>
+                            {getEnabledModulesCount(shop)} زر
+                          </td>
+                          <td className={TD}>
+                            <Badge tone={meta.tone}>{meta.label}</Badge>
+                          </td>
+                          <td className={TD}>
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                onClick={() => openShopDetails(shop)}
+                                className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900"
+                                title="عرض"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => editShopDeliveryFee(shop)}
+                                className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900"
+                                title="تعديل رسوم التوصيل"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              {status === 'PENDING' && (
+                                <button
+                                  onClick={() => handleApprovalAction(shop.id, 'approved')}
+                                  className="p-2 rounded-xl bg-emerald-50 text-emerald-600"
+                                  title="قبول"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                              )}
+                              {isActive ? (
+                                <button
+                                  disabled={busy}
+                                  onClick={() => toggleShopActive(shop, false)}
+                                  className="p-2 rounded-xl bg-red-50 text-red-500"
+                                  title="تعطيل من التطبيق"
+                                >
+                                  <Ban className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                <button
+                                  disabled={busy}
+                                  onClick={() => toggleShopActive(shop, true)}
+                                  className="p-2 rounded-xl bg-emerald-50 text-emerald-600"
+                                  title="إعادة تفعيل"
+                                >
+                                  <ShieldCheck className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </AdminTable>
+                </div>
+
+                {/* كروت الموبايل — بديل الجدول على الشاشات الصغيرة */}
+                <div className="lg:hidden space-y-3 px-4 py-4">
+                  {paginatedShops.map((shop) => {
+                    const status = String(shop.status || '').toUpperCase();
+                    const meta = STATUS_META[status] || STATUS_META.PENDING;
+                    const isActive = Boolean(shop?.isActive ?? shop?.is_active ?? true);
+                    const busy = actionId === String(shop?.id);
+                    return (
+                      <div
+                        key={shop.id}
+                        className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3"
+                      >
                         <div className="flex items-center gap-3">
                           <img
                             src={shop.logoUrl || shop.logo_url || '/default-shop.png'}
-                            className="w-10 h-10 rounded-xl object-cover bg-slate-100 border border-slate-200"
+                            className="w-11 h-11 rounded-xl object-cover bg-slate-100 border border-slate-200"
                             loading="lazy"
                           />
-                          <div className="min-w-0">
-                            <div className="text-slate-900 font-black truncate">{shop.name}</div>
-                            <div className="text-slate-400 text-xs font-bold truncate">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-slate-900 font-black text-sm truncate">
+                              {shop.name}
+                            </div>
+                            <div className="text-slate-400 text-[11px] font-bold truncate">
                               /{shop.slug || '-'} • {shop.category || '-'}
                             </div>
                           </div>
+                          <Badge tone={meta.tone}>{meta.label}</Badge>
                         </div>
-                      </td>
-                      <td className={TD + ' text-slate-700 font-bold text-sm'}>
-                        <div>{shop?.owner?.name || '-'}</div>
-                        <div className="text-slate-400 text-xs mt-1">
-                          {shop?.owner?.email || shop?.email || '-'}
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] font-bold">
+                          <div className="truncate">
+                            <span className="text-slate-400">المالك: </span>
+                            <span className="text-slate-700">{shop?.owner?.name || '-'}</span>
+                          </div>
+                          <div className="truncate">
+                            <span className="text-slate-400">الموقع: </span>
+                            <span className="text-slate-700">
+                              {shop.governorate || '-'}
+                              {shop.city ? ` — ${shop.city}` : ''}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">التوصيل: </span>
+                            <button
+                              onClick={() => editShopDeliveryFee(shop)}
+                              className="text-cyan-700 hover:underline"
+                            >
+                              {getShopDeliveryFee(shop) ?? 0} ج.م
+                            </button>
+                            <span className="text-slate-400">
+                              {' '}
+                              (
+                              {Boolean(shop?.deliveryDisabled ?? shop?.delivery_disabled)
+                                ? 'معطّل'
+                                : 'مفعّل'}
+                              )
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">الأزرار: </span>
+                            <span className="text-slate-700">{getEnabledModulesCount(shop)}</span>
+                          </div>
                         </div>
-                      </td>
-                      <td className={TD + ' text-slate-700 font-bold text-sm'}>
-                        {shop.governorate || '-'}
-                        <div className="text-slate-400 text-xs mt-1">{shop.city || '-'}</div>
-                      </td>
-                      <td className={TD + ' text-slate-700 font-bold text-sm'}>
-                        <button
-                          onClick={() => editShopDeliveryFee(shop)}
-                          className="hover:text-cyan-600 transition-colors"
-                        >
-                          {getShopDeliveryFee(shop) ?? 0} ج.م
-                        </button>
-                        <div className="text-slate-400 text-xs mt-1">
-                          {Boolean(shop?.deliveryDisabled ?? shop?.delivery_disabled)
-                            ? 'معطّل'
-                            : 'مفعّل'}
-                        </div>
-                      </td>
-                      <td className={TD + ' text-slate-700 font-bold text-sm'}>
-                        {getEnabledModulesCount(shop)} زر
-                      </td>
-                      <td className={TD}>
-                        <Badge tone={meta.tone}>{meta.label}</Badge>
-                      </td>
-                      <td className={TD}>
-                        <div className="flex gap-2 justify-end">
+                        <div className="flex flex-wrap gap-2 pt-1">
                           <button
                             onClick={() => openShopDetails(shop)}
                             className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900"
@@ -641,11 +758,11 @@ function ShopsContent() {
                             </button>
                           )}
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </AdminTable>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
 
             <Pagination

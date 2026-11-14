@@ -275,50 +275,111 @@ function AdminDeliveryContent() {
             ) : filteredCouriers.length === 0 ? (
               <EmptyState icon={Users} title="لا يوجد مندوبون" />
             ) : (
-              <AdminTable
-                minW="min-w-[980px]"
-                head={
-                  <>
-                    <th className={TH}>المندوب</th>
-                    <th className={TH}>التواصل</th>
-                    <th className={TH}>تاريخ الإنشاء</th>
-                    <th className={TH}>الحالة</th>
-                    <th className={TH}>إجراءات</th>
-                  </>
-                }
-              >
-                {filteredCouriers.map((c) => (
-                  <tr key={String(c?.id)} className={TR}>
-                    <td className={TD}>
+              <>
+                <div className="hidden lg:block">
+                  <AdminTable
+                    minW="min-w-[980px]"
+                    head={
+                      <>
+                        <th className={TH}>المندوب</th>
+                        <th className={TH}>التواصل</th>
+                        <th className={TH}>تاريخ الإنشاء</th>
+                        <th className={TH}>الحالة</th>
+                        <th className={TH}>إجراءات</th>
+                      </>
+                    }
+                  >
+                    {filteredCouriers.map((c) => (
+                      <tr key={String(c?.id)} className={TR}>
+                        <td className={TD}>
+                          <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-cyan-600 font-black">
+                              {String(c?.name || 'C').charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-slate-900 font-black">{c?.name || 'مندوب'}</div>
+                              <div className="text-slate-400 text-xs font-bold truncate">
+                                #
+                                {String(c?.id || '')
+                                  .slice(0, 8)
+                                  .toUpperCase()}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className={TD + ' text-slate-700 text-sm font-bold'}>
+                          <div>{c?.email || '-'}</div>
+                          <div className="text-slate-400 mt-1">{c?.phone || '-'}</div>
+                        </td>
+                        <td className={TD + ' text-slate-500 text-sm font-bold'}>
+                          {fmtDate(c?.createdAt)}
+                        </td>
+                        <td className={TD}>
+                          <Badge tone={c?.isActive ? 'green' : 'amber'}>
+                            {c?.isActive ? 'نشط' : 'موقوف'}
+                          </Badge>
+                        </td>
+                        <td className={TD}>
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => openCourierDetails(c)}
+                              className="p-2.5 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900"
+                              title="عرض التفاصيل"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              disabled={actionId === String(c?.id)}
+                              onClick={() =>
+                                handleSetCourierStatus(String(c?.id), !Boolean(c?.isActive))
+                              }
+                              className={c?.isActive ? BTN_GHOST : BTN_SUCCESS}
+                            >
+                              {c?.isActive ? 'إيقاف' : 'تفعيل'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </AdminTable>
+                </div>
+
+                {/* كروت الموبايل — بديل الجدول على الشاشات الصغيرة */}
+                <div className="lg:hidden space-y-3 px-4 py-4">
+                  {filteredCouriers.map((c) => (
+                    <div
+                      key={String(c?.id)}
+                      className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3"
+                    >
                       <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-cyan-600 font-black">
+                        <div className="w-11 h-11 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-cyan-600 font-black shrink-0">
                           {String(c?.name || 'C').charAt(0)}
                         </div>
-                        <div className="min-w-0">
-                          <div className="text-slate-900 font-black">{c?.name || 'مندوب'}</div>
-                          <div className="text-slate-400 text-xs font-bold truncate">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-slate-900 font-black text-sm truncate">
+                            {c?.name || 'مندوب'}
+                          </div>
+                          <div className="text-slate-400 text-[11px] font-bold">
                             #
                             {String(c?.id || '')
                               .slice(0, 8)
                               .toUpperCase()}
                           </div>
                         </div>
+                        <Badge tone={c?.isActive ? 'green' : 'amber'}>
+                          {c?.isActive ? 'نشط' : 'موقوف'}
+                        </Badge>
                       </div>
-                    </td>
-                    <td className={TD + ' text-slate-700 text-sm font-bold'}>
-                      <div>{c?.email || '-'}</div>
-                      <div className="text-slate-400 mt-1">{c?.phone || '-'}</div>
-                    </td>
-                    <td className={TD + ' text-slate-500 text-sm font-bold'}>
-                      {fmtDate(c?.createdAt)}
-                    </td>
-                    <td className={TD}>
-                      <Badge tone={c?.isActive ? 'green' : 'amber'}>
-                        {c?.isActive ? 'نشط' : 'موقوف'}
-                      </Badge>
-                    </td>
-                    <td className={TD}>
-                      <div className="flex gap-2 justify-end">
+                      <div className="text-[11px] font-bold space-y-1">
+                        <div className="text-slate-700 truncate" dir="auto">
+                          {c?.email || '-'}
+                        </div>
+                        <div className="text-slate-500" dir="ltr" style={{ textAlign: 'right' }}>
+                          {c?.phone || '-'}
+                        </div>
+                        <div className="text-slate-400">أُضيف: {fmtDate(c?.createdAt)}</div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-1">
                         <button
                           onClick={() => openCourierDetails(c)}
                           className="p-2.5 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900"
@@ -336,10 +397,10 @@ function AdminDeliveryContent() {
                           {c?.isActive ? 'إيقاف' : 'تفعيل'}
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </AdminTable>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </Panel>
         </div>
