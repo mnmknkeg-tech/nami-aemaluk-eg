@@ -257,7 +257,7 @@ export function BookingsTableView({
           لا توجد حجوزات مطابقة لمعايير البحث
         </div>
       ) : (
-        <div className="overflow-x-auto border border-slate-100 rounded-xl">
+        <div className="overflow-x-auto touch-auto border border-slate-100 rounded-xl">
           <table className="w-full text-right min-w-[860px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-400">

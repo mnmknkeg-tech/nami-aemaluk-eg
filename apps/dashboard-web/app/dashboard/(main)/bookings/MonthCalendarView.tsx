@@ -161,7 +161,7 @@ export function MonthCalendarView({
   const todayStr = formatDateKey(new Date());
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto touch-auto">
       <div className="min-w-[760px]">
         {/* Table Header: السبت إلى الجمعة */}
         <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/70 text-center text-xs font-extrabold text-slate-700 py-3">

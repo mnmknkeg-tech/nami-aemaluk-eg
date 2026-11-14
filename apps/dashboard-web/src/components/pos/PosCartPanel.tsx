@@ -358,7 +358,7 @@ export default function PosCartPanel({
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="grid grid-cols-4 gap-1.5 pb-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pb-2">
                     {(
                       [
                         { id: 'cash', label: isArabic ? 'كاش' : 'Cash', icon: Banknote },

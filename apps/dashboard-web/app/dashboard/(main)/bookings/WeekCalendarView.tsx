@@ -111,7 +111,7 @@ export function WeekCalendarView({
           </div>
         ))}
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto touch-auto">
         <div className="min-w-[820px]">
           <TimeGrid
             days={days}
