@@ -102,9 +102,9 @@ const buildPharmacyWebsite = (): Website =>
         },
       },
     },
-    theme: {},
+    theme: {} as any,
     currentDraftVersion: 1,
-  }) as Website;
+  }) as unknown as Website;
 
 const HEADER_CSS = `header {
   background: linear-gradient(180deg, rgba(16, 185, 129, 0.08), rgba(255, 255, 255, 0.95)) !important;
