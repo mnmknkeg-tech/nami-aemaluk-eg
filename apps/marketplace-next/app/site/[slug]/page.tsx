@@ -25,6 +25,14 @@ export const revalidate = 0;
 
 type BuilderConfig = Record<string, any>;
 
+/** Route differs by deployment: legacy renderer uses /site/:slug; the
+ * standalone merchant app serves the tenant at /:slug. */
+function publishedSitePath(slug: string): string {
+  return process.env.NEXT_PUBLIC_MERCHANT_STOREFRONT_MODE === 'standalone'
+    ? `/${encodeURIComponent(slug)}`
+    : `/site/${encodeURIComponent(slug)}`;
+}
+
 type PublicWebsite = {
   published: boolean;
   publishedAt?: string;
@@ -164,7 +172,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           },
         }
       : {}),
-    alternates: { canonical: homeMeta?.canonicalUrl || `/site/${site.shop.slug}` },
+    alternates: { canonical: homeMeta?.canonicalUrl || publishedSitePath(site.shop.slug) },
     openGraph: {
       title,
       description,
@@ -306,7 +314,7 @@ function LegacyPublishedSiteView({
     '@context': 'https://schema.org',
     '@type': 'Store',
     name: site.shop.name,
-    url: `${siteConfig.url}/site/${site.shop.slug}`,
+    url: `${siteConfig.url}${publishedSitePath(site.shop.slug)}`,
     image: bannerUrl || site.shop.logoUrl,
     telephone: site.shop.phone,
     address: site.shop.address,
