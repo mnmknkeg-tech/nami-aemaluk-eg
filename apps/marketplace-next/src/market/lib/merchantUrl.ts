@@ -1,41 +1,15 @@
 import { siteConfig } from '@/lib/config';
 
 /**
- * In-app path to a merchant's PUBLISHED site — what market navigation uses.
+ * Merchant URL helpers.
  *
- * Navigation policy (merchant-site/marketplace decoupling — 2026-11, rev. 2
- * after merchant feedback: «بيفتح الموقع الخارجي في تاب جديد — مش زي ما
- * شرحت»):
+ * Marketplace navigation is always internal and always opens the unified
+ * `/shop/:slug` page, regardless of whether the merchant published a site.
+ * The published website is opened only by the explicit «الموقع الرسمي» link.
  *
- * Entering a merchant's store from INSIDE the marketplace app must behave
- * like normal in-app navigation — SAME tab, same window, and the browser
- * back button returns to the marketplace. Market surfaces never open
- * external subdomain URLs or new tabs for merchant sites:
- *
- *   1. Shop cards (dalil, home feed, suggestions) — published →
- *      getMerchantSitePath() (same tab); not published → /shop/[slug].
- *   2. Search results — same rule.
- *   3. The product page's shop links — same rule.
- *   4. Map markers — same rule.
- *
- * The merchant's real PUBLIC url (getMerchantExternalUrl below — the
- * page-builder link on its own subdomain/custom domain when configured) is
- * still the link the merchant markets independently. Inside the marketplace
- * app it is reachable ONLY through the explicit «الموقع الرسمي» button on
- * the unified shop page — a user-intended external action in a new tab.
- * Regular navigation never forces the customer out of the app window.
- *
- * Cart separation is untouched: the merchant site (via /site/[slug], its own
- * domain, or the embedded /shop/[slug]?view=site direct-URL fallback) runs
- * on the merchant SITE cart (merchant-site-cart:site:{slug}) with checkout
- * at /site/{slug}/checkout — never the marketplace cart. The unified theme
- * at /shop/[slug] stays on the marketplace cart (سلة الماركت لكل متجر).
- *
- * The marketplace stays at its own root domain; merchant sites live at
- * /site/[slug] and their own URLs. The two are decoupled at the navigation
- * layer even though they're served by the same Next.js app (the middleware
- * rewrites merchant subdomains/custom domains to /site/[slug] internally
- * without changing the browser URL).
+ * The independent Merchant Storefront deployment is selected by
+ * NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE. The older URL settings remain as
+ * temporary fallbacks while DNS and deployments are migrated.
  */
 export function getMerchantSitePath(slug: string): string {
   return `/site/${encodeURIComponent(slug)}`;
