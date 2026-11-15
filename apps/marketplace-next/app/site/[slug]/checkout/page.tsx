@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { api } from '@/lib/api';
+import SiteCheckout from '@/merchant-site/checkout/SiteCheckout';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,4 +27,13 @@ export async function generateMetadata({
   return { title: { absolute: 'إتمام الطلب' } };
 }
 
-export { default } from '../../../checkout/page';
+/**
+ * The merchant site's OWN checkout — a dedicated component, NOT a re-export
+ * of the marketplace /checkout page. Guest checkout is allowed, the cart
+ * source is the per-merchant site cart, and no marketplace chrome or state
+ * participates. See src/merchant-site/checkout/SiteCheckout.tsx for the
+ * scope rules.
+ */
+export default function MerchantSiteCheckoutPage() {
+  return <SiteCheckout />;
+}

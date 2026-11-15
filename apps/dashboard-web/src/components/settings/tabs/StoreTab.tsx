@@ -527,9 +527,11 @@ export default function StoreTab({ shop, onSaved }: StoreTabProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>الصفحة العامة</CardTitle>
+          <CardTitle>الظهور في تطبيق من مكانك (الماركت)</CardTitle>
           <CardDescription>
-            {publicDisabled ? 'الصفحة العامة معطّلة' : 'الصفحة العامة مفعّلة'}
+            {publicDisabled
+              ? 'متجرك مخفي من الماركت — مش هيظهر في الدليل ولا الخريطة ولا الصفحة الرئيسية. موقعك المنشور ورابطك المباشر والسلة والدفع شغالين زي ما هما.'
+              : 'متجرك ظاهر في الماركت (الدليل، الخريطة، الصفحة الرئيسية). موقعك المنشور بيفضل شغال في الحالتين.'}
           </CardDescription>
         </CardHeader>
         <CardFooter className="flex justify-end">
@@ -542,8 +544,8 @@ export default function StoreTab({ shop, onSaved }: StoreTabProps) {
             {togglingPublicDisabled
               ? 'جاري التحديث...'
               : publicDisabled
-                ? 'تفعيل الصفحة'
-                : 'تعطيل الصفحة'}
+                ? 'إظهار في الماركت'
+                : 'إخفاء من الماركت'}
           </Button>
         </CardFooter>
       </Card>

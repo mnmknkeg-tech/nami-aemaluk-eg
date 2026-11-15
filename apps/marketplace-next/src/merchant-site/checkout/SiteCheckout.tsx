@@ -1,0 +1,678 @@
+'use client';
+
+// ---------------------------------------------------------------------------
+// SiteCheckout — checkout for PUBLISHED MERCHANT SITES (/site/[slug]/checkout)
+//
+// This is the merchant site's OWN checkout, fully decoupled from the
+// marketplace checkout. Before this file existed, /site/[slug]/checkout was a
+// one-line re-export of the 896-line marketplace /checkout/page.tsx, which
+// resolved its mode from the pathname via regex — so any edit made for the
+// marketplace cart could silently break the merchant's checkout (and vice
+// versa). That entanglement is what "فصل الماركت عن موقع التاجر" means to fix.
+//
+// Scope rules (never add marketplace behavior here):
+//   • Cart source: useSiteCart ONLY (per-merchant published-site cart).
+//   • Guest checkout IS allowed — the published site serves anonymous
+//     visitors; orders go through /orders/public when no session is active.
+//   • One shop per checkout — the site cart is already scoped to this
+//     merchant, so no multi-shop grouping.
+//   • No marketplace auth gate, no marketplace cart drawer, no marketplace
+//     brand anywhere in the UI.
+//
+// The marketplace cart checkout lives in app/checkout/page.tsx and
+// app/shop/[slug]/checkout — they never import from this file.
+// ---------------------------------------------------------------------------
+
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import Link from 'next/link';
+import {
+  ArrowLeft,
+  ShoppingBag,
+  MapPin,
+  CreditCard,
+  Loader2,
+  CheckCircle,
+  Store,
+  Banknote,
+  UserRound,
+} from 'lucide-react';
+import { useSiteCart } from '@/lib/site-cart';
+import { formatPrice } from '@/lib/utils';
+import { isSessionActive, jsonRequest } from '@/lib/api';
+import { trackCartEvent } from '@/lib/cartEvents';
+import { LocationPicker } from '@/components/LocationPicker';
+import { playOrderNotifSound } from '@/lib/sounds';
+
+/** تحويل أرقام الهاتف العربي (٠-٩ / ۰-۹) والأرقام غير الرقمية لرقم لاتيني مجرد. */
+function toEgyptianPhoneDigits(raw: string): string {
+  const arabic = '٠١٢٣٤٥٦٧٨٩';
+  const eastern = '۰۱۲۳۴۵۶۷۸۹';
+  let s = '';
+  for (const ch of raw) {
+    if (/[0-9]/.test(ch)) s += ch;
+    else if (ch === '+') s += '+';
+    else if (arabic.includes(ch)) s += String(arabic.indexOf(ch));
+    else if (eastern.includes(ch)) s += String(eastern.indexOf(ch));
+  }
+  s = s.replace(/^\+/, '');
+  if (s.startsWith('0020')) s = '0' + s.slice(4);
+  else if ((s.length === 13 || s.length === 12) && s.startsWith('20')) s = '0' + s.slice(2);
+  if (s.length === 10 && s.startsWith('1')) s = '0' + s;
+  return s;
+}
+
+/** نفس قاعدة السيرفر: موبايل 11 رقم (01[0125]xxxxxxxx) أو أرضي 10 أرقام (0xx). */
+function isValidEgyptianPhoneClient(p: string): boolean {
+  if (p.length === 11 && p.startsWith('01') && ['0', '1', '2', '5'].includes(p[2])) return true;
+  if (p.length === 10 && p.startsWith('0') && !p.startsWith('01')) return true;
+  return false;
+}
+
+async function getCheckoutIdempotencyKey(shopId: string, payload: Record<string, unknown>) {
+  if (!crypto.subtle || !crypto.randomUUID) {
+    throw new Error('متصفحك لا يدعم حماية إعادة إرسال الطلب. حدّث المتصفح ثم حاول مرة أخرى.');
+  }
+  const serialized = new TextEncoder().encode(JSON.stringify(payload));
+  const digest = await crypto.subtle.digest('SHA-256', serialized);
+  const fingerprint = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, '0')
+  ).join('');
+  const storageKey = `checkout-request:${shopId}:${fingerprint}`;
+  try {
+    const saved = window.sessionStorage.getItem(storageKey);
+    if (saved) return { key: saved, storageKey };
+    const key = crypto.randomUUID();
+    window.sessionStorage.setItem(storageKey, key);
+    return { key, storageKey };
+  } catch {
+    throw new Error('تعذر حفظ معرّف الطلب بأمان. فعّل تخزين الجلسة ثم حاول مرة أخرى.');
+  }
+}
+
+export default function SiteCheckout() {
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const siteCart = useSiteCart();
+
+  const items = siteCart.items.map((entry: any) => ({
+    id: entry.product.id,
+    productId: entry.product.id,
+    name: entry.product.title,
+    price:
+      typeof entry.product.price === 'string'
+        ? Number(entry.product.price) || 0
+        : entry.product.price,
+    quantity: entry.quantity,
+    image: entry.product.image,
+    shopId: entry.shop.id,
+    shopName: entry.shop.name,
+    addons: entry.addons || entry.product?.addons,
+    variantSelection:
+      entry.variantSelection || entry.product?.variantSelection || entry.product?.selectedVariant,
+  }));
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  // The site cart is scoped to ONE merchant — take shop identity from the
+  // first entry so header/summary/order payload all come from the same place.
+  const shop = siteCart.items[0]?.shop || null;
+  const shopHomeUrl = shop?.slug ? `/site/${shop.slug}` : '/';
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState<any>(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const payableTotal = Math.max(0, totalPrice - couponDiscount);
+  const paymentMethod = 'cod' as const;
+
+  /** Phone stored on the logged-in account — offered as one-tap picks. */
+  const [accountProfile, setAccountProfile] = useState<{
+    name?: string;
+    phone?: string;
+    extraPhones?: string[];
+  } | null>(null);
+
+  const [customerName, setCustomerName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [city, setCity] = useState('');
+  const [district, setDistrict] = useState('');
+  const [address, setAddress] = useState('');
+  const [notes, setNotes] = useState('');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Prefill name/phone from the logged-in account so returning customers
+  // don't retype them — the chips below the phone field restore them too.
+  useEffect(() => {
+    if (!isSessionActive()) return;
+    jsonRequest<any>('/users/me')
+      .then((body) => {
+        const user = body?.data || body?.user || body;
+        const profile = {
+          name: user?.name || undefined,
+          phone: user?.phone || undefined,
+          extraPhones: Array.isArray(user?.extraPhones) ? user.extraPhones : [],
+        };
+        if (!profile.name && !profile.phone) return;
+        setAccountProfile(profile);
+        setCustomerName((prev) => prev || profile.name || '');
+        setPhone((prev) => prev || profile.phone || '');
+      })
+      .catch(() => {});
+  }, []);
+
+  // Restore a saved merchant-site coupon (set on the site by the merchant's
+  // own coupon widgets) and validate it against THIS shop only.
+  useEffect(() => {
+    if (!shop?.slug) return;
+    const key = `merchant-site-coupon:site:${shop.slug}`;
+    try {
+      const saved = JSON.parse(window.sessionStorage.getItem(key) || 'null');
+      if (!saved?.code) return;
+      setCouponCode(String(saved.code));
+      jsonRequest<any>('/coupons/validate', {
+        method: 'POST',
+        body: JSON.stringify({
+          shopId: shop.id,
+          code: saved.code,
+          subtotal: totalPrice,
+        }),
+      })
+        .then((response) => {
+          const result = response?.data || response;
+          setCouponDiscount(typeof result?.discountAmount === 'number' ? result.discountAmount : 0);
+        })
+        .catch(() => setCouponDiscount(0));
+    } catch {
+      setCouponCode('');
+      setCouponDiscount(0);
+    }
+  }, [shop?.slug, shop?.id, totalPrice]);
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shop || items.length === 0) return;
+    setLoading(true);
+    setError('');
+
+    // Abandoned-cart funnel: the customer reached the checkout submit.
+    trackCartEvent('checkout_started', items);
+
+    const normalizedPhone = toEgyptianPhoneDigits(phone);
+    if (!isValidEgyptianPhoneClient(normalizedPhone)) {
+      setError('رقم الهاتف غير صحيح — اكتب رقم موبايل مصري مثل 010xxxxxxxx');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Guest checkout is allowed on the published merchant site — orders go
+      // through the public endpoint when there is no session.
+      const isGuest = !isSessionActive();
+      const endpoint = isGuest ? '/orders/public' : '/orders';
+
+      const payload = {
+        shopId: shop.id,
+        items: items.map((i) => ({
+          productId: i.productId,
+          quantity: i.quantity,
+          addons: i.addons || undefined,
+          variantSelection: i.variantSelection || undefined,
+        })),
+        customerName: customerName.trim() || undefined,
+        customer: {
+          name: customerName.trim() || undefined,
+          phone: normalizedPhone || undefined,
+          city: city || undefined,
+          district: district || undefined,
+          address: address || undefined,
+          notes: notes.trim() || undefined,
+          lat: coords?.lat,
+          lng: coords?.lng,
+        },
+        customerNote: notes.trim() || undefined,
+        notes: notes.trim() || undefined,
+        couponCode: couponCode || undefined,
+        deliveryAddressManual: [city, district, address].filter(Boolean).join('، ') || undefined,
+        deliveryLat: coords?.lat,
+        deliveryLng: coords?.lng,
+        deliveryNote: notes.trim() || undefined,
+        paymentMethod: paymentMethod === 'cod' ? 'COD' : 'CARD',
+        // Website-source orders route to the merchant's own dashboard flow.
+        source: 'website',
+      };
+      const requestKey = await getCheckoutIdempotencyKey(shop.id, payload);
+      const order = await jsonRequest<any>(endpoint, {
+        method: 'POST',
+        headers: { 'X-Idempotency-Key': requestKey.key },
+        body: JSON.stringify(payload),
+      }).catch((err) => {
+        throw new Error(err?.message || 'فشل إنشاء الطلب');
+      });
+
+      if (requestKey.storageKey) {
+        window.sessionStorage.removeItem(requestKey.storageKey);
+      }
+
+      siteCart.clearCart();
+      // Abandoned-cart funnel: payment completed.
+      trackCartEvent('payment_completed', items);
+      setSuccess({
+        order,
+        shopName: shop.name,
+        shopSlug: shop.slug,
+        shopHomeUrl,
+      });
+      playOrderNotifSound();
+    } catch (err: any) {
+      setError(err?.message || 'فشل إنشاء الطلب');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkoutHeader = (title: string) => (
+    <header className="sticky top-0 z-[60] bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800">
+      <div className="max-w-[1200px] mx-auto px-4 md:px-6 h-14 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => (window.history.length > 1 ? router.back() : router.push(shopHomeUrl))}
+          className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-brand-cyan transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          رجوع
+        </button>
+        <span className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
+        {shop?.logoUrl && (
+          <img
+            src={shop.logoUrl}
+            alt={shop.name || 'متجر'}
+            className="h-8 w-8 rounded-lg object-cover"
+          />
+        )}
+        <div className="min-w-0">
+          {shop?.name && (
+            <p className="truncate text-[11px] font-bold text-slate-500">{shop.name}</p>
+          )}
+          <h1 className="truncate text-sm font-black text-slate-900 dark:text-white md:text-base">
+            {title}
+          </h1>
+        </div>
+      </div>
+    </header>
+  );
+
+  if (success) {
+    const order = success.order;
+    return (
+      <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950/40">
+        {checkoutHeader('تم الطلب')}
+        <div className="max-w-2xl mx-auto px-4 md:px-6 py-16 md:py-24 text-center">
+          <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-10 h-10 text-green-500" />
+          </div>
+          <h2 className="text-3xl font-bold mb-3">تم إنشاء طلبك بنجاح!</h2>
+          <p className="text-slate-500 font-semibold mb-8">
+            {success.shopName
+              ? `تم استلام طلبك في متجر ${success.shopName}، وسيتم التواصل معك قريباً لتأكيد الطلب`
+              : 'سيتم التواصل معك قريباً لتأكيد الطلب'}
+          </p>
+          <div className="space-y-3 mb-8">
+            <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <Store className="w-5 h-5 text-brand-purple" />
+                <div className="text-right">
+                  <div className="font-bold text-sm">
+                    طلب #
+                    {String(order?.id || order?.orderNumber || '')
+                      .slice(0, 8)
+                      .toUpperCase()}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {order?.shopName || order?.shop?.name || success.shopName}
+                  </div>
+                </div>
+              </div>
+              <Link
+                href={`/track/${order?.id || order?.orderNumber || ''}?from=${encodeURIComponent(success.shopHomeUrl)}`}
+                className="text-brand-cyan font-bold text-sm hover:underline"
+              >
+                تتبع الطلب
+              </Link>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-center">
+            <Link
+              href={success.shopHomeUrl}
+              className="px-6 py-3 rounded-xl bg-brand-gradient text-white font-bold text-sm"
+            >
+              {success.shopName ? `العودة إلى متجر ${success.shopName}` : 'العودة إلى المتجر'}
+            </Link>
+            <Link
+              href={success.shopHomeUrl}
+              className="px-6 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold text-sm"
+            >
+              متابعة التسوق
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (items.length === 0 || !shop) {
+    return (
+      <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950/40">
+        {checkoutHeader('إتمام الطلب')}
+        <div className="max-w-2xl mx-auto px-4 md:px-6 py-16 md:py-24 text-center">
+          <ShoppingBag className="w-16 h-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">سلتك فارغة</h2>
+          <p className="text-slate-500 font-semibold mb-6">أضف منتجات قبل إتمام الطلب</p>
+          <Link
+            href={shopHomeUrl}
+            className="px-6 py-3 rounded-xl bg-brand-gradient text-white font-bold text-sm"
+          >
+            العودة إلى المتجر
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950/40">
+      {checkoutHeader('إتمام الطلب')}
+
+      <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-6 md:py-10">
+        <form
+          ref={formRef}
+          onSubmit={handlePlaceOrder}
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8"
+        >
+          {/* Form */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Delivery Info */}
+            <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6">
+              <h2 className="flex items-center gap-2 text-lg font-bold mb-5">
+                <MapPin className="w-5 h-5 text-brand-cyan" />
+                بيانات التوصيل
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-2">
+                    الاسم الكامل *
+                  </label>
+                  <input
+                    required
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 font-semibold text-sm outline-none focus:border-brand-cyan transition-colors"
+                    placeholder="الاسم"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-2">
+                    رقم الهاتف *
+                  </label>
+                  <input
+                    required
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 font-semibold text-sm outline-none focus:border-brand-cyan transition-colors"
+                    placeholder="01xxxxxxxxx"
+                  />
+                  {(() => {
+                    const savedPhones = [
+                      ...(accountProfile?.phone ? [accountProfile.phone] : []),
+                      ...(accountProfile?.extraPhones || []),
+                    ].filter((p) => p && p !== phone);
+                    if (savedPhones.length === 0) return null;
+                    return (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {savedPhones.map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => {
+                              setPhone(p);
+                              if (accountProfile?.name)
+                                setCustomerName((prev) => prev || accountProfile.name!);
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-brand-cyan/40 bg-brand-cyan/5 text-[11px] font-bold text-brand-cyan hover:bg-brand-cyan/10 transition-colors"
+                          >
+                            <UserRound className="w-3 h-3" />
+                            <span dir="ltr">{p}</span>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-2">المدينة *</label>
+                  <input
+                    required
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 font-semibold text-sm outline-none focus:border-brand-cyan transition-colors"
+                    placeholder="القاهرة، الإسكندرية..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-2">المنطقة</label>
+                  <input
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 font-semibold text-sm outline-none focus:border-brand-cyan transition-colors"
+                    placeholder="المنطقة / الحي"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-500 mb-2">
+                    العنوان بالتفصيل *
+                  </label>
+                  <textarea
+                    required
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    rows={2}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 font-semibold text-sm outline-none focus:border-brand-cyan transition-colors resize-none"
+                    placeholder="الشارع، رقم المبنى، الشقة..."
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <LocationPicker
+                    initialCoords={coords}
+                    onLocationSelect={(lat, lng) => setCoords({ lat, lng })}
+                    onAddressResolved={(addr) => {
+                      if (addr.city) setCity(addr.city);
+                      if (addr.district) setDistrict(addr.district);
+                    }}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-bold text-slate-500 mb-2">
+                    ملاحظات (اختياري)
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 font-semibold text-sm outline-none focus:border-brand-cyan transition-colors resize-none"
+                    placeholder="أي ملاحظات إضافية..."
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Payment Method */}
+            <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6">
+              <h2 className="flex items-center gap-2 text-lg font-bold mb-5">
+                <Banknote className="w-5 h-5 text-brand-cyan" />
+                طريقة الدفع
+              </h2>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-4 rounded-xl border-2 border-brand-cyan bg-brand-cyan/5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-brand-cyan/10 flex items-center justify-center">
+                      <Banknote className="w-6 h-6 text-brand-cyan" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-sm block">الدفع عند الاستلام (COD)</span>
+                      <span className="text-xs text-slate-500">
+                        ادفع نقداً للمندوب عند استلام طلبك ومطابقته
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-brand-cyan/20 text-brand-cyan">
+                    مفعل
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 opacity-60 bg-slate-50 dark:bg-slate-800/40 cursor-not-allowed">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                      <CreditCard className="w-5 h-5 text-slate-400" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-sm block text-slate-500">
+                        البطاقات البنكية والدفع الإلكتروني
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        فيزا / ماستركارد / ميزة / محافظ إلكترونية
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500">
+                    قريباً
+                  </span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* Summary */}
+          <div className="lg:col-span-1">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6 sticky top-20">
+              <h2 className="text-lg font-bold mb-5">ملخص الطلب</h2>
+
+              {/* Items — single shop, no grouping needed */}
+              <div className="space-y-2 mb-5 max-h-[300px] overflow-y-auto">
+                {items.map((item) => (
+                  <div key={item.id} className="flex items-center gap-3">
+                    <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0">
+                      {item.image ? (
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          fill
+                          sizes="48px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <ShoppingBag
+                          className="w-5 h-5 text-slate-400 absolute inset-0 m-auto"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-xs line-clamp-1">{item.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {item.quantity} × {formatPrice(item.price)}
+                      </p>
+                    </div>
+                    <span className="font-bold text-xs">
+                      {formatPrice(item.price * item.quantity)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Totals */}
+              <div className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex justify-between text-sm font-semibold text-slate-500">
+                  <span>عدد المنتجات</span>
+                  <span>{totalItems}</span>
+                </div>
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between text-sm font-semibold text-green-600">
+                    <span>خصم الكوبون {couponCode ? `(${couponCode})` : ''}</span>
+                    <span>-{formatPrice(couponDiscount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm font-semibold text-slate-500">
+                  <span>الشحن</span>
+                  <span className="text-green-500">يُحدد لاحقاً</span>
+                </div>
+                <div className="flex justify-between text-lg font-black pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <span>الإجمالي</span>
+                  <span className="text-brand-cyan">{formatPrice(payableTotal)}</span>
+                </div>
+              </div>
+
+              {error && (
+                <div className="mt-4 p-3 bg-red-500/10 rounded-xl text-red-500 text-xs font-bold text-center">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="hidden lg:w-full mt-5 py-4 bg-brand-gradient text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-60 lg:flex"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <CheckCircle className="w-5 h-5" />
+                )}
+                {loading ? 'جاري إنشاء الطلب...' : 'تأكيد الطلب'}
+              </button>
+
+              <Link
+                href={shopHomeUrl}
+                className="w-full mt-3 py-3 flex items-center justify-center gap-2 text-sm font-bold text-slate-500 hover:text-brand-cyan transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                متابعة التسوق
+              </Link>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* شريط دفع ثابت للموبايل: الإجمالي وزر التأكيد يفضلوا ظاهرين طول
+          وقت إدخال البيانات بدل ما الليزر يوصل بعيد عن الشاشة. */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-[70] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] pb-[env(safe-area-inset-bottom)]">
+        <div className="px-4 py-3 flex items-center gap-3">
+          <div className="flex flex-col min-w-0">
+            <span className="text-[11px] font-bold text-slate-500">الإجمالي</span>
+            <span className="text-base font-black text-brand-cyan leading-tight">
+              {formatPrice(payableTotal)}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => formRef.current?.requestSubmit()}
+            disabled={loading}
+            className="mr-auto flex-1 py-3.5 bg-brand-gradient text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform"
+          >
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CheckCircle className="w-4 h-4" />
+            )}
+            {loading ? 'جاري إنشاء الطلب...' : `تأكيد الطلب (${totalItems})`}
+          </button>
+        </div>
+      </div>
+
+      {/* مساحة احتياطية حتى لا يغطي الشريط الثابت آخر حقل في النموذج */}
+      <div className="lg:hidden h-24" aria-hidden="true" />
+    </div>
+  );
+}

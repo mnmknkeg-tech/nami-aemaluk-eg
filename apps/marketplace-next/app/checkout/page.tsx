@@ -1,5 +1,17 @@
 'use client';
 
+// ---------------------------------------------------------------------------
+// MarketCheckout — the MARKETPLACE cart checkout (two modes):
+//   • /checkout          → the whole market cart, grouped by shop
+//   • /shop/[slug]/checkout → the market cart filtered to that one shop
+//
+// The PUBLISHED MERCHANT SITE checkout (/site/[slug]/checkout) is a SEPARATE
+// component (src/merchant-site/checkout/SiteCheckout.tsx) with its own guest
+// flow and its own cart — it does NOT go through this file anymore. Keep the
+// two decoupled: marketplace changes here must never affect the merchant
+// site checkout, and merchant-site changes must never affect this file.
+// ---------------------------------------------------------------------------
+
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -17,7 +29,6 @@ import {
   LockKeyhole,
 } from 'lucide-react';
 import { useCart } from '@/lib/cart';
-import { useSiteCart } from '@/lib/site-cart';
 import { formatPrice } from '@/lib/utils';
 import { isSessionActive, jsonRequest } from '@/lib/api';
 import { trackCartEvent } from '@/lib/cartEvents';
@@ -75,87 +86,51 @@ export default function CheckoutPage() {
   const pathname = usePathname();
   const formRef = useRef<HTMLFormElement | null>(null);
   const marketCart = useCart();
-  const siteCart = useSiteCart();
 
-  // Three checkout modes, resolved from the path alone:
-  //  - /site/[slug]/checkout  → the published-site cart (per-merchant cart)
-  //  - /shop/[slug]/checkout  → the MARKET cart filtered to that shop — shop
-  //    storefronts add to the market cart, so reading the site cart here used
-  //    to render an empty "سلتك فارغة" page right after إتمام الطلب
-  //  - /checkout              → the whole market cart (multi-shop grouped)
-  // The old `Boolean(siteCart.items[0]?.shop …)` fallback let leftover site-cart
-  // items hijack the plain market checkout — removed on purpose.
-  const siteCheckoutMatch = (pathname || '').match(/^\/site\/([^/]+)\/checkout\/?$/);
+  // Two modes, resolved from the path:
+  //  - /shop/[slug]/checkout → the MARKET cart filtered to that shop — shop
+  //    storefronts add to the market cart, so reading the market cart here
+  //    filtered by slug keeps the "إتمام الطلب" flow per merchant.
+  //  - /checkout → the whole market cart (multi-shop grouped).
+  //  (/site/[slug]/checkout is a SEPARATE component — see
+  //  src/merchant-site/checkout/SiteCheckout.tsx — so site cart logic never
+  //  enters this file.)
   const shopCheckoutMatch = (pathname || '').match(/^\/shop\/([^/]+)\/checkout\/?$/);
-  const isSiteCheckout = Boolean(siteCheckoutMatch);
   const isShopCheckout = Boolean(shopCheckoutMatch);
-  const isMerchantPath = isSiteCheckout || isShopCheckout;
-  const merchantType = shopCheckoutMatch ? 'shop' : 'site';
-  const merchantSlug = siteCheckoutMatch?.[1] || shopCheckoutMatch?.[1] || '';
-  const siteCartShop = siteCart.items[0]?.shop;
-  const isMerchantCheckout = isSiteCheckout;
+  const isMerchantPath = isShopCheckout;
+  const merchantSlug = shopCheckoutMatch?.[1] || '';
 
-  const merchantShopName = isSiteCheckout
-    ? siteCartShop?.name || ''
-    : isShopCheckout
-      ? (marketCart.items.find((i: any) => i.shopSlug === merchantSlug) as any)?.shopName || ''
-      : '';
+  const merchantShopName = isShopCheckout
+    ? (marketCart.items.find((i: any) => i.shopSlug === merchantSlug) as any)?.shopName || ''
+    : '';
   const merchantHomeUrl = merchantSlug
-    ? `/${merchantType}/${merchantSlug}`
+    ? `/shop/${merchantSlug}`
     : (pathname || '/').replace(/\/checkout\/?$/, '') || '/';
-  const items = isSiteCheckout
-    ? siteCart.items.map((entry: any) => ({
-        id: entry.product.id,
-        productId: entry.product.id,
-        name: entry.product.title,
-        price:
-          typeof entry.product.price === 'string'
-            ? Number(entry.product.price) || 0
-            : entry.product.price,
-        quantity: entry.quantity,
-        image: entry.product.image,
-        shopId: entry.shop.id,
-        shopName: entry.shop.name,
-        addons: entry.addons || entry.product?.addons,
-        variantSelection:
-          entry.variantSelection ||
-          entry.product?.variantSelection ||
-          entry.product?.selectedVariant,
-      }))
-    : isShopCheckout
-      ? marketCart.items.filter((i: any) => i.shopSlug === merchantSlug || !i.shopSlug)
-      : marketCart.items;
+  const items = isShopCheckout
+    ? marketCart.items.filter((i: any) => i.shopSlug === merchantSlug || !i.shopSlug)
+    : marketCart.items;
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
   const payableTotal = Math.max(0, totalPrice - couponDiscount);
-  const shopGroups = isSiteCheckout
-    ? { [siteCart.items[0]?.shop.id || 'merchant-site']: items }
-    : isShopCheckout
-      ? { [String((items[0] as any)?.shopId || merchantSlug)]: items }
-      : marketCart.itemsByShop();
-  const clearCart = isSiteCheckout
-    ? siteCart.clearCart
-    : isShopCheckout
-      ? () => {
-          const shopId = String((items[0] as any)?.shopId || '');
-          if (shopId) marketCart.clearShopItems(shopId);
-        }
-      : marketCart.clearCart;
-  // Orders born on a merchant storefront or published site are 'website'
-  // orders; the multi-shop market checkout stays 'marketplace'.
+  const shopGroups = isShopCheckout
+    ? { [String((items[0] as any)?.shopId || merchantSlug)]: items }
+    : marketCart.itemsByShop();
+  const clearCart = isShopCheckout
+    ? () => {
+        const shopId = String((items[0] as any)?.shopId || '');
+        if (shopId) marketCart.clearShopItems(shopId);
+      }
+    : marketCart.clearCart;
+  // Orders born on a shop storefront are 'website' orders; the multi-shop
+  // market checkout stays 'marketplace'.
   const orderSource = isMerchantPath ? 'website' : 'marketplace';
 
-  const headerShopName = isSiteCheckout
-    ? siteCart.items[0]?.shop?.name || siteCartShop?.name || ''
-    : isShopCheckout
-      ? (items[0] as any)?.shopName || ''
-      : '';
-  // Market cart items carry no logo — only the published-site cart does.
-  const headerShopLogo = isSiteCheckout
-    ? siteCart.items[0]?.shop?.logoUrl || siteCartShop?.logoUrl || ''
-    : '';
+  // Market cart items carry no shop logo — the merchant-site cart does, and
+  // that checkout lives in its own component now.
+  const headerShopName = isShopCheckout ? (items[0] as any)?.shopName || '' : '';
+  const headerShopLogo = '';
 
   // Compact replacement for the market navbar, which is intentionally not
   // rendered on /checkout (see AppChrome). Keeps a clear way back and a
@@ -191,7 +166,7 @@ export default function CheckoutPage() {
             {title}
           </h1>
         </div>
-        {!isMerchantCheckout && typeof count === 'number' && count > 0 && (
+        {!isMerchantPath && typeof count === 'number' && count > 0 && (
           <span className="mr-auto inline-flex items-center gap-1.5 text-xs font-bold text-slate-500">
             <ShoppingBag className="w-4 h-4" />
             {count} منتج
@@ -240,32 +215,6 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (!isMerchantCheckout || !siteCart.items[0]) return;
-    const key = `merchant-site-coupon:site:${siteCart.items[0].shop.slug}`;
-    try {
-      const saved = JSON.parse(window.sessionStorage.getItem(key) || 'null');
-      if (!saved?.code) return;
-      setCouponCode(String(saved.code));
-      jsonRequest<any>('/coupons/validate', {
-        method: 'POST',
-        body: JSON.stringify({
-          shopId: siteCart.items[0].shop.id,
-          code: saved.code,
-          subtotal: totalPrice,
-        }),
-      })
-        .then((response) => {
-          const result = response?.data || response;
-          setCouponDiscount(typeof result?.discountAmount === 'number' ? result.discountAmount : 0);
-        })
-        .catch(() => setCouponDiscount(0));
-    } catch {
-      setCouponCode('');
-      setCouponDiscount(0);
-    }
-  }, [isMerchantCheckout, siteCart.items, totalPrice]);
-
   // حالة الجلسة — الطلب في الماركت (‎/checkout و‎/shop/…) للمسجلين بس؛
   // فحص الجلسة بعد التحميل عشان مايحصلش خلاف hydration بين السيرفر والمتصفح.
   const [sessionState, setSessionState] = useState<'loading' | 'guest' | 'authed'>('loading');
@@ -275,8 +224,8 @@ export default function CheckoutPage() {
     window.addEventListener('ray-session-changed', sync);
     return () => window.removeEventListener('ray-session-changed', sync);
   }, []);
-  /** مسارات الماركت بتشترط حساب؛ موقع/متجر التاجر المنشور بيسمح للضيف. */
-  const marketAuthRequired = !isSiteCheckout;
+  /** مسارات الماركت بتشترط حساب — التاجر المنشور (‎/site/…) له checkout منفصل بيسمح للضيف. */
+  const marketAuthRequired = true;
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -302,11 +251,9 @@ export default function CheckoutPage() {
     const succeededShops: string[] = [];
 
     try {
-      // Guest checkout يبقى مسموح بس في checkout موقع التاجر المنشور
-      // (‎/site/…) — checkout الماركت بيتطلب حساب، فالنهاية العامة هنا
-      // ما بتستخدمش خالص من مسارات الماركت.
-      const isGuest = !isSessionActive() && isSiteCheckout;
-      const endpoint = isGuest ? '/orders/public' : '/orders';
+      // checkout الماركت بيتطلب حساب — الـ guest endpoint هنا ما بيستخدمش
+      // (الـ guest flow بتاع موقع التاجر المنشور في SiteCheckout.tsx).
+      const endpoint = '/orders';
 
       const orders: any[] = [];
       const completedRequestKeys: string[] = [];
@@ -334,7 +281,7 @@ export default function CheckoutPage() {
           },
           customerNote: notes.trim() || undefined,
           notes: notes.trim() || undefined,
-          couponCode: isMerchantCheckout && couponCode ? couponCode : undefined,
+          couponCode: couponCode || undefined,
           deliveryAddressManual: [city, district, address].filter(Boolean).join('، ') || undefined,
           deliveryLat: coords?.lat,
           deliveryLng: coords?.lng,
@@ -359,18 +306,13 @@ export default function CheckoutPage() {
       for (const storageKey of completedRequestKeys) {
         window.sessionStorage.removeItem(storageKey);
       }
-      const finalShopSlug =
-        merchantSlug || siteCart.items[0]?.shop?.slug || (orders[0] as any)?.shopSlug || '';
+      const finalShopSlug = merchantSlug || (orders[0] as any)?.shopSlug || '';
       const finalShopName =
-        siteCart.items[0]?.shop?.name ||
-        orders[0]?.shopName ||
-        (orders[0] as any)?.shop?.name ||
-        merchantShopName ||
-        '';
-      const isActuallyMerchant = isMerchantCheckout || Boolean(finalShopSlug);
+        orders[0]?.shopName || (orders[0] as any)?.shop?.name || merchantShopName || '';
+      const isActuallyMerchant = Boolean(finalShopSlug);
       const targetHomeUrl = finalShopSlug
-        ? `/${merchantType}/${finalShopSlug}`
-        : isActuallyMerchant && pathname
+        ? `/shop/${finalShopSlug}`
+        : pathname
           ? pathname.replace(/\/checkout\/?$/, '') || '/'
           : '/';
 
@@ -405,7 +347,7 @@ export default function CheckoutPage() {
     const homeUrl =
       success.merchantHomeUrl ||
       (resolvedShopSlug
-        ? `/${merchantType}/${resolvedShopSlug}`
+        ? `/shop/${resolvedShopSlug}`
         : isMerchant && pathname
           ? pathname.replace(/\/checkout\/?$/, '')
           : '/');
@@ -504,7 +446,7 @@ export default function CheckoutPage() {
             href={isMerchantPath ? (pathname || '/').replace(/\/checkout\/?$/, '') : '/dalil'}
             className="px-6 py-3 rounded-xl bg-brand-gradient text-white font-bold text-sm"
           >
-            {isMerchantCheckout ? 'العودة إلى المتجر' : 'تصفح المتاجر'}
+            {isMerchantPath ? 'العودة إلى المتجر' : 'تصفح المتاجر'}
           </Link>
         </div>
       </div>
