@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { MapPin, MessageCircle, Store } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getProducts } from '@/lib/services';
-import { SiteStoreProductCard } from '@/components/SiteStoreProductCard';
+import { SiteStoreProductCard } from '@/merchant-site/components/SiteStoreProductCard';
 import { siteConfig } from '@/lib/config';
 import {
   mapSiteProduct,
@@ -16,7 +16,7 @@ import {
   splitHeadCode,
   readPageInjectionCode,
 } from '@ray-eg/shared/builder';
-import { SiteCartBridge } from '@/components/SiteCartBridge';
+import { SiteCartBridge } from '@/merchant-site/components/SiteCartBridge';
 import { serializeJsonLd } from '@/lib/jsonld';
 import { sanitizeCssValue } from '@/lib/sanitize';
 

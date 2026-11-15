@@ -1,4 +1,4 @@
-import { siteConfig } from './config';
+import { siteConfig } from '@/lib/config';
 
 /**
  * The external URL where a merchant's storefront lives — separate from the

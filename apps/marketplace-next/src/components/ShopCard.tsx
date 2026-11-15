@@ -3,7 +3,11 @@ import { MapPin, Store } from 'lucide-react';
 import type { Shop } from '@/lib/services';
 import { getActivityTheme } from '@/lib/activity-catalog';
 import { cn } from '@/lib/utils';
-import { getMerchantExternalUrl, MERCHANT_LINK_TARGET, MERCHANT_LINK_REL } from '@/lib/merchantUrl';
+import {
+  getMerchantExternalUrl,
+  MERCHANT_LINK_TARGET,
+  MERCHANT_LINK_REL,
+} from '@/market/lib/merchantUrl';
 
 export function ShopCard({ shop }: { shop: Shop }) {
   const coverImage = shop.coverImage || shop.banner || shop.logo || '/placeholder-shop.png';

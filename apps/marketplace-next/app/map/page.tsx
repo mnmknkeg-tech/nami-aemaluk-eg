@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, MapPin, Store, Briefcase, Hand } from 'lucide-react';
 import { apiPath } from '@/lib/api';
 import { buildShopMarkerHtml, buildListingMarkerHtml, escapeHtml } from '@/lib/mapUtils';
-import { getMerchantExternalUrl, MERCHANT_LINK_REL } from '@/lib/merchantUrl';
+import { getMerchantExternalUrl, MERCHANT_LINK_REL } from '@/market/lib/merchantUrl';
 import {
   requestDeviceLocation,
   requestApproxLocation,

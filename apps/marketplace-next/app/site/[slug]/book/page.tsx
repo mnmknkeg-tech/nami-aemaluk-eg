@@ -3,7 +3,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, CalendarClock, Clock, MapPin } from 'lucide-react';
 import { api } from '@/lib/api';
-import { SiteBookingFlow, type PublicBookingService } from '@/components/SiteBookingFlow';
+import {
+  SiteBookingFlow,
+  type PublicBookingService,
+} from '@/merchant-site/components/SiteBookingFlow';
 import { readShopBookingConfig } from '@ray-eg/shared/booking';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +32,8 @@ type PublicWebsite = {
     // إعدادات المتجر — منها queueConfig (layoutConfig.booking) للحجز بالانتظار.
     // الباكند بيرجّع layoutConfig في /shops/{slug}/website (Go PublicShopInfo)
     // فالقراءة شغالة فعليًا، مش مجرد توافق أنواع.
-    layoutConfig?: Record<string, any>;  };
+    layoutConfig?: Record<string, any>;
+  };
   config: Record<string, any>;
 };
 

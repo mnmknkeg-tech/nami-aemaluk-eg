@@ -16,7 +16,7 @@ import ShareButton from '@/components/ShareButton';
 import { FollowButton } from '@/components/FollowButton';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { siteConfig } from '@/lib/config';
-import ShopRenderer from '@/components/ShopRenderer';
+import ShopRenderer from '@/merchant-site/components/ShopRenderer';
 import { UnifiedShopView } from '@/components/UnifiedShopView';
 import { serializeJsonLd } from '@/lib/jsonld';
 

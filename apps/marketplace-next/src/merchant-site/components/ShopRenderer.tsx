@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import type { Shop, Product } from '@/lib/services';
 import { ProductCard } from '@/components/ProductCard';
-import { BuilderTreeRenderer } from '@/components/BuilderTreeRenderer';
+import { BuilderTreeRenderer } from '@/merchant-site/components/BuilderTreeRenderer';
 
 /**
  * ShopRenderer — public-facing shop page.

@@ -71,16 +71,9 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
     return raw
       .filter(
         (s: any) =>
-          !(
-            s &&
-            typeof s === 'object' &&
-            Number.isFinite(Number(s.price)) &&
-            Number(s.price) > 0
-          )
+          !(s && typeof s === 'object' && Number.isFinite(Number(s.price)) && Number(s.price) > 0)
       )
-      .map((s: any) =>
-        typeof s === 'string' ? s : s?.name || s?.label || String(s)
-      )
+      .map((s: any) => (typeof s === 'string' ? s : s?.name || s?.label || String(s)))
       .filter(Boolean);
   }, [product]);
 
@@ -220,7 +213,15 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
     const priced = pricedSizes.find((s) => s.id === selectedPricedSizeId);
     if (priced && typeof priced.price === 'number' && priced.price > 0) return priced.price;
     return basePrice;
-  }, [currentGroup, selectedSizeId, selectedPackId, packs, pricedSizes, selectedPricedSizeId, basePrice]);
+  }, [
+    currentGroup,
+    selectedSizeId,
+    selectedPackId,
+    packs,
+    pricedSizes,
+    selectedPricedSizeId,
+    basePrice,
+  ]);
 
   const addonsTotal = useMemo(() => {
     return Object.values(selectedAddons).reduce((sum, a) => sum + (Number(a.price) || 0), 0);
@@ -280,8 +281,7 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
         price: curSize?.price,
       };
     } else if (pricedSizes.length > 0) {
-      const priced =
-        pricedSizes.find((s) => s.id === selectedPricedSizeId) || pricedSizes[0];
+      const priced = pricedSizes.find((s) => s.id === selectedPricedSizeId) || pricedSizes[0];
       variantSelection = {
         size: priced.label,
         sizeLabel: priced.label,
@@ -532,7 +532,9 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
               }`}
             >
               <span className="font-extrabold text-xs text-slate-900">وحدة واحدة</span>
-              <span className="text-xs font-black text-brand-cyan mt-1">{formatPrice(basePrice)}</span>
+              <span className="text-xs font-black text-brand-cyan mt-1">
+                {formatPrice(basePrice)}
+              </span>
             </button>
             {packs.map((p) => {
               const active = p.id === selectedPackId;
@@ -548,7 +550,9 @@ export function SiteProductActions({ product, shop }: { product: any; shop: any 
                   }`}
                 >
                   <span className="font-extrabold text-xs text-slate-900">{p.label}</span>
-                  <span className="text-xs font-black text-brand-cyan mt-1">{formatPrice(p.price)}</span>
+                  <span className="text-xs font-black text-brand-cyan mt-1">
+                    {formatPrice(p.price)}
+                  </span>
                 </button>
               );
             })}

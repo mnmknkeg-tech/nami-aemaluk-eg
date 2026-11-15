@@ -18,8 +18,8 @@ import { productStockState } from '@/lib/stock';
 import { api } from '@/lib/api';
 import { getProductById, getProducts } from '@/lib/services';
 import { getSiteProductImageUrl, mapSiteProduct } from '@ray-eg/shared/builder';
-import { SiteProductActions } from '@/components/SiteProductActions';
-import { SiteStoreProductCard } from '@/components/SiteStoreProductCard';
+import { SiteProductActions } from '@/merchant-site/components/SiteProductActions';
+import { SiteStoreProductCard } from '@/merchant-site/components/SiteStoreProductCard';
 import { SafeProductImage } from '@/components/SafeProductImage';
 import { ReviewsSection } from '@/components/ReviewsSection';
 

@@ -244,21 +244,16 @@ export function SiteBookingFlow({
         {queuePosition && (
           <div className="mx-auto max-w-xs rounded-2xl bg-white border-2 border-brand-cyan/40 p-4 space-y-2">
             <p className="text-[11px] font-bold text-slate-400">ترتيبك في الطابور</p>
-            <p className="font-black text-4xl text-brand-cyan leading-none">
-              {queuePosition}
-            </p>
+            <p className="font-black text-4xl text-brand-cyan leading-none">{queuePosition}</p>
             <p className="text-xs font-bold text-slate-600">
               فيه <span className="text-brand-cyan">{ahead}</span> قدامك
               {ahead > 0 && (
-                <span className="text-slate-400">
-                  {' '}
-                  — انتظار تقديري ~{estMinutes} دقيقة
-                </span>
+                <span className="text-slate-400"> — انتظار تقديري ~{estMinutes} دقيقة</span>
               )}
             </p>
             <p className="text-[10px] font-semibold text-slate-400 leading-4">
-              لما يتبقى عليك ~{notifyMinutes} دقيقة هيظهرلك تنبيه كبير في صفحة التتبع
-              (بالصوت) — خليها مفتوحة أو ارجعلها في أي وقت
+              لما يتبقى عليك ~{notifyMinutes} دقيقة هيظهرلك تنبيه كبير في صفحة التتبع (بالصوت) —
+              خليها مفتوحة أو ارجعلها في أي وقت
             </p>
           </div>
         )}
@@ -330,10 +325,7 @@ export function SiteBookingFlow({
             {shopPhone && (
               <a
                 href={
-                  buildWhatsAppLink(
-                    shopPhone,
-                    `مرحبًا، أريد الاستفسار عن خدمات ${shopName}`
-                  ) || '#'
+                  buildWhatsAppLink(shopPhone, `مرحبًا، أريد الاستفسار عن خدمات ${shopName}`) || '#'
                 }
                 target="_blank"
                 rel="noopener noreferrer"
