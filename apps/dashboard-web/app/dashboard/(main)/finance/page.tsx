@@ -1,36 +1,23 @@
 'use client';
 
-import React, { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
+import { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { formatAmount as formatMoney } from '@/lib/format';
 import {
   FileText,
-  Search,
   Loader2,
   Plus,
   Edit,
   Trash2,
-  Eye,
   Download,
-  Upload,
-  Filter,
-  ChevronUp,
-  ChevronDown,
-  ChevronRight,
-  ChevronLeft,
   Check,
   X,
   Info,
-  MoreVertical,
   DollarSign,
-  Calendar,
   Clock,
-  User,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   Printer,
-  Mail,
   Send,
   Save,
   ArrowRight,
@@ -42,53 +29,19 @@ import { useDebouncedValue } from '@/lib/useDebouncedValue';
 import {
   InventoryPage,
   InvTableCard,
-  InvRow,
-  InvRowAction,
   InvPagination,
   InvBulkBar,
 } from '@/components/inventory/InventoryShell';
-
-type InvoiceLine = {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
-};
-
-type ReceiptTheme = {
-  shopName: string;
-  phone: string;
-  city: string;
-  address: string;
-  logoDataUrl: string;
-  footerNote: string;
-  vatRatePercent: number;
-};
-
-type Invoice = {
-  id: string;
-  source: 'legacy' | 'acc';
-  kind: 'sale' | 'purchase';
-  /** الحالة الموحدة للتصفية — مشتقة من حالة النظام + المدفوع + الاستحقاق */
-  state: 'draft' | 'unpaid' | 'partial' | 'paid' | 'overdue' | 'cancelled';
-  invoiceNumber: string;
-  customerId: string;
-  customerName: string;
-  customerEmail: string;
-  status: string;
-  issueDate: string;
-  dueDate: string;
-  paidDate: string | null;
-  subtotal: number;
-  taxAmount: number;
-  discountAmount: number;
-  totalAmount: number;
-  paidAmount: number;
-  notes: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-};
+import type { Invoice, InvoiceLine, ReceiptTheme } from '../_finance/types';
+import { fetchUnifiedInvoices } from '../_finance/invoiceData';
+import {
+  buildPrintInvoiceHtml,
+  printInvoiceWindow,
+  buildPdfInvoiceHtml,
+  printPdfViaIframe,
+} from '../_finance/receiptHtml';
+import InvoiceGuideModal from '../_finance/GuideModal';
+import InvoiceRow from '../_finance/InvoiceRow';
 
 function FinanceContent() {
   const searchParams = useSearchParams();
@@ -186,110 +139,8 @@ function FinanceContent() {
   const loadInvoices = useCallback(async () => {
     setLoading(true);
     try {
-      const shopData = await apiRequest('/shops/me');
-      const sid = shopData?.id;
-      if (!sid) {
-        setLoading(false);
-        return;
-      }
-      const [legacyRes, accRes] = await Promise.all([
-        apiRequest(`/invoices/shop/${sid}`).catch(() => []),
-        apiRequest(`/accounting/invoices/shop/${sid}`).catch(() => ({ data: [] })),
-      ]);
-      const legacy = Array.isArray(legacyRes) ? legacyRes : legacyRes?.data || [];
-      const acc = Array.isArray(accRes) ? accRes : accRes?.data || [];
-
-      const today = new Date().toISOString().split('T')[0];
-      const deriveState = (
-        rawStatus: string,
-        kind: 'sale' | 'purchase',
-        due: string,
-        total: number,
-        paid: number
-      ): Invoice['state'] => {
-        const s = String(rawStatus || '').toLowerCase();
-        if (s === 'cancelled' || s === 'canceled') return 'cancelled';
-        if (s === 'draft') return 'draft';
-        if (s === 'paid') return 'paid';
-        if (s === 'overdue') return 'overdue';
-        // posted / sent / viewed / pending → اشتقاق من المدفوع والاستحقاق
-        if (total > 0 && paid >= total - 0.005) return 'paid';
-        if (total > 0 && paid > 0) return 'partial';
-        if (due && due < today) return 'overdue';
-        return 'unpaid';
-      };
-
-      const legacyMapped: Invoice[] = legacy.map((i: any) => {
-        const rawStatus = String(i.status || 'draft').toLowerCase();
-        const totalAmount = Number(i.totalAmount || i.total_amount || i.amount || 0);
-        const paidAmount = Number(i.paidAmount || i.paid_amount || 0);
-        const dueDate = i.dueDate || i.due_date || '';
-        return {
-          id: String(i.id),
-          source: 'legacy' as const,
-          kind: 'sale' as const,
-          state: deriveState(rawStatus, 'sale', dueDate, totalAmount, paidAmount),
-          invoiceNumber: i.invoiceNumber || i.invoice_number || '---',
-          customerId: i.customerId || i.customer_id || '---',
-          customerName: i.customerName || i.customer_name || '---',
-          customerEmail: i.customerEmail || i.customer_email || '---',
-          status: rawStatus,
-          issueDate: i.issueDate || i.issue_date || i.createdAt || new Date().toISOString(),
-          dueDate,
-          paidDate: i.paidDate || i.paid_date || null,
-          subtotal: Number(i.subtotal || 0),
-          taxAmount: Number(i.taxAmount || i.tax_amount || 0),
-          discountAmount: Number(i.discountAmount || i.discount_amount || 0),
-          totalAmount,
-          paidAmount,
-          notes: i.notes || '',
-          createdBy: i.createdBy || i.created_by || '---',
-          createdAt: i.createdAt || new Date().toISOString(),
-          updatedAt: i.updatedAt || new Date().toISOString(),
-        };
-      });
-
-      // فواتير المحاسبة — تدعم البيع والشراء وتتغذى من المشتريات
-      const accMapped: Invoice[] = acc
-        .filter((i: any) => {
-          const t = String(i.invoice_type || i.invoiceType || 'sale').toLowerCase();
-          return t === 'sale' || t === 'purchase';
-        })
-        .map((i: any) => {
-          const kind =
-            String(i.invoice_type || i.invoiceType || 'sale').toLowerCase() === 'purchase'
-              ? ('purchase' as const)
-              : ('sale' as const);
-          const rawStatus = String(i.status || 'draft').toLowerCase();
-          const totalAmount = Number(i.total_amount || i.totalAmount || i.total || 0);
-          const paidAmount = Number(i.paid_amount || i.paidAmount || i.paid || 0);
-          const dueDate = i.due_date || i.dueDate || '';
-          return {
-            id: `acc-${String(i.id)}`,
-            source: 'acc' as const,
-            kind,
-            state: deriveState(rawStatus, kind, dueDate, totalAmount, paidAmount),
-            invoiceNumber: i.number || i.invoice_number || '---',
-            customerId: i.entity_id || i.entityId || '---',
-            customerName: i.entity_name || i.entityName || (kind === 'purchase' ? 'مورد' : 'عميل'),
-            customerEmail: i.entity_email || '',
-            status: rawStatus,
-            issueDate: i.invoice_date || i.invoiceDate || i.created_at || new Date().toISOString(),
-            dueDate,
-            paidDate: null,
-            subtotal: totalAmount,
-            taxAmount: 0,
-            discountAmount: 0,
-            totalAmount,
-            paidAmount,
-            notes: '',
-            createdBy: '---',
-            createdAt: i.created_at || new Date().toISOString(),
-            updatedAt: i.updated_at || i.created_at || new Date().toISOString(),
-          };
-        });
-
-      setInvoices([...legacyMapped, ...accMapped]);
+      const data = await fetchUnifiedInvoices();
+      if (data) setInvoices(data);
     } catch {
       setInvoices([]);
     } finally {
@@ -618,407 +469,38 @@ function FinanceContent() {
 
   // Professional HTML Printing
   const printInvoice = () => {
-    const escapeHtml = (v: any) =>
-      String(v ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-    const fmt = (n: any) => (Number.isFinite(Number(n)) ? Number(n).toFixed(2) : '0.00');
-
-    const linesHtml = lines
-      .map(
-        (l) => `
-      <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #eee;">${escapeHtml(l.name)}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${l.quantity}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">${fmt(l.price)}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">${fmt(l.price * l.quantity)}</td>
-      </tr>
-    `
-      )
-      .join('');
-
-    const html = `<!doctype html>
-    <html dir="${isArabic ? 'rtl' : 'ltr'}">
-    <head>
-      <meta charset="utf-8"/>
-      <title>${escapeHtml(receiptTheme.shopName || 'Invoice')}</title>
-      <style>
-        @page { margin: 10mm; size: A4; }
-        body { 
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-          margin: 0; 
-          padding: 20px; 
-          background: #f5f5f5;
-        }
-        .invoice-container {
-          max-width: 210mm;
-          margin: 0 auto;
-          background: white;
-          padding: 30px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 30px;
-          padding-bottom: 20px;
-          border-bottom: 2px solid #BD00FF;
-        }
-        .logo img { max-height: 60px; max-width: 200px; }
-        .shop-info h1 { margin: 0; color: #BD00FF; font-size: 24px; }
-        .shop-info p { margin: 5px 0; color: #666; font-size: 14px; }
-        .invoice-meta {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 20px;
-          background: #f9f9f9;
-          padding: 15px;
-          border-radius: 8px;
-        }
-        .meta-item { flex: 1; }
-        .meta-label { font-weight: bold; color: #333; font-size: 12px; }
-        .meta-value { color: #666; font-size: 14px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th { 
-          background: #BD00FF; 
-          color: white; 
-          padding: 12px; 
-          text-align: ${isArabic ? 'right' : 'left'}; 
-          font-weight: bold;
-        }
-        td { padding: 12px; border-bottom: 1px solid #eee; }
-        .totals {
-          margin-top: 20px;
-          background: #f9f9f9;
-          padding: 20px;
-          border-radius: 8px;
-        }
-        .total-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 8px 0;
-          border-bottom: 1px solid #eee;
-        }
-        .total-row.final {
-          border-bottom: none;
-          font-size: 18px;
-          font-weight: bold;
-          color: #BD00FF;
-          margin-top: 10px;
-          padding-top: 10px;
-          border-top: 2px solid #BD00FF;
-        }
-        .footer {
-          margin-top: 30px;
-          padding-top: 20px;
-          border-top: 1px solid #eee;
-          text-align: center;
-          color: #999;
-          font-size: 12px;
-        }
-        @media print {
-          body { background: white; }
-          .invoice-container { box-shadow: none; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="invoice-container">
-        <div class="header">
-          <div class="logo">
-            ${receiptTheme.logoDataUrl ? `<img src="${escapeHtml(receiptTheme.logoDataUrl)}" alt="Logo">` : ''}
-          </div>
-          <div class="shop-info">
-            <h1>${escapeHtml(receiptTheme.shopName || 'Shop Name')}</h1>
-            <p>${escapeHtml(receiptTheme.address || '')}</p>
-            <p>${escapeHtml(receiptTheme.city || '')} | ${escapeHtml(receiptTheme.phone || '')}</p>
-          </div>
-        </div>
-
-        <div class="invoice-meta">
-          <div class="meta-item">
-            <div class="meta-label">${isArabic ? 'رقم الفاتورة' : 'Invoice #'}</div>
-            <div class="meta-value">${escapeHtml(selectedInvoiceId || 'NEW')}</div>
-          </div>
-          <div class="meta-item">
-            <div class="meta-label">${isArabic ? 'التاريخ' : 'Date'}</div>
-            <div class="meta-value">${escapeHtml(invoiceDate)}</div>
-          </div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>${isArabic ? 'الصنف' : 'Item'}</th>
-              <th style="text-align: center;">${isArabic ? 'الكمية' : 'Qty'}</th>
-              <th style="text-align: right;">${isArabic ? 'السعر' : 'Price'}</th>
-              <th style="text-align: right;">${isArabic ? 'المجموع' : 'Total'}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${linesHtml}
-          </tbody>
-        </table>
-
-        <div class="totals">
-          <div class="total-row">
-            <span>${isArabic ? 'المجموع الفرعي' : 'Subtotal'}</span>
-            <span>${fmt(subtotal)}</span>
-          </div>
-          ${
-            discount > 0
-              ? `
-          <div class="total-row">
-            <span>${isArabic ? 'الخصم' : 'Discount'}</span>
-            <span>-${fmt(discount)}</span>
-          </div>
-          `
-              : ''
-          }
-          ${
-            showVat
-              ? `
-          <div class="total-row">
-            <span>${isArabic ? `ضريبة القيمة المضافة (${vatRatePct}%)` : `VAT (${vatRatePct}%)`}</span>
-            <span>${fmt(vatAmount)}</span>
-          </div>
-          `
-              : ''
-          }
-          <div class="total-row final">
-            <span>${isArabic ? 'الإجمالي' : 'Total'}</span>
-            <span>${fmt(total)}</span>
-          </div>
-        </div>
-
-        <div class="footer">
-          <p>${escapeHtml(receiptTheme.footerNote || '')}</p>
-          <p>${isArabic ? 'شكراً لتعاملكم معنا' : 'Thank you for your business'}</p>
-        </div>
-      </div>
-    </body>
-    </html>`;
-
-    try {
-      const w = window.open('', '_blank', 'noopener,noreferrer,width=800,height=1000');
-      if (!w) return;
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
-      w.focus();
-      setTimeout(() => {
-        try {
-          w.print();
-        } catch {}
-      }, 500);
-    } catch (e) {
-      console.error('Print error:', e);
-    }
+    const html = buildPrintInvoiceHtml({
+      lines,
+      isArabic,
+      receiptTheme,
+      selectedInvoiceId,
+      invoiceDate,
+      subtotal,
+      discount,
+      showVat,
+      vatRatePct,
+      vatAmount,
+      total,
+    });
+    printInvoiceWindow(html);
   };
 
   // PDF Export via iframe
   const exportPDF = () => {
-    const escapeHtml = (v: any) =>
-      String(v ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-    const fmt = (n: any) => (Number.isFinite(Number(n)) ? Number(n).toFixed(2) : '0.00');
-
-    const linesHtml = lines
-      .map(
-        (l) => `
-      <tr>
-        <td style="padding: 8px; border-bottom: 1px solid #eee;">${escapeHtml(l.name)}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${l.quantity}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">${fmt(l.price)}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">${fmt(l.price * l.quantity)}</td>
-      </tr>
-    `
-      )
-      .join('');
-
-    const html = `<!doctype html>
-    <html dir="${isArabic ? 'rtl' : 'ltr'}">
-    <head>
-      <meta charset="utf-8"/>
-      <title>${escapeHtml(receiptTheme.shopName || 'Invoice')}</title>
-      <style>
-        @page { margin: 10mm; size: A4; }
-        body { 
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-          margin: 0; 
-          padding: 20px; 
-        }
-        .invoice-container {
-          max-width: 210mm;
-          margin: 0 auto;
-          background: white;
-          padding: 30px;
-        }
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 30px;
-          padding-bottom: 20px;
-          border-bottom: 2px solid #BD00FF;
-        }
-        .logo img { max-height: 60px; max-width: 200px; }
-        .shop-info h1 { margin: 0; color: #BD00FF; font-size: 24px; }
-        .shop-info p { margin: 5px 0; color: #666; font-size: 14px; }
-        .invoice-meta {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 20px;
-          background: #f9f9f9;
-          padding: 15px;
-          border-radius: 8px;
-        }
-        .meta-item { flex: 1; }
-        .meta-label { font-weight: bold; color: #333; font-size: 12px; }
-        .meta-value { color: #666; font-size: 14px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th { 
-          background: #BD00FF; 
-          color: white; 
-          padding: 12px; 
-          text-align: ${isArabic ? 'right' : 'left'}; 
-          font-weight: bold;
-        }
-        td { padding: 12px; border-bottom: 1px solid #eee; }
-        .totals {
-          margin-top: 20px;
-          background: #f9f9f9;
-          padding: 20px;
-          border-radius: 8px;
-        }
-        .total-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 8px 0;
-          border-bottom: 1px solid #eee;
-        }
-        .total-row.final {
-          border-bottom: none;
-          font-size: 18px;
-          font-weight: bold;
-          color: #BD00FF;
-          margin-top: 10px;
-          padding-top: 10px;
-          border-top: 2px solid #BD00FF;
-        }
-        .footer {
-          margin-top: 30px;
-          padding-top: 20px;
-          border-top: 1px solid #eee;
-          text-align: center;
-          color: #999;
-          font-size: 12px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="invoice-container">
-        <div class="header">
-          <div class="logo">
-            ${receiptTheme.logoDataUrl ? `<img src="${escapeHtml(receiptTheme.logoDataUrl)}" alt="Logo">` : ''}
-          </div>
-          <div class="shop-info">
-            <h1>${escapeHtml(receiptTheme.shopName || 'Shop Name')}</h1>
-            <p>${escapeHtml(receiptTheme.address || '')}</p>
-            <p>${escapeHtml(receiptTheme.city || '')} | ${escapeHtml(receiptTheme.phone || '')}</p>
-          </div>
-        </div>
-
-        <div class="invoice-meta">
-          <div class="meta-item">
-            <div class="meta-label">${isArabic ? 'رقم الفاتورة' : 'Invoice #'}</div>
-            <div class="meta-value">${escapeHtml(selectedInvoiceId || 'NEW')}</div>
-          </div>
-          <div class="meta-item">
-            <div class="meta-label">${isArabic ? 'التاريخ' : 'Date'}</div>
-            <div class="meta-value">${escapeHtml(invoiceDate)}</div>
-          </div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>${isArabic ? 'الصنف' : 'Item'}</th>
-              <th style="text-align: center;">${isArabic ? 'الكمية' : 'Qty'}</th>
-              <th style="text-align: right;">${isArabic ? 'السعر' : 'Price'}</th>
-              <th style="text-align: right;">${isArabic ? 'المجموع' : 'Total'}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${linesHtml}
-          </tbody>
-        </table>
-
-        <div class="totals">
-          <div class="total-row">
-            <span>${isArabic ? 'المجموع الفرعي' : 'Subtotal'}</span>
-            <span>${fmt(subtotal)}</span>
-          </div>
-          ${
-            discount > 0
-              ? `
-          <div class="total-row">
-            <span>${isArabic ? 'الخصم' : 'Discount'}</span>
-            <span>-${fmt(discount)}</span>
-          </div>
-          `
-              : ''
-          }
-          ${
-            showVat
-              ? `
-          <div class="total-row">
-            <span>${isArabic ? `ضريبة القيمة المضافة (${vatRatePct}%)` : `VAT (${vatRatePct}%)`}</span>
-            <span>${fmt(vatAmount)}</span>
-          </div>
-          `
-              : ''
-          }
-          <div class="total-row final">
-            <span>${isArabic ? 'الإجمالي' : 'Total'}</span>
-            <span>${fmt(total)}</span>
-          </div>
-        </div>
-
-        <div class="footer">
-          <p>${escapeHtml(receiptTheme.footerNote || '')}</p>
-          <p>${isArabic ? 'شكراً لتعاملكم معنا' : 'Thank you for your business'}</p>
-        </div>
-      </div>
-    </body>
-    </html>`;
-
-    try {
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = url;
-      document.body.appendChild(iframe);
-
-      iframe.onload = () => {
-        try {
-          iframe.contentWindow?.print();
-        } catch (e) {
-          console.error('PDF export error:', e);
-        }
-        setTimeout(() => {
-          document.body.removeChild(iframe);
-          URL.revokeObjectURL(url);
-        }, 1000);
-      };
-    } catch (e) {
-      console.error('PDF export error:', e);
-    }
+    const html = buildPdfInvoiceHtml({
+      lines,
+      isArabic,
+      receiptTheme,
+      selectedInvoiceId,
+      invoiceDate,
+      subtotal,
+      discount,
+      showVat,
+      vatRatePct,
+      vatAmount,
+      total,
+    });
+    printPdfViaIframe(html);
   };
 
   // Load Receipt Theme
@@ -1108,29 +590,6 @@ function FinanceContent() {
     },
     [loadInvoices]
   );
-
-  const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-    draft: { label: 'مسودة', color: 'bg-slate-50 text-slate-600', icon: <FileText size={12} /> },
-    unpaid: { label: 'غير مدفوعة', color: 'bg-blue-50 text-blue-600', icon: <Clock size={12} /> },
-    partial: {
-      label: 'مدفوعة جزئيًا',
-      color: 'bg-amber-50 text-amber-600',
-      icon: <AlertTriangle size={12} />,
-    },
-    sent: { label: 'مرسلة', color: 'bg-blue-50 text-blue-600', icon: <Send size={12} /> },
-    viewed: { label: 'تمت المشاهدة', color: 'bg-cyan-50 text-cyan-600', icon: <Eye size={12} /> },
-    paid: {
-      label: 'مدفوعة',
-      color: 'bg-green-50 text-green-600',
-      icon: <CheckCircle2 size={12} />,
-    },
-    overdue: {
-      label: 'متأخرة',
-      color: 'bg-red-50 text-red-700',
-      icon: <AlertTriangle size={12} />,
-    },
-    cancelled: { label: 'ملغاة', color: 'bg-red-50 text-red-600', icon: <XCircle size={12} /> },
-  };
 
   const stats = useMemo(() => {
     const total = invoices.length;
@@ -1624,232 +1083,24 @@ function FinanceContent() {
               { label: isArabic ? 'إجراءات' : 'Actions', className: 'col-span-1' },
             ]}
           >
-            {paginatedInvoices.map((invoice) => {
-              const statusConfig =
-                STATUS_CONFIG[invoice.state] ||
-                STATUS_CONFIG[invoice.status] ||
-                STATUS_CONFIG.draft;
-              const remaining = Math.max(invoice.totalAmount - invoice.paidAmount, 0);
-              const canPay =
-                invoice.state === 'unpaid' ||
-                invoice.state === 'partial' ||
-                invoice.state === 'overdue';
-              return (
-                <InvRow
-                  key={invoice.id}
-                  muted={invoice.state === 'draft' || invoice.state === 'cancelled'}
-                >
-                  <div className="col-span-1 flex items-center">
-                    <button onClick={() => toggleSelect(invoice.id)} className="p-1">
-                      {selectedIds.has(invoice.id) ? (
-                        <Check size={16} className="text-[#00E5FF]" />
-                      ) : (
-                        <div className="w-4 h-4 border-2 border-slate-300 rounded" />
-                      )}
-                    </button>
-                  </div>
-                  <div className="col-span-2 min-w-0">
-                    <div className="font-bold text-slate-900 text-sm truncate">
-                      {invoice.invoiceNumber}
-                    </div>
-                    {invoice.source === 'acc' && (
-                      <div className="text-[10px] text-slate-400 font-bold">مستند محاسبي</div>
-                    )}
-                  </div>
-                  <div className="col-span-2 min-w-0">
-                    <div className="text-slate-600 text-sm truncate">
-                      {invoice.customerName || '—'}
-                    </div>
-                    <div className="text-[11px] text-slate-400 truncate">
-                      {invoice.customerEmail}
-                    </div>
-                  </div>
-                  <div className="col-span-1">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
-                        invoice.kind === 'purchase'
-                          ? 'text-amber-600 bg-amber-50 border-amber-200'
-                          : 'text-emerald-600 bg-emerald-50 border-emerald-200'
-                      }`}
-                    >
-                      {invoice.kind === 'purchase' ? 'شراء' : 'بيع'}
-                    </span>
-                  </div>
-                  <div className="col-span-1 text-slate-600 text-sm">
-                    {invoice.issueDate
-                      ? new Date(invoice.issueDate).toLocaleDateString('ar-EG')
-                      : '—'}
-                  </div>
-                  <div className="col-span-2">
-                    <div className="font-bold text-slate-900 text-sm">
-                      ج.م {formatMoney(invoice.totalAmount)}
-                    </div>
-                    {remaining > 0 && invoice.state !== 'draft' && (
-                      <div className="text-[11px] text-rose-500 font-bold">
-                        متبقي ج.م {formatMoney(remaining)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-span-1 text-slate-600 text-sm">
-                    ج.م {formatMoney(invoice.paidAmount)}
-                  </div>
-                  <div className="col-span-1">
-                    <span
-                      className={`px-2 py-1 rounded-lg text-[10px] font-bold inline-flex items-center gap-1 ${statusConfig.color}`}
-                    >
-                      {statusConfig.icon}
-                      {statusConfig.label}
-                    </span>
-                  </div>
-                  <div className="col-span-1 flex items-center gap-1.5">
-                    {invoice.source === 'legacy' ? (
-                      <>
-                        <InvRowAction
-                          onClick={() => openInvoiceForEdit(invoice.id)}
-                          title={isArabic ? 'تعديل' : 'Edit'}
-                        >
-                          <Edit size={14} />
-                        </InvRowAction>
-                        <InvRowAction
-                          onClick={() => handleSend(invoice.id)}
-                          title={isArabic ? 'إرسال' : 'Send'}
-                        >
-                          <Send size={14} />
-                        </InvRowAction>
-                        <InvRowAction
-                          onClick={() => handleDelete(invoice.id)}
-                          title={isArabic ? 'حذف' : 'Delete'}
-                          danger
-                        >
-                          <Trash2 size={14} />
-                        </InvRowAction>
-                      </>
-                    ) : (
-                      <a
-                        href="/dashboard/finance/collections"
-                        title={isArabic ? 'المدفوعات وكشف الحساب' : 'Payments & statement'}
-                        className="h-8 w-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors"
-                      >
-                        <DollarSign size={14} />
-                      </a>
-                    )}
-                    {canPay && invoice.source === 'legacy' && (
-                      <a
-                        href="/dashboard/finance/collections"
-                        title={isArabic ? 'تسجيل دفعة' : 'Record payment'}
-                        className="h-8 px-2.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px] font-bold flex items-center hover:bg-emerald-100 transition-colors"
-                      >
-                        دفعة
-                      </a>
-                    )}
-                  </div>
-                </InvRow>
-              );
-            })}
+            {paginatedInvoices.map((invoice) => (
+              <InvoiceRow
+                key={invoice.id}
+                invoice={invoice}
+                isArabic={isArabic}
+                selected={selectedIds.has(invoice.id)}
+                onToggleSelect={toggleSelect}
+                onEdit={openInvoiceForEdit}
+                onSend={handleSend}
+                onDelete={handleDelete}
+              />
+            ))}
           </InvTableCard>
         </InventoryPage>
       )}
 
       {/* Guide Modal */}
-      {guideOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setGuideOpen(false)}
-        >
-          <div
-            className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-6 flex-row-reverse">
-              <h2 className="text-xl font-black text-slate-900">
-                {isArabic ? 'دليل الفواتير' : 'Invoice Guide'}
-              </h2>
-              <button
-                onClick={() => setGuideOpen(false)}
-                className="p-2 hover:bg-slate-50 rounded-lg"
-              >
-                <X size={20} className="text-slate-400" />
-              </button>
-            </div>
-            <div className="space-y-6 text-right">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Info size={18} className="text-slate-700" />
-                  <h3 className="font-bold text-slate-900">
-                    {isArabic ? 'وظيفة الصفحة' : 'Page Function'}
-                  </h3>
-                </div>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  {isArabic
-                    ? 'إدارة فواتير العملاء وتتبع المدفوعات مع محرر بنود كامل.'
-                    : 'Manage customer invoices and track payments with full line item editor.'}
-                </p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <FileText size={18} className="text-slate-700" />
-                  <h3 className="font-bold text-slate-900">{isArabic ? 'الميزات' : 'Features'}</h3>
-                </div>
-                <ul className="text-sm text-slate-600 space-y-1.5 pr-4">
-                  <li>
-                    •{' '}
-                    {isArabic
-                      ? 'إنشاء فواتير جديدة مع محرر بنود كامل'
-                      : 'Create new invoices with full line item editor'}
-                  </li>
-                  <li>
-                    •{' '}
-                    {isArabic
-                      ? 'إدارة البنود (إضافة/حذف/تعديل)'
-                      : 'Manage line items (add/delete/edit)'}
-                  </li>
-                  <li>
-                    •{' '}
-                    {isArabic
-                      ? 'حسابات تلقائية (المجموع، الخصم، الضريبة، الإجمالي)'
-                      : 'Automatic calculations (subtotal, discount, tax, total)'}
-                  </li>
-                  <li>
-                    •{' '}
-                    {isArabic
-                      ? 'طباعة احترافية مع تصميم HTML جميل'
-                      : 'Professional printing with beautiful HTML design'}
-                  </li>
-                  <li>• {isArabic ? 'تصدير PDF عبر iframe' : 'PDF export via iframe'}</li>
-                  <li>
-                    •{' '}
-                    {isArabic
-                      ? 'دعم RTL كامل للعربية والإنجليزية'
-                      : 'Full RTL support for Arabic and English'}
-                  </li>
-                  <li>
-                    •{' '}
-                    {isArabic
-                      ? 'ضريبة القيمة المضافة (VAT) مع نسبة مئوية قابلة للتعديل'
-                      : 'VAT with adjustable percentage'}
-                  </li>
-                  <li>
-                    •{' '}
-                    {isArabic
-                      ? 'تصميم الإيصال مع Receipt Theme'
-                      : 'Receipt design with Receipt Theme'}
-                  </li>
-                  <li>
-                    •{' '}
-                    {isArabic
-                      ? 'تتبع الحالة (مسودة، مرسلة، مدفوعة، متأخرة)'
-                      : 'Status tracking (draft, sent, paid, overdue)'}
-                  </li>
-                  <li>
-                    • {isArabic ? 'إحصائيات شاملة للفواتير' : 'Comprehensive invoice statistics'}
-                  </li>
-                  <li>• {isArabic ? 'تصدير تقارير الفواتير' : 'Export invoice reports'}</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {guideOpen && <InvoiceGuideModal onClose={() => setGuideOpen(false)} isArabic={isArabic} />}
     </div>
   );
 }
