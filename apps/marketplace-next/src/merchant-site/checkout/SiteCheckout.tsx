@@ -242,6 +242,7 @@ export default function SiteCheckout() {
         paymentMethod: paymentMethod === 'cod' ? 'COD' : 'CARD',
         // Website-source orders route to the merchant's own dashboard flow.
         source: 'website',
+        salesChannel: 'website',
       };
       const requestKey = await getCheckoutIdempotencyKey(shop.id, payload);
       const order = await jsonRequest<any>(endpoint, {
