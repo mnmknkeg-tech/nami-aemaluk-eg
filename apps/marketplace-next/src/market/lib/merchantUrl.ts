@@ -66,6 +66,13 @@ const ROOT_DOMAINS_WITH_WILDCARD_DNS = new Set(['mnmknk.com', 'ray.eg']);
 export function getMerchantExternalUrl(slug: string): string {
   const safeSlug = encodeURIComponent(slug);
 
+  // Preferred independent storefront deployment URL. Keep the older env
+  // template as a compatibility fallback during the DNS/deployment cutover.
+  const standaloneTemplate = process.env.NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE;
+  if (standaloneTemplate && standaloneTemplate.trim()) {
+    return standaloneTemplate.replace('{slug}', safeSlug);
+  }
+
   const envTemplate = process.env.NEXT_PUBLIC_MERCHANT_BASE_URL;
   if (envTemplate && envTemplate.trim()) {
     return envTemplate.replace('{slug}', safeSlug);
