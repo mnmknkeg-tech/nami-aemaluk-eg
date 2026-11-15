@@ -23,10 +23,6 @@ interface MapPinItem {
   city?: string;
   latitude: number;
   longitude: number;
-  /** التاجر نشر موقعه فعلًا؟ (builder_published) — بنحتاجها عشان الضغطة على
-   *  الـ pin تفتح الموقع الأصلي المنشور فقط، ومتاجر من غير موقع تفضل جوه
-   *  التطبيق بالثيم الموحد بدل ما تفتح صفحة 404 في تاب جديد. */
-  websitePublished?: boolean;
 }
 
 interface Coords {
