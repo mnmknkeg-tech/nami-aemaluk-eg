@@ -1,32 +1,51 @@
 import { siteConfig } from '@/lib/config';
 
 /**
- * The external URL where a merchant's PUBLISHED storefront lives — separate
- * from the marketplace app's chrome.
+ * In-app path to a merchant's PUBLISHED site — what market navigation uses.
  *
- * Navigation policy (merchant-site/marketplace decoupling — 2026-11 revision):
- * a merchant who PUBLISHED their builder site (websitePublished) opens their
- * standalone site — its own template, its own cart, its own checkout — from
- * EVERY marketplace entry point:
+ * Navigation policy (merchant-site/marketplace decoupling — 2026-11, rev. 2
+ * after merchant feedback: «بيفتح الموقع الخارجي في تاب جديد — مش زي ما
+ * شرحت»):
  *
- *   1. Shop cards (dalil, home feed, suggestions) — published → standalone
- *      site in a new tab; not published → in-app unified theme /shop/[slug].
- *   2. Search results — same conditional rule.
- *   3. The product page's shop links — same conditional rule.
- *   4. Map markers — published → standalone site; otherwise in-app.
- *   5. The unified shop page's «الموقع الرسمي» button (hasOfficialSite).
- *   6. The merchant's own URL (they market it independently — away from us).
+ * Entering a merchant's store from INSIDE the marketplace app must behave
+ * like normal in-app navigation — SAME tab, same window, and the browser
+ * back button returns to the marketplace. Market surfaces never open
+ * external subdomain URLs or new tabs for merchant sites:
  *
- * The embedded merchant theme at /shop/[slug]?view=site stays only as a
- * direct-URL fallback — and it now runs on the merchant SITE cart
- * (merchant-site-cart:site:{slug}) with checkout at /site/{slug}/checkout,
- * never the marketplace cart.
+ *   1. Shop cards (dalil, home feed, suggestions) — published →
+ *      getMerchantSitePath() (same tab); not published → /shop/[slug].
+ *   2. Search results — same rule.
+ *   3. The product page's shop links — same rule.
+ *   4. Map markers — same rule.
+ *
+ * The merchant's real PUBLIC url (getMerchantExternalUrl below — the
+ * page-builder link on its own subdomain/custom domain when configured) is
+ * still the link the merchant markets independently. Inside the marketplace
+ * app it is reachable ONLY through the explicit «الموقع الرسمي» button on
+ * the unified shop page — a user-intended external action in a new tab.
+ * Regular navigation never forces the customer out of the app window.
+ *
+ * Cart separation is untouched: the merchant site (via /site/[slug], its own
+ * domain, or the embedded /shop/[slug]?view=site direct-URL fallback) runs
+ * on the merchant SITE cart (merchant-site-cart:site:{slug}) with checkout
+ * at /site/{slug}/checkout — never the marketplace cart. The unified theme
+ * at /shop/[slug] stays on the marketplace cart (سلة الماركت لكل متجر).
  *
  * The marketplace stays at its own root domain; merchant sites live at
- * their own URLs. The two are decoupled at the navigation layer even
- * though they're served by the same Next.js app (the middleware rewrites
- * merchant subdomains/custom domains to /site/[slug] internally without
- * changing the browser URL).
+ * /site/[slug] and their own URLs. The two are decoupled at the navigation
+ * layer even though they're served by the same Next.js app (the middleware
+ * rewrites merchant subdomains/custom domains to /site/[slug] internally
+ * without changing the browser URL).
+ */
+export function getMerchantSitePath(slug: string): string {
+  return `/site/${encodeURIComponent(slug)}`;
+}
+
+/**
+ * The merchant's PUBLIC site URL — the page-builder link on its own
+ * subdomain/custom domain when configured. Used ONLY by the explicit
+ * «الموقع الرسمي» button on the unified shop page; regular market
+ * navigation uses getMerchantSitePath instead.
  *
  * Resolution priority:
  *
@@ -41,10 +60,6 @@ import { siteConfig } from '@/lib/config';
  *    config when DNS is already wildcarded.
  *
  * 3. Path on the marketplace domain — `{marketplaceUrl}/site/{slug}`.
- *    Still opened in a new tab so the merchant navigation is decoupled
- *    from the marketplace's SPA history (back button doesn't tangle), and
- *    AppChrome strips the marketplace header/footer for `/site/*` paths so
- *    the merchant site renders standalone.
  */
 const ROOT_DOMAINS_WITH_WILDCARD_DNS = new Set(['mnmknk.com', 'ray.eg']);
 
@@ -70,15 +85,15 @@ export function getMerchantExternalUrl(slug: string): string {
     // ignore — fall through
   }
 
-  // Fallback: path on the marketplace domain. Still in a new tab.
+  // Fallback: path on the marketplace domain.
   return `${marketplaceUrl.replace(/\/$/, '')}/site/${safeSlug}`;
 }
 
 /**
- * Whether merchant links from the marketplace open in a new tab. Always
- * true — the whole point of getMerchantExternalUrl is to decouple merchant
- * navigation from the marketplace SPA. Exposed so calling sites can pass
- * the right `<a>` attributes without re-deriving the policy.
+ * Attributes for the explicit external official-site link («الموقع الرسمي»)
+ * — the only merchant link allowed to open a new tab, because it is a
+ * deliberate "open their real website" action. Regular market navigation
+ * never uses these (see getMerchantSitePath).
  */
 export const MERCHANT_LINK_TARGET = '_blank' as const;
 export const MERCHANT_LINK_REL = 'noopener noreferrer';

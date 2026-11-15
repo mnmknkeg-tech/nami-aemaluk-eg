@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search, X, Store, Package } from 'lucide-react';
 import { api } from '@/lib/api';
-import { getMerchantExternalUrl } from '@/market/lib/merchantUrl';
+import { getMerchantSitePath } from '@/market/lib/merchantUrl';
 
 interface SearchResult {
   type: 'shop' | 'product';
@@ -92,10 +92,11 @@ export function SearchBar({ fullWidth = false }: SearchBarProps = {}) {
     setQuery('');
     setResults([]);
     if (result.type === 'shop' && result.slug) {
-      // التاجر المنشور → موقعه المنفصل في تاب جديد (قالبه وسلته بتاعته —
-      // مالهاش دعوة بالماركت). غير المنشور → الثيم الموحد جوه التطبيق.
+      // التاجر المنشور → موقعه المنفصل بنفس التاب جوه التطبيق (قالبه وسلته
+      // وcheckout بتوعه — مالهمش دعوة بالماركت، ومن غير تاب خارجي).
+      // غير المنشور → الثيم الموحد جوه التطبيق.
       if (result.websitePublished) {
-        window.open(getMerchantExternalUrl(result.slug), '_blank', 'noopener,noreferrer');
+        router.push(getMerchantSitePath(result.slug));
       } else {
         router.push(`/shop/${result.slug}`);
       }

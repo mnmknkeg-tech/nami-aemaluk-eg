@@ -6,11 +6,7 @@ import { notFound } from 'next/navigation';
 import { Star, Store, Tag, ArrowLeft, MessageCircle, Phone, CheckCircle, Ban } from 'lucide-react';
 import { productStockState } from '@/lib/stock';
 import { getProductById, getProducts, getShops, type Shop } from '@/lib/services';
-import {
-  getMerchantExternalUrl,
-  MERCHANT_LINK_TARGET,
-  MERCHANT_LINK_REL,
-} from '@/market/lib/merchantUrl';
+import { getMerchantSitePath } from '@/market/lib/merchantUrl';
 import { formatPrice, truncate } from '@/lib/utils';
 import { siteConfig } from '@/lib/config';
 import ShareButton from '@/components/ShareButton';
@@ -29,8 +25,9 @@ import { serializeJsonLd } from '@/lib/jsonld';
 // (مثلاً: التاجر خفى السعر والصفحة لسه بتوري السعر والسلة).
 export const dynamic = 'force-dynamic';
 
-/** رابط المتجر في صفحات الماركت: التاجر المنشور → موقعه المنفصل (تاب جديد،
- *  سلة وcheckout مستقلين)، وغير المنشور → الثيم الموحد جوه التطبيق. */
+/** رابط المتجر في صفحات الماركت: التاجر المنشور → موقعه المنفصل بنفس التاب
+ *  (سلة وcheckout مستقلين على /site/:slug)، وغير المنشور → الثيم الموحد
+ *  جوه التطبيق. التنقل العادي عمره ما يفتح تاب خارجي. */
 function ShopLink({
   shop,
   className,
@@ -40,20 +37,10 @@ function ShopLink({
   className?: string;
   children: ReactNode;
 }) {
-  if (shop.websitePublished === true) {
-    return (
-      <a
-        href={getMerchantExternalUrl(shop.slug)}
-        target={MERCHANT_LINK_TARGET}
-        rel={MERCHANT_LINK_REL}
-        className={className}
-      >
-        {children}
-      </a>
-    );
-  }
+  const href =
+    shop.websitePublished === true ? getMerchantSitePath(shop.slug) : `/shop/${shop.slug}`;
   return (
-    <Link href={`/shop/${shop.slug}`} className={className}>
+    <Link href={href} className={className}>
       {children}
     </Link>
   );

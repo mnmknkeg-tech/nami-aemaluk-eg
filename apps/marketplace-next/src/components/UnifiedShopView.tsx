@@ -237,8 +237,10 @@ export function UnifiedShopView({
               className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-brand-orange-soft flex items-center justify-center transition-colors"
               iconClassName="w-5 h-5 text-slate-700"
             />
-            {/* الشكل الأصلي لموقع التاجر — يفتح موقعه المنفصل في تاب جديد
-                (نفس سياسة الخريطة)، مش نسخة مدمجة جوه نطاق الماركت */}
+            {/* الرابط العام الحقيقي لموقع التاجر (دومين فرعي/مخصص من منشئ
+                الصفحات) — الزر الصريح هو الوحيد اللي يفتحه خارج التطبيق في
+                تاب جديد. التنقل العادي (كروت/بحث/خريطة/منتجات) بيفتح الموقع
+                بنفس التاب على /site/:slug من غير تاب خارجي. */}
             {hasOfficialSite && (
               <a
                 href={getMerchantExternalUrl(shop.slug)}
