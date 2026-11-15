@@ -7,37 +7,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   AlertTriangle,
   ChevronLeft,
-  Search,
   Home,
   ArrowRight,
   Sparkles,
-  Store,
-  Mail,
-  Lock,
-  Phone,
   Loader2,
-  Eye,
-  EyeOff,
-  Check,
   CheckCircle2,
-  LayoutDashboard,
-  SkipForward,
-  Building2,
-  HelpCircle,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth, apiRequest } from '@/lib/auth';
+import { useAuth } from '@/lib/auth';
 import { writeMerchantCache } from '@/lib/session-keys';
 import { AuthSkeleton } from '@/components/ui/Skeleton';
-import { BUSINESS_ACTIVITIES, groupAccentColors, ActivityWithGroup } from '@/lib/activities';
+import { BUSINESS_ACTIVITIES, type ActivityWithGroup } from '@/lib/activities';
 import {
   BOOKING_ACTIVITIES,
   MODULE_DEFINITIONS,
   isLocalOnly,
   resolveDependencies,
   toggleModule,
-  withoutLocalOnly,
   type ModuleId,
 } from '@/lib/moduleConfig';
 import {
@@ -48,90 +34,16 @@ import {
   getBaseModules,
   type ActivityQuestion,
 } from '@/lib/activityQuestions';
-import { ShopLocationPicker, type ResolvedShopLocation } from '@/components/ShopLocationPicker';
+import type { ResolvedShopLocation } from '@/components/ShopLocationPicker';
+import { toE164, isValidE164, type Step, type SignupFormData } from './_signup/constants';
+import AccountStep from './_signup/AccountStep';
+import ActivityStep from './_signup/ActivityStep';
+import QuestionsStep from './_signup/QuestionsStep';
+import ModulesStep from './_signup/ModulesStep';
+import DataStep from './_signup/DataStep';
 import './signup.css';
 
 const MotionDiv = motion.div as any;
-
-// كود الدولة — مصر هو الافتراضي، والتاجر يقدر يغيّره من القائمة
-// (الباك اند بيشترط صيغة E.164: +20XXXXXXXXXX)
-const DIAL_CODES = [
-  { code: '+20', country: 'مصر' },
-  { code: '+966', country: 'السعودية' },
-  { code: '+971', country: 'الإمارات' },
-  { code: '+965', country: 'الكويت' },
-  { code: '+974', country: 'قطر' },
-  { code: '+973', country: 'البحرين' },
-  { code: '+968', country: 'عُمان' },
-  { code: '+962', country: 'الأردن' },
-  { code: '+961', country: 'لبنان' },
-  { code: '+218', country: 'ليبيا' },
-  { code: '+212', country: 'المغرب' },
-  { code: '+216', country: 'تونس' },
-  { code: '+90', country: 'تركيا' },
-];
-
-/**
- * يحوّل رقم الموبايل المدخل إلى صيغة E.164 المطلوبة من الباك اند.
- * يدعم: الرقم المحلي (01012345678)، الرقم بكود الدولة (201012345678)،
- * البادئة الدولية (00201012345678)، والصيغة الدولية (+201012345678).
- */
-function toE164(dialCode: string, raw: string): string {
-  const dial = dialCode.replace(/\D/g, '');
-  const trimmed = (raw || '').trim();
-  let digits = trimmed.replace(/\D/g, '');
-  if (!digits) return '';
-  if (trimmed.startsWith('+')) return '+' + digits; // مكتوب بصيغة دولية بالفعل
-  if (digits.startsWith('00')) return '+' + digits.slice(2); // بادئة دولية 00...
-  digits = digits.replace(/^0+/, ''); // نشيل الصفر في أول الرقم المحلي
-  if (dial && digits.startsWith(dial)) return '+' + digits; // المستخدم كتب كود الدولة نفسه
-  return '+' + dial + digits;
-}
-
-const isValidE164 = (v: string) => /^\+[1-9]\d{7,14}$/.test(v);
-
-// أيقونة خاصة بكل نشاط
-const ACTIVITY_ICONS: Record<string, string> = {
-  restaurant: '🍽️',
-  grocery: '🛒',
-  fashion: '👗',
-  homeTextiles: '🧵',
-  fabricStore: '🧶',
-  curtainsBlinds: '🪟',
-  sofasUpholstery: '🛋️',
-  mattressesBedding: '🛏️',
-  furniture: '🪑',
-  homeGoods: '🏺',
-  goldJewelry: '💍',
-  silverAccessories: '📿',
-  watchesGifts: '⌚',
-  realEstate: '🏠',
-  lands: '🌍',
-  contractors: '🏗️',
-  building_supplies: '🧱',
-  carShowroom: '🚗',
-  auto_services: '🔧',
-  auto_parts: '⚙️',
-  agri_supplies: '🌾',
-  nurseries_landscaping: '🌱',
-  livestock: '🐄',
-  fisheries: '🐟',
-  energy: '⚡',
-  serviceCompanies: '🏢',
-  individualTechnicians: '🛠️',
-  workshops: '🏭',
-  electronics: '📱',
-  health: '💊',
-  bookings: '📅',
-  factories: '🏭',
-  tradeCompanies: '📦',
-  tourismTravel: '✈️',
-  professionalServices: '💼',
-  homeServices: '🧹',
-  other: '🏷️',
-};
-
-type Step = 'account' | 'activity' | 'questions' | 'modules' | 'data';
 
 const ACTIVITIES: ActivityWithGroup[] = BUSINESS_ACTIVITIES;
 
@@ -155,7 +67,7 @@ function SignupContent() {
   const [showDetails, setShowDetails] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SignupFormData>({
     shopName: '',
     phone: '',
     email: '',
@@ -197,8 +109,6 @@ function SignupContent() {
     [formData.password]
   );
   const isPasswordValid = passwordChecks.every((c) => c.ok);
-
-  const getActivityLabel = (a?: ActivityWithGroup) => a?.title || a?.id || '';
 
   const filteredActivities = useMemo(() => {
     if (!activitySearch.trim()) return ACTIVITIES;
@@ -496,182 +406,6 @@ function SignupContent() {
     });
   };
 
-  const ActivityCard = ({ activity }: { activity: ActivityWithGroup }) => {
-    const active = activityId === activity.id;
-    const group = activity.groupId || 'other';
-    const gradient = groupAccentColors[group] || groupAccentColors.other;
-    const icon = activity.icon || ACTIVITY_ICONS[activity.id];
-    return (
-      <button
-        type="button"
-        onClick={() => applyActivity(activity)}
-        className={`relative text-right p-4 rounded-2xl border-2 transition-all hover:shadow-lg hover:-translate-y-0.5 ${active ? 'border-slate-900 bg-slate-900 text-white shadow-xl' : 'border-slate-100 bg-white hover:border-slate-300'}`}
-      >
-        {active && (
-          <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-[#00E5FF] flex items-center justify-center">
-            <Check className="w-4 h-4 text-black" strokeWidth={3} />
-          </span>
-        )}
-        <div
-          className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-3 ${active ? 'bg-white/10' : 'bg-slate-50 border border-slate-100'}`}
-        >
-          {icon || (
-            <span
-              className={`bg-gradient-to-br ${gradient} bg-clip-text text-transparent font-black text-xl`}
-            >
-              {getActivityLabel(activity).charAt(0)}
-            </span>
-          )}
-        </div>
-        <div className="font-black text-sm mb-1">{getActivityLabel(activity)}</div>
-        <p
-          className={`text-[11px] font-bold leading-4 line-clamp-2 ${active ? 'text-white/60' : 'text-slate-400'}`}
-        >
-          {activity.description}
-        </p>
-      </button>
-    );
-  };
-
-  const renderAccountStep = () => (
-    <div className="max-w-lg mx-auto">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="signup-card p-8"
-      >
-        <div className="w-14 h-14 rounded-2xl signup-btn-primary flex items-center justify-center mb-5">
-          <Sparkles className="w-7 h-7 text-[#00E5FF]" />
-        </div>
-        <h2 className="text-2xl font-black text-slate-900 mb-1">أهلاً بيك 👋</h2>
-        <p className="text-slate-400 font-bold text-sm mb-7">
-          عرفنا بمتجرك في 30 ثانية، وبعدها نظبط لوحتك على نشاطك بالظبط
-        </p>
-        <div className="space-y-5">
-          <div>
-            <label className="flex items-center gap-2 text-xs font-black text-slate-600 mb-2">
-              <Store className="w-4 h-4 text-[#00E5FF]" /> اسم المتجر / المحل{' '}
-              <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.shopName}
-              onChange={(e) => setFormData((p) => ({ ...p, shopName: e.target.value }))}
-              placeholder=""
-              className="w-full bg-slate-50 border-2 border-transparent rounded-2xl py-4 px-5 font-black text-right text-slate-900 placeholder:text-slate-300 focus:bg-white focus:border-[#00E5FF] transition-all outline-none"
-            />
-          </div>
-          <div>
-            <label className="flex items-center gap-2 text-xs font-black text-slate-600 mb-2">
-              <Phone className="w-4 h-4 text-[#00E5FF]" /> رقم الموبايل{' '}
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="flex gap-2" dir="ltr">
-              <select
-                value={dialCode}
-                onChange={(e) => setDialCode(e.target.value)}
-                aria-label="كود الدولة"
-                className="shrink-0 bg-slate-50 border-2 border-transparent rounded-2xl py-4 px-3 font-black text-slate-900 focus:bg-white focus:border-[#00E5FF] transition-all outline-none cursor-pointer"
-              >
-                {DIAL_CODES.map((d) => (
-                  <option key={d.code} value={d.code}>
-                    {d.code} {d.country}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="tel"
-                value={formData.phone}
-                dir="ltr"
-                onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
-                placeholder="10xxxxxxxxx"
-                className="w-full bg-slate-50 border-2 border-transparent rounded-2xl py-4 px-5 font-black text-left text-slate-900 placeholder:text-slate-300 focus:bg-white focus:border-[#00E5FF] transition-all outline-none"
-              />
-            </div>
-            <p className="text-[10px] font-bold text-slate-400 mt-2">
-              اختر كود الدولة واكتب رقمك بدون الصفر في البداية — هنستخدمه للتواصل وتفعيل حسابك، مفيش رسائل مزعجة
-            </p>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-
-  const renderActivityStep = () => (
-    <div className="space-y-5">
-      <div className="relative max-w-md mx-auto">
-        <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <input
-          type="text"
-          value={activitySearch}
-          onChange={(e) => setActivitySearch(e.target.value)}
-          placeholder="دور على نشاطك... (مطعم، سوبر ماركت، عيادة)"
-          className="w-full pr-11 pl-4 py-3.5 rounded-2xl bg-white border-2 border-slate-100 text-slate-900 font-bold outline-none focus:border-[#00E5FF] transition-colors text-sm shadow-sm"
-        />
-      </div>
-
-      {groupIds.length === 0 ? (
-        <div className="text-center py-10">
-          <p className="text-slate-400 font-bold">لا توجد أنشطة مطابقة لبحثك.</p>
-        </div>
-      ) : (
-        groupIds.map((groupId) => {
-          const activities = groupedActivities[groupId];
-          const expanded =
-            expandedGroups.has(groupId) || activitySearch.length > 0 || activityId !== '';
-          const groupTitle = activities[0]?.groupTitle || groupId;
-          const visible = expanded ? activities : activities.slice(0, 4);
-          return (
-            <div key={groupId} className="pt-1">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-8 h-8 rounded-xl bg-gradient-to-br ${groupAccentColors[groupId] || groupAccentColors.other} text-white flex items-center justify-center text-sm font-black`}
-                  >
-                    {activities[0]?.icon || groupTitle.charAt(0)}
-                  </div>
-                  <span className="font-black text-sm md:text-base text-slate-900">
-                    {groupTitle}
-                  </span>
-                  <span className="text-[11px] font-black text-slate-300">
-                    ({activities.length})
-                  </span>
-                </div>
-                {!activitySearch && activities.length > 4 && (
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(groupId)}
-                    className="text-xs font-black text-slate-500 hover:text-slate-900 transition-colors"
-                  >
-                    {expanded ? 'عرض أقل' : `عرض كل ${activities.length}`}
-                  </button>
-                )}
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3">
-                {visible.map((activity) => (
-                  <ActivityCard key={activity.id} activity={activity} />
-                ))}
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-
-  // Arabic labels for the live dashboard preview
-  const MODULE_PREVIEW: Record<string, { label: string; icon: string }> = {
-    core: { label: 'لوحة التحكم', icon: '📊' },
-    sales: { label: 'المبيعات والطلبات', icon: '🛒' },
-    pos: { label: 'الكاشير', icon: '🧾' },
-    inventory: { label: 'المخزون', icon: '📦' },
-    bookings: { label: 'الحجوزات', icon: '📅' },
-    website: { label: 'متجر أونلاين', icon: '🌐' },
-    marketing: { label: 'التسويق', icon: '📣' },
-    customers: { label: 'العملاء', icon: '🤝' },
-    crm: { label: 'العملاء', icon: '🤝' },
-  };
-
   const previewModules = useMemo(() => {
     const base = selectedActivity
       ? getBaseModules(selectedActivity.id, BOOKING_ACTIVITIES.has(selectedActivity.id))
@@ -686,481 +420,20 @@ function SignupContent() {
 
   const previewModuleCount = previewModules.base.length + previewModules.added.length;
 
-  /** Live dashboard preview */
-  const LivePreview = ({ sticky = true, hint }: { sticky?: boolean; hint?: string }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`bg-slate-900 rounded-[2rem] p-5 text-white ${sticky ? 'sticky bottom-24' : ''}`}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">
-          معاينة لوحتك
-        </span>
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={previewModuleCount}
-            initial={{ scale: 1.25, color: '#00E5FF' }}
-            animate={{ scale: 1, color: 'rgba(255,255,255,0.4)' }}
-            className="text-[10px] font-black"
-          >
-            {previewModuleCount} تطبيق مفعّل
-          </motion.span>
-        </AnimatePresence>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {previewModules.base.map((m) => {
-          const meta = MODULE_PREVIEW[String(m)];
-          return (
-            <span
-              key={String(m)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-[11px] font-black text-white/80"
-            >
-              <span>{meta?.icon || '📦'}</span> {meta?.label || String(m)}
-            </span>
-          );
-        })}
-        <AnimatePresence>
-          {previewModules.added.map((m) => {
-            const meta = MODULE_PREVIEW[String(m)];
-            return (
-              <motion.span
-                key={String(m)}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#00E5FF]/15 border border-[#00E5FF]/40 text-[11px] font-black text-[#00E5FF]"
-              >
-                <span>{meta?.icon || '✨'}</span> {meta?.label || String(m)}
-              </motion.span>
-            );
-          })}
-        </AnimatePresence>
-      </div>
-      <p className="text-[10px] font-bold text-white/30 mt-3">
-        {hint ||
-          'الأزرار السماوية هي اللي فتحناها من إجاباتك — والباقي كله متاح في «الترقية» من لوحتك في أي وقت'}
-      </p>
-    </motion.div>
-  );
-
-  const renderQuestionsStep = () => {
-    if (!selectedActivity) return null;
-    return (
-      <div className="max-w-2xl mx-auto space-y-4">
-        <div className="text-center mb-2">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900 text-white text-xs font-black mb-3">
-            <span>{selectedActivity.icon || ACTIVITY_ICONS[selectedActivity.id] || '🏷️'}</span>
-            {getActivityLabel(selectedActivity)}
-          </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-1.5">
-            سؤالين سريعين ونظبطلك كل حاجة
-          </h2>
-          <p className="text-slate-400 font-bold text-xs md:text-sm">
-            بناءً على إجاباتك هنفتح الأزرار اللي محتاجها فعلاً — والباقي كل هيتلاقي في الترقية لما
-            تحتاجه
-          </p>
-        </div>
-
-        {questions.map((q, idx) => {
-          const selected = answers[q.id] || [];
-          return (
-            <motion.div
-              key={q.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              className="signup-card p-5 shadow-sm"
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <HelpCircle className="w-4 h-4 text-[#00E5FF]" />
-                <h3 className="font-black text-slate-900 text-sm">{q.question}</h3>
-                {selected.length > 0 && (
-                  <span className="mr-auto text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                    تم ✓
-                  </span>
-                )}
-              </div>
-              {q.hint && <p className="text-[11px] font-bold text-slate-400 mb-3">{q.hint}</p>}
-              <div className="flex flex-wrap gap-2">
-                {q.options.map((opt) => {
-                  const active = selected.includes(opt.id);
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => toggleAnswer(q, opt.id)}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-black border-2 transition-all ${
-                        active
-                          ? 'bg-slate-900 border-slate-900 text-white shadow-md'
-                          : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'
-                      }`}
-                    >
-                      <span className="flex items-center gap-1.5">
-                        {active && <Check className="w-3.5 h-3.5 text-[#00E5FF]" strokeWidth={3} />}
-                        {opt.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          );
-        })}
-
-        {/* Live dashboard preview */}
-        <LivePreview />
-
-        {/* Option to customize manually OR skip */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <button
-            type="button"
-            onClick={openManualCustomization}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white border-2 border-[#00E5FF]/60 text-slate-800 hover:bg-[#00E5FF]/10 text-xs font-black transition-all shadow-sm"
-          >
-            <SlidersHorizontal className="w-4 h-4 text-[#00E5FF]" />
-            أو اختار الأقسام يدوياً ⚙️
-          </button>
-
-          <button
-            type="button"
-            onClick={skipToManual}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white border-2 border-dashed border-slate-200 text-slate-500 hover:text-slate-900 hover:border-slate-400 text-xs font-black transition-all"
-          >
-            <SkipForward className="w-4 h-4" />
-            تخطي الأسئلة للأقسام الأساسية بس
-          </button>
-        </div>
-        <p className="text-center text-[10px] font-bold text-slate-400 mt-2">
-          أسئلة {answeredCount} من {questions.length} مُجابة · مش إجباري تجاوب على كله
-        </p>
-      </div>
-    );
-  };
-
   /** زراير الأقسام في خطوة «الأقسام» — toggle مع حل الاعتماديات تلقائيًا. */
   const toggleManualModule = (id: ModuleId) => {
     setManualModules((prev) => toggleModule(prev, id).next);
   };
 
-  const renderModulesStep = () => {
-    if (!selectedActivity) return null;
+  const resetToBase = () => {
+    if (!selectedActivity) return;
     const BASE = getBaseModules(selectedActivity.id, BOOKING_ACTIVITIES.has(selectedActivity.id));
-    const baseSet = new Set<string>(BASE.map(String));
-    const options = withoutLocalOnly(MODULE_DEFINITIONS.filter((m) => m.optional));
-    const isActive = (id: ModuleId) => manualModules.map(String).includes(String(id));
-    const activeCount = options.filter((m) => isActive(m.id)).length;
-    const resetToBase = () => {
-      setSkipped(true);
-      setAnswers({});
-      setManualModules(BASE);
-      setManualTouched(true);
-      setError('');
-    };
-    return (
-      <div className="space-y-6 max-w-3xl mx-auto">
-        <div className="signup-card p-5 md:p-8 text-center">
-          <h2 className="text-xl font-black text-slate-900 mb-1">اختار الأقسام اللي تناسبك</h2>
-          <p className="text-slate-400 font-bold text-xs mb-6">
-            {skipped
-              ? 'تخطيت الأسئلة — فعّل بنفسك الأقسام والأزرار اللي محتاجها، والأساسيات متفعّلة لوحدها'
-              : 'دي الأقسام اللي اخترناها من إجاباتك — عدّل عليها براحتك قبل ما تكمل'}
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-right">
-            {options.map((m) => {
-              const Icon = m.icon;
-              const active = isActive(m.id);
-              const isBase = baseSet.has(String(m.id));
-              return (
-                <button
-                  key={String(m.id)}
-                  type="button"
-                  disabled={isBase}
-                  aria-pressed={active || isBase}
-                  title={isBase ? 'أساسي لنشاطك — مفعّل دائمًا' : undefined}
-                  onClick={() => toggleManualModule(m.id)}
-                  className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-right transition-all ${
-                    isBase
-                      ? 'border-slate-900/10 bg-slate-50 cursor-default'
-                      : active
-                        ? 'border-[#00E5FF] bg-[#00E5FF]/10 shadow-[0_8px_24px_-8px_rgba(0,229,255,0.5)]'
-                        : 'border-slate-100 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <span
-                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${m.color}1A`, color: m.color }}
-                  >
-                    <Icon className="w-5 h-5" />
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block font-black text-sm text-slate-900 truncate">
-                      {m.nameAr || m.name}
-                    </span>
-                    <span className="block text-[10px] font-bold text-slate-400 truncate">
-                      {isBase ? 'أساسي لنشاطك — مفعّل دائمًا' : m.descriptionAr || m.description}
-                    </span>
-                  </span>
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 border-2 transition-all ${
-                      active || isBase
-                        ? 'bg-[#00E5FF] border-[#00E5FF] text-white'
-                        : 'border-slate-200 text-transparent'
-                    }`}
-                  >
-                    {isBase ? <Lock className="w-3.5 h-3.5" /> : <Check className="w-4 h-4" />}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-[10px] font-bold text-slate-300 mt-4">
-            {activeCount} قسم اختياري مفعّل · الأساسيات ({BASE.length}) بتتضاف تلقائيًا مع
-            الاعتماديات
-          </p>
-        </div>
-
-        <LivePreview
-          sticky={false}
-          hint="الأزرار السماوية هي اللي ضفتها بنفسك — أي قسم تقفله بيتشال هو وكل الأزرار اللي بتعتمد عليه"
-        />
-
-        <div className="text-center pt-1">
-          <button
-            type="button"
-            onClick={resetToBase}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white border-2 border-dashed border-slate-200 text-slate-500 hover:text-slate-900 hover:border-slate-400 text-xs font-black transition-all"
-          >
-            <SkipForward className="w-4 h-4" />
-            صفّر اختياراتي — الأساسيات بس
-          </button>
-          <p className="text-[10px] font-bold text-slate-300 mt-2">
-            {skipped
-              ? 'الأساسيات متفعّلة — زوّد عليها اللي يناسبك'
-              : 'مش إجباري تعدّل — كمل زي ما هي'}
-          </p>
-        </div>
-      </div>
-    );
+    setSkipped(true);
+    setAnswers({});
+    setManualModules(BASE);
+    setManualTouched(true);
+    setError('');
   };
-
-  const renderDataStep = () => (
-    <div className="space-y-6 max-w-lg mx-auto">
-      <div className="bg-white border border-slate-100 rounded-[2rem] shadow-[0_20px_60px_-20px_rgba(0,0,0,0.15)] p-8">
-        <h2 className="text-xl font-black text-slate-900 mb-1">آخر خطوة — حساب الدخول</h2>
-        <p className="text-slate-400 font-bold text-xs mb-6">
-          الإيميل وكلمة السر اللي هتدخل بيهم للوحة التحكم
-        </p>
-        <div className="space-y-5">
-          <div>
-            <label className="flex items-center gap-2 text-xs font-black text-slate-600 mb-2">
-              <Mail className="w-4 h-4 text-[#00E5FF]" /> البريد الإلكتروني{' '}
-              <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              dir="ltr"
-              autoFocus
-              onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
-              placeholder="name@example.com"
-              className="w-full bg-slate-50 border-2 border-transparent rounded-2xl py-4 px-5 font-black text-left text-slate-900 placeholder:text-slate-300 focus:bg-white focus:border-[#00E5FF] transition-all outline-none"
-            />
-          </div>
-          <div>
-            <label className="flex items-center gap-2 text-xs font-black text-slate-600 mb-2">
-              <Lock className="w-4 h-4 text-[#00E5FF]" /> كلمة المرور{' '}
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                dir="ltr"
-                onChange={(e) => setFormData((p) => ({ ...p, password: e.target.value }))}
-                placeholder="••••••••"
-                className="w-full bg-slate-50 border-2 border-transparent rounded-2xl py-4 px-5 pl-12 font-black text-left text-slate-900 placeholder:text-slate-300 focus:bg-white focus:border-[#00E5FF] transition-all outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((p) => !p)}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600 transition-colors"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            {/* شروط كلمة المرور — نفس سياسة الباك اند */}
-            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
-              {passwordChecks.map((c) => (
-                <li
-                  key={c.label}
-                  className={`flex items-center gap-1.5 text-[10px] font-bold ${
-                    c.ok ? 'text-emerald-600' : 'text-slate-400'
-                  }`}
-                >
-                  <Check size={12} className={c.ok ? 'text-emerald-500' : 'text-slate-300'} />
-                  {c.label}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Shop location — map first, manual fields auto-fill from it */}
-      <div className="bg-white border border-slate-100 rounded-[2rem] shadow-[0_20px_60px_-20px_rgba(0,0,0,0.15)] p-6 md:p-8">
-        <h2 className="text-lg font-black text-slate-900 mb-1">فين متجرك؟ 📍</h2>
-        <p className="text-slate-400 font-bold text-xs mb-5">
-          حدد مكان متجرك على الخريطة — والمحافظة والمدينة والعنوان هيتملوا تلقائياً، وتقدر تعدّلهم
-          بعدها
-        </p>
-        <ShopLocationPicker onResolve={handleLocationResolved} />
-      </div>
-
-      {/* Optional store details */}
-      <button
-        type="button"
-        onClick={() => setShowDetails((p) => !p)}
-        className="w-full flex items-center justify-between px-5 py-4 rounded-2xl bg-white border border-slate-100 text-right hover:border-slate-200 transition-colors"
-      >
-        <span className="flex items-center gap-2 text-xs font-black text-slate-600">
-          <Building2 className="w-4 h-4 text-slate-400" />
-          بيانات المتجر التفصيلية (اختياري)
-        </span>
-        <ChevronLeft
-          className={`w-4 h-4 text-slate-400 transition-transform ${showDetails ? '-rotate-90' : ''}`}
-        />
-      </button>
-      <AnimatePresence>
-        {showDetails && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-white border border-slate-100 rounded-[2rem] p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 mb-1.5">
-                    المحافظة
-                  </label>
-                  <input
-                    value={formData.governorate}
-                    onChange={(e) => setFormData((p) => ({ ...p, governorate: e.target.value }))}
-                    placeholder="القاهرة"
-                    className="w-full bg-slate-50 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00E5FF]/30"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 mb-1.5">
-                    المدينة
-                  </label>
-                  <input
-                    value={formData.city}
-                    onChange={(e) => setFormData((p) => ({ ...p, city: e.target.value }))}
-                    placeholder="مدينة نصر"
-                    className="w-full bg-slate-50 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00E5FF]/30"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 mb-1.5">
-                  هاتف المتجر (لو مختلف)
-                </label>
-                <div className="flex gap-2" dir="ltr">
-                  <select
-                    value={dialCode}
-                    onChange={(e) => setDialCode(e.target.value)}
-                    aria-label="كود الدولة"
-                    className="shrink-0 bg-slate-50 rounded-xl py-3 px-2 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00E5FF]/30 cursor-pointer"
-                  >
-                    {DIAL_CODES.map((d) => (
-                      <option key={d.code} value={d.code}>
-                        {d.code} {d.country}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    value={formData.shopPhone}
-                    onChange={(e) => setFormData((p) => ({ ...p, shopPhone: e.target.value }))}
-                    placeholder="2xxxxxxxxx"
-                    className="w-full bg-slate-50 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00E5FF]/30"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 mb-1.5">
-                  مواعيد العمل
-                </label>
-                <input
-                  value={formData.openingHours}
-                  onChange={(e) => setFormData((p) => ({ ...p, openingHours: e.target.value }))}
-                  placeholder="9 ص - 10 م"
-                  className="w-full bg-slate-50 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00E5FF]/30"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 mb-1.5">
-                  العنوان التفصيلي
-                </label>
-                <textarea
-                  value={formData.addressDetailed}
-                  onChange={(e) => setFormData((p) => ({ ...p, addressDetailed: e.target.value }))}
-                  rows={2}
-                  placeholder="شارع ... عمارة ... دور ..."
-                  className="w-full bg-slate-50 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00E5FF]/30 resize-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-400 mb-1.5">
-                  وصف قصير للمتجر
-                </label>
-                <textarea
-                  value={formData.shopDescription}
-                  onChange={(e) => setFormData((p) => ({ ...p, shopDescription: e.target.value }))}
-                  rows={2}
-                  placeholder="نبذة مختصرة عن نشاطك..."
-                  className="w-full bg-slate-50 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00E5FF]/30 resize-none"
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Summary card */}
-      <div className="bg-slate-900 rounded-[2rem] p-6 text-white">
-        <div className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-3">
-          ملخص حسابك
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-[10px] font-bold text-white/40 mb-1">الموبايل</div>
-            <div className="text-sm font-black" dir="ltr">
-              {formData.phone ? `${dialCode} ${formData.phone}` : '—'}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] font-bold text-white/40 mb-1">المتجر</div>
-            <div className="text-sm font-black">{formData.shopName || '—'}</div>
-          </div>
-          <div>
-            <div className="text-[10px] font-bold text-white/40 mb-1">النشاط</div>
-            <div className="text-sm font-black">
-              {selectedActivity ? getActivityLabel(selectedActivity) : '—'}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] font-bold text-white/40 mb-1">لوحة التحكم</div>
-            <div className="text-sm font-black text-[#00E5FF]">
-              {finalModules.length} تطبيق · {skipped ? 'الأساسيات' : 'على مقاس نشاطك'}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   const STATES: Step[] = ['account', 'activity', 'questions', 'modules', 'data'];
   const currentStepIndex = STATES.indexOf(step);
@@ -1243,11 +516,67 @@ function SignupContent() {
               )}
             </AnimatePresence>
 
-            {step === 'account' && renderAccountStep()}
-            {step === 'activity' && renderActivityStep()}
-            {step === 'questions' && renderQuestionsStep()}
-            {step === 'modules' && renderModulesStep()}
-            {step === 'data' && renderDataStep()}
+            {step === 'account' && (
+              <AccountStep
+                formData={formData}
+                setFormData={setFormData}
+                dialCode={dialCode}
+                setDialCode={setDialCode}
+              />
+            )}
+            {step === 'activity' && (
+              <ActivityStep
+                activitySearch={activitySearch}
+                onSearchChange={setActivitySearch}
+                groupIds={groupIds}
+                groupedActivities={groupedActivities}
+                expandedGroups={expandedGroups}
+                onToggleGroup={toggleGroup}
+                activityId={activityId}
+                onSelectActivity={applyActivity}
+              />
+            )}
+            {step === 'questions' && (
+              <QuestionsStep
+                selectedActivity={selectedActivity!}
+                questions={questions}
+                answers={answers}
+                onToggleAnswer={toggleAnswer}
+                answeredCount={answeredCount}
+                previewBase={previewModules.base}
+                previewAdded={previewModules.added}
+                onManual={openManualCustomization}
+                onSkip={skipToManual}
+              />
+            )}
+            {step === 'modules' && (
+              <ModulesStep
+                selectedActivity={selectedActivity!}
+                manualModules={manualModules}
+                onToggleModule={toggleManualModule}
+                skipped={skipped}
+                previewBase={previewModules.base}
+                previewAdded={previewModules.added}
+                onResetToBase={resetToBase}
+              />
+            )}
+            {step === 'data' && (
+              <DataStep
+                formData={formData}
+                setFormData={setFormData}
+                dialCode={dialCode}
+                setDialCode={setDialCode}
+                showPassword={showPassword}
+                setShowPassword={setShowPassword}
+                passwordChecks={passwordChecks}
+                showDetails={showDetails}
+                setShowDetails={setShowDetails}
+                onLocationResolved={handleLocationResolved}
+                selectedActivity={selectedActivity}
+                finalModulesCount={finalModules.length}
+                skipped={skipped}
+              />
+            )}
           </div>
 
           {/* شريط تنقل عائم ثابت أسفل الشاشة */}
