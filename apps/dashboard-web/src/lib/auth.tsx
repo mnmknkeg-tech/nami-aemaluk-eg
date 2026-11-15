@@ -107,8 +107,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Redirect to login immediately. Without this the user stayed on a
       // zombie dashboard: every click fired a doomed API call → a doomed
       // /auth/refresh 401 → repeated console errors and dead UI.
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            // صفحات /signup و /login عامة للزوار — الـ 401 هنا طبيعي مش انتهاء جلسة.
+      if (
+        typeof window !== 'undefined' &&
+        !window.location.pathname.startsWith('/login') &&
+        !window.location.pathname.startsWith('/signup')
+      ) {
         window.location.assign('/login');
+      }
       }
     };
     const onUserRefreshed = () => {
