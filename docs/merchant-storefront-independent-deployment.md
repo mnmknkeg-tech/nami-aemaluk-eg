@@ -10,6 +10,7 @@ Run published merchant websites as a separate Next.js deployment from the Menmak
 - Its merchant route reuses the existing published-site renderer and the dedicated `SiteCartProvider` / `SiteCheckout` implementation from `apps/marketplace-next`.
 - Marketplace discovery must remain on `/shop/:slug` with the Menmakank theme. Publishing a website only enables the merchant's explicit official-site URL.
 - Merchant site cart remains separate from the marketplace cart; this app does not introduce a second product or inventory database.
+- New orders record `salesChannel` as `website`, `marketplace`, or `pos`, while the legacy `source` field remains intact for existing consumers.
 
 ## Deployment setup
 
@@ -50,6 +51,6 @@ Required environment:
 
 - Verified custom-domain mapping.
 - Deployment project creation or DNS changes.
-- Database migrations or a new sales-channel field.
+- Multi-merchant marketplace parent/child order redesign.
 - Multi-merchant marketplace parent/child order redesign.
 - Removal of legacy storefront routes.
