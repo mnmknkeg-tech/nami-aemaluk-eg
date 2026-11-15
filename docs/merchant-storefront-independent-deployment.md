@@ -28,6 +28,7 @@ Required environment:
 - `NEXT_PUBLIC_MERCHANT_STOREFRONT_MODE=standalone`: makes published-site canonical URLs match the standalone `/:slug` route.
 - `NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE`: canonical tenant URL template, for example `https://{slug}.mnmknk.com`.
 - Configure wildcard DNS and wildcard domain assignment for each platform root domain.
+- Set `NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE` on **both** the merchant storefront and Marketplace deployments so official-site links and canonical metadata point to the same tenant host.
 
 ## Important cutover constraints
 
