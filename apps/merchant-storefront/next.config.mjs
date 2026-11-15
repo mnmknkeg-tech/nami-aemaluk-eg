@@ -9,6 +9,7 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   transpilePackages: ['@ray-eg/shared'],
+  experimental: { externalDir: true },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**' },
