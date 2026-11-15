@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Loader2, MapPin, Store, Briefcase, Hand } from 'lucide-react';
 import { apiPath } from '@/lib/api';
 import { buildShopMarkerHtml, buildListingMarkerHtml, escapeHtml } from '@/lib/mapUtils';
-import { getMerchantSitePath } from '@/market/lib/merchantUrl';
 import {
   requestDeviceLocation,
   requestApproxLocation,
@@ -205,14 +204,8 @@ export default function MapPage() {
 
       marker.on('click', () => {
         if (isShop && p.slug) {
-          if (p.websitePublished) {
-            // التاجر المنشور: الخريطة بتفتح موقعه المنفصل (قالبه وسلته
-            // الخاصين) بنفس التاب جوه التطبيق — من غير تاب خارجي جديد.
-            router.push(getMerchantSitePath(p.slug));
-          } else {
-            // متجر من غير موقع منشور: يفضل جوه التطبيق بالثيم الموحد.
-            router.push(`/shop/${p.slug}`);
-          }
+          // Marketplace map pins always open the unified marketplace shop page.
+          router.push(`/shop/${p.slug}`);
         } else if (!isShop && p.id) {
           router.push(`/map/listing/${p.id}`);
         }
