@@ -281,11 +281,15 @@ const insertOrderQuery = `
 	RETURNING ` + orderColumnsNoAlias
 
 func orderInsertArgs(order *Order) []any {
+	salesChannel := strings.TrimSpace(order.SalesChannel)
+	if salesChannel == "" {
+		salesChannel = "marketplace"
+	}
 	return []any{
 		order.Total, order.Discount, order.CouponCode, order.Status, order.PaymentMethod, order.PaymentStatus, order.Notes,
 		order.CustomerPhone, order.DeliveryAddressManual, order.DeliveryLat, order.DeliveryLng,
 		order.DeliveryNote, order.CustomerNote, order.UserID, order.ShopID, order.Source,
-		order.SalesChannel, order.PosShiftID, order.IdempotencyKey, order.RequestHash, order.CustomerName,
+		salesChannel, order.PosShiftID, order.IdempotencyKey, order.RequestHash, order.CustomerName,
 	}
 }
 
