@@ -24,6 +24,7 @@ Required environment:
 
 - `BACKEND_URL`: private/public Go API origin reachable by the deployment.
 - `NEXT_PUBLIC_MERCHANT_ROOT_DOMAINS`: comma-separated platform root domains, for example `mnmknk.com,ray.eg`.
+- `NEXT_PUBLIC_MERCHANT_STOREFRONT_MODE=standalone`: makes published-site canonical URLs match the standalone `/:slug` route.
 - Configure wildcard DNS and wildcard domain assignment for each platform root domain.
 
 ## Important cutover constraints
@@ -37,7 +38,7 @@ Required environment:
 
 ## Required validation before cutover
 
-- Workspace install and `apps/merchant-storefront` build/typecheck.
+- Workspace install and `apps/merchant-storefront` build/typecheck (`npm run build:merchant-storefront`, `npm run typecheck:merchant-storefront`).
 - Published builder site renders for a real shop and returns 404 for an unpublished/unknown shop.
 - Cart persistence is scoped by merchant slug and does not read/write the marketplace cart key.
 - Checkout creates an order for the correct shop and cannot accept a forged shop/product/price from the browser.
