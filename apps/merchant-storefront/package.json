@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ray-eg/shared": "workspace:1.0.0",
+    "@ray-eg/shared": "1.0.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-query": "^5.90.0",
     "@types/leaflet": "^1.9.21",
