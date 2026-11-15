@@ -6,8 +6,6 @@ import Link from 'next/link';
 import {
   ArrowRight,
   ChevronDown,
-  ChevronUp,
-  ChevronLeft,
   Loader2,
   Pencil,
   Trash2,
@@ -16,27 +14,10 @@ import {
   Mail,
   Copy,
   Check,
-  ShoppingBag,
-  CheckCircle2,
-  CreditCard,
-  Wallet,
   Trophy,
-  Gift,
-  Star,
-  Search,
   MoreVertical,
-  Plus,
   Share2,
-  Tag,
-  ShieldCheck,
-  RotateCcw,
-  Package,
-  Calendar,
-  MapPin,
-  User,
   AlertTriangle,
-  ExternalLink,
-  Clock,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
 import { useShop } from '@/hooks/useShop';
@@ -51,100 +32,20 @@ import {
   type ActivityType,
   type UnifiedStatus,
 } from '@/lib/bookings/ui';
+import {
+  type ShopCustomer,
+  type ActivityRow,
+  type CustomerBooking,
+  SOURCE_LABELS,
+} from '../_customer/meta';
+import StatsCards from '../_customer/StatsCards';
+import OrdersHistory from '../_customer/OrdersHistory';
+import BookingsSection from '../_customer/BookingsSection';
+import LoyaltyAdjustModal from '../_customer/LoyaltyAdjustModal';
 
 /* ============================================================
  * صفحة تفاصيل العميل الكاملة — مطابقة لتصميم لوحة التاجر (الصورة 2)
  * ============================================================ */
-
-type ShopCustomer = {
-  id: string;
-  code: string;
-  name: string;
-  email: string;
-  phone: string;
-  customerType: string;
-  companyName: string;
-  taxNumber: string;
-  status: string;
-  address: string;
-  city: string;
-  country: string;
-  branch: string;
-  source: string;
-  segmentId: string;
-  tags: string[];
-  notes: string;
-  shippingAddresses: { label: string; address: string; city: string; phone: string }[];
-  archived: boolean;
-  loyaltyBalance: number;
-  balanceDue: number;
-  totalOrders: number;
-  totalSpent: number;
-  lastPurchaseAt: string | null;
-  createdAt: string;
-};
-
-type ActivityRow = {
-  id: string;
-  status?: string;
-  total: number;
-  method?: string;
-  source?: string;
-  createdAt: string;
-  itemsCount?: number;
-  shippingMethod?: string;
-  paymentStatus?: string;
-};
-
-const SOURCE_LABELS: Record<string, string> = {
-  pos: 'الكاشير',
-  website: 'المتجر الإلكتروني',
-  bookings: 'الحجوزات',
-  services: 'الخدمات',
-  manual: 'إضافة يدوية',
-  import: 'استيراد',
-  app: 'تطبيق العميل',
-  customer: 'المتجر الإلكتروني',
-};
-
-const ORDER_TABS = [
-  { id: 'all', label: 'الكل' },
-  { id: 'new', label: 'جديد' },
-  { id: 'processing', label: 'جاري التجهيز' },
-  { id: 'ready', label: 'جاهز' },
-  { id: 'delivering', label: 'جاري التوصيل' },
-  { id: 'completed', label: 'مكتمل' },
-  { id: 'cancelled', label: 'ملغي' },
-  { id: 'refunding', label: 'قيد الاسترجاع' },
-  { id: 'partial_refund', label: 'مسترجع جزئياً' },
-];
-
-/* ============================================================
- * الحجوزات — تاب سجل حجوزات العميل
- * الحجوزات مربوطة بالعميل بالتليفون (مش بـ ID) والباكند
- * بيدعم فلتر phone بمقارنة آخر 9 أرقام (01x = 20x).
- * ============================================================ */
-
-type CustomerBooking = {
-  id: string;
-  bookingNumber: string;
-  status: UnifiedStatus;
-  activityType: ActivityType;
-  serviceName: string;
-  dateStr: string;
-  timeStr: string;
-  price: number;
-  participants: number;
-  paymentStatus: string;
-};
-
-const BOOKING_TABS: { id: string; label: string }[] = [
-  { id: 'all', label: 'الكل' },
-  { id: 'PENDING', label: STATUS_META.PENDING.label },
-  { id: 'CONFIRMED', label: STATUS_META.CONFIRMED.label },
-  { id: 'COMPLETED', label: STATUS_META.COMPLETED.label },
-  { id: 'CANCELLED', label: STATUS_META.CANCELLED.label },
-];
 
 export default function CustomerProfilePage() {
   const params = useParams();
@@ -876,130 +777,14 @@ export default function CustomerProfilePage() {
            * ============================================================ */}
           <div className="lg:col-span-8 space-y-4">
             {/* شبكة البطاقات الست كالصورة 2 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {/* 1. جميع الطلبات */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-slate-500">جميع الطلبات</span>
-                  <div className="w-8 h-8 rounded-xl bg-purple-100/70 text-[#492770] flex items-center justify-center">
-                    <ShoppingBag size={16} />
-                  </div>
-                </div>
-                <div className="text-2xl font-black text-slate-900 tabular-nums mb-1">
-                  {customer.totalOrders ?? 0}
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold pt-1 border-t border-slate-100">
-                  <span>طلب واحد قيد التنفيذ</span>
-                  <button
-                    type="button"
-                    onClick={() => setOrderTab('all')}
-                    className="text-[#492770] font-bold hover:underline"
-                  >
-                    عرض الكل
-                  </button>
-                </div>
-              </div>
-
-              {/* 2. الطلبات المكتملة */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-slate-500">الطلبات المكتملة</span>
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100/70 text-emerald-700 flex items-center justify-center">
-                    <CheckCircle2 size={16} />
-                  </div>
-                </div>
-                <div className="text-2xl font-black text-slate-900 tabular-nums mb-1">
-                  {completedOrdersCount || Math.min(customer.totalOrders || 0, 0)}
-                </div>
-                <div className="text-[11px] text-slate-400 font-semibold pt-1 border-t border-slate-100">
-                  آخر طلب مكتمل مؤخراً
-                </div>
-              </div>
-
-              {/* 3. إجمالي المصروفات */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-slate-500">إجمالي المصروفات</span>
-                  <div className="w-8 h-8 rounded-xl bg-blue-100/70 text-blue-700 flex items-center justify-center">
-                    <CreditCard size={16} />
-                  </div>
-                </div>
-                <div className="text-2xl font-black text-slate-900 tabular-nums mb-1">
-                  {customer.totalSpent.toLocaleString()} {currency}
-                </div>
-                <div className="text-[11px] text-slate-400 font-semibold pt-1 border-t border-slate-100">
-                  دفع نقداً أو ببطاقة الائتمان
-                </div>
-              </div>
-
-              {/* 4. رصيد المحفظة */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-slate-500">رصيد المحفظة</span>
-                  <div className="w-8 h-8 rounded-xl bg-amber-100/70 text-amber-700 flex items-center justify-center">
-                    <Wallet size={16} />
-                  </div>
-                </div>
-                <div className="text-2xl font-black text-slate-900 tabular-nums mb-1">
-                  {customer.balanceDue < 0 ? Math.abs(customer.balanceDue).toLocaleString() : 0}{' '}
-                  {currency}
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold pt-1 border-t border-slate-100">
-                  <span>0% من التكلفة العامة</span>
-                  <button
-                    type="button"
-                    onClick={() => setOpenAccordion('wallet')}
-                    className="text-[#492770] font-bold hover:underline"
-                  >
-                    سجل
-                  </button>
-                </div>
-              </div>
-
-              {/* 5. نقاط الولاء */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-slate-500">نقاط الولاء</span>
-                  <div className="w-8 h-8 rounded-xl bg-yellow-100/70 text-yellow-700 flex items-center justify-center">
-                    <Trophy size={16} />
-                  </div>
-                </div>
-                <div className="text-2xl font-black text-slate-900 tabular-nums mb-1">
-                  {customer.loyaltyBalance ?? 0}
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold pt-1 border-t border-slate-100">
-                  <span>0 نقطة معلقة</span>
-                  <button
-                    type="button"
-                    onClick={() => setAdjustOpen(true)}
-                    className="text-[#492770] font-bold hover:underline"
-                  >
-                    سجل
-                  </button>
-                </div>
-              </div>
-
-              {/* 6. مكافآت التقييمات */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-slate-500">مكافآت التقييمات</span>
-                  <div className="w-8 h-8 rounded-xl bg-rose-100/70 text-rose-700 flex items-center justify-center">
-                    <Star size={16} />
-                  </div>
-                </div>
-                <div className="text-2xl font-black text-slate-900 tabular-nums mb-1">—</div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold pt-1 border-t border-slate-100">
-                  <span>مكافأة لكل تقييم موثق</span>
-                  <button
-                    type="button"
-                    onClick={() => alert('مكافآت التقييمات مفعلة تلقائياً')}
-                    className="text-[#492770] font-bold hover:underline"
-                  >
-                    سجل
-                  </button>
-                </div>
-              </div>
-            </div>
+            <StatsCards
+              customer={customer}
+              completedOrdersCount={completedOrdersCount}
+              currency={currency}
+              onShowAllOrders={() => setOrderTab('all')}
+              onOpenWallet={() => setOpenAccordion('wallet')}
+              onOpenLoyaltyAdjust={() => setAdjustOpen(true)}
+            />
 
             {/* كارت السلات المتروكة كالصورة 2 */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
@@ -1008,295 +793,30 @@ export default function CustomerProfilePage() {
             </div>
 
             {/* قسم سجل الطلبات كالصورة 2 */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black text-slate-900">سجل الطلبات</h3>
-              </div>
-
-              {/* تابات الحالات كالصورة 2 */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-slate-100">
-                {ORDER_TABS.map((t) => {
-                  const active = orderTab === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setOrderTab(t.id)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                        active
-                          ? 'bg-[#492770] text-white shadow-sm'
-                          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* شريط البحث في الطلبات */}
-              <div className="relative">
-                <Search
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={14}
-                />
-                <input
-                  value={orderSearch}
-                  onChange={(e) => setOrderSearch(e.target.value)}
-                  placeholder="بحث برقم الطلب..."
-                  className="w-full h-10 bg-slate-50 border border-slate-200 rounded-full py-2 pr-9 pl-4 text-xs font-bold outline-none focus:ring-2 focus:ring-purple-200"
-                />
-              </div>
-
-              {/* جدول الطلبات كالصورة 2 */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-right border-collapse min-w-[700px]">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[11px] font-bold">
-                      <th className="px-3 py-2.5">رقم الطلب / السعر</th>
-                      <th className="px-3 py-2.5">تاريخ الإنشاء / نوع السجل</th>
-                      <th className="px-3 py-2.5">الحالة</th>
-                      <th className="px-3 py-2.5">الشحن</th>
-                      <th className="px-3 py-2.5">الدفع / حالة الدفع</th>
-                      <th className="px-3 py-2.5">المجموع / السلة</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activityLoading ? (
-                      <tr>
-                        <td colSpan={6} className="py-8 text-center">
-                          <Loader2 size={20} className="animate-spin mx-auto text-purple-600" />
-                        </td>
-                      </tr>
-                    ) : filteredOrders.length === 0 ? (
-                      <tr>
-                        <td colSpan={6}>
-                          <EmptyState variant="mini" title="لا توجد طلبات مطابقة في هذا التصنيف" />
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredOrders.map((o) => (
-                        <tr
-                          key={o.id}
-                          className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors text-xs"
-                        >
-                          <td className="px-3 py-3 font-bold text-slate-900 tabular-nums">
-                            #{String(o.id).slice(0, 8)}
-                          </td>
-                          <td className="px-3 py-3 text-slate-500 font-semibold">
-                            {o.createdAt ? new Date(o.createdAt).toLocaleDateString('ar-EG') : '—'}
-                          </td>
-                          <td className="px-3 py-3">
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                              {o.status || 'جديد'}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-slate-600 font-semibold">مندوب</td>
-                          <td className="px-3 py-3 text-slate-700 font-semibold">
-                            {o.paymentStatus || 'الدفع عند الاستلام'}
-                          </td>
-                          <td className="px-3 py-3 font-bold text-slate-900 tabular-nums">
-                            {Number(o.total || 0).toLocaleString()} {currency}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* أزرار أسفل سجل الطلبات كالصورة 2 */}
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100 flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setOrderTab('all')}
-                    className="h-8 px-4 rounded-full border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                  >
-                    عرض الكل
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/dashboard/orders/new?customerId=${customer.id}`)}
-                    className="h-8 px-4 rounded-full bg-[#492770] text-white text-xs font-bold hover:bg-[#3d1f5e]"
-                  >
-                    إنشاء طلب للعميل
-                  </button>
-                </div>
-                <div className="text-xs text-slate-400 font-bold">
-                  إجمالي النتائج: {filteredOrders.length}
-                </div>
-              </div>
-            </div>
+            <OrdersHistory
+              orderTab={orderTab}
+              onOrderTabChange={setOrderTab}
+              orderSearch={orderSearch}
+              onOrderSearchChange={setOrderSearch}
+              loading={activityLoading}
+              orders={filteredOrders}
+              currency={currency}
+              onNewOrder={() => router.push(`/dashboard/orders/new?customerId=${customer.id}`)}
+            />
 
             {/* ============================================================
              * سجل حجوزات العميل — يظهر فقط لو وحدة الحجوزات مفعّلة
              * والعميل له رقم موبايل (الحجوزات مربوطة بالتليفون)
              * ============================================================ */}
             {bookingsModuleEnabled && customer.phone && (
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-black text-slate-900">سجل الحجوزات</h3>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    مرتبط برقم موبايل العميل
-                  </span>
-                </div>
-
-                {/* كروت إحصاء الحجوزات */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  <div className="border border-slate-100 bg-slate-50/60 rounded-xl p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-bold text-slate-500">إجمالي الحجوزات</span>
-                      <div className="w-7 h-7 rounded-lg bg-purple-100/70 text-[#492770] flex items-center justify-center">
-                        <Calendar size={14} />
-                      </div>
-                    </div>
-                    <div className="text-xl font-black text-slate-900 tabular-nums">
-                      {bookingsStats.total}
-                    </div>
-                  </div>
-                  <div className="border border-slate-100 bg-slate-50/60 rounded-xl p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-bold text-slate-500">حجوزات قادمة</span>
-                      <div className="w-7 h-7 rounded-lg bg-blue-100/70 text-blue-700 flex items-center justify-center">
-                        <Clock size={14} />
-                      </div>
-                    </div>
-                    <div className="text-xl font-black text-slate-900 tabular-nums">
-                      {bookingsStats.upcoming}
-                    </div>
-                  </div>
-                  <div className="border border-slate-100 bg-slate-50/60 rounded-xl p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-bold text-slate-500">حجوزات مكتملة</span>
-                      <div className="w-7 h-7 rounded-lg bg-emerald-100/70 text-emerald-700 flex items-center justify-center">
-                        <CheckCircle2 size={14} />
-                      </div>
-                    </div>
-                    <div className="text-xl font-black text-slate-900 tabular-nums">
-                      {bookingsStats.completed}
-                    </div>
-                  </div>
-                  <div className="border border-slate-100 bg-slate-50/60 rounded-xl p-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-bold text-slate-500">قيمة الحجوزات</span>
-                      <div className="w-7 h-7 rounded-lg bg-amber-100/70 text-amber-700 flex items-center justify-center">
-                        <Wallet size={14} />
-                      </div>
-                    </div>
-                    <div className="text-xl font-black text-slate-900 tabular-nums">
-                      {bookingsStats.value.toLocaleString()} {currency}
-                    </div>
-                  </div>
-                </div>
-
-                {/* تابات حالات الحجز */}
-                <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-slate-100">
-                  {BOOKING_TABS.map((t) => {
-                    const active = bookingTab === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setBookingTab(t.id)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
-                          active
-                            ? 'bg-[#492770] text-white shadow-sm'
-                            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* جدول الحجوزات */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-right border-collapse min-w-[700px]">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[11px] font-bold">
-                        <th className="px-3 py-2.5">رقم الحجز / الخدمة</th>
-                        <th className="px-3 py-2.5">النشاط</th>
-                        <th className="px-3 py-2.5">الموعد (توقيت القاهرة)</th>
-                        <th className="px-3 py-2.5">الحالة</th>
-                        <th className="px-3 py-2.5">الدفع</th>
-                        <th className="px-3 py-2.5">المبلغ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bookingsLoading ? (
-                        <tr>
-                          <td colSpan={6} className="py-8 text-center">
-                            <Loader2 size={20} className="animate-spin mx-auto text-purple-600" />
-                          </td>
-                        </tr>
-                      ) : filteredBookings.length === 0 ? (
-                        <tr>
-                          <td colSpan={6}>
-                            <EmptyState
-                              variant="mini"
-                              title={
-                                bookingTab === 'all'
-                                  ? 'لا توجد حجوزات لهذا العميل'
-                                  : 'لا توجد حجوزات في هذه الحالة'
-                              }
-                            />
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredBookings.map((b) => {
-                          const act = ACTIVITY_META[b.activityType];
-                          const st = STATUS_META[b.status];
-                          return (
-                            <tr
-                              key={b.id}
-                              className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors text-xs"
-                            >
-                              <td className="px-3 py-3">
-                                <div className="font-bold text-slate-900 tabular-nums">
-                                  #{b.bookingNumber || b.id.slice(0, 8)}
-                                </div>
-                                <div className="text-[11px] text-slate-400 font-semibold">
-                                  {b.serviceName}
-                                  {b.participants > 1 ? ` ×${b.participants}` : ''}
-                                </div>
-                              </td>
-                              <td className="px-3 py-3">
-                                <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${act.chip}`}
-                                >
-                                  {act.label}
-                                </span>
-                              </td>
-                              <td className="px-3 py-3 text-slate-600 font-semibold tabular-nums">
-                                {b.dateStr} · {b.timeStr}
-                              </td>
-                              <td className="px-3 py-3">
-                                <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${st.chip}`}
-                                >
-                                  {st.label}
-                                </span>
-                              </td>
-                              <td className="px-3 py-3 text-slate-700 font-semibold">
-                                {b.paymentStatus || '—'}
-                              </td>
-                              <td className="px-3 py-3 font-bold text-slate-900 tabular-nums">
-                                {b.price.toLocaleString()} {currency}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="text-xs text-slate-400 font-bold">
-                  إجمالي النتائج: {filteredBookings.length}
-                </div>
-              </div>
+              <BookingsSection
+                stats={bookingsStats}
+                currency={currency}
+                bookingTab={bookingTab}
+                onBookingTabChange={setBookingTab}
+                loading={bookingsLoading}
+                bookings={filteredBookings}
+              />
             )}
 
             {/* الأكورديونات السفلية القابلة للفتح والطي كالصورة 2 */}
@@ -1467,49 +987,15 @@ export default function CustomerProfilePage() {
 
       {/* نافذة تعديل نقاط الولاء */}
       {adjustOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-5 space-y-4 shadow-xl">
-            <h3 className="text-sm font-bold text-slate-900">تعديل نقاط الولاء للعميل</h3>
-            <div>
-              <label className="text-xs font-bold text-slate-500 block mb-1">
-                النقاط (موجب للإضافة، سالب للخصم)
-              </label>
-              <input
-                type="number"
-                value={adjustDelta}
-                onChange={(e) => setAdjustDelta(Number(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-slate-500 block mb-1">السبب</label>
-              <input
-                value={adjustReason}
-                onChange={(e) => setAdjustReason(e.target.value)}
-                placeholder="مثلاً: هدية تسجيل أو تعويض"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold outline-none"
-              />
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setAdjustOpen(false)}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
-              >
-                إلغاء
-              </button>
-              <button
-                type="button"
-                onClick={adjustLoyalty}
-                disabled={adjustSaving || !adjustDelta || !adjustReason.trim()}
-                className="px-4 py-2 rounded-xl bg-[#492770] text-white text-xs font-bold hover:bg-[#3d1f5e] flex items-center gap-1.5 disabled:opacity-50"
-              >
-                {adjustSaving && <Loader2 size={13} className="animate-spin" />}
-                تأكيد التعديل
-              </button>
-            </div>
-          </div>
-        </div>
+        <LoyaltyAdjustModal
+          delta={adjustDelta}
+          onDeltaChange={setAdjustDelta}
+          reason={adjustReason}
+          onReasonChange={setAdjustReason}
+          saving={adjustSaving}
+          onConfirm={adjustLoyalty}
+          onClose={() => setAdjustOpen(false)}
+        />
       )}
     </div>
   );
