@@ -271,15 +271,23 @@ export function EmptyState({
   icon: Icon,
   title,
   subtitle,
+  dense,
 }: {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   title: string;
   subtitle?: string;
+  /** dense = tighter row for charts / small panels (page-level emptiness stays default) */
+  dense?: boolean;
 }) {
   return (
-    <div className="py-20 text-center">
-      <Icon size={44} className="mx-auto text-slate-300 mb-4" />
-      <p className="text-slate-600 font-bold">{title}</p>
+    <div className={dense ? 'py-8 text-center' : 'py-20 text-center'}>
+      <Icon
+        size={dense ? 24 : 44}
+        className={dense ? 'mx-auto text-slate-300 mb-2' : 'mx-auto text-slate-300 mb-4'}
+      />
+      <p className={dense ? 'text-slate-400 font-bold text-sm' : 'text-slate-600 font-bold'}>
+        {title}
+      </p>
       {subtitle && <p className="text-slate-400 text-sm font-bold mt-1">{subtitle}</p>}
     </div>
   );

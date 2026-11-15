@@ -27,8 +27,9 @@ interface EmptyStateProps {
   title: string;
   description?: string;
   /** full = get-started card (big title + actions). compact = list/filter result
-   *  row — matches InvEmpty metrics so the whole dashboard shares one look. */
-  variant?: 'full' | 'compact';
+   *  row — matches InvEmpty metrics so the whole dashboard shares one look.
+   *  mini = bare inline row for tables/charts/small panels (no card chrome). */
+  variant?: 'full' | 'compact' | 'mini';
   primaryAction?: EmptyStateAction;
   secondaryAction?: EmptyStateAction;
 }
@@ -55,6 +56,16 @@ export default function EmptyState({
   primaryAction,
   secondaryAction,
 }: EmptyStateProps) {
+  if (variant === 'mini') {
+    return (
+      <div className="py-10 text-center text-slate-400 font-bold text-sm flex flex-col items-center gap-2">
+        {icon && <span className="opacity-40">{icon}</span>}
+        <span>{title}</span>
+        {description && <span className="text-xs font-semibold text-slate-300">{description}</span>}
+      </div>
+    );
+  }
+
   const isCompact = variant === 'compact';
   const hasActions = Boolean(primaryAction || secondaryAction);
   return (

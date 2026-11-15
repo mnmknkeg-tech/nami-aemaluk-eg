@@ -705,7 +705,7 @@ function AdminDeliveryContent() {
             </div>
           </div>
         ) : (
-          <div className="text-slate-500 font-bold text-center py-16">لا توجد بيانات</div>
+          <EmptyState icon={Truck} title="لا توجد بيانات" />
         )}
       </AdminModal>
     </div>

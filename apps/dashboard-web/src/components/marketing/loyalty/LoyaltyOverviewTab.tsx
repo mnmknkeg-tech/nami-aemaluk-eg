@@ -13,6 +13,7 @@ import {
   CreditCard,
 } from 'lucide-react';
 import type { CustomerItem, LedgerEntry, LoyaltySettings } from './types';
+import EmptyState from '@/components/EmptyState';
 
 export interface LoyaltyOverviewTabProps {
   settings: LoyaltySettings;
@@ -316,7 +317,7 @@ const LoyaltyOverviewTab: React.FC<LoyaltyOverviewTabProps> = ({
           </div>
 
           {customers.length === 0 ? (
-            <div className="py-10 text-center text-slate-400 text-xs">لا يوجد عملاء حتى الآن</div>
+            <EmptyState variant="mini" title="لا يوجد عملاء حتى الآن" />
           ) : (
             <div className="divide-y divide-slate-100">
               {customers
@@ -367,7 +368,7 @@ const LoyaltyOverviewTab: React.FC<LoyaltyOverviewTabProps> = ({
           </div>
 
           {ledger.length === 0 ? (
-            <div className="py-10 text-center text-slate-400 text-xs">لم تسجل أي حركة نقاط بعد</div>
+            <EmptyState variant="mini" title="لم تسجل أي حركة نقاط بعد" />
           ) : (
             <div className="divide-y divide-slate-100">
               {ledger.slice(0, 5).map((l) => {

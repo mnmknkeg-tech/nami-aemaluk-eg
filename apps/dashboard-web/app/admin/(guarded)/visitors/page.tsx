@@ -24,7 +24,14 @@ import {
 import { apiRequest } from '@/lib/auth';
 import { useToast } from '@/components/settings/ToastProvider';
 import { downloadCsv } from '@/lib/csv';
-import { PageHeader, Panel, LoadingBlock, TONE_ICON, TONE_TEXT } from '@/components/admin/ui';
+import {
+  PageHeader,
+  Panel,
+  LoadingBlock,
+  TONE_ICON,
+  TONE_TEXT,
+  EmptyState,
+} from '@/components/admin/ui';
 import { cn, cn as cnLib } from '@/lib/cn';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -480,7 +487,7 @@ export default function AdminVisitorsPage() {
             </div>
 
             {(stats?.by_day || []).length === 0 ? (
-              <div className="text-slate-400 font-bold py-16 text-center">لا توجد بيانات</div>
+              <EmptyState dense icon={Activity} title="لا توجد بيانات" />
             ) : (
               <div className="w-full min-h-[260px] flex items-end gap-1 pt-4 overflow-x-auto">
                 {(stats?.by_day || []).map((item) => {
@@ -524,7 +531,7 @@ export default function AdminVisitorsPage() {
                 <span className="text-slate-400 text-xs font-black">{fmt(deviceTotal)} زيارة</span>
               </div>
               {(stats?.by_device || []).length === 0 ? (
-                <div className="text-slate-400 font-bold py-10 text-center">لا توجد بيانات</div>
+                <EmptyState dense icon={Monitor} title="لا توجد بيانات" />
               ) : (
                 <div className="space-y-5">
                   {(stats?.by_device || []).map((item) => {
@@ -602,7 +609,7 @@ export default function AdminVisitorsPage() {
 
               {activeTab === 'pages' ? (
                 (stats?.top_pages || []).length === 0 ? (
-                  <div className="text-slate-400 font-bold py-10 text-center">لا توجد بيانات</div>
+                  <EmptyState dense icon={Link2} title="لا توجد بيانات" />
                 ) : (
                   <div className="space-y-3">
                     {(stats?.top_pages || []).slice(0, 12).map((item, i) => (
@@ -644,7 +651,7 @@ export default function AdminVisitorsPage() {
                   </div>
                 )
               ) : (stats?.top_referrers || []).length === 0 ? (
-                <div className="text-slate-400 font-bold py-10 text-center">لا توجد بيانات</div>
+                <EmptyState dense icon={Link2} title="لا توجد بيانات" />
               ) : (
                 <div className="space-y-3">
                   {(stats?.top_referrers || []).map((item, i) => (
@@ -721,10 +728,7 @@ export default function AdminVisitorsPage() {
             </div>
 
             {visits.length === 0 ? (
-              <div className="text-slate-400 font-bold py-12 text-center flex flex-col items-center gap-3">
-                <Eye size={32} className="opacity-40" />
-                لا توجد زيارات مسجلة في هذه الفترة
-              </div>
+              <EmptyState dense icon={Eye} title="لا توجد زيارات مسجلة في هذه الفترة" />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-right">

@@ -41,6 +41,7 @@ import {
 import { apiRequest } from '@/lib/auth';
 import { useShop } from '@/hooks/useShop';
 import { hasExplicitConfig, isModuleEnabled } from '@/hooks/useModuleGuard';
+import EmptyState from '@/components/EmptyState';
 import {
   ACTIVITY_META,
   STATUS_META,
@@ -1069,11 +1070,8 @@ export default function CustomerProfilePage() {
                       </tr>
                     ) : filteredOrders.length === 0 ? (
                       <tr>
-                        <td
-                          colSpan={6}
-                          className="py-8 text-center text-xs text-slate-400 font-bold"
-                        >
-                          لا توجد طلبات مطابقة في هذا التصنيف
+                        <td colSpan={6}>
+                          <EmptyState variant="mini" title="لا توجد طلبات مطابقة في هذا التصنيف" />
                         </td>
                       </tr>
                     ) : (
@@ -1235,13 +1233,15 @@ export default function CustomerProfilePage() {
                         </tr>
                       ) : filteredBookings.length === 0 ? (
                         <tr>
-                          <td
-                            colSpan={6}
-                            className="py-8 text-center text-xs text-slate-400 font-bold"
-                          >
-                            {bookingTab === 'all'
-                              ? 'لا توجد حجوزات لهذا العميل'
-                              : 'لا توجد حجوزات في هذه الحالة'}
+                          <td colSpan={6}>
+                            <EmptyState
+                              variant="mini"
+                              title={
+                                bookingTab === 'all'
+                                  ? 'لا توجد حجوزات لهذا العميل'
+                                  : 'لا توجد حجوزات في هذه الحالة'
+                              }
+                            />
                           </td>
                         </tr>
                       ) : (

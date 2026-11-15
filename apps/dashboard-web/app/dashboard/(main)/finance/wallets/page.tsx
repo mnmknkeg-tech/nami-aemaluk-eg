@@ -34,6 +34,7 @@ import {
   InvLoading,
   InvEmpty,
 } from '@/components/inventory/InventoryShell';
+import EmptyState from '@/components/EmptyState';
 
 type Account = {
   id: string;
@@ -701,9 +702,10 @@ function WalletsContent() {
                       <div className="col-span-3 text-right">الرصيد</div>
                     </div>
                     {detailMovements.length === 0 ? (
-                      <div className="py-10 text-center text-slate-400 text-sm font-bold">
-                        لا توجد حركات بعد — الحركات تُسجل من القيود والفواتير والمصروفات
-                      </div>
+                      <EmptyState
+                        variant="mini"
+                        title="لا توجد حركات بعد — الحركات تُسجل من القيود والفواتير والمصروفات"
+                      />
                     ) : (
                       detailMovements.map((m, i) => (
                         <div

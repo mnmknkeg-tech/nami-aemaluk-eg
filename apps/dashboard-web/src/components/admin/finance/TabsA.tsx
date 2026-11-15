@@ -73,7 +73,7 @@ export function OverviewTab({ data }: { data: FinanceOverview | null }) {
       <Panel className="p-6 md:p-8">
         <h3 className="text-base font-black text-slate-900 mb-6">الإيراد مقابل المصروف (12 شهر)</h3>
         {data.series.length === 0 ? (
-          <div className="py-10 text-center text-slate-400 font-bold text-sm">لا توجد بيانات</div>
+          <EmptyState dense icon={TrendingUp} title="لا توجد بيانات" />
         ) : (
           <>
             <div className="flex items-end gap-2 md:gap-4 h-64">
