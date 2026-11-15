@@ -33,6 +33,15 @@ function publishedSitePath(slug: string): string {
     : `/site/${encodeURIComponent(slug)}`;
 }
 
+function publishedSiteUrl(slug: string): string {
+  const route = publishedSitePath(slug);
+  const template = process.env.NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE;
+  if (process.env.NEXT_PUBLIC_MERCHANT_STOREFRONT_MODE === 'standalone' && template) {
+    return template.replace('{slug}', encodeURIComponent(slug)).replace(/\/$/, '');
+  }
+  return `${siteConfig.url}${route}`;
+}
+
 type PublicWebsite = {
   published: boolean;
   publishedAt?: string;
@@ -172,7 +181,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           },
         }
       : {}),
-    alternates: { canonical: homeMeta?.canonicalUrl || publishedSitePath(site.shop.slug) },
+    alternates: { canonical: homeMeta?.canonicalUrl || publishedSiteUrl(site.shop.slug) },
     openGraph: {
       title,
       description,
@@ -314,7 +323,7 @@ function LegacyPublishedSiteView({
     '@context': 'https://schema.org',
     '@type': 'Store',
     name: site.shop.name,
-    url: `${siteConfig.url}${publishedSitePath(site.shop.slug)}`,
+    url: publishedSiteUrl(site.shop.slug),
     image: bannerUrl || site.shop.logoUrl,
     telephone: site.shop.phone,
     address: site.shop.address,
