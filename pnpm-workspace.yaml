@@ -1,4 +1,6 @@
-pmOnFail: ignore
+packages:
+  - 'apps/*'
+  - 'packages/*'
 
 minimumReleaseAgeExclude:
   - '@next/*'
