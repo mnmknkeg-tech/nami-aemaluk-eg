@@ -6,61 +6,27 @@ import {
   Package,
   Sparkles,
   ArrowRight,
-  Eye,
   Plus,
-  Trash2,
-  Image as ImageIcon,
   Youtube,
   Upload,
-  Search,
   Check,
-  CheckCircle2,
-  HelpCircle,
   TrendingDown,
-  ShoppingBag,
-  ExternalLink,
-  Layers,
-  FolderPlus,
-  FolderTree,
-  ChevronDown,
-  ChevronUp,
   AlignRight,
   AlignCenter,
   AlignLeft,
   AlignJustify,
   Code,
-  Info,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
 import ExtendedProductSections, {
   defaultExtraData,
   ProductExtraData,
 } from '@/components/products/ExtendedProductSections';
-
-interface AvailableProduct {
-  id: string;
-  name: string;
-  price: number;
-  imageUrl?: string;
-  category?: string;
-  stock?: number;
-}
-
-interface BundleItem {
-  productId: string;
-  name: string;
-  price: number;
-  quantity: number;
-  imageUrl?: string;
-}
-
-interface CustomBundleSection {
-  id: string;
-  title: string;
-  minSelect: number;
-  maxSelect: number;
-  items: BundleItem[];
-}
+import ProductPickerModal from '../_bundle/ProductPickerModal';
+import QuickCategoryModal from '../_bundle/QuickCategoryModal';
+import BundleLivePreview from '../_bundle/BundleLivePreview';
+import BundleGroupCard from '../_bundle/BundleGroupCard';
+import type { AvailableProduct, BundleItem, CustomBundleSection } from '../_bundle/types';
 
 import { compressForUpload } from '@/lib/upload-image';
 import { uploadMediaFile } from '@/lib/api/upload';
@@ -932,365 +898,20 @@ export default function AddBundleProductPage() {
             </div>
 
             {/* Card 2: مجموعة المنتجات (نوع المجموعة: ثابتة vs مخصصة) */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-5">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
-                    <Layers size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900">مجموعة المنتجات</h3>
-                    <p className="text-[11px] text-slate-400">
-                      اختر نوع مجموعة المنتجات وحدد محتوياتها
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Group Type Selector (ثابتة vs مخصصة) */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-slate-700">اختر نوع المجموعة</label>
-                  <span className="text-[10px] text-slate-400">
-                    يمكن اختيار نوع مجموعة منتجات واحد فقط
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Option 1: Fixed */}
-                  <button
-                    type="button"
-                    onClick={() => setBundleType('fixed')}
-                    className={`p-4 rounded-xl border text-right transition-all relative ${
-                      bundleType === 'fixed'
-                        ? 'border-teal-600 bg-teal-50/50 ring-1 ring-teal-500/20 shadow-xs'
-                        : 'border-slate-200 hover:border-slate-300 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-black text-slate-900">ثابتة</span>
-                      <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                          bundleType === 'fixed'
-                            ? 'border-teal-600 bg-teal-600 text-white'
-                            : 'border-slate-300'
-                        }`}
-                      >
-                        {bundleType === 'fixed' && (
-                          <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
-                      مجموعة تضم منتجات بدون خيارات يشتريها العميل معًا.
-                    </p>
-                  </button>
-
-                  {/* Option 2: Custom */}
-                  <button
-                    type="button"
-                    onClick={() => setBundleType('custom')}
-                    className={`p-4 rounded-xl border text-right transition-all relative ${
-                      bundleType === 'custom'
-                        ? 'border-teal-600 bg-teal-50/50 ring-1 ring-teal-500/20 shadow-xs'
-                        : 'border-slate-200 hover:border-slate-300 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-black text-slate-900">مُخصَّصة</span>
-                      <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                          bundleType === 'custom'
-                            ? 'border-teal-600 bg-teal-600 text-white'
-                            : 'border-slate-300'
-                        }`}
-                      >
-                        {bundleType === 'custom' && (
-                          <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                        )}
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
-                      مجموعة تُعرض منتجاتها ضمن أقسام يختار منها العميل ما يناسبه.
-                    </p>
-                  </button>
-                </div>
-              </div>
-
-              {/* ─── Render based on bundleType ─── */}
-
-              {/* TYPE A: Fixed Bundle (ثابتة) */}
-              {bundleType === 'fixed' && (
-                <div className="space-y-4 pt-2 border-t border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-800">
-                      منتجات الباقة الثابتة (التي يستلمها العميل معاً)
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenPicker(null)}
-                      className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
-                    >
-                      <Plus size={14} />
-                      <span>إضافة منتج للباقة</span>
-                    </button>
-                  </div>
-
-                  {bundleItems.length === 0 ? (
-                    <div className="text-center py-8 px-4 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                      <Package size={32} className="mx-auto text-slate-300 mb-2" />
-                      <p className="text-xs font-bold text-slate-700">لم تُضف منتجات للباقة بعد</p>
-                      <p className="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto">
-                        اضغط على زر "إضافة منتج للباقة" لاختيار المنتجات التي ستتضمنها هذه الحزمة.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenPicker(null)}
-                        className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 text-white rounded-lg text-xs font-bold hover:bg-teal-700 transition-colors"
-                      >
-                        <Plus size={14} />
-                        <span>اختر منتجات المتجر الآن</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-                        {bundleItems.map((item, index) => (
-                          <div
-                            key={item.productId}
-                            className="p-3 bg-white flex items-center justify-between gap-3 hover:bg-slate-50/60 transition-colors"
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className="w-5 text-center text-xs font-bold text-slate-400">
-                                {index + 1}
-                              </span>
-                              <div className="w-11 h-11 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
-                                {item.imageUrl ? (
-                                  <img
-                                    src={item.imageUrl}
-                                    alt={item.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <ImageIcon size={18} className="text-slate-400" />
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <h4 className="text-xs font-bold text-slate-900 truncate">
-                                  {item.name}
-                                </h4>
-                                <p className="text-[11px] text-slate-400">
-                                  السعر الفردي: {item.price} ج.م
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 shrink-0">
-                              {/* Quantity control */}
-                              <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleUpdateItemQuantity(item.productId, item.quantity - 1)
-                                  }
-                                  className="px-2 py-1 text-slate-600 hover:bg-slate-100 text-xs font-bold"
-                                >
-                                  -
-                                </button>
-                                <span className="px-2.5 py-1 text-xs font-black text-slate-800 bg-slate-50 min-w-[28px] text-center">
-                                  {item.quantity}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleUpdateItemQuantity(item.productId, item.quantity + 1)
-                                  }
-                                  className="px-2 py-1 text-slate-600 hover:bg-slate-100 text-xs font-bold"
-                                >
-                                  +
-                                </button>
-                              </div>
-
-                              <div className="w-20 text-left">
-                                <span className="text-xs font-bold text-slate-800 block">
-                                  {(item.price * item.quantity).toFixed(2)} ج.م
-                                </span>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveBundleItem(item.productId)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                title="حذف من الباقة"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                        <span className="font-bold text-slate-600">
-                          إجمالي عدد القطع في الباقة:{' '}
-                          <strong className="text-slate-900">
-                            {bundleItems.reduce((s, i) => s + i.quantity, 0)} قطعة
-                          </strong>
-                        </span>
-                        <span className="font-bold text-slate-600">
-                          مجموع الأسعار الفردية:{' '}
-                          <strong className="text-slate-900">
-                            {originalTotalPrice.toFixed(2)} ج.م
-                          </strong>
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* TYPE B: Custom Bundle (مُخصَّصة مع أقسام للاختيار) */}
-              {bundleType === 'custom' && (
-                <div className="space-y-5 pt-2 border-t border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-slate-800 block">
-                        أقسام الباقة المخصصة
-                      </span>
-                      <p className="text-[11px] text-slate-400">
-                        أنشئ أقساماً (مثل: الطبق الرئيسي، الإضافة، المشروب) ليختار العميل منها
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddCustomSection}
-                      className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
-                    >
-                      <Plus size={14} />
-                      <span>إضافة قسم جديد</span>
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {customSections.map((sec, secIndex) => (
-                      <div
-                        key={sec.id}
-                        className="p-4 rounded-xl border border-slate-200 bg-slate-50/40 space-y-3"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 flex-1">
-                            <span className="w-6 h-6 rounded-full bg-teal-100 text-teal-700 text-xs font-bold flex items-center justify-center shrink-0">
-                              {secIndex + 1}
-                            </span>
-                            <input
-                              type="text"
-                              value={sec.title}
-                              onChange={(e) => handleUpdateSection(sec.id, 'title', e.target.value)}
-                              placeholder="عنوان القسم (مثال: اختر التيشيرت)"
-                              className="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-lg bg-white w-full max-w-sm"
-                            />
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[11px] text-slate-500 font-medium">
-                              المطلوب اختياره:
-                            </span>
-                            <select
-                              value={sec.minSelect}
-                              onChange={(e) =>
-                                handleUpdateSection(sec.id, 'minSelect', Number(e.target.value))
-                              }
-                              className="px-2 py-1 text-xs border border-slate-200 rounded-md bg-white font-bold"
-                            >
-                              <option value="1">1 منتج</option>
-                              <option value="2">2 منتج</option>
-                              <option value="3">3 منتجات</option>
-                            </select>
-
-                            {customSections.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveCustomSection(sec.id)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors mr-1"
-                                title="حذف القسم"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Section Products List */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] text-slate-500 font-bold">
-                              الخيارات المتاحة للعميل في هذا القسم ({sec.items.length}):
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenPicker(sec.id)}
-                              className="text-[11px] text-teal-600 hover:underline font-bold flex items-center gap-1"
-                            >
-                              <Plus size={12} />
-                              <span>إضافة منتجات لهذا القسم</span>
-                            </button>
-                          </div>
-
-                          {sec.items.length === 0 ? (
-                            <div
-                              onClick={() => handleOpenPicker(sec.id)}
-                              className="py-4 px-3 border border-dashed border-slate-200 rounded-lg bg-white text-center cursor-pointer hover:border-teal-400 transition-colors text-[11px] text-slate-400"
-                            >
-                              + اضغط هنا لاختيار المنتجات التي ستظهر للعميل في هذا القسم
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {sec.items.map((item) => (
-                                <div
-                                  key={item.productId}
-                                  className="p-2 bg-white rounded-lg border border-slate-200 flex items-center justify-between gap-2"
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <div className="w-8 h-8 rounded bg-slate-100 border border-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
-                                      {item.imageUrl ? (
-                                        <img
-                                          src={item.imageUrl}
-                                          alt={item.name}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      ) : (
-                                        <ImageIcon size={14} className="text-slate-400" />
-                                      )}
-                                    </div>
-                                    <span className="text-xs font-bold text-slate-800 truncate">
-                                      {item.name}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <span className="text-[11px] text-slate-500 font-bold">
-                                      {item.price} ج.م
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handleRemoveProductFromSection(sec.id, item.productId)
-                                      }
-                                      className="text-slate-400 hover:text-red-500 p-1"
-                                    >
-                                      ✕
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <BundleGroupCard
+              bundleType={bundleType}
+              setBundleType={setBundleType}
+              bundleItems={bundleItems}
+              customSections={customSections}
+              originalTotalPrice={originalTotalPrice}
+              onOpenPicker={handleOpenPicker}
+              onUpdateItemQuantity={handleUpdateItemQuantity}
+              onRemoveBundleItem={handleRemoveBundleItem}
+              onAddCustomSection={handleAddCustomSection}
+              onUpdateSection={handleUpdateSection}
+              onRemoveCustomSection={handleRemoveCustomSection}
+              onRemoveProductFromSection={handleRemoveProductFromSection}
+            />
 
             {/* Extended Sections:
                 - المعلومات المتقدمة (العنوان الفرعي، العنوان الترويجي مع متغيرات الخصم)
@@ -1319,322 +940,47 @@ export default function AddBundleProductPage() {
           </div>
 
           {/* ─── Column 2: Sticky Live Preview (lg:col-span-4) ─── */}
-          <div className="lg:col-span-4 sticky top-20 space-y-4">
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                  <Eye size={15} className="text-teal-600" />
-                  <span>معاينة الباقة المباشرة</span>
-                </div>
-                <span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">
-                  {bundleType === 'fixed' ? 'باقة ثابتة' : 'باقة مخصصة'}
-                </span>
-              </div>
-
-              {/* Product Card */}
-              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
-                <div className="aspect-video bg-slate-100 relative overflow-hidden flex items-center justify-center">
-                  {imageUrl ? (
-                    <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="text-center p-4">
-                      <Package size={36} className="mx-auto text-slate-300 mb-1" />
-                      <span className="text-[11px] text-slate-400 block font-medium">
-                        صورة الباقة المجمّعة
-                      </span>
-                    </div>
-                  )}
-                  <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-teal-600 text-white text-[10px] font-black shadow-xs">
-                    باقة منتجات
-                  </span>
-                  {savingsPercent > 0 && (
-                    <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-black shadow-xs">
-                      خصم {savingsPercent}%
-                    </span>
-                  )}
-                </div>
-
-                <div className="p-4 space-y-3">
-                  <div>
-                    <h4 className="text-sm font-black text-slate-900 leading-snug">
-                      {name || 'اسم باقة المنتجات'}
-                    </h4>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      {category || 'باقات وعروض'} {brand ? `• ${brand}` : ''}
-                    </p>
-                  </div>
-
-                  {/* Pricing preview */}
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-black text-teal-600">
-                      {bundleNumericPrice > 0 ? `${bundleNumericPrice.toFixed(2)} ج.م` : '0.00 ج.م'}
-                    </span>
-                    {savingsAmount > 0 && (
-                      <span className="text-xs text-slate-400 line-through font-bold">
-                        {originalTotalPrice.toFixed(2)} ج.م
-                      </span>
-                    )}
-                  </div>
-
-                  {savingsAmount > 0 && (
-                    <div className="p-2 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-bold">
-                      🎉 وفر {savingsAmount.toFixed(2)} ج.م عند طلب هذه الباقة!
-                    </div>
-                  )}
-
-                  {/* Included items / Custom sections preview */}
-                  <div className="border-t border-slate-100 pt-2.5 space-y-2">
-                    {bundleType === 'fixed' ? (
-                      <>
-                        <span className="text-[11px] font-bold text-slate-700 block">
-                          القطع المشمولة في الباقة ({bundleItems.length}):
-                        </span>
-                        {bundleItems.length === 0 ? (
-                          <p className="text-[10px] text-slate-400 italic">
-                            لم يتم اختيار منتجات للباقة بعد
-                          </p>
-                        ) : (
-                          <div className="space-y-1 max-h-44 overflow-y-auto">
-                            {bundleItems.map((item) => (
-                              <div
-                                key={item.productId}
-                                className="flex items-center justify-between text-[11px] py-1 px-2 rounded bg-slate-50 text-slate-700"
-                              >
-                                <span className="truncate max-w-[180px]">
-                                  {item.quantity}x {item.name}
-                                </span>
-                                <span className="font-bold text-slate-500 shrink-0">
-                                  {(item.price * item.quantity).toFixed(2)} ج.م
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-[11px] font-bold text-slate-700 block">
-                          اختيارات العميل للباقة:
-                        </span>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {customSections.map((sec) => (
-                            <div key={sec.id} className="text-[11px] bg-slate-50 p-2 rounded-lg">
-                              <span className="font-bold text-slate-800 block mb-1">
-                                {sec.title}:
-                              </span>
-                              {sec.items.length === 0 ? (
-                                <span className="text-[10px] text-slate-400">
-                                  لا توجد خيارات في هذا القسم
-                                </span>
-                              ) : (
-                                <div className="flex flex-wrap gap-1">
-                                  {sec.items.map((item) => {
-                                    const isPicked =
-                                      selectedCustomOptions[sec.id] === item.productId ||
-                                      sec.items[0]?.productId === item.productId;
-                                    return (
-                                      <button
-                                        key={item.productId}
-                                        type="button"
-                                        onClick={() =>
-                                          setSelectedCustomOptions((prev) => ({
-                                            ...prev,
-                                            [sec.id]: item.productId,
-                                          }))
-                                        }
-                                        className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors ${
-                                          isPicked
-                                            ? 'bg-teal-600 text-white border-teal-600'
-                                            : 'bg-white text-slate-700 border-slate-200'
-                                        }`}
-                                      >
-                                        {item.name}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Button preview */}
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full py-2.5 bg-teal-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 opacity-90 cursor-default shadow-xs"
-                  >
-                    <ShoppingBag size={14} />
-                    <span>إضافة الباقة إلى السلة</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-3 bg-teal-50/60 rounded-xl border border-teal-100 text-[11px] text-teal-800 space-y-1">
-                <span className="font-bold block">💡 تعزيز المبيعات:</span>
-                <p className="leading-relaxed text-teal-700">
-                  الباقات المجمعة ترفع متوسط قيمة الطلب (AOV) بنسبة تصل إلى 35% خاصة عند تقديم خصم
-                  إجمالي مقارنة بالشراء الفردي.
-                </p>
-              </div>
-            </div>
-          </div>
+          <BundleLivePreview
+            bundleType={bundleType}
+            name={name}
+            category={category}
+            brand={brand}
+            imageUrl={imageUrl}
+            bundleNumericPrice={bundleNumericPrice}
+            originalTotalPrice={originalTotalPrice}
+            savingsAmount={savingsAmount}
+            savingsPercent={savingsPercent}
+            bundleItems={bundleItems}
+            customSections={customSections}
+            selectedCustomOptions={selectedCustomOptions}
+            setSelectedCustomOptions={setSelectedCustomOptions}
+          />
         </div>
       </main>
 
       {/* ─── Modal: Select Product From Store ─── */}
       {showProductPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-5 space-y-4 shadow-xl max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                <Package size={16} className="text-teal-600" />
-                <span>
-                  {targetSectionId === null
-                    ? 'اختر منتجاً لإضافته للباقة الثابتة'
-                    : 'اختر منتجاً لإضافته للقسم المخصص'}
-                </span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowProductPicker(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Search */}
-            <div className="relative">
-              <Search size={14} className="absolute right-3 top-3 text-slate-400" />
-              <input
-                type="text"
-                placeholder="ابحث باسم المنتج أو التصنيف..."
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                className="w-full pr-8 pl-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-              />
-            </div>
-
-            {/* Products List */}
-            <div className="flex-1 overflow-y-auto space-y-2 min-h-[220px]">
-              {loadingProducts ? (
-                <div className="text-center py-10">
-                  <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                  <span className="text-xs text-slate-400">جاري تحميل منتجات المتجر...</span>
-                </div>
-              ) : filteredShopProducts.length === 0 ? (
-                <div className="text-center py-10 text-slate-400 text-xs">
-                  لا توجد منتجات تطابق البحث
-                </div>
-              ) : (
-                filteredShopProducts.map((p) => {
-                  const alreadyInTarget =
-                    targetSectionId === null
-                      ? bundleItems.some((i) => i.productId === p.id)
-                      : customSections
-                          .find((s) => s.id === targetSectionId)
-                          ?.items.some((i) => i.productId === p.id);
-
-                  return (
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:border-teal-200 hover:bg-teal-50/30 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
-                          {p.imageUrl ? (
-                            <img
-                              src={p.imageUrl}
-                              alt={p.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <ImageIcon size={16} className="text-slate-400" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <h5 className="text-xs font-bold text-slate-900 truncate">{p.name}</h5>
-                          <p className="text-[10px] text-slate-400">
-                            {p.price} ج.م {p.category ? `• ${p.category}` : ''}
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => handleAddProductToTarget(p)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shrink-0 ${
-                          alreadyInTarget
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-teal-600 text-white hover:bg-teal-700'
-                        }`}
-                      >
-                        {alreadyInTarget ? (
-                          <>
-                            <Check size={13} />
-                            <span>مضاف</span>
-                          </>
-                        ) : (
-                          <>
-                            <Plus size={13} />
-                            <span>إضافة</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowProductPicker(false)}
-                className="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors"
-              >
-                إغلاق
-              </button>
-            </div>
-          </div>
-        </div>
+        <ProductPickerModal
+          targetSectionId={targetSectionId}
+          bundleItems={bundleItems}
+          customSections={customSections}
+          products={filteredShopProducts}
+          loadingProducts={loadingProducts}
+          search={productSearch}
+          onSearchChange={setProductSearch}
+          onAddProduct={handleAddProductToTarget}
+          onClose={() => setShowProductPicker(false)}
+        />
       )}
 
       {/* ─── Quick Add Category Modal ─── */}
       {showQuickCategoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl border border-slate-200 max-w-sm w-full p-5 space-y-4 shadow-xl">
-            <h3 className="text-sm font-black text-slate-900">إضافة تصنيف جديد سريع</h3>
-            <input
-              type="text"
-              placeholder="اسم التصنيف..."
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
-              autoFocus
-            />
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowQuickCategoryModal(false)}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
-              >
-                إلغاء
-              </button>
-              <button
-                type="button"
-                onClick={handleQuickAddCategory}
-                className="px-4 py-1.5 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-lg"
-              >
-                إضافة
-              </button>
-            </div>
-          </div>
-        </div>
+        <QuickCategoryModal
+          name={newCategoryName}
+          onNameChange={setNewCategoryName}
+          onCancel={() => setShowQuickCategoryModal(false)}
+          onConfirm={handleQuickAddCategory}
+        />
       )}
     </div>
   );
