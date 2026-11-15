@@ -74,7 +74,7 @@ func TestBuildWhereCategoryAndPrice(t *testing.T) {
 
 func TestOrderBySQL(t *testing.T) {
 	cases := map[string]string{
-		"price_asc": "ORDER BY p.price ASC",
+		"price_asc":  "ORDER BY p.price ASC",
 		"price_desc": "ORDER BY p.price DESC",
 		"name":       "ORDER BY p.name ASC",
 		"oldest":     "ORDER BY p.created_at ASC",
@@ -86,5 +86,26 @@ func TestOrderBySQL(t *testing.T) {
 		if !strings.Contains(got, expected) {
 			t.Fatalf("orderBySQL(%q) = %q, want to contain %q", input, got, expected)
 		}
+	}
+}
+
+// Market surface (AppActive) must exclude products of shops hidden from the
+// marketplace (public_disabled), while the merchant-site surface (Active,
+// "site") must NOT — a hidden merchant's published site keeps working.
+func TestBuildWhereMarketSurfaceExcludesHiddenShops(t *testing.T) {
+	marketOpts := listOptions{ShopID: "shop-1", AppActive: true}
+	where, _ := buildWhere(marketOpts)
+
+	if !strings.Contains(where, "public_disabled = false") {
+		t.Fatalf("market surface must filter public_disabled, got: %q", where)
+	}
+	if !strings.Contains(where, "s.is_active = true") || !strings.Contains(where, "s.status = 'APPROVED'") {
+		t.Fatalf("market surface must filter shop is_active+APPROVED, got: %q", where)
+	}
+
+	siteOpts := listOptions{ShopID: "shop-1", Active: true}
+	where, _ = buildWhere(siteOpts)
+	if strings.Contains(where, "public_disabled") {
+		t.Fatalf("site surface must NOT filter by shop visibility, got: %q", where)
 	}
 }

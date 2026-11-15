@@ -29,6 +29,7 @@ func (r *Repository) SearchProducts(ctx context.Context, query string, shopID *s
                 FROM products p
                 LEFT JOIN shops s ON p.shop_id = s.id
                 WHERE p.is_active = true AND p.app_active = true
+                  AND (s.id IS NULL OR (s.is_active = true AND s.public_disabled = false AND s.status = 'APPROVED'))
                   AND (to_tsvector('arabic', p.name || ' ' || COALESCE(p.description, '')) @@ plainto_tsquery('arabic', $1)
                         OR p.name ILIKE '%' || $1 || '%'
                         OR p.description ILIKE '%' || $1 || '%')
@@ -61,7 +62,12 @@ func (r *Repository) SearchProducts(ctx context.Context, query string, shopID *s
         }
 
         // Get total count
-        countQuery := "SELECT COUNT(*) FROM products p WHERE p.is_active = true AND p.app_active = true"
+        countQuery := `
+                SELECT COUNT(*) FROM products p
+                LEFT JOIN shops s ON p.shop_id = s.id
+                WHERE p.is_active = true AND p.app_active = true
+                  AND (s.id IS NULL OR (s.is_active = true AND s.public_disabled = false AND s.status = 'APPROVED'))
+        `
         countArgs := []interface{}{}
         countArgIndex := 1
 

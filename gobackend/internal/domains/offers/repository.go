@@ -41,6 +41,7 @@ func (r *Repository) FindActiveByID(ctx context.Context, id string) (*Offer, err
 		LEFT JOIN shops s ON s.id = o.shop_id
 		WHERE o.id = $1 AND o.is_active = true AND o.expires_at > NOW()
 		  AND (p.id IS NULL OR p.app_active = true)
+		  AND (s.id IS NULL OR (s.is_active = true AND s.public_disabled = false AND s.status = 'APPROVED'))
 		LIMIT 1
 	`
 	row := r.pool.QueryRow(ctx, query, id)
@@ -49,7 +50,8 @@ func (r *Repository) FindActiveByID(ctx context.Context, id string) (*Offer, err
 
 // ListActive returns active, non-expired offers filtered by optional shop/category/product.
 func (r *Repository) ListActive(ctx context.Context, shopID, shopCategory, productID string, limit, offset int) ([]Offer, error) {
-	filters := "o.is_active = true AND o.expires_at > NOW() AND (p.id IS NULL OR p.app_active = true)"
+	filters := "o.is_active = true AND o.expires_at > NOW() AND (p.id IS NULL OR p.app_active = true)" +
+		" AND (s.id IS NULL OR (s.is_active = true AND s.public_disabled = false AND s.status = 'APPROVED'))"
 	args := []any{limit, offset}
 	idx := 3
 	if shopID != "" {

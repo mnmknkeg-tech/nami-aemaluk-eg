@@ -94,6 +94,7 @@ func (r *Repository) ListPublic(ctx context.Context, limit, offset int) ([]Seaso
 		WHERE so.status = 'active'
 		  AND so.starts_at <= NOW()
 		  AND so.ends_at >= NOW()
+		  AND (s.id IS NULL OR (s.is_active = true AND s.public_disabled = false AND s.status = 'APPROVED'))
 		ORDER BY so.created_at DESC
 		LIMIT $1 OFFSET $2
 	`

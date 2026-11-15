@@ -24,6 +24,8 @@ func (r *Repository) GetPins(ctx context.Context, lat, lng *float64, radiusKm *f
 		SELECT id, slug, 'shop' as type, name, display_address, city, latitude, longitude
 		FROM shops
 		WHERE status = 'APPROVED'
+			AND is_active = true
+			AND public_disabled = false
 			AND latitude IS NOT NULL
 			AND longitude IS NOT NULL
 	`

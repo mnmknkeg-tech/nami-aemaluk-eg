@@ -71,6 +71,13 @@ func buildWhere(opts listOptions) (string, []any) {
 	}
 	if opts.AppActive {
 		clauses = append(clauses, "p.app_active = true")
+		// Market surface: skip products of shops hidden from the marketplace
+		// (public_disabled / deactivated / not approved) — same visibility
+		// contract as shops.ListPublic. The merchant-site surface ("site")
+		// reads is_active WITHOUT this clause, so a merchant's own published
+		// site keeps showing its products even when hidden from the market.
+		clauses = append(clauses,
+			"p.shop_id IN (SELECT s.id FROM shops s WHERE s.is_active = true AND s.public_disabled = false AND s.status = 'APPROVED')")
 	}
 
 	f := opts.Filter
