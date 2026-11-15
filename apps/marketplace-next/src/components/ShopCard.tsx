@@ -1,23 +1,20 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { MapPin, Store } from 'lucide-react';
 import type { Shop } from '@/lib/services';
 import { getActivityTheme } from '@/lib/activity-catalog';
 import { cn } from '@/lib/utils';
-import {
-  getMerchantExternalUrl,
-  MERCHANT_LINK_TARGET,
-  MERCHANT_LINK_REL,
-} from '@/market/lib/merchantUrl';
 
 export function ShopCard({ shop }: { shop: Shop }) {
   const coverImage = shop.coverImage || shop.banner || shop.logo || '/placeholder-shop.png';
   const theme = getActivityTheme(shop.activity || shop.category || '');
 
   return (
-    <a
-      href={getMerchantExternalUrl(shop.slug)}
-      target={MERCHANT_LINK_TARGET}
-      rel={MERCHANT_LINK_REL}
+    // كروت المتاجر دايمًا داخل التطبيق — الثيم الموحد بتاع «من مكانك». الموقع
+    // الأصلي المنشور بيتفتح من زر «الموقع الرسمي» جوه صفحة المتجر، أو من
+    // الخريطة لو التاجر منشور — مش من الكروت.
+    <Link
+      href={`/shop/${shop.slug}`}
       className="card-contain group block bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-200/70 dark:border-slate-800 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
     >
       {/* Cover with gradient fallback + theme ribbon */}
@@ -114,6 +111,6 @@ export function ShopCard({ shop }: { shop: Shop }) {
           </div>
         )}
       </div>
-    </a>
+    </Link>
   );
 }

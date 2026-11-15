@@ -24,6 +24,10 @@ interface MapPinItem {
   city?: string;
   latitude: number;
   longitude: number;
+  /** التاجر نشر موقعه فعلًا؟ (builder_published) — بنحتاجها عشان الضغطة على
+   *  الـ pin تفتح الموقع الأصلي المنشور فقط، ومتاجر من غير موقع تفضل جوه
+   *  التطبيق بالثيم الموحد بدل ما تفتح صفحة 404 في تاب جديد. */
+  websitePublished?: boolean;
 }
 
 interface Coords {
@@ -201,14 +205,15 @@ export default function MapPage() {
 
       marker.on('click', () => {
         if (isShop && p.slug) {
-          // Merchant sites are decoupled from the marketplace app: open the
-          // merchant's standalone URL in a new tab. The customer sees the
-          // merchant's own site (own domain/subdomain, own header/footer,
-          // no marketplace chrome) and the marketplace SPA history stays
-          // clean. The merchant's site is reachable from three independent
-          // paths: their own URL (they market independently), the map here
-          // (we market the map), and the directory cards.
-          window.open(getMerchantExternalUrl(p.slug), '_blank', MERCHANT_LINK_REL);
+          if (p.websitePublished) {
+            // التاجر المنشور: الخريطة هي مدخل موقعه الأصلي — تاب منفصل بموقعه
+            // الخاص (من دون كروم الماركت)، وتاريخ تنقل الماركت مافيهاش لخبطة.
+            window.open(getMerchantExternalUrl(p.slug), '_blank', MERCHANT_LINK_REL);
+          } else {
+            // متجر من غير موقع منشور: يفضل جوه التطبيق بالثيم الموحد —
+            // فتح /site/slug هنا كان هيطلع 404 في تاب جديد.
+            router.push(`/shop/${p.slug}`);
+          }
         } else if (!isShop && p.id) {
           router.push(`/map/listing/${p.id}`);
         }

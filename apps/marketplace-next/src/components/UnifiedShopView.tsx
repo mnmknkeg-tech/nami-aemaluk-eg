@@ -16,6 +16,11 @@ import {
 import type { Shop, Product } from '@/lib/services';
 import { ShopProducts } from '@/components/ShopProducts';
 import { ShopCard } from '@/components/ShopCard';
+import {
+  getMerchantExternalUrl,
+  MERCHANT_LINK_TARGET,
+  MERCHANT_LINK_REL,
+} from '@/market/lib/merchantUrl';
 import ShareButton from '@/components/ShareButton';
 import { FollowButton } from '@/components/FollowButton';
 import { ReviewsSection } from '@/components/ReviewsSection';
@@ -25,7 +30,8 @@ import { ReviewsSection } from '@/components/ReviewsSection';
  *
  * كل المتاجر جوّه التطبيق بتظهر بنفس الهوية: خلفية كريمي دافئة، كروت بيضاء
  * مدوّرة، أزرار برتقالية — بعيد تمامًا عن ثيم موقع التاجر الأصلي (الشكل
- * الأصلي لسه متاح عبر /shop/[slug]?view=site وده اللي الخريطة بتفتحه).
+ * الأصلي بيتفتح من نطاق التاجر المنفصل: زر «الموقع الرسمي» هنا أو pin
+ * الخريطة للتاجر المنشور).
  *
  * محتوى التاجر (البنر، اللوجو، المنتجات) بيفضل بتاعه — لكن الإطار والألوان
  * كلها بتاعة التطبيق عشان هوية واحدة وثيم واحد.
@@ -40,7 +46,12 @@ interface UnifiedShopViewProps {
   suggestions?: Shop[];
 }
 
-export function UnifiedShopView({ shop, products, hasOfficialSite, suggestions }: UnifiedShopViewProps) {
+export function UnifiedShopView({
+  shop,
+  products,
+  hasOfficialSite,
+  suggestions,
+}: UnifiedShopViewProps) {
   const router = useRouter();
 
   const design = (shop.pageDesign || {}) as Record<string, any>;
@@ -226,15 +237,18 @@ export function UnifiedShopView({ shop, products, hasOfficialSite, suggestions }
               className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-brand-orange-soft flex items-center justify-center transition-colors"
               iconClassName="w-5 h-5 text-slate-700"
             />
-            {/* الشكل الأصلي لموقع التاجر — متاح دايمًا لما يكون عنده موقع منشور */}
+            {/* الشكل الأصلي لموقع التاجر — يفتح موقعه المنفصل في تاب جديد
+                (نفس سياسة الخريطة)، مش نسخة مدمجة جوه نطاق الماركت */}
             {hasOfficialSite && (
-              <Link
-                href={`/shop/${shop.slug}?view=site`}
+              <a
+                href={getMerchantExternalUrl(shop.slug)}
+                target={MERCHANT_LINK_TARGET}
+                rel={MERCHANT_LINK_REL}
                 className="inline-flex items-center gap-1.5 h-11 px-4 rounded-xl border-2 border-brand-orange/30 text-brand-orange-dark text-xs font-black hover:bg-brand-orange-soft transition-colors"
               >
                 <Globe className="w-4 h-4" />
                 الموقع الرسمي
-              </Link>
+              </a>
             )}
           </div>
         </section>
@@ -292,7 +306,10 @@ export function UnifiedShopView({ shop, products, hasOfficialSite, suggestions }
                 </span>
                 متاجر تانية ممكن تعجبك
               </h3>
-              <Link href="/dalil" className="text-xs font-black text-brand-orange-dark hover:underline">
+              <Link
+                href="/dalil"
+                className="text-xs font-black text-brand-orange-dark hover:underline"
+              >
                 كل المتاجر
               </Link>
             </div>

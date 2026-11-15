@@ -1,18 +1,19 @@
 import { siteConfig } from '@/lib/config';
 
 /**
- * The external URL where a merchant's storefront lives — separate from the
- * marketplace app's chrome.
+ * The external URL where a merchant's PUBLISHED storefront lives — separate
+ * from the marketplace app's chrome.
  *
- * Marketplace pages (the directory /dalil, the map /map, merchant cards,
- * etc.) link to this URL (in a new tab) so a customer clicking a merchant
- * sees that merchant's standalone site, NOT an in-app SPA navigation to
- * `/shop/{slug}`. Three independent access paths to a merchant site:
+ * Navigation policy (corrected after the merchant feedback «كلو بيوديني للينك
+ * بتاع الموقع المنفصل»): inside the marketplace app the customer ALWAYS
+ * navigates in-app to the unified shop view (/shop/[slug], ثيم موحد). The
+ * standalone site link is used only by the two deliberate entry points:
  *
  *   1. The merchant's own URL (they market it independently — away from us)
- *   2. From the marketplace map (we market the map; markers open the site
- *      in a new tab)
- *   3. From the marketplace directory/cards (same — new tab to the site)
+ *   2. Map markers — and ONLY for shops that actually published a website
+ *      (websitePublished flag from /map/pins). Shops without a site stay
+ *      in-app; opening /site/{slug} for them was a 404 in a new tab.
+ *   3. The unified shop page's «الموقع الرسمي» button (hasOfficialSite).
  *
  * The marketplace stays at its own root domain; merchant sites live at
  * their own URLs. The two are decoupled at the navigation layer even

@@ -21,7 +21,8 @@ func NewRepository(pool *db.Pool) *Repository {
 // GetPins retrieves map pins, optionally filtered by lat/lng/radius
 func (r *Repository) GetPins(ctx context.Context, lat, lng *float64, radiusKm *float64) ([]MapPin, error) {
 	query := `
-		SELECT id, slug, 'shop' as type, name, display_address, city, latitude, longitude
+		SELECT id, slug, 'shop' as type, name, display_address, city, latitude, longitude,
+		       (builder_published_config IS NOT NULL AND builder_published_at IS NOT NULL) AS website_published
 		FROM shops
 		WHERE status = 'APPROVED'
 			AND is_active = true
@@ -51,7 +52,7 @@ func (r *Repository) GetPins(ctx context.Context, lat, lng *float64, radiusKm *f
 	for rows.Next() {
 		var pin MapPin
 		var addrLabel *string
-		if err := rows.Scan(&pin.ID, &pin.Slug, &pin.Type, &pin.Title, &addrLabel, &pin.City, &pin.Latitude, &pin.Longitude); err != nil {
+		if err := rows.Scan(&pin.ID, &pin.Slug, &pin.Type, &pin.Title, &addrLabel, &pin.City, &pin.Latitude, &pin.Longitude, &pin.WebsitePublished); err != nil {
 			continue
 		}
 		if addrLabel != nil {

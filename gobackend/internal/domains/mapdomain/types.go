@@ -10,6 +10,11 @@ type MapPin struct {
 	City         string   `json:"city,omitempty"`
 	Latitude     *float64 `json:"latitude"`
 	Longitude    *float64 `json:"longitude"`
+	// WebsitePublished is true only when the shop actually published its
+	// builder website. The map uses it to decide the marker action: a
+	// published shop opens its standalone site in a new tab; anything else
+	// stays inside the marketplace app (unified shop view).
+	WebsitePublished bool `json:"websitePublished,omitempty"`
 }
 
 // MapPinsResponse represents a map pins response
