@@ -178,13 +178,11 @@ export default function SalesQuotesPage() {
 
   const bulkSend = useCallback(() => {
     // Implement bulk send logic
-    console.log('Sending quotes:', Array.from(selectedIds));
     setSelectedIds(new Set());
   }, [selectedIds]);
 
   const bulkDelete = useCallback(() => {
     // Implement bulk delete logic
-    console.log('Deleting quotes:', Array.from(selectedIds));
     setQuotes((prev) => prev.filter((q) => !selectedIds.has(q.id)));
     setSelectedIds(new Set());
   }, [selectedIds]);
@@ -263,7 +261,7 @@ export default function SalesQuotesPage() {
           </div>
           <div className="text-right">
             <div className="flex items-center gap-2">
-                            <PageBack fallback="/dashboard/sales" title="رجوع إلى المبيعات" />
+              <PageBack fallback="/dashboard/sales" title="رجوع إلى المبيعات" />
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">عروض الأسعار</h1>
               <button
                 onClick={() => setGuideOpen(true)}

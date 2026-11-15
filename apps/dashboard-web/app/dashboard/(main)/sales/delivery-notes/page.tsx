@@ -51,7 +51,7 @@ export default function DeliveryNotesPage() {
   );
 
   const printNote = (o: OrderRow) => {
-    const win = window.open('', '_blank', 'width=800,height=600');
+    const win = window.open('', '_blank', 'noopener,noreferrer,width=800,height=600');
     if (!win) return;
     win.document.write(`
       <html dir="rtl"><head><title>إذن صرف - ${String(o.id).slice(0, 8)}</title>

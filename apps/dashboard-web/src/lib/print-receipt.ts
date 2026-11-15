@@ -3,7 +3,7 @@
 /**
  * Popup-blocker-proof receipt printing.
  *
- * window.open('', '_blank') gets blocked by browsers («المتصفح منعو») — instead
+ * window.open('', '_blank', 'noopener,noreferrer') gets blocked by browsers («المتصفح منعو») — instead
  * we mount a hidden <iframe>, write the receipt HTML into it, and call print()
  * on its contentWindow. Same-document printing is never popup-blocked.
  */

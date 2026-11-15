@@ -987,7 +987,13 @@ function ShopsContent() {
                 <div className="text-slate-900 font-black">إجراءات سريعة</div>
                 <div className="mt-4 space-y-3">
                   <button
-                    onClick={() => window.open(`/shop/${selected?.slug || selected?.id}`, '_blank')}
+                    onClick={() =>
+                      window.open(
+                        `/shop/${selected?.slug || selected?.id}`,
+                        '_blank',
+                        'noopener,noreferrer'
+                      )
+                    }
                     className="w-full px-4 py-3 rounded-2xl bg-white border border-slate-200 text-slate-800 font-black text-sm flex items-center justify-center gap-2 hover:bg-slate-100"
                   >
                     <ExternalLink size={16} /> فتح صفحة المتجر

@@ -340,7 +340,7 @@ export default function SalesLoyaltyCardPage() {
         </div>
         <div className="text-right flex-1">
           <div className="flex items-center gap-2">
-                        <PageBack fallback="/dashboard/sales" title="رجوع إلى المبيعات" />
+            <PageBack fallback="/dashboard/sales" title="رجوع إلى المبيعات" />
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">بطاقة الولاء</h1>
             <button
               onClick={() => setGuideOpen(true)}
@@ -903,7 +903,6 @@ export default function SalesLoyaltyCardPage() {
               </div>
               <button
                 onClick={() => {
-                  console.log('Adding stamps:', addStampCard, addStampCount);
                   setAddStampModal(false);
                 }}
                 className="w-full py-2.5 rounded-xl bg-[#00E5FF] text-slate-900 font-bold text-sm hover:bg-[#00B8CC] transition-all"

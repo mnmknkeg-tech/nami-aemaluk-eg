@@ -168,14 +168,12 @@ export default function SalesSubscriptionsPage() {
   const bulkPause = useCallback(async () => {
     if (selectedIds.size === 0) return;
     // TODO: Implement bulk pause API call
-    console.log('Pausing subscriptions:', Array.from(selectedIds));
     setSelectedIds(new Set());
   }, [selectedIds]);
 
   const bulkCancel = useCallback(async () => {
     if (selectedIds.size === 0) return;
     // TODO: Implement bulk cancel API call
-    console.log('Cancelling subscriptions:', Array.from(selectedIds));
     setSelectedIds(new Set());
   }, [selectedIds]);
 

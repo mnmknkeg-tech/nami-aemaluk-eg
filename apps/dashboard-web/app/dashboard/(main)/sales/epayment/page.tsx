@@ -168,13 +168,11 @@ function SalesEpaymentContent() {
   };
 
   const bulkEnable = () => {
-    console.log('Enabling gateways:', selectedIds);
     // TODO: Implement bulk enable API call
     setSelectedIds([]);
   };
 
   const bulkDisable = () => {
-    console.log('Disabling gateways:', selectedIds);
     // TODO: Implement bulk disable API call
     setSelectedIds([]);
   };
@@ -198,7 +196,6 @@ function SalesEpaymentContent() {
   };
 
   const testConnection = () => {
-    console.log('Testing connection...');
     // TODO: Implement connection test
   };
 

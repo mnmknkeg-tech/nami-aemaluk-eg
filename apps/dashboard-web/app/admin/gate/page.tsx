@@ -329,7 +329,7 @@ export default function AdminGatePage() {
       if (data?.access_token) {
         localStorage.setItem('portal_token', data.access_token);
         localStorage.setItem('portal_owner', JSON.stringify(data.owner));
-        window.open('/portal', '_blank');
+        window.open('/portal', '_blank', 'noopener,noreferrer');
       }
     } catch (err: any) {
       setError(err?.message || 'فشل دخول البورتال');
