@@ -14,7 +14,7 @@ const ROOT_DOMAINS = new Set(
 export default function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   const host = (request.headers.get('host') || '').toLowerCase().replace(/:\d+$/, '');
-  const rootDomain = [...ROOT_DOMAINS].find((domain) => host.endsWith(\`.\${domain}\`));
+  const rootDomain = [...ROOT_DOMAINS].find((domain) => host.endsWith('.' + domain));
 
   // Root domains are not merchant tenants. Custom domains require an explicit
   // verified domain-to-shop resolver and are intentionally not guessed here.
@@ -28,18 +28,18 @@ export default function middleware(request: NextRequest) {
   // Compatibility with the old /site/:slug URLs emitted by the shared
   // published-site renderer. Only rewrite when the URL slug matches the
   // tenant resolved from the platform subdomain.
-  const legacySitePath = url.pathname.match(/^\\/site\\/([^/]+)(.*)$/);
+  const legacySitePath = url.pathname.match(/^\/site\/([^/]+)(.*)$/);
   if (legacySitePath) {
     if (legacySitePath[1] !== tenantSlug) return NextResponse.next();
-    url.pathname = \`/\${tenantSlug}\${legacySitePath[2] || ''}\`;
+    url.pathname = '/' + tenantSlug + (legacySitePath[2] || '');
     return NextResponse.rewrite(url);
   }
 
-  // Prevent accidental double-prefixing when a tenant slug is already present.
-  if (url.pathname === \`/\${tenantSlug}\` || url.pathname.startsWith(\`/\${tenantSlug}/\`)) {
+  // Prevent accidental double-prefixing when the tenant slug is already present.
+  if (url.pathname === '/' + tenantSlug || url.pathname.startsWith('/' + tenantSlug + '/')) {
     return NextResponse.next();
   }
 
-  url.pathname = \`/\${tenantSlug}\${url.pathname === '/' ? '' : url.pathname}\`;
+  url.pathname = '/' + tenantSlug + (url.pathname === '/' ? '' : url.pathname);
   return NextResponse.rewrite(url);
 }
