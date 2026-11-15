@@ -1,0 +1,1 @@
+export { default } from '../../../../../marketplace-next/app/track/[id]/page';

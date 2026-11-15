@@ -129,6 +129,30 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 	// order.
 	trustedActor := strings.EqualFold(actorRole, "MERCHANT") || strings.EqualFold(actorRole, "ADMIN")
 
+	// sales_channel identifies the customer-facing channel independently from
+	// the legacy source field. It is attribution only; authorization, product
+	// ownership, prices, and stock are still validated by the service.
+	salesChannel := "marketplace"
+	if source == "pos" {
+		salesChannel = "pos"
+	} else if source == "website" || source == "guest" {
+		salesChannel = "website"
+	}
+	if req.SalesChannel != nil {
+		requestedChannel := strings.ToLower(strings.TrimSpace(*req.SalesChannel))
+		switch requestedChannel {
+		case "marketplace", "website":
+			salesChannel = requestedChannel
+		case "pos":
+			if !trustedActor || source != "pos" {
+				return nil, errors.Forbidden("sales_channel_forbidden", "قناة نقاط البيع متاحة للمستخدمين المصرح لهم فقط")
+			}
+			salesChannel = "pos"
+		default:
+			return nil, errors.Validation("sales_channel_invalid", "قناة البيع غير صحيحة")
+		}
+	}
+
 	paymentMethod, err := normalizePaymentMethod(req.PaymentMethod, allowGuest)
 	if err != nil {
 		return nil, err
@@ -153,6 +177,7 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 		UserID:                userID,
 		ShopID:                shopID,
 		Source:                source,
+		SalesChannel:          salesChannel,
 		PaymentMethod:         paymentMethod,
 		Notes:                 req.Notes,
 		CustomerName:          resolvedCustomerName,

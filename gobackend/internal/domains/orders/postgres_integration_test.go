@@ -48,9 +48,8 @@ func TestPostgresOrderIntegration(t *testing.T) {
         var dirty bool
         require.NoError(t, pool.QueryRow(ctx, "SELECT version, dirty FROM schema_migrations LIMIT 1").
                 Scan(&migrationVersion, &dirty))
-        // 000092_restaurant_items_no_stock_track — keep in sync with the
-        // newest migration directory entry.
-        require.EqualValues(t, 92, migrationVersion)
+        // 000093_orders_sales_channel — keep in sync with the newest migration.
+        require.EqualValues(t, 93, migrationVersion)
         require.False(t, dirty)
         t.Logf("isolated PostgreSQL schema migrated to version %d", migrationVersion)
 
@@ -75,6 +74,7 @@ func TestPostgresOrderIntegration(t *testing.T) {
         require.Equal(t, 250.0, created.Total, "server should calculate the total from the product price")
         require.Empty(t, created.UserID)
         require.Equal(t, "guest", created.Source)
+        require.Equal(t, "website", created.SalesChannel)
         require.Len(t, created.Items, 1)
 
         retrieved, err := repo.FindByID(ctx, created.ID)

@@ -6,7 +6,6 @@ import { notFound } from 'next/navigation';
 import { Star, Store, Tag, ArrowLeft, MessageCircle, Phone, CheckCircle, Ban } from 'lucide-react';
 import { productStockState } from '@/lib/stock';
 import { getProductById, getProducts, getShops, type Shop } from '@/lib/services';
-import { getMerchantSitePath } from '@/market/lib/merchantUrl';
 import { formatPrice, truncate } from '@/lib/utils';
 import { siteConfig } from '@/lib/config';
 import ShareButton from '@/components/ShareButton';
@@ -25,9 +24,7 @@ import { serializeJsonLd } from '@/lib/jsonld';
 // (مثلاً: التاجر خفى السعر والصفحة لسه بتوري السعر والسلة).
 export const dynamic = 'force-dynamic';
 
-/** رابط المتجر في صفحات الماركت: التاجر المنشور → موقعه المنفصل بنفس التاب
- *  (سلة وcheckout مستقلين على /site/:slug)، وغير المنشور → الثيم الموحد
- *  جوه التطبيق. التنقل العادي عمره ما يفتح تاب خارجي. */
+/** Marketplace product pages always link to the unified marketplace shop page. */
 function ShopLink({
   shop,
   className,
@@ -37,10 +34,8 @@ function ShopLink({
   className?: string;
   children: ReactNode;
 }) {
-  const href =
-    shop.websitePublished === true ? getMerchantSitePath(shop.slug) : `/shop/${shop.slug}`;
   return (
-    <Link href={href} className={className}>
+    <Link href={`/shop/${shop.slug}`} className={className}>
       {children}
     </Link>
   );

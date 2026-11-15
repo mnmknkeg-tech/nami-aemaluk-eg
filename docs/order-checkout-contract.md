@@ -35,3 +35,13 @@ for direct retries and its offline queue; the cashier syncer uses the local orde
 The key is optional for older clients. Therefore duplicate prevention is guaranteed only
 for clients that send a stable key. The unique database index and request hash are added
 by migration `000087_guest_orders_idempotency`.
+
+## Sales channel attribution
+
+Orders now carry `salesChannel` independently from the legacy `source` field:
+
+- `marketplace`: customer checkout from the Menmakank marketplace.
+- `website`: checkout from a merchant's published website.
+- `pos`: checkout created by an authorized merchant/admin POS flow.
+
+The Go service validates the channel value and only accepts `pos` for trusted POS actors. This field is attribution metadata; it does not replace server-side shop ownership, product ownership, price, inventory, or payment validation. Existing `source` values remain for backward compatibility.

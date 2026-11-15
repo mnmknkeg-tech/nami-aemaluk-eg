@@ -4,22 +4,16 @@ import { MapPin, Store } from 'lucide-react';
 import type { Shop } from '@/lib/services';
 import { getActivityTheme } from '@/lib/activity-catalog';
 import { cn } from '@/lib/utils';
-import { getMerchantSitePath } from '@/market/lib/merchantUrl';
 
 export function ShopCard({ shop }: { shop: Shop }) {
   const coverImage = shop.coverImage || shop.banner || shop.logo || '/placeholder-shop.png';
   const theme = getActivityTheme(shop.activity || shop.category || '');
 
-  // قرار الفصل: التاجر اللي نشر موقعه من منشئ الصفحات — الدخول على متجره من
-  // أي مكان في التطبيق (الدليل، الرئيسية، المقترحات) يفتح موقعه المنفصل
-  // (قالبه + سلته + checkout الخاص بيه) بنفس التاب جوه التطبيق — تنقل عادي
-  // وزر الرجوع بيرجّع للماركت، من غير تاب خارجي ولا خروج من نافذة التطبيق.
-  // التاجر غير المنشور يفضل بالثيم الموحد.
-  const opensStandaloneSite = shop.websitePublished === true;
-
+  // Marketplace always opens the merchant's unified marketplace profile.
+  // Publishing the merchant website only enables the explicit official-site link.
   return (
     <Link
-      href={opensStandaloneSite ? getMerchantSitePath(shop.slug) : `/shop/${shop.slug}`}
+      href={`/shop/${shop.slug}`}
       className="card-contain group block bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-200/70 dark:border-slate-800 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
     >
       {/* Cover with gradient fallback + theme ribbon */}

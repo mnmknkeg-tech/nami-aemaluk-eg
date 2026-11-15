@@ -53,6 +53,7 @@ type Order struct {
 	CodCollectedAt        *time.Time  `json:"codCollectedAt,omitempty"`
 	DeliveredAt           *time.Time  `json:"deliveredAt,omitempty"`
 	Source                string      `json:"source"`
+	SalesChannel          string      `json:"salesChannel"`
 	Items                 []OrderItem `json:"items"`
 	CreatedAt             time.Time   `json:"createdAt"`
 	UpdatedAt             time.Time   `json:"updatedAt"`
@@ -144,6 +145,7 @@ type CreateOrderRequest struct {
 	DeliveryNote          *string           `json:"deliveryNote,omitempty"`
 	CustomerNote          *string           `json:"customerNote,omitempty"`
 	Source                *string           `json:"source,omitempty"`
+	SalesChannel          *string           `json:"salesChannel,omitempty"`
 	Status                *string           `json:"status,omitempty"`
 	// PosShiftID links this order to a POS shift. Sent by the cashier desktop
 	// syncer so refreshMetrics can use a direct join instead of time-window.

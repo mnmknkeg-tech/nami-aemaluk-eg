@@ -6,7 +6,6 @@ import { MapPin, Phone, Star, Store, MessageCircle, ArrowLeft } from 'lucide-rea
 import {
   getShopBySlug,
   getPublishedWebsiteBySlug,
-  getPublicBuilderConfig,
   getProducts,
   getShops,
   type Shop,
@@ -16,7 +15,6 @@ import ShareButton from '@/components/ShareButton';
 import { FollowButton } from '@/components/FollowButton';
 import { ReviewsSection } from '@/components/ReviewsSection';
 import { siteConfig } from '@/lib/config';
-import ShopRenderer from '@/merchant-site/components/ShopRenderer';
 import { UnifiedShopView } from '@/components/UnifiedShopView';
 import { serializeJsonLd } from '@/lib/jsonld';
 
@@ -34,7 +32,6 @@ export async function generateStaticParams() {
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ view?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -68,14 +65,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ShopPage({ params, searchParams }: Props) {
+export default async function ShopPage({ params }: Props) {
   const { slug } = await params;
-  const { view } = await searchParams;
   const shop = await getShopBySlug(slug, true);
   if (!shop) notFound();
 
   const publishedWebsite = await getPublishedWebsiteBySlug(slug);
-  const publishedConfig = getPublicBuilderConfig(publishedWebsite);
 
   // Only products the merchant kept VISIBLE from the dashboard products page
   // appear on the storefront (same rule as published /site/ pages).
@@ -156,31 +151,14 @@ export default async function ShopPage({ params, searchParams }: Props) {
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbLd) }}
       />
 
-      {/* جوّه التطبيق الدخول على تاجر نشر موقعه بيفتح موقعه المنفصل
-          /site/:slug بنفس التاب (قالبه وسلته وcheckout الخاص بيه) من كل
-          روابط التطبيق (الكروت، البحث، الخريطة، صفحة المنتج) — من غير تاب
-          خارجي. الثيم الموحد هنا لغير المنشور وللروابط المباشرة، و
-          ?view=site مسار احتياطي مباشر لقالب التاجر المدمج. */}
-      {view === 'site' ? (
-        publishedConfig ? (
-          <ShopRenderer shop={{ ...shop, builderConfig: publishedConfig }} products={products} />
-        ) : (
-          <LegacyShopLayout
-            shop={shop}
-            products={products}
-            design={design}
-            primaryColor={primaryColor}
-            bgColor={bgColor}
-          />
-        )
-      ) : (
-        <UnifiedShopView
-          shop={shop}
-          products={products}
-          hasOfficialSite={Boolean(publishedConfig)}
-          suggestions={suggestions}
-        />
-      )}
+      {/* Marketplace owns this page and always renders its unified theme.
+          Publishing a merchant website only enables the explicit official-site link. */}
+      <UnifiedShopView
+        shop={shop}
+        products={products}
+        hasOfficialSite={Boolean(publishedWebsite?.published)}
+        suggestions={suggestions}
+      />
     </>
   );
 }

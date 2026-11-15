@@ -16,11 +16,11 @@ func TestOrderInsertColumnsAndArgumentsMatch(t *testing.T) {
 		t.Fatal("order insert has no ON CONFLICT clause")
 	}
 	values := insertOrderQuery[valuesStart : valuesStart+valuesEnd]
-	if countSQLExpressions(values) != 25 {
-		t.Fatalf("order insert has %d values, want 25", countSQLExpressions(values))
+	if countSQLExpressions(values) != 26 {
+		t.Fatalf("order insert has %d values, want 26", countSQLExpressions(values))
 	}
 
-	id, source, shiftID, key, requestHash := "user-1", "website", "shift-1", "request-1", "hash-1"
+	id, source, salesChannel, shiftID, key, requestHash := "user-1", "website", "website", "shift-1", "request-1", "hash-1"
 	order := &Order{
 		Total:          100,
 		Discount:       5,
@@ -28,17 +28,18 @@ func TestOrderInsertColumnsAndArgumentsMatch(t *testing.T) {
 		UserID:         id,
 		ShopID:         "shop-1",
 		Source:         source,
+		SalesChannel:   salesChannel,
 		PosShiftID:     &shiftID,
 		IdempotencyKey: &key,
 		RequestHash:    &requestHash,
 	}
 	args := orderInsertArgs(order)
-	if len(args) != 20 {
-		t.Fatalf("order insert has %d arguments, want 20", len(args))
+	if len(args) != 21 {
+		t.Fatalf("order insert has %d arguments, want 21", len(args))
 	}
 	if args[13] != id || args[14] != order.ShopID || args[15] != source ||
-		args[16] != &shiftID || args[17] != &key || args[18] != &requestHash {
-		t.Fatal("order insert arguments do not match user, shop, source, shift, and idempotency columns")
+		args[16] != salesChannel || args[17] != &shiftID || args[18] != &key || args[19] != &requestHash {
+		t.Fatal("order insert arguments do not match user, shop, source, sales channel, shift, and idempotency columns")
 	}
 	if !strings.Contains(insertOrderQuery, "NULLIF($14, '')") {
 		t.Fatal("guest orders must store an empty user id as SQL NULL")

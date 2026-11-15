@@ -32,9 +32,8 @@ export interface Shop {
   productCount?: number;
   pageDesign?: Record<string, any>;
   builderConfig?: Record<string, any>;
-  /** هل التاجر نشر موقعه من منشئ الصفحات؟ (builder_published_config + builder_published_at)
-   *  كروت المتاجر والبحث وصفحة المنتج بتفتح موقعه المنفصل (سلة وcheckout مستقلين)
-   *  بدل الثيم الموحد بتاع الماركت — قرار فصل موقع التاجر عن الماركت. */
+  /** هل التاجر لديه موقع منشور؟ يُستخدم فقط لإظهار رابط «الموقع الرسمي»
+   *  في صفحة المتجر الموحدة؛ لا يغيّر تنقل Marketplace أو الثيم المعروض. */
   websitePublished?: boolean;
   /** إعدادات المتجر — منها layoutConfig.commerce اللي بتحدد طريقة البيع (سعر/سلة/حجز) */
   layoutConfig?: Record<string, any>;

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search, X, Store, Package } from 'lucide-react';
 import { api } from '@/lib/api';
-import { getMerchantSitePath } from '@/market/lib/merchantUrl';
 
 interface SearchResult {
   type: 'shop' | 'product';
@@ -14,8 +13,6 @@ interface SearchResult {
   slug?: string;
   image?: string;
   subtitle?: string;
-  /** التاجر المنشور بيفتح موقعه المنفصل (سلة مستقلة) بدل الثيم الموحد للماركت. */
-  websitePublished?: boolean;
 }
 
 interface SearchBarProps {
@@ -68,7 +65,6 @@ export function SearchBar({ fullWidth = false }: SearchBarProps = {}) {
           slug: s.slug,
           image: s.logo,
           subtitle: s.city || s.activity,
-          websitePublished: s.websitePublished === true,
         }));
         const productResults: SearchResult[] = productsList.map((p: any) => ({
           type: 'product' as const,
@@ -92,14 +88,9 @@ export function SearchBar({ fullWidth = false }: SearchBarProps = {}) {
     setQuery('');
     setResults([]);
     if (result.type === 'shop' && result.slug) {
-      // التاجر المنشور → موقعه المنفصل بنفس التاب جوه التطبيق (قالبه وسلته
-      // وcheckout بتوعه — مالهمش دعوة بالماركت، ومن غير تاب خارجي).
-      // غير المنشور → الثيم الموحد جوه التطبيق.
-      if (result.websitePublished) {
-        router.push(getMerchantSitePath(result.slug));
-      } else {
-        router.push(`/shop/${result.slug}`);
-      }
+      // Marketplace shop discovery always stays inside the unified marketplace experience.
+      // The merchant's published website is available only through its explicit official-site link.
+      router.push(`/shop/${result.slug}`);
     } else if (result.type === 'product') {
       router.push(`/product/${result.id}`);
     }
