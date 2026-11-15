@@ -376,7 +376,7 @@ importers:
   apps/merchant-storefront:
     dependencies:
       '@ray-eg/shared':
-        specifier: workspace:1.0.0
+        specifier: 1.0.0
         version: link:../../packages/shared
       '@tailwindcss/vite':
         specifier: ^4.1.18
