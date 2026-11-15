@@ -329,7 +329,7 @@ func (r *Repository) CreateOrder(ctx context.Context, order *Order, couponID str
 		&order.Notes, &order.CustomerPhone, &order.DeliveryAddressManual, &order.DeliveryLat,
 		&order.DeliveryLng, &order.DeliveryNote, &order.CustomerNote, &createdUserID, &order.ShopID,
 		&createdCustomerID, &order.CourierID, &order.HandedToCourierAt, &order.CodCollectedAt, &order.DeliveredAt,
-		&order.Source, &order.CreatedAt, &order.UpdatedAt, &createdCustomerName,
+		&order.Source, &order.SalesChannel, &order.CreatedAt, &order.UpdatedAt, &createdCustomerName,
 	)
 	if err == pgx.ErrNoRows && order.IdempotencyKey != nil && order.RequestHash != nil {
 		var existingID, existingHash string
