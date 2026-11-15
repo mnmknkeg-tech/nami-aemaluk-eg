@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search, X, Store, Package } from 'lucide-react';
 import { api } from '@/lib/api';
+import { getMerchantExternalUrl } from '@/market/lib/merchantUrl';
 
 interface SearchResult {
   type: 'shop' | 'product';
@@ -13,6 +14,8 @@ interface SearchResult {
   slug?: string;
   image?: string;
   subtitle?: string;
+  /** التاجر المنشور بيفتح موقعه المنفصل (سلة مستقلة) بدل الثيم الموحد للماركت. */
+  websitePublished?: boolean;
 }
 
 interface SearchBarProps {
@@ -65,6 +68,7 @@ export function SearchBar({ fullWidth = false }: SearchBarProps = {}) {
           slug: s.slug,
           image: s.logo,
           subtitle: s.city || s.activity,
+          websitePublished: s.websitePublished === true,
         }));
         const productResults: SearchResult[] = productsList.map((p: any) => ({
           type: 'product' as const,
@@ -88,7 +92,13 @@ export function SearchBar({ fullWidth = false }: SearchBarProps = {}) {
     setQuery('');
     setResults([]);
     if (result.type === 'shop' && result.slug) {
-      router.push(`/shop/${result.slug}`);
+      // التاجر المنشور → موقعه المنفصل في تاب جديد (قالبه وسلته بتاعته —
+      // مالهاش دعوة بالماركت). غير المنشور → الثيم الموحد جوه التطبيق.
+      if (result.websitePublished) {
+        window.open(getMerchantExternalUrl(result.slug), '_blank', 'noopener,noreferrer');
+      } else {
+        router.push(`/shop/${result.slug}`);
+      }
     } else if (result.type === 'product') {
       router.push(`/product/${result.id}`);
     }

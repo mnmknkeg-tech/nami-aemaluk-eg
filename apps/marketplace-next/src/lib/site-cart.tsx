@@ -78,11 +78,22 @@ export function loadSiteCart(raw: string | null, shopSlug: string): SiteCartEntr
   }
 }
 
-export function SiteCartProvider({ children }: { children: React.ReactNode }) {
+export function SiteCartProvider({
+  children,
+  slug,
+}: {
+  children: React.ReactNode;
+  /** الـ slug الصريح لموقع التاجر — بييجي من layout الراوت /site/[slug] نفسه
+   *  (سيرفر)، فبيشتغل صح حتى على الدومين الفرعي/المخصص حيث الميدلوير بيعمل
+   *  rewrite داخلي لـ /site/:slug والمتصفح شايف مسار مختلف تمامًا (مثلاً /
+   *  أو /product/123) — الاعتماد على usePathname() هنا كان بيبوّظ السلة
+   *  (مفتاح null → تصفير على كل تنقل). من غير الـ prop بنرجع لتحليل المسار. */
+  slug?: string;
+}) {
   const pathname = usePathname();
-  const merchant = pathname?.match(/^\/(site|shop)\/([^/]+)/);
-  const merchantSlug = merchant?.[2] ?? null;
-  const storageKey = merchant ? `merchant-site-cart:${merchant[1]}:${merchant[2]}` : null;
+  const pathMatch = pathname?.match(/^\/(site|shop)\/([^/]+)/);
+  const merchantSlug = slug ?? pathMatch?.[2] ?? null;
+  const storageKey = merchantSlug ? `merchant-site-cart:site:${merchantSlug}` : null;
   const [items, setItems] = useState<SiteCartEntry[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
@@ -100,7 +111,7 @@ export function SiteCartProvider({ children }: { children: React.ReactNode }) {
       setItems([]);
     }
     setHydrated(true);
-  }, [storageKey]);
+  }, [storageKey, merchantSlug]);
 
   useEffect(() => {
     if (!hydrated || !storageKey) return;

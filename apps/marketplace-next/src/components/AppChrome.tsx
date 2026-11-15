@@ -7,6 +7,21 @@ import { Footer } from '@/components/Footer';
 import { MobileFooter } from '@/components/MobileFooter';
 import { CartDrawer } from '@/components/CartDrawer';
 
+/** هل الهوست ده هوست الماركت الرئيسي؟ (نطاقات المنصة + localhost + IP + معاينات Vercel)
+ *  أي هوست تاني = موقع تاجر على دومين فرعي (store.ray.eg) أو دومين مخصص —
+ *  والميدلوير بيعمل rewrite داخلي لـ /site/:slug من غير تغيير الـ URL، فالمسار
+ *  لوحده مش كافي للتمييز هنا. */
+function isMainMarketHost(hostname: string): boolean {
+  const h = (hostname || '').toLowerCase().replace(/:$/, '');
+  if (!h) return true; // احتياط: غيّر حاجة = ورّي الكروم
+  if (/^(www\.)?(ray\.eg|mnmknk\.com)$/.test(h)) return true;
+  if (/^(www\.)?nami-aemaluk-marketplace-eg\.vercel\.app$/.test(h)) return true;
+  if (h === 'localhost' || h === '127.0.0.1' || h.endsWith('.localhost')) return true;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(h)) return true; // سيرفر تطوير بـ IP
+  if (h.endsWith('.vercel.app')) return true; // معاينات النشر
+  return false;
+}
+
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // Merchant sites are fully independent: /shop/[slug] pages and published
@@ -16,11 +31,18 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     !!pathname && (pathname.startsWith('/shop/') || pathname.startsWith('/site/'));
   const isLegacyShop = !!pathname && pathname.startsWith('/shop/');
 
+  // موقع تاجر على دومينه الفرعي/المخصص: الـ URL في المتصفح مش /site/* أصلًا،
+  // فبنحسم من الهوست. SSR بيرسم الكروم مؤقتًا لحد أول render على الكلاينت.
+  const [onMerchantHost, setOnMerchantHost] = React.useState(false);
+  React.useEffect(() => {
+    setOnMerchantHost(!isMainMarketHost(window.location.hostname));
+  }, []);
+
   if (isMerchantCheckout || pathname === '/checkout') {
     return <main className="min-h-screen">{children}</main>;
   }
 
-  if (isMerchantSite) {
+  if (isMerchantSite || onMerchantHost) {
     return (
       <>
         <main className="min-h-screen">{children}</main>

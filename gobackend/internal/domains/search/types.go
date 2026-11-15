@@ -53,6 +53,10 @@ type ShopSearchResult struct {
         Category    string  `json:"category"`
         Rating      float64 `json:"rating"`
         Status      string  `json:"status"`
+        // Published-site flag (same rule as map pins) — the SearchBar opens the
+        // merchant's standalone site for published merchants, in-app unified
+        // view otherwise.
+        WebsitePublished bool    `json:"websitePublished"`
         Score       float64 `json:"score"`
 }
 

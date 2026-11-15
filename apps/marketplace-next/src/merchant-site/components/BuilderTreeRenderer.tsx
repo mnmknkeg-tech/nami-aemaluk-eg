@@ -23,8 +23,12 @@ import {
   Loader2,
 } from 'lucide-react';
 import { sanitizeHtml } from '@/lib/sanitize';
-import { api } from '@/lib/api';
-import { useCart } from '@/lib/cart';
+import { api, jsonRequest } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+// سلة موقع التاجر المستقلة — مش سلة الماركت (decoupling): الـ add-to-cart في
+// قالب التاجر بيخزن في merchant-site-cart:site:{slug} والـ checkout بيكمل
+// على /site/{slug}/checkout بسلته الخاصة، مالهمش أي دعوة بـ mnmknk_cart.
+import { SiteCartProvider, useSiteCart } from '@/lib/site-cart';
 import type { Shop, Product } from '@/lib/services';
 import {
   applyWebsiteBackgroundToPageRoot,
@@ -53,6 +57,8 @@ import {
   sectionBadgeStyle,
   sectionShellClass,
   sectionSubtitleClass,
+  SiteCartDrawer,
+  type SiteShopContext,
 } from '@ray-eg/shared/builder';
 import {
   isCompleteChildBasedHero,
@@ -125,6 +131,13 @@ const ShopDataContext = React.createContext<{
   onNavigatePage?: (pageId: string) => void;
 }>({ viewport: 'desktop', activePageId: '' });
 
+/** فتح/قفل درج سلة موقع التاجر — حالة الدرج عند جذر الشجرة وبتستهلك من أي
+ *  عمق (أزرار الشراء، فوتر الموبايل، روابط «افتح السلة»). الدرج نفسه هو
+ *  SiteCartDrawer بتاع الموقع — مش درج سلة الماركت. */
+const SiteCartUIContext = React.createContext<{ openCart: () => void }>({
+  openCart: () => {},
+});
+
 // ─── getComputedStyles ────────────────────────────────────────────────────────
 
 function getComputedStyles(
@@ -139,7 +152,9 @@ function getComputedStyles(
 
 function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWebsite }) {
   const node = website.components[nodeId];
-  const { addItem, setCartOpen } = useCart();
+  // سلة موقع التاجر (مش سلة الماركت) + درج السلة بتاع الموقع نفسه
+  const { addItem } = useSiteCart();
+  const { openCart } = React.useContext(SiteCartUIContext);
   const {
     shop: ctxShop,
     products: ctxProducts,
@@ -192,18 +207,36 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
 
   /** Add-to-cart from builder trees: catalog products from the API carry no
    *  shop fields, so items were saved with shopSlug:'' and the shop checkout
-   *  filter missed them. Stamp the hosting shop on every cart item. */
+   *  filter missed them. Stamp the hosting shop on every cart item.
+   *  Decoupling: items go to the MERCHANT SITE cart (merchant-site-cart),
+   *  never the marketplace cart — checkout continues at /site/{slug}/checkout
+   *  with the site's own cart and guest-friendly public orders endpoint. */
   const addLiveToCart = (product: any, quantity = 1) => {
     addItem(
       {
         ...product,
+        id: String(product.id ?? ''),
+        title: product.title || product.name || 'منتج',
+        price: typeof product.price === 'string' ? Number(product.price) || 0 : product.price,
+        image: product.image || product.imageUrl || product.images?.[0],
         shopId: String(product.shopId || ctxShop?.id || ''),
-        shopName: String(product.shopName || ctxShop?.name || ''),
         shopSlug: String(product.shopSlug || ctxShop?.slug || ''),
       },
-      quantity,
-      true
+      {
+        id: String(ctxShop?.id || ''),
+        name: String(ctxShop?.name || ''),
+        slug: String(ctxShop?.slug || ''),
+        logoUrl: (ctxShop as any)?.logoUrl,
+        phone: (ctxShop as any)?.phone,
+        whatsapp: (ctxShop as any)?.whatsapp,
+      } as SiteShopContext,
+      {
+        quantity,
+        variantSelection: product.variantSelection,
+        addons: product.addons,
+      }
     );
+    openCart();
   };
 
   /** Resolve a node/link click the same way the published /site handler does
@@ -215,7 +248,7 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
       website: website as any,
       activePageId: activePageId || '',
       onNavigatePage: (pageId) => onNavigatePage?.(pageId),
-      onOpenCart: () => setCartOpen(true),
+      onOpenCart: () => openCart(),
       scrollToSection: scrollTo,
     });
   };
@@ -1705,7 +1738,8 @@ function MobileFooterBar({
   node: ComponentNode;
   cartSettings?: WebsiteCartSettings;
 }) {
-  const { setCartOpen, totalItems } = useCart();
+  const { totalItems } = useSiteCart();
+  const { openCart } = React.useContext(SiteCartUIContext);
   const { shop: ctxShop } = React.useContext(ShopDataContext);
   const showCart = isCartVisible({ settings: cartSettings, placement: 'floating' });
   const rawButtons: string[] = Array.isArray(node.props.buttons)
@@ -1752,7 +1786,7 @@ function MobileFooterBar({
           <button
             key={key}
             type="button"
-            onClick={() => setCartOpen(true)}
+            onClick={() => openCart()}
             className="relative flex flex-col items-center justify-center gap-0.5 flex-1 py-1 text-white/80 hover:text-white transition-colors"
           >
             <CartIcon iconType={cartSettings?.iconType} className="w-5 h-5" />
@@ -1822,7 +1856,20 @@ interface BuilderTreeRendererProps {
   products?: Product[];
 }
 
-export function BuilderTreeRenderer({ website, shop, products }: BuilderTreeRendererProps) {
+export function BuilderTreeRenderer(props: BuilderTreeRendererProps) {
+  // سلة موقع التاجر بمفتاح صريح من slug التاجر — بتشتغل صح سواء القالب بيتعرض
+  // على /shop/[slug]?view=site أو على الدومين الفرعي/المخصص، ومش بتلمس
+  // سلة الماركت (mnmknk_cart) إطلاقًا — قرار فصل موقع التاجر عن الماركت.
+  const siteSlug = props.shop?.slug ? String(props.shop.slug) : undefined;
+  return (
+    <SiteCartProvider slug={siteSlug}>
+      <BuilderTreeRendererInner {...props} />
+    </SiteCartProvider>
+  );
+}
+
+function BuilderTreeRendererInner({ website, shop, products }: BuilderTreeRendererProps) {
+  const router = useRouter();
   const safeWebsite = React.useMemo(() => {
     const normalized = normalizeWebsiteTree(website as any);
     return {
@@ -1831,6 +1878,41 @@ export function BuilderTreeRenderer({ website, shop, products }: BuilderTreeRend
     } as BuilderWebsite;
   }, [website]);
   const viewport = useResponsiveViewport();
+  // سياق المتجر بصيغة SiteShopContext — لسلة الموقع والدرج والكوبونات
+  const siteShopCtx = React.useMemo<SiteShopContext>(
+    () => ({
+      id: String(shop?.id || ''),
+      name: String(shop?.name || ''),
+      slug: String(shop?.slug || ''),
+      logoUrl: shop?.logoUrl || shop?.logo,
+      phone: shop?.phone,
+      whatsapp: (shop as any)?.whatsapp || shop?.phone,
+    }),
+    [shop]
+  );
+  const [isCartOpen, setCartOpen] = useState(false);
+  const {
+    items: siteCartEntries,
+    updateQuantity: updateSiteCartItem,
+    removeItem: removeSiteCartItem,
+  } = useSiteCart();
+  const cartItems = React.useMemo(
+    () =>
+      siteCartEntries.map((entry) => ({
+        id: entry.cartItemId || entry.product.id,
+        productId: entry.product.id,
+        title: entry.product.title,
+        price:
+          typeof entry.product.price === 'string'
+            ? Number(entry.product.price) || 0
+            : entry.product.price,
+        quantity: entry.quantity,
+        image: entry.product.image,
+        addons: entry.addons || (entry.product as any)?.addons,
+        variantSelection: entry.variantSelection || (entry.product as any)?.variantSelection,
+      })),
+    [siteCartEntries]
+  );
   // Multi-page parity with /site: pages can navigate client-side (buttons,
   // nav links, footer links with page destinations) instead of being pinned
   // to the home page forever.
@@ -1923,52 +2005,85 @@ export function BuilderTreeRenderer({ website, shop, products }: BuilderTreeRend
   const direction = (safeWebsite.defaultDirection || 'rtl') as React.CSSProperties['direction'];
 
   return (
-    <ShopDataContext.Provider
-      value={{
-        shop,
-        products,
-        viewport,
-        activePageId: activePage?.id || '',
-        onNavigatePage: handleNavigatePage,
-      }}
-    >
-      <div
-        ref={rootRef}
-        className="merchant-site-builder"
-        style={computeWebsiteRootStyles(
-          safeWebsite.theme,
-          direction,
-          safeWebsite.settings?.background
-        )}
+    <SiteCartUIContext.Provider value={{ openCart: () => setCartOpen(true) }}>
+      <ShopDataContext.Provider
+        value={{
+          shop,
+          products,
+          viewport,
+          activePageId: activePage?.id || '',
+          onNavigatePage: handleNavigatePage,
+        }}
       >
-        {/* Editor parity: the announcement bar configured in the builder now
+        <div
+          ref={rootRef}
+          className="merchant-site-builder"
+          style={computeWebsiteRootStyles(
+            safeWebsite.theme,
+            direction,
+            safeWebsite.settings?.background
+          )}
+        >
+          {/* Editor parity: the announcement bar configured in the builder now
             shows on the published shop page too. */}
-        {(() => {
-          const announcement = resolveAnnouncementBar(safeWebsite as any);
-          if (!announcement) return null;
-          return (
-            <aside
-              aria-label="شريط الإعلانات الترويجي"
-              style={{
-                backgroundColor: announcement.bgColor || safeWebsite.theme.colors.primary,
-                color: announcement.textColor || '#ffffff',
-              }}
-              className="w-full py-2 px-3 text-xs font-bold text-center relative z-50 flex items-center justify-center gap-2 shadow-xs"
-            >
-              <span>{announcement.text}</span>
-              {announcement.link && (
-                <a
-                  href={announcement.link}
-                  className="underline text-[11px] font-extrabold hover:opacity-80 transition-opacity mr-2"
-                >
-                  التفاصيل &larr;
-                </a>
-              )}
-            </aside>
-          );
-        })()}
-        <NodeRenderer nodeId={activePage.rootNodeId} website={safeWebsite} />
-      </div>
-    </ShopDataContext.Provider>
+          {(() => {
+            const announcement = resolveAnnouncementBar(safeWebsite as any);
+            if (!announcement) return null;
+            return (
+              <aside
+                aria-label="شريط الإعلانات الترويجي"
+                style={{
+                  backgroundColor: announcement.bgColor || safeWebsite.theme.colors.primary,
+                  color: announcement.textColor || '#ffffff',
+                }}
+                className="w-full py-2 px-3 text-xs font-bold text-center relative z-50 flex items-center justify-center gap-2 shadow-xs"
+              >
+                <span>{announcement.text}</span>
+                {announcement.link && (
+                  <a
+                    href={announcement.link}
+                    className="underline text-[11px] font-extrabold hover:opacity-80 transition-opacity mr-2"
+                  >
+                    التفاصيل &larr;
+                  </a>
+                )}
+              </aside>
+            );
+          })()}
+          <NodeRenderer nodeId={activePage.rootNodeId} website={safeWebsite} />
+        </div>
+
+        {/* درج سلة موقع التاجر — منفصل تمامًا عن درج سلة الماركت؛ الـ checkout
+            بيكمل على /site/{slug}/checkout بسلة الموقع نفسها */}
+        <SiteCartDrawer
+          isOpen={isCartOpen}
+          onClose={() => setCartOpen(false)}
+          items={cartItems}
+          shop={siteShopCtx}
+          website={safeWebsite as any}
+          onUpdateQuantity={(id, delta) => updateSiteCartItem(id, delta)}
+          onRemoveItem={removeSiteCartItem}
+          onProceedToCheckout={() => {
+            setCartOpen(false);
+            router.push(`/site/${siteShopCtx.slug}/checkout`);
+          }}
+          onValidateCoupon={async (code, subtotal) => {
+            const response = await jsonRequest<any>('/coupons/validate', {
+              method: 'POST',
+              body: JSON.stringify({ shopId: siteShopCtx.id, code, subtotal }),
+            });
+            const result = response?.data || response;
+            if (!result || typeof result.discountAmount !== 'number') {
+              throw new Error('الكوبون غير صالح أو منتهي');
+            }
+            window.sessionStorage.setItem(
+              `merchant-site-coupon:site:${siteShopCtx.slug}`,
+              JSON.stringify({ code, discountAmount: result.discountAmount })
+            );
+            return result;
+          }}
+        />
+      </ShopDataContext.Provider>
+    </SiteCartUIContext.Provider>
   );
 }

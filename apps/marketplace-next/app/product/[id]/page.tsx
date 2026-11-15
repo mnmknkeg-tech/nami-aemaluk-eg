@@ -1,10 +1,16 @@
 import { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { Star, Store, Tag, ArrowLeft, MessageCircle, Phone, CheckCircle, Ban } from 'lucide-react';
 import { productStockState } from '@/lib/stock';
-import { getProductById, getProducts, getShops } from '@/lib/services';
+import { getProductById, getProducts, getShops, type Shop } from '@/lib/services';
+import {
+  getMerchantExternalUrl,
+  MERCHANT_LINK_TARGET,
+  MERCHANT_LINK_REL,
+} from '@/market/lib/merchantUrl';
 import { formatPrice, truncate } from '@/lib/utils';
 import { siteConfig } from '@/lib/config';
 import ShareButton from '@/components/ShareButton';
@@ -22,6 +28,36 @@ import { serializeJsonLd } from '@/lib/jsonld';
 // يعني لازم الصفحة تتعرض لكل زيارة — ISR كان بيقدّم قرار قديم لحد 5 دقايق
 // (مثلاً: التاجر خفى السعر والصفحة لسه بتوري السعر والسلة).
 export const dynamic = 'force-dynamic';
+
+/** رابط المتجر في صفحات الماركت: التاجر المنشور → موقعه المنفصل (تاب جديد،
+ *  سلة وcheckout مستقلين)، وغير المنشور → الثيم الموحد جوه التطبيق. */
+function ShopLink({
+  shop,
+  className,
+  children,
+}: {
+  shop: Shop;
+  className?: string;
+  children: ReactNode;
+}) {
+  if (shop.websitePublished === true) {
+    return (
+      <a
+        href={getMerchantExternalUrl(shop.slug)}
+        target={MERCHANT_LINK_TARGET}
+        rel={MERCHANT_LINK_REL}
+        className={className}
+      >
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link href={`/shop/${shop.slug}`} className={className}>
+      {children}
+    </Link>
+  );
+}
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -177,9 +213,9 @@ export default async function ProductPage({ params }: Props) {
         <span>/</span>
         {shop && (
           <>
-            <Link href={`/shop/${shop.slug}`} className="hover:text-brand-cyan transition-colors">
+            <ShopLink shop={shop} className="hover:text-brand-cyan transition-colors">
               {shop.name}
-            </Link>
+            </ShopLink>
             <span>/</span>
           </>
         )}
@@ -206,7 +242,7 @@ export default async function ProductPage({ params }: Props) {
         {/* Info */}
         <div className="flex flex-col">
           {shop && (
-            <Link href={`/shop/${shop.slug}`} className="flex items-center gap-2 mb-4 group">
+            <ShopLink shop={shop} className="flex items-center gap-2 mb-4 group">
               <div className="w-10 h-10 rounded-lg bg-brand-black flex items-center justify-center overflow-hidden">
                 {shop.logo ? (
                   <Image
@@ -223,7 +259,7 @@ export default async function ProductPage({ params }: Props) {
               <span className="font-semibold text-sm text-slate-700 dark:text-slate-300 group-hover:text-brand-cyan transition-colors">
                 {shop.name}
               </span>
-            </Link>
+            </ShopLink>
           )}
 
           <h1 className="text-2xl md:text-4xl font-bold tracking-tight mb-3">{product.name}</h1>
@@ -399,13 +435,13 @@ export default async function ProductPage({ params }: Props) {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl md:text-2xl font-bold">منتجات ذات صلة</h2>
             {shop && (
-              <Link
-                href={`/shop/${shop.slug}`}
+              <ShopLink
+                shop={shop}
                 className="text-sm font-bold text-brand-cyan hover:underline flex items-center gap-1"
               >
                 عرض الكل
                 <ArrowLeft className="w-4 h-4" />
-              </Link>
+              </ShopLink>
             )}
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">

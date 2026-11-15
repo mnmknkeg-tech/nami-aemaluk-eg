@@ -283,7 +283,8 @@ const shopColumns = `
         s.rating, s.is_active, s.owner_id, s.created_at, s.updated_at, s.addons,
         s.public_disabled, s.delivery_disabled, s.ai_tier, s.ai_usage_month,
         s.ai_usage_reset_at,
-        u.id AS owner_user_id, u.name AS owner_name, u.email AS owner_email, u.phone AS owner_phone
+        u.id AS owner_user_id, u.name AS owner_name, u.email AS owner_email, u.phone AS owner_phone,
+        (s.builder_published_config IS NOT NULL AND s.builder_published_at IS NOT NULL) AS website_published
 `
 
 const selectShop = `SELECT ` + shopColumns + ` FROM shops s LEFT JOIN users u ON u.id = s.owner_id`
@@ -298,7 +299,8 @@ const shopReturnColumns = `
         custom_colors, custom_fonts, layout_config, followers, visitors,
         rating, is_active, owner_id, created_at, updated_at, addons,
         public_disabled, delivery_disabled, ai_tier, ai_usage_month,
-        ai_usage_reset_at
+        ai_usage_reset_at,
+        (builder_published_config IS NOT NULL AND builder_published_at IS NOT NULL) AS website_published
 `
 
 func scanShopReturn(row pgx.Row) (*Shop, error) {
@@ -316,7 +318,7 @@ func scanShopReturn(row pgx.Row) (*Shop, error) {
                 &s.BuilderConfig, &theme, &s.CustomColors, &s.CustomFonts, &s.LayoutConfig, &s.Followers,
                 &s.Visitors, &s.Rating, &s.IsActive, &ownerIDVal, &s.CreatedAt, &s.UpdatedAt,
                 &s.Addons, &s.PublicDisabled, &s.DeliveryDisabled, &s.AiTier, &s.AiUsageMonth,
-                &aiReset,
+                &aiReset, &s.WebsitePublished,
         )
         if err != nil {
                 if err == pgx.ErrNoRows {
@@ -365,6 +367,7 @@ func scanShop(row pgx.Row) (*Shop, error) {
                 &s.Visitors, &s.Rating, &s.IsActive, &ownerIDVal, &s.CreatedAt, &s.UpdatedAt,
                 &s.Addons, &s.PublicDisabled, &s.DeliveryDisabled, &s.AiTier, &s.AiUsageMonth,
                 &aiReset, &ownerID, &ownerName, &ownerEmail, &ownerPhone,
+                &s.WebsitePublished,
         )
         if err != nil {
                 if err == pgx.ErrNoRows {

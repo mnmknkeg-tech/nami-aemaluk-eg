@@ -4,16 +4,23 @@ import { siteConfig } from '@/lib/config';
  * The external URL where a merchant's PUBLISHED storefront lives — separate
  * from the marketplace app's chrome.
  *
- * Navigation policy (corrected after the merchant feedback «كلو بيوديني للينك
- * بتاع الموقع المنفصل»): inside the marketplace app the customer ALWAYS
- * navigates in-app to the unified shop view (/shop/[slug], ثيم موحد). The
- * standalone site link is used only by the two deliberate entry points:
+ * Navigation policy (merchant-site/marketplace decoupling — 2026-11 revision):
+ * a merchant who PUBLISHED their builder site (websitePublished) opens their
+ * standalone site — its own template, its own cart, its own checkout — from
+ * EVERY marketplace entry point:
  *
- *   1. The merchant's own URL (they market it independently — away from us)
- *   2. Map markers — and ONLY for shops that actually published a website
- *      (websitePublished flag from /map/pins). Shops without a site stay
- *      in-app; opening /site/{slug} for them was a 404 in a new tab.
- *   3. The unified shop page's «الموقع الرسمي» button (hasOfficialSite).
+ *   1. Shop cards (dalil, home feed, suggestions) — published → standalone
+ *      site in a new tab; not published → in-app unified theme /shop/[slug].
+ *   2. Search results — same conditional rule.
+ *   3. The product page's shop links — same conditional rule.
+ *   4. Map markers — published → standalone site; otherwise in-app.
+ *   5. The unified shop page's «الموقع الرسمي» button (hasOfficialSite).
+ *   6. The merchant's own URL (they market it independently — away from us).
+ *
+ * The embedded merchant theme at /shop/[slug]?view=site stays only as a
+ * direct-URL fallback — and it now runs on the merchant SITE cart
+ * (merchant-site-cart:site:{slug}) with checkout at /site/{slug}/checkout,
+ * never the marketplace cart.
  *
  * The marketplace stays at its own root domain; merchant sites live at
  * their own URLs. The two are decoupled at the navigation layer even

@@ -80,6 +80,12 @@ type Shop struct {
         Addons            []any              `json:"addons,omitempty"`
         PublicDisabled    bool               `json:"publicDisabled"`
         DeliveryDisabled  bool               `json:"deliveryDisabled"`
+        // WebsitePublished mirrors the map-pins rule: the shop has a PUBLISHED
+        // builder site (builder_published_config + builder_published_at both
+        // set). Marketplace surfaces (cards, search, product page) use it to
+        // open the merchant's STANDALONE site instead of the in-app unified
+        // theme — the merchant-site/marketplace decoupling policy.
+        WebsitePublished  bool               `json:"websitePublished"`
         AiTier            AiSubscriptionTier `json:"aiTier"`
         AiUsageMonth      int                `json:"aiUsageMonth"`
         AiUsageResetAt    *time.Time         `json:"aiUsageResetAt,omitempty"`

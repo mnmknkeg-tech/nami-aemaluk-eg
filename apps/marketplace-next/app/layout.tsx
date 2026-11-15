@@ -3,7 +3,9 @@ import './globals.css';
 import { AppProvider } from '@/components/AppProvider';
 import { QueryProvider } from '@/components/QueryProvider';
 import { CartProvider } from '@/lib/cart';
-import { SiteCartProvider } from '@/lib/site-cart';
+// سلة موقع التاجر (SiteCartProvider) مبتتركبش هنا — ليها layout خاص
+// app/site/[slug]/layout.tsx بالـ slug الصريح، عشان تنفصل تمامًا عن سلة
+// الماركت وتشتغل صح على الدومينات الفرعية/المخصّصة.
 import { WishlistProvider } from '@/lib/wishlist';
 import { AppChrome } from '@/components/AppChrome';
 import { PageViewTracker } from '@/components/PageViewTracker';
@@ -97,15 +99,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <QueryProvider>
           <AppProvider>
             <CartProvider>
-              <SiteCartProvider>
-                <WishlistProvider>
-                  <PageViewTracker />
-                  <BreachNotice />
-                  <AppChrome>{children}</AppChrome>
-                  <PwaInstallPrompt />
-                  <ConsentBanner />
-                </WishlistProvider>
-              </SiteCartProvider>
+              <WishlistProvider>
+                <PageViewTracker />
+                <BreachNotice />
+                <AppChrome>{children}</AppChrome>
+                <PwaInstallPrompt />
+                <ConsentBanner />
+              </WishlistProvider>
             </CartProvider>
           </AppProvider>
         </QueryProvider>

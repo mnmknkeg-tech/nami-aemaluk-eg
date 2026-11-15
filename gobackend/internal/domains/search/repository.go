@@ -139,6 +139,7 @@ func (r *Repository) SearchShops(ctx context.Context, query string, category *st
                 SELECT
                         s.id, s.name, s.slug, COALESCE(s.description, ''), COALESCE(s.logo_url, ''),
                         s.city, COALESCE(s.activity, '') as activity, s.category, s.rating, s.status,
+                        (s.builder_published_config IS NOT NULL AND s.builder_published_at IS NOT NULL) as website_published,
                         ts_rank_cd(to_tsvector('arabic', s.name || ' ' || COALESCE(s.description, '')), plainto_tsquery('arabic', $1)) as score
                 FROM shops s
                 WHERE s.is_active = true AND s.public_disabled = false AND s.status = 'APPROVED'
@@ -188,7 +189,8 @@ func (r *Repository) SearchShops(ctx context.Context, query string, category *st
                 var logo sql.NullString
                 err := rows.Scan(
                         &result.ID, &result.Name, &result.Slug, &result.Description, &logo,
-                        &result.City, &result.Activity, &result.Category, &result.Rating, &result.Status, &result.Score,
+                        &result.City, &result.Activity, &result.Category, &result.Rating, &result.Status,
+                        &result.WebsitePublished, &result.Score,
                 )
                 if err != nil {
                         continue
