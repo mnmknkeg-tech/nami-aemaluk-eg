@@ -2,7 +2,7 @@ const backendUrl = (
   process.env.BACKEND_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   'https://nami-aemaluk-eg-production.up.railway.app'
-).replace(/\\/+$/, '');
+).replace(/\/+$/, '');
 
 const nextConfig = {
   reactStrictMode: true,
@@ -10,10 +10,13 @@ const nextConfig = {
   compress: true,
   transpilePackages: ['@ray-eg/shared'],
   images: {
-    remotePatterns: [{ protocol: 'https', hostname: '**' }, { protocol: 'http', hostname: 'localhost' }]
+    remotePatterns: [
+      { protocol: 'https', hostname: '**' },
+      { protocol: 'http', hostname: 'localhost' }
+    ]
   },
   async rewrites() {
-    return [{ source: '/api/:path*', destination: `${backendUrl}/api/:path*` }];
+    return [{ source: '/api/:path*', destination: \`\${backendUrl}/api/:path*\` }];
   },
   async headers() {
     return [{
