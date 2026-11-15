@@ -26,6 +26,7 @@ Required environment:
 - `BACKEND_URL`: private/public Go API origin reachable by the deployment.
 - `NEXT_PUBLIC_MERCHANT_ROOT_DOMAINS`: comma-separated platform root domains, for example `mnmknk.com,ray.eg`.
 - `NEXT_PUBLIC_MERCHANT_STOREFRONT_MODE=standalone`: makes published-site canonical URLs match the standalone `/:slug` route.
+- `NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE`: canonical tenant URL template, for example `https://{slug}.mnmknk.com`.
 - Configure wildcard DNS and wildcard domain assignment for each platform root domain.
 
 ## Important cutover constraints
