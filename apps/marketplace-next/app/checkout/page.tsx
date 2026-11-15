@@ -123,9 +123,9 @@ export default function CheckoutPage() {
         if (shopId) marketCart.clearShopItems(shopId);
       }
     : marketCart.clearCart;
-  // Orders born on a shop storefront are 'website' orders; the multi-shop
-  // market checkout stays 'marketplace'.
-  const orderSource = isMerchantPath ? 'website' : 'marketplace';
+  // This checkout is always the Marketplace channel. Published merchant
+  // websites use the dedicated SiteCheckout component and their own cart.
+  const orderSource = 'marketplace';
 
   // Market cart items carry no shop logo — the merchant-site cart does, and
   // that checkout lives in its own component now.
@@ -288,6 +288,7 @@ export default function CheckoutPage() {
           deliveryNote: notes.trim() || undefined,
           paymentMethod: paymentMethod === 'cod' ? 'COD' : 'CARD',
           source: orderSource,
+          salesChannel: 'marketplace',
         };
         const requestKey = await getCheckoutIdempotencyKey(shopId, payload);
         const order = await jsonRequest<any>(endpoint, {
