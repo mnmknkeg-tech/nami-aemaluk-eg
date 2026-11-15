@@ -8,6 +8,9 @@ import React from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Search } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
+// التنسيق المالي انتقل لمركز واحد — إعادة تصدير حتى ما تتكسرش استيرادات الصفحات الحالية
+export { formatEGP } from '@/lib/format';
+
 // ─── الألوان الموحدة (Tones) ────────────────────────────────────────────────
 
 export type Tone = 'cyan' | 'purple' | 'green' | 'amber' | 'red' | 'sky' | 'indigo' | 'slate';
@@ -67,11 +70,6 @@ export function timeAgo(input: any): string {
   if (hr < 24) return `منذ ${hr} ساعة`;
   const day = Math.floor(hr / 24);
   return `منذ ${day} يوم`;
-}
-
-export function formatEGP(n: any): string {
-  const v = Number(n || 0);
-  return `ج.م ${Math.round(Number.isFinite(v) ? v : 0).toLocaleString('ar-EG')}`;
 }
 
 // ─── Spinner / Loading ──────────────────────────────────────────────────────

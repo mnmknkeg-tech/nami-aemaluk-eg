@@ -2,6 +2,7 @@
 
 import React, { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { formatAmount as formatMoney } from '@/lib/format';
 import {
   FileText,
   Search,
@@ -164,12 +165,6 @@ function FinanceContent() {
   const vatAmount = netBeforeVat * (vatRatePct / 100);
   const total = netBeforeVat + vatAmount;
   const showVat = vatRatePct > 0;
-
-  const formatMoney = (v: any) => {
-    const n = typeof v === 'number' ? v : Number(v);
-    if (!Number.isFinite(n)) return '0.00';
-    return n.toFixed(2);
-  };
 
   const resetEditor = () => {
     setSelectedInvoiceId('');
@@ -807,7 +802,7 @@ function FinanceContent() {
     </html>`;
 
     try {
-      const w = window.open('', '_blank', 'width=800,height=1000');
+      const w = window.open('', '_blank', 'noopener,noreferrer,width=800,height=1000');
       if (!w) return;
       w.document.open();
       w.document.write(html);

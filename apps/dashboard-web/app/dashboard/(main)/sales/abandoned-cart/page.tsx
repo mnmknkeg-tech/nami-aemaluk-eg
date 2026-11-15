@@ -26,6 +26,7 @@ import {
   Square,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
+import { formatAmount as formatMoney, formatDate } from '@/lib/format';
 import { useShop } from '@/hooks/useShop';
 
 type CartEvent = {
@@ -125,15 +126,6 @@ export default function SalesAbandonedCartPage() {
     } catch (err: any) {
       setError(err?.message || 'فشل تحديث الحالة');
     }
-  };
-
-  const formatMoney = (v: any) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n.toFixed(2) : '0.00';
-  };
-  const formatDate = (d: any) => {
-    const dt = new Date(String(d));
-    return isNaN(dt.getTime()) ? '-' : dt.toLocaleDateString('ar-EG');
   };
 
   const filtered = useMemo(() => {

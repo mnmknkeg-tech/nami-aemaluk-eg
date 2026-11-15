@@ -9,6 +9,7 @@
  */
 import React from 'react';
 import { X } from 'lucide-react';
+import { formatMoney as formatMoneyLib } from '@/lib/format';
 
 export {
   INV_PAGE_FONT as HR_PAGE_FONT,
@@ -32,10 +33,9 @@ export type { InvTab as HrTab, InvColumn as HrColumn } from '@/components/invent
 /** العملة المعتمدة في صفحات HR */
 export const HR_CURRENCY = 'ج.م';
 
-/** تنسيق المبالغ — نفس أسلوب بقية الأقسام */
+/** تنسيق المبالغ — التنفيذ في مركز واحد (lib/format) بنفس الأسلوب السابق */
 export function formatMoney(value: number | string | null | undefined): string {
-  const n = Number(value || 0);
-  return `${HR_CURRENCY} ${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  return formatMoneyLib(value, HR_CURRENCY);
 }
 
 /** كلاسات حقول النماذج داخل المودالات — نفس ستايل محرر المنتجات */
