@@ -5,36 +5,18 @@ import { useQuery } from '@tanstack/react-query';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import {
-  AreaChart as RAreaChart,
-  Area as RArea,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RTooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
 import {
   ShoppingCart,
   Eye,
   Users,
   DollarSign,
-  Package,
   Star,
   RefreshCw,
   Download,
-  TrendingUp,
-  TrendingDown,
   Bell,
   Plus,
   Megaphone,
   Calendar,
-  Store,
-  Settings as SettingsIcon,
   LogIn,
   AlertTriangle,
   ChevronLeft,
@@ -42,639 +24,62 @@ import {
   Boxes,
   BarChart3,
   History,
-  PieChart as PieIcon,
-  ArrowRight,
   CalendarDays,
   CalendarCheck,
-  Clock,
   EyeOff,
   SlidersHorizontal,
+  PieChart as PieIcon,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { useAuth, apiRequest } from '@/lib/auth';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
-import { palette, chartColors, shadows, iconTint, cardClass } from '@/lib/ui/tokens';
+import { chartColors } from '@/lib/ui/tokens';
 import { HIDE_UNPUBLISHED } from '@/config/sidebar';
-
-// Market-launch switch: analytics is local-only, so these dashboard KPIs fall
-// back to their own section in production builds instead of deep-linking into
-// a hidden analytics page.
-const analyticsHref = (analyticsPath: string, fallbackPath: string) =>
-  HIDE_UNPUBLISHED ? fallbackPath : analyticsPath;
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/* ============================================================
- * Types (matching backend responses)
- * ============================================================ */
-
-type Booking = {
-  id: string;
-  source: 'website' | 'internal';
-  status: string;
-  itemName: string;
-  customerName: string;
-  customerPhone: string;
-  when: string;
-  price: number;
-  participants?: number;
-  notes?: string;
-  raw?: any;
-};
-
-type OverviewStat = {
-  label: string;
-  label_ar: string;
-  value: string;
-  change: string;
-  up: boolean;
-  icon: string;
-  color: string;
-};
-type WeeklyPoint = { day: string; value: number };
-type TopProduct = { name: string; sales: number; revenue: number };
-type AnalyticsOverview = {
-  shop_id: string;
-  stats: OverviewStat[];
-  weekly_data: WeeklyPoint[];
-  top_products: TopProduct[];
-};
-type SalesReport = {
-  shop_id: string;
-  stats: Array<{ label: string; label_ar: string; value: string; change: string; up: boolean }>;
-  trend: Array<{ date: string; revenue: number; orders: number }>;
-};
-type Shop = {
-  id?: string;
-  name?: string;
-  slug?: string;
-  status?: string;
-  isActive?: boolean;
-  category?: string;
-  governorate?: string;
-  city?: string;
-  followers?: number;
-  visitors?: number;
-  rating?: number;
-  logoUrl?: string | null;
-};
-type Order = {
-  id?: string;
-  total?: number;
-  status?: string;
-  createdAt?: string;
-  customerName?: string;
-  customerPhone?: string;
-};
-type AppNotification = {
-  id: string;
-  title?: string;
-  content?: string;
-  type?: string;
-  created_at?: string;
-  createdAt?: string;
-};
-type LoginSession = {
-  ID?: string;
-  id?: string;
-  UserEmail?: string;
-  userEmail?: string;
-  LoginAt?: string;
-  loginAt?: string;
-  LogoutAt?: string | null;
-  logoutAt?: string | null;
-};
-
-/* ============================================================
- * Helpers
- * ============================================================ */
-
-const LOCALE = 'ar-EG-u-nu-latn';
-
-// اختصارات افتراضية تظهر لما مفيش تاريخ زيارات لسه
-// Market-launch switch: local-only sections are excluded in production builds.
-const DEFAULT_SHORTCUTS: { href: string; labelAr: string }[] = [
-  { href: '/dashboard/sales', labelAr: 'كل الطلبات' },
-  { href: '/dashboard/inventory/products', labelAr: 'المنتجات' },
-  { href: '/dashboard/notifications', labelAr: 'الإشعارات' },
-  { href: '/dashboard/pos', labelAr: 'الكاشير' },
-  // التحليلات: لوكال فقط (نفس نمط المالية/المحاسبة/HR/AI).
-  ...(HIDE_UNPUBLISHED ? [] : [{ href: '/dashboard/analytics', labelAr: 'التحليلات' }]),
-  { href: '/dashboard/marketing', labelAr: 'التسويق' },
-];
-
-const fmtEGP = (n: number) =>
-  `${(Number.isFinite(n) ? n : 0).toLocaleString(LOCALE, { maximumFractionDigits: 0 })} ج.م`;
-const fmtNum = (n: number) =>
-  (Number.isFinite(n) ? n : 0).toLocaleString(LOCALE, { maximumFractionDigits: 0 });
-const fmtCompact = (n: number) => {
-  if (n >= 1_000_000)
-    return `${(n / 1_000_000).toLocaleString(LOCALE, { maximumFractionDigits: 1 })}م`;
-  if (n >= 1_000) return `${(n / 1_000).toLocaleString(LOCALE, { maximumFractionDigits: 1 })}ألف`;
-  return fmtNum(n);
-};
-const fmtShortId = (id?: string) => {
-  const s = id || '';
-  return s.length > 10 ? `#${s.slice(0, 8)}…` : `#${s}`;
-};
-const fmtDate = (iso?: string | null, opts: Intl.DateTimeFormatOptions = {}) => {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
-  try {
-    return d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', ...opts });
-  } catch {
-    return d.toLocaleDateString();
-  }
-};
-const timeAgo = (iso?: string | null) => {
-  if (!iso) return '—';
-  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (m < 1) return 'الآن';
-  if (m < 60) return `منذ ${fmtNum(m)} د`;
-  if (m < 1440) return `منذ ${fmtNum(Math.floor(m / 60))} س`;
-  return fmtDate(iso);
-};
-const greeting = () => {
-  const h = new Date().getHours();
-  if (h < 12) return 'صباح الخير';
-  if (h < 17) return 'نهار سعيد';
-  return 'مساء الخير';
-};
-const todayLong = () => {
-  try {
-    return new Date().toLocaleDateString(LOCALE, {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  } catch {
-    return '';
-  }
-};
-
-const STATUS_META: Record<string, { label: string; chip: string; color: string }> = {
-  PENDING: {
-    label: 'قيد الانتظار',
-    chip: 'bg-amber-50 text-amber-700 border-amber-200',
-    color: '#d97706',
-  },
-  CONFIRMED: { label: 'مؤكد', chip: 'bg-blue-50 text-blue-700 border-blue-200', color: '#2563eb' },
-  PREPARING: {
-    label: 'قيد التحضير',
-    chip: 'bg-violet-50 text-violet-700 border-violet-200',
-    color: '#7c3aed',
-  },
-  READY: { label: 'جاهز', chip: 'bg-teal-50 text-teal-700 border-teal-200', color: '#0d9488' },
-  DELIVERED: {
-    label: 'مكتمل',
-    chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    color: '#059669',
-  },
-  CANCELLED: { label: 'ملغي', chip: 'bg-red-50 text-red-700 border-red-200', color: '#dc2626' },
-  REFUNDED: {
-    label: 'مسترجع',
-    chip: 'bg-slate-100 text-slate-600 border-slate-200',
-    color: '#64748b',
-  },
-};
-const statusMeta = (s?: string) =>
-  STATUS_META[String(s || '').toUpperCase()] || {
-    label: s || 'أخرى',
-    chip: 'bg-slate-100 text-slate-600 border-slate-200',
-    color: '#94a3b8',
-  };
-
-const BOOKING_STATUS_META: Record<string, { label: string; chip: string; color: string }> = {
-  PENDING: {
-    label: 'بانتظار التأكيد',
-    chip: 'bg-amber-50 text-amber-700 border-amber-200',
-    color: '#d97706',
-  },
-  CONFIRMED: {
-    label: 'مؤكد',
-    chip: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    color: '#059669',
-  },
-  COMPLETED: { label: 'مكتمل', chip: 'bg-teal-50 text-teal-700 border-teal-200', color: '#0d9488' },
-  CANCELLED: { label: 'ملغي', chip: 'bg-red-50 text-red-700 border-red-200', color: '#dc2626' },
-  EXPIRED: {
-    label: 'منتهي',
-    chip: 'bg-slate-100 text-slate-600 border-slate-200',
-    color: '#64748b',
-  },
-};
-const bookingStatusMeta = (s?: string) =>
-  BOOKING_STATUS_META[String(s || '').toUpperCase()] || {
-    label: s || 'غير محدد',
-    chip: 'bg-slate-100 text-slate-600 border-slate-200',
-    color: '#94a3b8',
-  };
-
-type PeriodKey = '7' | '30' | '90' | '365';
-const PERIODS: Array<{ key: PeriodKey; label: string; timeRange: string }> = [
-  { key: '7', label: '7 أيام', timeRange: 'last_7_days' },
-  { key: '30', label: '30 يوم', timeRange: 'last_30_days' },
-  { key: '90', label: '90 يوم', timeRange: 'last_90_days' },
-  { key: '365', label: 'السنة', timeRange: 'this_year' },
-];
-const isoDate = (d: Date) => d.toISOString().slice(0, 10);
-function previousWindow(key: PeriodKey): { start_date: string; end_date: string } {
-  const now = new Date();
-  if (key === '365') {
-    const y = now.getFullYear() - 1;
-    return { start_date: `${y}-01-01`, end_date: `${y}-12-31` };
-  }
-  const days = Number(key);
-  const end = new Date(now);
-  end.setDate(end.getDate() - days);
-  const start = new Date(now);
-  start.setDate(start.getDate() - days * 2);
-  return { start_date: isoDate(start), end_date: isoDate(end) };
-}
-const pctDelta = (cur: number, prev: number): number | null => {
-  if (!Number.isFinite(cur) || !Number.isFinite(prev) || prev <= 0) return null;
-  return ((cur - prev) / prev) * 100;
-};
-
-/* ============================================================
- * Tiny sparkline (SVG polyline)
- * ============================================================ */
-
-const AXIS_STYLE = { fontSize: 10, fill: chartColors.axis, fontWeight: 600 };
-
-function TrendTooltip({ active, payload, label, format }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-lg bg-slate-900 text-white px-2.5 py-1.5 shadow-lg text-[11px] font-bold whitespace-nowrap">
-      <span className="text-slate-400 font-semibold">{label} — </span>
-      {format(payload[0].value)}
-    </div>
-  );
-}
-
-/** سباركلاين مصغّر لكروت المؤشرات (Recharts Area) */
-function Sparkline({ values, color = chartColors.revenue }: { values: number[]; color?: string }) {
-  const data = (values || []).map((v, i) => ({ i, v }));
-  if (data.length < 2) return null;
-  const gid = `spark-${color.replace('#', '')}`;
-  return (
-    <div className="w-16 h-7" dir="ltr">
-      <ResponsiveContainer width="100%" height="100%">
-        <RAreaChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
-          <defs>
-            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.25} />
-              <stop offset="100%" stopColor={color} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <RArea
-            type="monotone"
-            dataKey="v"
-            stroke={color}
-            strokeWidth={1.5}
-            fill={`url(#${gid})`}
-          />
-        </RAreaChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-/** دونات توزيع حالات الطلبات — من بيانات الطلبات الحقيقية */
-function StatusDonut({
-  data,
-  total,
-}: {
-  data: Array<{ name: string; value: number; color: string }>;
-  total: number;
-}) {
-  const shown = data.length > 0 ? data : [{ name: 'لا طلبات', value: 1, color: '#F1F5F9' }];
-  return (
-    <div className="relative h-[170px]" dir="ltr">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={shown}
-            dataKey="value"
-            innerRadius={56}
-            outerRadius={80}
-            paddingAngle={data.length > 1 ? 2 : 0}
-            strokeWidth={0}
-            animationDuration={450}
-          >
-            {shown.map((d, i) => (
-              <Cell key={i} fill={d.color} />
-            ))}
-          </Pie>
-          <RTooltip
-            content={({ active, payload }: any) => {
-              if (!active || !payload?.length || data.length === 0) return null;
-              const p = payload[0].payload;
-              return (
-                <div className="rounded-lg bg-slate-900 text-white px-2.5 py-1.5 shadow-lg text-[11px] font-bold whitespace-nowrap">
-                  {p.name}: {fmtNum(p.value)} ({total > 0 ? Math.round((p.value / total) * 100) : 0}
-                  %)
-                </div>
-              );
-            }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-      <div
-        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
-        dir="rtl"
-      >
-        <span className="text-xl font-extrabold text-slate-900 tabular-nums leading-6">
-          {fmtNum(total)}
-        </span>
-        <span className="text-[10px] font-semibold text-slate-400">طلب</span>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
- * Big area chart (hand-rolled SVG, smooth curve + gradient)
- * ============================================================ */
-
-/** الرسم الرئيسي — أداء المتجر (منحنى ناعم + gradient + tooltip) */
-function PerformanceAreaChart({
-  data,
-  color,
-  formatY,
-  formatTip,
-}: {
-  data: Array<{ x: string; y: number }>;
-  color: string;
-  formatY: (n: number) => string;
-  formatTip: (n: number) => string;
-}) {
-  if (!data || data.length < 2) {
-    return (
-      <div className="h-[260px] flex flex-col items-center justify-center gap-2.5">
-        <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300">
-          <BarChart3 size={24} />
-        </div>
-        <p className="text-sm font-bold text-slate-500">لا توجد مبيعات في هذه الفترة بعد</p>
-        <p className="text-[11px] font-medium text-slate-400">
-          أول عملية بيع سترسم المنحنى هنا تلقائيًا.
-        </p>
-      </div>
-    );
-  }
-  return (
-    <div className="h-[260px] w-full" dir="ltr">
-      <ResponsiveContainer width="100%" height="100%">
-        <RAreaChart data={data} margin={{ top: 10, right: 4, bottom: 0, left: 4 }}>
-          <defs>
-            <linearGradient id="perfFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.22} />
-              <stop offset="100%" stopColor={color} stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid stroke={chartColors.grid} vertical={false} />
-          <XAxis
-            dataKey="x"
-            tick={AXIS_STYLE}
-            axisLine={false}
-            tickLine={false}
-            interval="preserveStartEnd"
-            minTickGap={24}
-            reversed
-          />
-          <YAxis
-            tick={AXIS_STYLE}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={formatY}
-            width={46}
-            orientation="right"
-          />
-          <RTooltip
-            content={<TrendTooltip format={formatTip} />}
-            cursor={{ stroke: chartColors.cursor }}
-          />
-          <RArea
-            type="monotone"
-            dataKey="y"
-            stroke={color}
-            strokeWidth={2.5}
-            fill="url(#perfFill)"
-            activeDot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: color }}
-            animationDuration={450}
-          />
-        </RAreaChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-/* ============================================================
- * UI primitives — نظام موحد للكروت والحالات
- * ============================================================ */
-
-function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`${cardClass} ${className}`}>{children}</div>;
-}
-
-/** كارت بحركة ظهور ناعمة + رفع خفيف عند الـ hover */
-function MotionCard({
-  children,
-  className = '',
-  delay = 0,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -2, boxShadow: shadows.lift }}
-      className={`${cardClass} transition-shadow duration-200 ${className}`}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`bg-slate-100 rounded-md animate-pulse ${className}`} />;
-}
-
-function SectionHead({
-  title,
-  sub,
-  icon,
-  actionLabel,
-  onAction,
-}: {
-  title: string;
-  sub?: string;
-  icon?: React.ReactNode;
-  actionLabel?: string;
-  onAction?: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-100">
-      <div className="flex items-center gap-2.5 min-w-0">
-        {icon && (
-          <span className="w-7 h-7 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 shrink-0">
-            {icon}
-          </span>
-        )}
-        <div className="min-w-0">
-          <h3 className="text-[14px] font-extrabold text-slate-900 leading-5">{title}</h3>
-          {sub && (
-            <p className="text-[11px] font-medium text-slate-400 leading-4 truncate">{sub}</p>
-          )}
-        </div>
-      </div>
-      {actionLabel && onAction && (
-        <button
-          type="button"
-          onClick={onAction}
-          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-0.5 shrink-0"
-        >
-          {actionLabel} <ChevronLeft size={12} />
-        </button>
-      )}
-    </div>
-  );
-}
-
-/* ============================================================
- * تخصيص النظرة العامة — إظهار/إخفاء كل قسم على حدة
- * ============================================================ */
-
-/** كل أقسام الصفحة القابلة للتخصيص — بالترتيب نفسه اللي بتظهر بيه في اللوحة */
-const OVERVIEW_SECTIONS: { id: string; label: string }[] = [
-  { id: 'recent', label: 'آخر ما اطّلع عليه' },
-  { id: 'performance', label: 'أداء المتجر (الرسم البياني)' },
-  { id: 'kpi:Revenue', label: 'مؤشر الإيرادات الإجمالية' },
-  { id: 'kpi:Orders', label: 'مؤشر الطلبات' },
-  { id: 'kpi:Bookings', label: 'مؤشر الحجوزات والمواعيد' },
-  { id: 'kpi:Customers', label: 'مؤشر العملاء' },
-  { id: 'kpi:Views', label: 'مؤشر زوار المتجر' },
-  { id: 'activity', label: 'أحدث الطلبات والحجوزات' },
-  { id: 'shopStats', label: 'التقييم والمتابعون' },
-  { id: 'quickActions', label: 'الإجراءات السريعة' },
-  { id: 'notifications', label: 'آخر الإشعارات' },
-  { id: 'sessions', label: 'آخر جلسات الدخول' },
-  { id: 'distribution', label: 'توزيع الطلبات' },
-  { id: 'topProducts', label: 'الأكثر مبيعًا' },
-];
-
-type OverviewPrefs = { hidden: string[]; forced: string[] };
-
-const overviewPrefsKey = (userKey: string) => `ray_overview_sections_v1:${userKey}`;
-
-function readOverviewPrefs(userKey: string): OverviewPrefs {
-  try {
-    const raw = localStorage.getItem(overviewPrefsKey(userKey));
-    const parsed = raw ? JSON.parse(raw) : null;
-    return {
-      hidden: Array.isArray(parsed?.hidden) ? parsed.hidden : [],
-      forced: Array.isArray(parsed?.forced) ? parsed.forced : [],
-    };
-  } catch {
-    return { hidden: [], forced: [] };
-  }
-}
-
-function writeOverviewPrefs(userKey: string, p: OverviewPrefs) {
-  try {
-    localStorage.setItem(overviewPrefsKey(userKey), JSON.stringify(p));
-  } catch {}
-}
-
-/** الزر الصغير جدًا في رُكن كل قسم — ضغطة واحدة تخفي القسم */
-function SectionHideButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title="إخفاء هذا القسم"
-      aria-label="إخفاء هذا القسم"
-      className="absolute top-2 left-2 z-20 w-5 h-5 rounded-md flex items-center justify-center text-slate-300 hover:text-slate-600 hover:bg-slate-100 transition-all"
-    >
-      <EyeOff size={11} />
-    </button>
-  );
-}
-
-function Empty({
-  icon,
-  title,
-  desc,
-  actionLabel,
-  onAction,
-  secondaryLabel,
-  onSecondary,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc?: string;
-  actionLabel?: string;
-  onAction?: () => void;
-  secondaryLabel?: string;
-  onSecondary?: () => void;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-2 py-10 px-6 text-center">
-      <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-400">
-        {icon}
-      </div>
-      <p className="text-sm font-bold text-slate-700">{title}</p>
-      {desc && (
-        <p className="text-[11px] font-medium text-slate-400 leading-5 max-w-[280px]">{desc}</p>
-      )}
-      <div className="flex items-center gap-2 mt-1.5">
-        {actionLabel && onAction && (
-          <button
-            type="button"
-            onClick={onAction}
-            className="h-8 px-3.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold hover:bg-slate-800 transition-colors"
-          >
-            {actionLabel}
-          </button>
-        )}
-        {secondaryLabel && onSecondary && (
-          <button
-            type="button"
-            onClick={onSecondary}
-            className="h-8 px-3.5 rounded-lg bg-white border border-slate-200 text-slate-600 text-[11px] font-bold hover:bg-slate-50 transition-colors"
-          >
-            {secondaryLabel}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function DeltaInline({ delta }: { delta: number | null }) {
-  if (delta === null || !Number.isFinite(delta))
-    return <span className="text-[10px] font-semibold text-slate-300">—</span>;
-  const up = delta >= 0;
-  return (
-    <span
-      className={`inline-flex items-center gap-0.5 text-[10px] font-extrabold tabular-nums rounded-full px-1.5 py-0.5 ${up ? 'text-emerald-700 bg-emerald-50' : 'text-red-700 bg-red-50'}`}
-    >
-      {up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-      {Math.abs(delta).toLocaleString(LOCALE, { maximumFractionDigits: 1 })}%
-    </span>
-  );
-}
-
-/* ============================================================
- * Page
- * ============================================================ */
-
-type Metric = 'revenue' | 'orders';
+import {
+  type AnalyticsOverview,
+  type AppNotification,
+  type Booking,
+  type LoginSession,
+  type Metric,
+  type Order,
+  type PeriodKey,
+  type SalesReport,
+  type Shop,
+} from './_overview/types';
+import {
+  analyticsHref,
+  bookingStatusMeta,
+  DEFAULT_SHORTCUTS,
+  fmtCompact,
+  fmtDate,
+  fmtEGP,
+  fmtNum,
+  fmtShortId,
+  greeting,
+  isoDate,
+  LOCALE,
+  PERIODS,
+  pctDelta,
+  previousWindow,
+  statusMeta,
+  timeAgo,
+  todayLong,
+  UUID_RE,
+} from './_overview/helpers';
+import {
+  Card,
+  DeltaInline,
+  Empty,
+  MotionCard,
+  PerformanceAreaChart,
+  SectionHead,
+  SectionHideButton,
+  Skeleton,
+  Sparkline,
+  StatusDonut,
+} from './_overview/ui';
+import { useOverviewSections } from './_overview/useSections';
+import { OVERVIEW_SECTIONS } from './_overview/prefs';
 
 export default function DashboardOverview() {
   const router = useRouter();
@@ -699,113 +104,16 @@ export default function DashboardOverview() {
   // آخر ما اطّلع عليه — زيارات حقيقية متتبّعة من الـ layout
   const visited = useRecentlyViewed();
   const recentItems = showAllRecent ? visited : visited.slice(0, 6);
-
-  /**
-   * Whether the merchant has enabled the bookings module.
-   * We treat an unconfigured shop (no enabledModules at all) as having
-   * everything available so we don't hide content on first login.
-   */
-  const bookingModuleEnabled = useMemo(() => {
-    const mods: string[] =
-      (shop as any)?.enabledModules ??
-      (shop as any)?.builderConfig?.enabledModules ??
-      Object.keys((shop as any)?.layoutConfig?.enabledFeatures ?? {});
-    if (!Array.isArray(mods) || mods.length === 0) return true; // unconfigured
-    return mods
-      .map((m) => m.toLowerCase())
-      .some((m) => m === 'bookings' || m === 'reservations' || m === 'bookingsschedule');
-  }, [shop]);
-
-  /* ============================================================
-   * تخصيص الأقسام — الحالة + الافتراضي الذكي حسب موديولات المتجر
-   * ============================================================ */
-  const userKey = String(user?.id || shop?.id || 'anon');
-  const [sectionPrefs, setSectionPrefs] = useState<OverviewPrefs>({ hidden: [], forced: [] });
-  const [customizeOpen, setCustomizeOpen] = useState(false);
-
-  useEffect(() => {
-    setSectionPrefs(readOverviewPrefs(userKey));
-  }, [userKey]);
-
-  const saveSectionPrefs = useCallback(
-    (next: OverviewPrefs) => {
-      setSectionPrefs(next);
-      writeOverviewPrefs(userKey, next);
-    },
-    [userKey]
-  );
-
-  // قدرات المتجر بنفس منطق bookingModuleEnabled — متجر متفعّل فيه الحجوزات
-  // فقط مثلاً لا يرى بطاقات الطلبات وتوزيعها افتراضيًا (وقد يُرجعها من اللوحة).
-  const configuredGroups = useMemo(() => {
-    const feats = (shop as any)?.layoutConfig?.enabledFeatures as
-      Record<string, string[]> | undefined;
-    const mods: string[] =
-      (shop as any)?.enabledModules ??
-      (shop as any)?.builderConfig?.enabledModules ??
-      Object.keys(feats ?? {});
-    return Array.isArray(mods) ? mods.map((m) => m.toLowerCase()) : [];
-  }, [shop]);
-  const hasExplicitModules = configuredGroups.length > 0;
-  const ordersCapability = !hasExplicitModules
-    ? true
-    : configuredGroups.some((g) =>
-        ['sales', 'orders', 'pos', 'products', 'inventory', 'promotions'].includes(g)
-      );
-  const productsCapability = !hasExplicitModules
-    ? true
-    : configuredGroups.some((g) => ['products', 'inventory', 'sales'].includes(g));
-  const crmCapability = !hasExplicitModules
-    ? true
-    : configuredGroups.some((g) => ['crm', 'customers'].includes(g));
-
-  // أقسام تُخفى تلقائيًا لأن موديولها موقوف — اللوحة تسمح بإظهارها رغم ذلك.
-  const moduleAutoHidden = useMemo(() => {
-    const out: string[] = [];
-    if (!ordersCapability) out.push('kpi:Orders', 'distribution');
-    if (!productsCapability) out.push('topProducts');
-    if (!bookingModuleEnabled) out.push('kpi:Bookings');
-    if (!crmCapability && !bookingModuleEnabled) out.push('kpi:Customers');
-    return out;
-  }, [ordersCapability, productsCapability, bookingModuleEnabled, crmCapability]);
-
-  const isSectionHidden = useCallback(
-    (id: string) =>
-      sectionPrefs.hidden.includes(id) ||
-      (moduleAutoHidden.includes(id) && !sectionPrefs.forced.includes(id)),
-    [sectionPrefs, moduleAutoHidden]
-  );
-
-  const hideSection = useCallback(
-    (id: string) =>
-      saveSectionPrefs({
-        hidden: [...new Set([...sectionPrefs.hidden, id])],
-        forced: sectionPrefs.forced.filter((f) => f !== id),
-      }),
-    [sectionPrefs, saveSectionPrefs]
-  );
-
-  const toggleSection = useCallback(
-    (id: string) => {
-      if (!isSectionHidden(id)) {
-        hideSection(id);
-        return;
-      }
-      // إظهار: يشيله من المخفي، ولو قسم موقوف مع الموديول يُسجَّل كاستثناء
-      saveSectionPrefs({
-        hidden: sectionPrefs.hidden.filter((x) => x !== id),
-        forced: moduleAutoHidden.includes(id)
-          ? [...new Set([...sectionPrefs.forced, id])]
-          : sectionPrefs.forced,
-      });
-    },
-    [sectionPrefs, moduleAutoHidden, isSectionHidden, hideSection, saveSectionPrefs]
-  );
-
-  const showAllSections = useCallback(
-    () => saveSectionPrefs({ hidden: [], forced: [] }),
-    [saveSectionPrefs]
-  );
+  const {
+    bookingModuleEnabled,
+    moduleAutoHidden,
+    customizeOpen,
+    setCustomizeOpen,
+    isSectionHidden,
+    hideSection,
+    toggleSection,
+    showAllSections,
+  } = useOverviewSections(shop);
 
   const load = useCallback(
     async (p: PeriodKey) => {
