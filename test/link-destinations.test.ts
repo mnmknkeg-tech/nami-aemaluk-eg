@@ -2,6 +2,7 @@ import {
   adaptTemplateLinkDestinations,
   getInvalidPageDestinations,
   getPageDestinationReferenceCount,
+  isSafeExternalDestination,
   resolveWebsiteLinkDestination,
   syncPageSlugInDestinations,
   type ComponentNode,
@@ -217,5 +218,51 @@ describe('automatic page and action destinations', () => {
       ).destination
     ).toBeUndefined();
     expect(resolveWebsiteLinkDestination(fixtureWebsite, { text: 'تواصل معنا' })).toBeUndefined();
+  });
+});
+
+
+describe('external destination safety', () => {
+  it('accepts only safe external protocols', () => {
+    expect(isSafeExternalDestination({ type: 'external', url: 'https://example.com/path' })).toBe(
+      true
+    );
+    expect(isSafeExternalDestination({ type: 'external', url: 'mailto:hello@example.com' })).toBe(
+      true
+    );
+    expect(isSafeExternalDestination({ type: 'external', url: 'tel:+201000000000' })).toBe(true);
+    expect(isSafeExternalDestination({ type: 'external', url: 'javascript:alert(1)' })).toBe(false);
+    expect(isSafeExternalDestination({ type: 'external', url: 'data:text/html,evil' })).toBe(false);
+    expect(isSafeExternalDestination({ type: 'external', url: 'blob:https://example.com/id' })).toBe(
+      false
+    );
+  });
+
+  it('rejects unsafe explicit destinations and malformed WhatsApp URLs', () => {
+    expect(
+      resolveWebsiteLinkDestination(fixtureWebsite, {
+        destination: { type: 'external', url: 'javascript:alert(1)' },
+      })
+    ).toBeUndefined();
+    expect(
+      isSafeExternalDestination({
+        type: 'whatsapp',
+        url: 'javascript:alert(1)//wa.me/201000000000',
+      })
+    ).toBe(false);
+  });
+
+  it('reports unsafe explicit external destinations during template validation', () => {
+    const website = {
+      ...fixtureWebsite,
+      components: {
+        ...fixtureWebsite.components,
+        unsafe: {
+          ...makeNode('unsafe', 'button', 'home-root', []),
+          destination: { type: 'external', url: 'javascript:alert(1)' },
+        },
+      },
+    };
+    expect(getInvalidPageDestinations(website)).toContain('unsafe');
   });
 });

@@ -50,6 +50,7 @@ import type {
 import {
   resolveWebsiteLinkDestination,
   inferWebsiteLinkDestinationFromLabel,
+  isSafeExternalDestination,
 } from './linkDestinations';
 import {
   getMobileDrawerPages,
@@ -164,6 +165,7 @@ function handleInteraction(e: React.MouseEvent, node: ComponentNode, ctx: NodeVi
     e.preventDefault();
     e.stopPropagation();
     if (destination.type === 'external' || destination.type === 'whatsapp') {
+      if (!isSafeExternalDestination(destination)) return;
       if (!ctx.previewMode) {
         window.open(destination.url, '_blank', 'noopener,noreferrer');
       }

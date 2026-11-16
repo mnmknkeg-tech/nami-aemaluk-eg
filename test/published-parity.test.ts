@@ -332,3 +332,22 @@ describe('published /site parity rendering', () => {
     expect(markup).toContain('https://cdn.example.com/brand.png');
   });
 });
+
+describe('published external navigation safety', () => {
+  it('does not dispatch javascript URLs to the browser or host callback', () => {
+    const opened: string[] = [];
+    const handled = followPublishedDestination(
+      { type: 'external', url: 'javascript:alert(1)' },
+      {
+        website: makeWebsite(),
+        activePageId: 'page_home',
+        onNavigatePage: () => undefined,
+        onExternalUrl: (url: string) => opened.push(url),
+        scrollToSection: () => undefined,
+      }
+    );
+
+    expect(handled).toBe(false);
+    expect(opened).toEqual([]);
+  });
+});

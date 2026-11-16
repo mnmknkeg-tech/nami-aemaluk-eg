@@ -5,7 +5,10 @@ import type {
   WebsiteAnnouncementSettings,
   WebsiteLinkDestination,
 } from './types';
-import { resolveWebsiteLinkDestination } from './linkDestinations';
+import {
+  isSafeExternalDestination,
+  resolveWebsiteLinkDestination,
+} from './linkDestinations';
 
 /**
  * Shared helpers that keep the PUBLISHED renderers (PublicSiteRenderer for
@@ -192,6 +195,7 @@ export function followPublishedDestination(
   if (!destination || destination.type === 'none') return false;
 
   if (destination.type === 'external' || destination.type === 'whatsapp') {
+    if (!isSafeExternalDestination(destination)) return false;
     if (destination.url) {
       if (ctx.onExternalUrl) ctx.onExternalUrl(destination.url);
       else window.open(destination.url, '_blank', 'noopener,noreferrer');
