@@ -6,19 +6,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/compression"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/errors"
 )
 
 // Service implements the Bookings domain business logic.
 type Service struct {
 	repo        *Repository
-	compression *compression.Service
 }
 
 // NewService creates a new bookings service.
-func NewService(repo *Repository, compressionSvc *compression.Service) *Service {
-	return &Service{repo: repo, compression: compressionSvc}
+func NewService(repo *Repository) *Service {
+	return &Service{repo: repo}
 }
 
 // CreateForGuest creates a booking for a guest user.
@@ -226,12 +224,8 @@ func (s *Service) create(ctx context.Context, req CreateBookingRequest, userID *
 	}
 	metadata["itemId"] = req.ItemID
 	metadata["itemName"] = req.ItemName
-	itemImage := req.ItemImage
-	// Compress item image for booking use
-	if itemImage != "" && s.compression != nil {
-		itemImage = s.compression.GetCompressedURL(req.ItemImage, compression.QualityMedium)
-	}
-	metadata["itemImage"] = itemImage
+	// Keep the original uploaded URL until a real optimized object exists.
+	metadata["itemImage"] = req.ItemImage
 	if req.BookingActivityType != "" {
 		metadata["bookingActivityType"] = req.BookingActivityType
 	}

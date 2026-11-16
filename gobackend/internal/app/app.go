@@ -422,7 +422,7 @@ func New(cfg *config.Config) (*App, error) {
 
                 // Initialize bookings service
                 bookingsRepo := bookings.NewRepository(pool)
-                bookingsSvc := bookings.NewService(bookingsRepo, compressionService)
+                bookingsSvc := bookings.NewService(bookingsRepo)
                 bookingsHandler = bookings.NewHandler(bookingsSvc, cfg)
 
                 // Initialize cart-event service
