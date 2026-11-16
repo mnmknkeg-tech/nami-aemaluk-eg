@@ -48,3 +48,23 @@ func TestValidateRejectsCouponTypesWithoutPricingSupport(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateRejectsNegativeCouponValues(t *testing.T) {
+	now := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	coupon := validTestCoupon("fixed")
+	coupon.Value = -25
+	if discount, err := Validate(coupon, 200, now); err == nil {
+		t.Fatalf("negative coupon value should be rejected, got discount %v", discount)
+	}
+
+	coupon = validTestCoupon("fixed")
+	coupon.MaxDiscountValue = -1
+	if discount, err := Validate(coupon, 200, now); err == nil {
+		t.Fatalf("negative max discount should be rejected, got discount %v", discount)
+	}
+
+	coupon = validTestCoupon("fixed")
+	if discount, err := Validate(coupon, -1, now); err == nil {
+		t.Fatalf("negative subtotal should be rejected, got discount %v", discount)
+	}
+}
