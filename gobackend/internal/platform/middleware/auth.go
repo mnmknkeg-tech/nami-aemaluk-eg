@@ -123,27 +123,11 @@ func extractUser(c *fiber.Ctx, secret, issuer, audience string) (AuthUser, strin
 		return AuthUser{}, "", fmt.Errorf("invalid claims")
 	}
 
-	// Only real session tokens may authenticate. One-time tokens (password
-	// reset, email verification) are signed with the same key but must never
-	// act as credentials.
-	//
-	// Trust order: access tokens (header or the short-lived ray_access
-	// cookie) are the primary credential. Refresh tokens from the
-	// ray_session cookie remain accepted as a compatibility bridge for
-	// sessions established before the access cookie shipped — remove that
-	// branch once every active client has refreshed at least once.
+	// Only short-lived access tokens may authenticate ordinary API requests.
+	// Refresh tokens are accepted exclusively by the dedicated refresh endpoint.
 	typ, _ := claims["typ"].(string)
-	switch typ {
-	case "access":
-		if source == tokenSourceSessionCookie {
-			return AuthUser{}, "", fmt.Errorf("access token must not arrive via the session cookie")
-		}
-	case "refresh":
-		if source != tokenSourceSessionCookie {
-			return AuthUser{}, "", fmt.Errorf("refresh token must be sent via session cookie")
-		}
-	default:
-		return AuthUser{}, "", fmt.Errorf("token type %q cannot authenticate", typ)
+	if typ != "access" || source == tokenSourceSessionCookie {
+		return AuthUser{}, "", fmt.Errorf("only access tokens may authenticate API requests")
 	}
 
 	user := AuthUser{

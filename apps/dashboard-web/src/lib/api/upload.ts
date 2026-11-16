@@ -90,13 +90,8 @@ export async function uploadMediaFile(
       console.warn('[media] direct upload failed', directError);
     }
 
-    // Keep the old offline-safe behavior, but only after both real upload paths fail.
-    return new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve((reader.result as string) || publicUrl || '');
-      reader.onerror = () => resolve(publicUrl || '');
-      reader.readAsDataURL(uploadFile);
-    });
+    // Never persist a data URL as a substitute for object storage.
+    throw new Error('تعذّر رفع الصورة إلى التخزين الدائم. تحقق من الاتصال ثم أعد المحاولة.');
   }
 
   // The bytes are already stored. Bookkeeping is idempotent and best-effort;

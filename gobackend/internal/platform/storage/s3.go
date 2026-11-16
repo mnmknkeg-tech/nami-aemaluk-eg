@@ -104,6 +104,18 @@ func (c *S3Client) PutObject(ctx context.Context, key, contentType string, body 
 	return c.PublicURL(key), nil
 }
 
+// HeadObject verifies stored metadata before a presigned upload is registered.
+func (c *S3Client) HeadObject(ctx context.Context, key string) (*s3.HeadObjectOutput, error) {
+	out, err := c.client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(c.cfg.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("head object: %w", err)
+	}
+	return out, nil
+}
+
 // PublicURL returns the public URL for an object key.
 func (c *S3Client) PublicURL(key string) string {
 	base := strings.TrimSuffix(c.cfg.PublicBaseURL, "/")
@@ -172,11 +184,6 @@ func IsAllowedContentType(ct string) bool {
 			return true
 		}
 	}
-	// Allow types with prefix. The explicit svg rejection above must stay
-	// ahead of this prefix match ("image/svg+xml" starts with "image/").
-	if strings.HasPrefix(ct, "image/") || strings.HasPrefix(ct, "video/") {
-		return true
-	}
 	return false
 }
 
@@ -200,6 +207,10 @@ func ParseContentTypeFromFilename(name string) string {
 		return "video/webm"
 	case ".mov":
 		return "video/quicktime"
+	case ".gltf":
+		return "model/gltf+json"
+	case ".glb":
+		return "model/gltf-binary"
 	}
 	return "application/octet-stream"
 }

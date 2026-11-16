@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,7 +41,7 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 		purpose = "images"
 	}
 
-	ct := strings.ToLower(fh.Header.Get("Content-Type"))
+	ct := strings.ToLower(strings.TrimSpace(fh.Header.Get("Content-Type")))
 	if ct == "" || !storage.IsAllowedContentType(ct) {
 		return nil, errors.Validation("invalid_content_type", "نوع الملف غير مدعوم")
 	}
@@ -48,8 +49,8 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 		return nil, errors.Validation("file_too_large", "حجم الملف أكبر من المسموح")
 	}
 	outExt := strings.ToLower(filepath.Ext(fh.Filename))
-	if !isValidExt(outExt) {
-		return nil, errors.Validation("invalid_filename", "اسم الملف غير صالح")
+	if !isValidExt(outExt) || storage.ParseContentTypeFromFilename(fh.Filename) != ct {
+		return nil, errors.Validation("invalid_filename", "امتداد الملف لا يطابق نوعه")
 	}
 
 	src, err := fh.Open()
@@ -66,6 +67,12 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 	raw, err := io.ReadAll(src)
 	if err != nil {
 		return nil, errors.Internal("upload_read_failed", err)
+	}
+	if strings.HasPrefix(ct, "image/") {
+		detected := http.DetectContentType(raw)
+		if detected != "application/octet-stream" && detected != "application/zip" && detected != ct {
+			return nil, errors.Validation("content_mismatch", "محتوى الملف لا يطابق نوعه المعلن")
+		}
 	}
 	payload, outCT, outExt := s.processUploadPayload(ct, outExt, raw)
 
@@ -94,12 +101,14 @@ func (s *Service) storeUpload(shopID, purpose, ext, contentType string, payload 
 	if s.s3 != nil {
 		key := s.s3.MakeKey(shopID, purpose, "upload"+ext)
 		publicURL, err := s.s3.PutObject(context.Background(), key, contentType, payload)
-		if err == nil {
-			return key, publicURL, nil
+		if err != nil {
+			logger.Global().Error("failed to store upload in object storage", zap.Error(err))
+			return "", "", errors.Internal("object_storage_upload_failed", err)
 		}
-		// A storage failure must not lose the upload: fall through to the
-		// local disk so the merchant still gets a working image.
-		logger.Global().Error("failed to store upload in object storage", zap.Error(err))
+		return key, publicURL, nil
+	}
+	if s.cfg == nil || s.cfg.IsProduction() {
+		return "", "", errors.Internal("object_storage_not_configured", fmt.Errorf("S3/R2 is required for production uploads"))
 	}
 
 	key, err := makeLocalKeyWithExt(shopID, purpose, ext)

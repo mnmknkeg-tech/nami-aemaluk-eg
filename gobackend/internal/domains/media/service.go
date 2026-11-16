@@ -12,6 +12,7 @@ import (
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/jobs"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/logger"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/storage"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"go.uber.org/zap"
 )
 
@@ -40,8 +41,8 @@ func (s *Service) PresignUpload(ctx context.Context, userID, actorRole, actorSho
 	}
 
 	ct := strings.ToLower(strings.TrimSpace(req.ContentType))
-	if !storage.IsAllowedContentType(ct) {
-		return nil, errors.Validation("invalid_content_type", "نوع الملف غير مدعوم")
+	if !storage.IsAllowedContentType(ct) || storage.ParseContentTypeFromFilename(req.Filename) != ct {
+		return nil, errors.Validation("invalid_content_type", "نوع الملف لا يطابق امتداده أو غير مدعوم")
 	}
 
 	purpose := strings.TrimSpace(req.Purpose)
@@ -86,9 +87,16 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 		return nil, errors.Internal("s3_not_configured", fmt.Errorf("object storage not configured"))
 	}
 
-	// Validate the key format to prevent path traversal attacks.
+	// Validate key syntax and tenant ownership before looking up or recording it.
 	if err := s.s3.ValidateKey(req.Key); err != nil {
 		return nil, errors.Validation("invalid_key", "invalid upload key")
+	}
+	if !strings.HasPrefix(req.Key, "shops/"+req.ShopID+"/") {
+		return nil, errors.Forbidden("upload_key_tenant_mismatch", "ملف الرفع لا يتبع هذا المتجر")
+	}
+	mimeType := strings.ToLower(strings.TrimSpace(req.MimeType))
+	if !storage.IsAllowedContentType(mimeType) {
+		return nil, errors.Validation("invalid_content_type", "نوع الملف غير مدعوم")
 	}
 
 	existing, err := s.repo.FindByKey(ctx, req.Key)
@@ -96,7 +104,26 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 		return nil, errors.Internal("complete_upload_find_failed", err)
 	}
 	if existing != nil {
+		if existing.ShopID != req.ShopID {
+			return nil, errors.Forbidden("upload_key_tenant_mismatch", "ملف الرفع لا يتبع هذا المتجر")
+		}
 		return existing, nil
+	}
+
+	head, err := s.s3.HeadObject(ctx, req.Key)
+	if err != nil {
+		return nil, errors.Validation("uploaded_object_missing", "الملف غير موجود في التخزين أو تعذر التحقق منه")
+	}
+	actualMime := strings.ToLower(strings.TrimSpace(aws.ToString(head.ContentType)))
+	actualSize := aws.ToInt64(head.ContentLength)
+	if !storage.IsAllowedContentType(actualMime) || actualMime != mimeType {
+		return nil, errors.Validation("uploaded_object_type_mismatch", "نوع الملف المخزن لا يطابق الطلب")
+	}
+	if actualSize <= 0 || actualSize > s.maxUploadBytes() {
+		return nil, errors.Validation("uploaded_object_size_invalid", "حجم الملف المخزن غير صالح")
+	}
+	if req.FileSize != nil && *req.FileSize > 0 && *req.FileSize != actualSize {
+		return nil, errors.Validation("uploaded_object_size_mismatch", "حجم الملف المخزن لا يطابق الطلب")
 	}
 
 	purpose := strings.TrimSpace(req.Purpose)
@@ -105,9 +132,6 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 	}
 
 	publicURL := s.s3.PublicURL(req.Key)
-	if req.PublicURL != nil && *req.PublicURL != "" && s.s3.IsValidPublicURL(*req.PublicURL) {
-		publicURL = *req.PublicURL
-	}
 
 	// Determine compression quality based on purpose
 	var quality compression.Quality
@@ -138,8 +162,8 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 		Purpose:        purpose,
 		OriginalKey:    req.Key,
 		OriginalURL:    publicURL,
-		MimeType:       req.MimeType,
-		FileSize:       req.FileSize,
+		MimeType:       actualMime,
+		FileSize:       &actualSize,
 		Width:          req.Width,
 		Height:         req.Height,
 		LinkedType:     req.LinkedType,
