@@ -20,8 +20,21 @@ function loadFromStorage(): Product[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    // localStorage is user-editable and may contain stale/corrupt entries.
+    // Keep only product-shaped records with a stable string ID, deduplicated.
+    const seen = new Set<string>();
+    return parsed.filter((item): item is Product => {
+      if (!item || typeof item !== 'object' || typeof (item as Product).id !== 'string') {
+        return false;
+      }
+      const id = (item as Product).id.trim();
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
   } catch {
     return [];
   }
@@ -38,11 +51,17 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (hydrated && typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      } catch {
+        // Storage may be disabled or full; wishlist actions must remain usable
+        // for the current session even when persistence is unavailable.
+      }
     }
   }, [items, hydrated]);
 
   const toggle = useCallback((product: Product) => {
+    if (!product || typeof product.id !== 'string' || !product.id.trim()) return;
     setItems((prev) => {
       const exists = prev.find((p) => p.id === product.id);
       if (exists) return prev.filter((p) => p.id !== product.id);
