@@ -25,7 +25,6 @@ func TestIsAllowedContentType_AllowedAndBlocked(t *testing.T) {
 		"image/jpeg", "image/png", "image/webp", "image/avif", "image/gif",
 		"video/mp4", "video/webm", "video/quicktime",
 		"model/gltf+json", "model/gltf-binary",
-		"image/heic", // prefix match
 	}
 	for _, ct := range allowed {
 		assert.True(t, IsAllowedContentType(ct), "must allow %q", ct)
@@ -36,6 +35,10 @@ func TestIsAllowedContentType_AllowedAndBlocked(t *testing.T) {
 		"application/javascript",
 		"application/xhtml+xml",
 		"application/pdf",
+		"image/heic",
+		"image/x-custom",
+		"video/x-custom",
+		"image/svg+xml",
 		"",
 	}
 	for _, ct := range blocked {

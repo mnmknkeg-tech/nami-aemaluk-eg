@@ -172,11 +172,9 @@ func IsAllowedContentType(ct string) bool {
 			return true
 		}
 	}
-	// Allow types with prefix. The explicit svg rejection above must stay
-	// ahead of this prefix match ("image/svg+xml" starts with "image/").
-	if strings.HasPrefix(ct, "image/") || strings.HasPrefix(ct, "video/") {
-		return true
-	}
+	// Keep this an exact allowlist. Prefix matching would admit unreviewed
+	// formats (for example image/heic or video/x-custom) that have no matching
+	// extension/signature validation in the media pipeline.
 	return false
 }
 
