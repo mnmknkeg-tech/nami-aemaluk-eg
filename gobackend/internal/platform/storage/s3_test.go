@@ -36,6 +36,10 @@ func TestIsAllowedContentType_AllowedAndBlocked(t *testing.T) {
 		"application/javascript",
 		"application/xhtml+xml",
 		"application/pdf",
+		"image/heic",
+		"image/x-custom",
+		"video/x-custom",
+		"image/svg+xml",
 		"",
 	}
 	for _, ct := range blocked {

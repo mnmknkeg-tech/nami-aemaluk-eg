@@ -30,9 +30,16 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
   const [receiptCity, setReceiptCity] = useState('');
   const [receiptAddress, setReceiptAddress] = useState('');
   const [receiptLogoDataUrl, setReceiptLogoDataUrl] = useState('');
+  const [receiptLogoFile, setReceiptLogoFile] = useState<File | null>(null);
   const [receiptFooterNote, setReceiptFooterNote] = useState('');
   const [receiptVatRatePercent, setReceiptVatRatePercent] = useState('0');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (receiptLogoDataUrl.startsWith('blob:')) URL.revokeObjectURL(receiptLogoDataUrl);
+    };
+  }, [receiptLogoDataUrl]);
 
   const lastSavedRef = useRef({
     shopName: '',
@@ -114,16 +121,24 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
   const handleReceiptLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const compressed = await compressForUpload(file, 'logo');
-    if (compressed.size > 2 * 1024 * 1024) {
-      toast({
-        title: 'خطأ',
-        description: 'حجم الصورة كبير جداً (الحد الأقصى 2MB)',
-        variant: 'destructive',
-      });
-      return;
-    }
     try {
+      if (!file.type.startsWith('image/')) {
+        toast({ title: 'خطأ', description: 'يرجى اختيار ملف صورة صالح', variant: 'destructive' });
+        return;
+      }
+      const compressed = await compressForUpload(file, 'logo');
+      if (compressed.size > 2 * 1024 * 1024) {
+        toast({
+          title: 'خطأ',
+          description: 'حجم الصورة كبير جداً (الحد الأقصى 2MB)',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setReceiptLogoFile(compressed);
+      setReceiptLogoDataUrl(URL.createObjectURL(compressed));
+      // Upload immediately to permanent object storage; blob/data previews are
+      // never allowed to reach the saved receipt theme.
       const shopId = String(shop?.id || shop?.shopId || '');
       if (!shopId) throw new Error('تعذر تحديد المتجر لرفع شعار الإيصال.');
       const permanentUrl = await uploadMediaFile(compressed, shopId, 'receipt_logo');
@@ -180,6 +195,8 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
         method: 'PATCH',
         body: JSON.stringify({ layoutConfig: layout }),
       });
+      setReceiptLogoDataUrl(permanentLogoUrl);
+      setReceiptLogoFile(null);
       lastSavedRef.current = {
         shopName: receiptShopName,
         phone: receiptPhone,
@@ -304,7 +321,12 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
                   </Button>
                   <Button
                     type="button"
-                    onClick={() => setReceiptLogoDataUrl('')}
+                    onClick={() => {
+                      if (receiptLogoDataUrl.startsWith('blob:'))
+                        URL.revokeObjectURL(receiptLogoDataUrl);
+                      setReceiptLogoDataUrl('');
+                      setReceiptLogoFile(null);
+                    }}
                     variant="secondary"
                   >
                     حذف اللوجو

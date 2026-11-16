@@ -86,4 +86,41 @@ describe('permanent image upload', () => {
     expect(mockedApiRequest).toHaveBeenCalledTimes(2);
     expect(mockedApiRequest.mock.calls[1][0]).toBe('/media/upload');
   });
+
+  it('never accepts a temporary data URL from the multipart fallback', async () => {
+    mockedApiRequest
+      .mockResolvedValueOnce({
+        url: 'https://r2.example/signed-put',
+        key: 'shop/hero.webp',
+        publicUrl: 'https://cdn.example/hero.webp',
+      } as never)
+      .mockResolvedValueOnce({
+        originalUrl: 'data:image/webp;base64,ZmFrZQ==',
+      } as never);
+    jest.spyOn(global, 'fetch').mockResolvedValue({ ok: false } as Response);
+    const file = new File(['image'], 'hero.webp', { type: 'image/webp' });
+
+    await expect(uploadMediaFile(file, 'shop-123', 'website_image')).rejects.toThrow(
+      'فشل رفع الصورة إلى التخزين'
+    );
+    expect(mockedApiRequest).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a temporary URL returned by media completion', async () => {
+    mockedApiRequest
+      .mockResolvedValueOnce({
+        url: 'https://r2.example/signed-put',
+        key: 'shop/hero.webp',
+        publicUrl: 'https://cdn.example/hero.webp',
+      } as never)
+      .mockResolvedValueOnce({
+        originalUrl: 'data:image/webp;base64,ZmFrZQ==',
+      } as never);
+    jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true } as Response);
+    const file = new File(['image'], 'hero.webp', { type: 'image/webp' });
+
+    await expect(uploadMediaFile(file, 'shop-123', 'website_image')).rejects.toThrow(
+      'لم يُرجع التخزين رابط صورة دائمًا وآمنًا.'
+    );
+  });
 });

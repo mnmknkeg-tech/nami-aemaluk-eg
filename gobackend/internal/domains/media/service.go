@@ -156,28 +156,6 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 	// Public URL is derived only from our configured storage base; never trust a client URL.
 	publicURL := s.s3.PublicURL(req.Key)
 
-	// Determine compression quality based on purpose
-	var quality compression.Quality
-	switch purpose {
-	case "gallery":
-		quality = compression.QualityUltra
-	case "products":
-		quality = compression.QualityHigh
-	case "avatars":
-		quality = compression.QualityMedium
-	case "thumbnails":
-		quality = compression.QualityThumbnail
-	default:
-		quality = compression.QualityHigh
-	}
-
-	compressedURLs := make(map[string]string)
-	if s.compression != nil && strings.HasPrefix(strings.ToLower(req.MimeType), "image/") {
-		compressedURLs["high"] = s.compression.GetCompressedURL(publicURL, compression.QualityHigh)
-		compressedURLs["medium"] = s.compression.GetCompressedURL(publicURL, compression.QualityMedium)
-		compressedURLs["thumbnail"] = s.compression.GetCompressedURL(publicURL, compression.QualityThumbnail)
-		compressedURLs["default"] = s.compression.GetCompressedURL(publicURL, quality)
-	}
 
 	m := &Media{
 		ShopID:         req.ShopID,
@@ -191,7 +169,6 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 		Height:         req.Height,
 		LinkedType:     req.LinkedType,
 		LinkedID:       req.LinkedID,
-		CompressedURLs: compressedURLs,
 	}
 
 	created, err := s.repo.Create(ctx, m)

@@ -16,7 +16,7 @@ const (
 	csrfHeaderName = "X-CSRF-Token"
 )
 
-var csrfExemptPrefixes = []string{
+var csrfExemptPaths = []string{
 	"/api/v1/auth/login",
 		"/api/v1/auth/signup",
 		"/api/v1/auth/courier-signup",
@@ -63,7 +63,7 @@ func CSRF(cfg *config.Config) fiber.Handler {
 			return c.Next()
 		}
 
-		// Exempt auth flows.
+		// Exempt only the exact configured auth and public-ingress paths.
 		if isCSRFExempt(path) {
 			return c.Next()
 		}
@@ -142,8 +142,8 @@ func setCSRFCookie(c *fiber.Ctx, value string, cfg *config.Config) {
 
 func isCSRFExempt(path string) bool {
 	path = strings.ToLower(path)
-	for _, p := range csrfExemptPrefixes {
-		if path == p || strings.HasPrefix(path, p+"/") {
+	for _, p := range csrfExemptPaths {
+		if path == p {
 			return true
 		}
 	}
