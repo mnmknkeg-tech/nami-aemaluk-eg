@@ -105,6 +105,8 @@ type PublicOrderResponse struct {
 	CreatedAt     time.Time         `json:"createdAt"`
 	UpdatedAt     time.Time         `json:"updatedAt"`
 	PaymentMethod *string           `json:"paymentMethod,omitempty"`
+	DeliveryFee   float64           `json:"deliveryFee"`
+	DeliveryZone  *string            `json:"deliveryZone,omitempty"`
 	Items         []PublicOrderItem `json:"items"`
 	Shop          *PublicOrderShop  `json:"shop,omitempty"`
 }
