@@ -113,7 +113,6 @@ export default function CheckoutPage() {
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
-  const payableTotal = Math.max(0, totalPrice - couponDiscount) + deliveryTotal;
   const shopGroups = isShopCheckout
     ? { [String((items[0] as any)?.shopId || merchantSlug)]: items }
     : marketCart.itemsByShop();
@@ -163,6 +162,7 @@ export default function CheckoutPage() {
     const fee = config.zones.length ? (zone?.fee ?? 0) : config.defaultFee;
     return sum + (config.freeThreshold > 0 && subtotal >= config.freeThreshold ? 0 : fee);
   }, 0);
+  const payableTotal = Math.max(0, totalPrice - couponDiscount) + deliveryTotal;
   const clearCart = isShopCheckout
     ? () => {
         const shopId = String((items[0] as any)?.shopId || '');
