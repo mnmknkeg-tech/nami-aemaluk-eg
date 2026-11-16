@@ -137,7 +137,7 @@ export default function CheckoutPage() {
   // constant reminder of what is being ordered.
   const checkoutHeader = (title: string, count?: number) => (
     <header className="sticky top-0 z-[60] bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800">
-      <div className="max-w-[1200px] mx-auto px-4 md:px-6 h-14 flex items-center gap-3">
+      <div className="max-w-[1200px] mx-auto px-3 sm:px-4 md:px-6 h-14 flex items-center gap-3">
         <button
           type="button"
           onClick={() =>
@@ -145,7 +145,7 @@ export default function CheckoutPage() {
               ? router.back()
               : router.push(isMerchantPath ? merchantHomeUrl : '/')
           }
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-brand-cyan transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-brand-cyan transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           رجوع
@@ -540,16 +540,16 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-slate-50/60 dark:bg-slate-950/40">
       {checkoutHeader('إتمام الطلب', totalItems)}
 
-      <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-6 md:py-10">
+      <div className="max-w-[1200px] mx-auto px-3 sm:px-4 md:px-6 py-6 md:py-10">
         <form
           ref={formRef}
           onSubmit={handlePlaceOrder}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8"
+          className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8"
         >
           {/* Form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Delivery Info */}
-            <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6">
+            <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 md:p-6">
               <h2 className="flex items-center gap-2 text-lg font-bold mb-5">
                 <MapPin className="w-5 h-5 text-brand-cyan" />
                 بيانات التوصيل
