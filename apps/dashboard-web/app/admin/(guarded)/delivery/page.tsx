@@ -55,6 +55,9 @@ function AdminDeliveryContent() {
   const [tab, setTab] = useState<TabKey>('orders');
   const [marketOrders, setMarketOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [loadingMoreOrders, setLoadingMoreOrders] = useState(false);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [hasMoreOrders, setHasMoreOrders] = useState(false);
   const [orderSearch, setOrderSearch] = useState('');
   const [couriers, setCouriers] = useState<any[]>([]);
   const [pendingCouriers, setPendingCouriers] = useState<any[]>([]);
@@ -77,13 +80,15 @@ function AdminDeliveryContent() {
   const loadMarketplaceOrders = async (silent = false) => {
     if (!silent) setLoadingOrders(true);
     try {
-      const { orders } = await fetchAdminOrders({ limit: 200 });
-      const marketplace = (Array.isArray(orders) ? orders : []).filter((order: any) => {
+      const result = await fetchAdminOrders({ limit: 50, page: 1 });
+      const marketplace = (Array.isArray(result.orders) ? result.orders : []).filter((order: any) => {
         const channel = String(order?.salesChannel || order?.sales_channel || '').toLowerCase();
         const source = String(order?.source || '').toLowerCase();
         return channel === 'marketplace' || source === 'marketplace';
       });
       setMarketOrders(marketplace);
+      setOrdersPage(1);
+      setHasMoreOrders(Boolean(result.meta?.hasMore));
     } catch (e: any) {
       setMarketOrders([]);
       if (!silent) {
@@ -91,6 +96,30 @@ function AdminDeliveryContent() {
       }
     } finally {
       if (!silent) setLoadingOrders(false);
+    }
+  };
+
+  const loadMoreMarketplaceOrders = async () => {
+    if (loadingMoreOrders || !hasMoreOrders) return;
+    setLoadingMoreOrders(true);
+    try {
+      const nextPage = ordersPage + 1;
+      const result = await fetchAdminOrders({ limit: 50, page: nextPage });
+      const marketplace = (Array.isArray(result.orders) ? result.orders : []).filter((order: any) => {
+        const channel = String(order?.salesChannel || order?.sales_channel || '').toLowerCase();
+        const source = String(order?.source || '').toLowerCase();
+        return channel === 'marketplace' || source === 'marketplace';
+      });
+      setMarketOrders((previous) => {
+        const seen = new Set(previous.map((order) => String(order.id)));
+        return [...previous, ...marketplace.filter((order: any) => !seen.has(String(order.id)))];
+      });
+      setOrdersPage(nextPage);
+      setHasMoreOrders(Boolean(result.meta?.hasMore));
+    } catch (e: any) {
+      toast({ title: String(e?.message || 'فشل تحميل المزيد من الطلبات'), variant: 'destructive' });
+    } finally {
+      setLoadingMoreOrders(false);
     }
   };
 
@@ -456,8 +485,20 @@ function AdminDeliveryContent() {
               </div>
             )}
           </Panel>
+          {hasMoreOrders && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={loadMoreMarketplaceOrders}
+                disabled={loadingMoreOrders}
+                className={BTN_SOFT + ' px-6'}
+              >
+                {loadingMoreOrders ? <Spinner /> : 'تحميل طلبات أقدم'}
+              </button>
+            </div>
+          )}
           <p className="text-xs text-slate-500 font-bold text-right">
-            الطلبات هنا للماركت فقط. بعد تعيين المندوب سيظهر الطلب في قائمة طلباته الحالية؛ ويمكنك التواصل مع العميل والمندوب يدوياً من هذه الصفحة.
+            يتم تحميل الطلبات على دفعات من 50 طلباً حتى تقدر توصل لكل طلبات الماركت بدون تحميل السجل كله مرة واحدة. بعد تعيين المندوب سيظهر الطلب في قائمة طلباته الحالية؛ ويمكنك التواصل معه ومع العميل يدوياً من هنا.
           </p>
         </div>
       )}
