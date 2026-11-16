@@ -442,7 +442,7 @@ func New(cfg *config.Config) (*App, error) {
 
                 // Initialize shop-image-map service
                 shopImageMapRepo := shopimagemap.NewRepository(pool)
-                shopImageMapSvc := shopimagemap.NewService(shopImageMapRepo, compressionService)
+                shopImageMapSvc := shopimagemap.NewService(shopImageMapRepo)
                 shopImageMapHandler = shopimagemap.NewHandler(shopImageMapSvc, cfg)
 
                 // Initialize portal service
