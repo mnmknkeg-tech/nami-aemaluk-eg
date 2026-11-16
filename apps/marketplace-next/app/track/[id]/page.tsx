@@ -112,7 +112,7 @@ export default function TrackOrderPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-12 space-y-6" aria-busy>
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 py-8 sm:py-12 space-y-6" aria-busy>
         <span className="sr-only">جاري تحميل الطلب...</span>
         <PageHeaderSkeleton />
         <Skeleton className="h-32 rounded-2xl" />
@@ -131,7 +131,7 @@ export default function TrackOrderPage() {
 
   if (error || !order) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 py-14 sm:py-20 text-center">
         <AlertCircle className="w-16 h-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
         <h1 className="text-xl font-bold mb-2">{error || 'لم يتم العثور على الطلب'}</h1>
         <Link href={homeUrl} className="text-brand-cyan font-bold text-sm hover:underline">
@@ -146,9 +146,9 @@ export default function TrackOrderPage() {
   const isCancelled = currentStatus === 'CANCELLED' || currentStatus === 'REJECTED';
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-12">
+    <div className="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 py-5 sm:py-8 md:py-12">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-6">
+      <nav className="flex items-center gap-2 text-[10px] sm:text-xs font-semibold text-slate-500 mb-4 sm:mb-6">
         <Link href={homeUrl} className="hover:text-brand-cyan">
           {isFromMerchantSite ? shopName || 'المتجر' : 'الرئيسية'}
         </Link>
@@ -157,7 +157,7 @@ export default function TrackOrderPage() {
       </nav>
 
       {/* Order header */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 md:p-6 mb-6">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 md:p-6 mb-4 sm:mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-xl md:text-2xl font-bold">
@@ -192,11 +192,11 @@ export default function TrackOrderPage() {
               const isCurrent = idx === currentStep;
               const isLast = idx === STATUS_STEPS.length - 1;
               return (
-                <div key={step.key} className="flex items-start gap-4">
+                <div key={step.key} className="flex items-start gap-3 sm:gap-4">
                   {/* Icon + line */}
                   <div className="flex flex-col items-center">
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                      className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all ${
                         isDone
                           ? step.color === 'amber'
                             ? 'bg-amber-500 text-white'
@@ -214,7 +214,7 @@ export default function TrackOrderPage() {
                     </div>
                     {!isLast && (
                       <div
-                        className={`w-0.5 h-12 ${idx < currentStep ? 'bg-brand-cyan' : 'bg-slate-200 dark:bg-slate-800'}`}
+                        className={`w-0.5 h-10 sm:h-12 ${idx < currentStep ? 'bg-brand-cyan' : 'bg-slate-200 dark:bg-slate-800'}`}
                       />
                     )}
                   </div>
