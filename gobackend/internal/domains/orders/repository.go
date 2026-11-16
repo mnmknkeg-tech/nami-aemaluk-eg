@@ -3,6 +3,7 @@ package orders
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -513,6 +514,22 @@ func (r *Repository) CourierUpdate(ctx context.Context, id string, status *Order
 	query := "UPDATE orders SET " + strings.Join(set, ", ") + where + " RETURNING " + orderColumnsNoAlias
 	row := r.pool.QueryRow(ctx, query, args...)
 	return scanOrder(row)
+}
+
+// GetShopDeliveryConfig reads merchant-controlled delivery settings from page_design.
+func (r *Repository) GetShopDeliveryConfig(ctx context.Context, shopID string) (map[string]any, bool, error) {
+	var raw []byte
+	var disabled bool
+	err := r.pool.QueryRow(ctx, "SELECT page_design, delivery_disabled FROM shops WHERE id = $1", shopID).Scan(&raw, &disabled)
+	if err != nil {
+		if err == pgx.ErrNoRows { return nil, false, nil }
+		return nil, false, err
+	}
+	config := map[string]any{}
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &config); err != nil { return nil, disabled, err }
+	}
+	return config, disabled, nil
 }
 
 // GetProductForOrder returns product details used when building an order.
