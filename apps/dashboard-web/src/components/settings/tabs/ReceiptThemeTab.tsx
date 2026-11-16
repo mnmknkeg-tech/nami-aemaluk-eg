@@ -127,7 +127,7 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
       const shopId = String(shop?.id || shop?.shopId || '');
       if (!shopId) throw new Error('تعذر تحديد المتجر لرفع شعار الإيصال.');
       const permanentUrl = await uploadMediaFile(compressed, shopId, 'receipt_logo');
-      if (!/^https?:\\/\\//i.test(permanentUrl) || /^(data:|blob:)/i.test(permanentUrl)) {
+      if (!/^https?:\/\//i.test(permanentUrl) || /^(data:|blob:)/i.test(permanentUrl)) {
         throw new Error('لم يرجع التخزين رابطًا دائمًا لشعار الإيصال.');
       }
       setReceiptLogoDataUrl(permanentUrl);
@@ -149,7 +149,7 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
       // dropped by the backend, so the theme never persisted.
       let permanentLogoUrl = receiptLogoDataUrl;
       // Migrate old receipts that stored the logo as a base64 data URL.
-      if (/^data:image\\//i.test(permanentLogoUrl)) {
+      if (/^data:image\//i.test(permanentLogoUrl)) {
         const shopId = String(shop?.id || shop?.shopId || '');
         if (!shopId) throw new Error('تعذر تحديد المتجر لترحيل شعار الإيصال القديم.');
         const response = await fetch(permanentLogoUrl);

@@ -98,7 +98,7 @@ export default function KycPage() {
       // The shared helper performs presign -> PUT -> complete and returns only
       // the canonical permanent URL.
       const permanentUrl = await uploadMediaFile(file, '', 'kyc_document');
-      if (!/^https?:\\/\\//i.test(permanentUrl) || /^(data:|blob:)/i.test(permanentUrl)) {
+      if (!/^https?:\/\//i.test(permanentUrl) || /^(data:|blob:)/i.test(permanentUrl)) {
         throw new Error('لم يرجع التخزين رابطًا دائمًا لصورة الهوية.');
       }
       setForm((prev) => ({ ...prev, idImageUrl: permanentUrl }));
