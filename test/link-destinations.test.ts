@@ -259,7 +259,7 @@ describe('external destination safety', () => {
         ...fixtureWebsite.components,
         unsafe: {
           ...makeNode('unsafe', 'button', 'home-root', []),
-          destination: { type: 'external', url: 'javascript:alert(1)' },
+          destination: { type: 'external' as const, url: 'javascript:alert(1)' },
         },
       },
     };
