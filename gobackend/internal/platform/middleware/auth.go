@@ -30,8 +30,8 @@ type AuthUser struct {
 	ShopID string `json:"shopId,omitempty"`
 }
 
-// RequireAuth verifies the JWT (from Authorization header or ray_session cookie)
-// and injects an AuthUser into fiber Locals. If authentication fails it returns
+// RequireAuth verifies a short-lived access JWT (from Authorization header or ray_access cookie)
+// and injects an AuthUser into fiber Locals. Refresh cookies are reserved for /auth/refresh.
 // an authentication error.
 //
 // Security: issuer and audience are validated against the configured values so
@@ -123,11 +123,23 @@ func extractUser(c *fiber.Ctx, secret, issuer, audience string) (AuthUser, strin
 		return AuthUser{}, "", fmt.Errorf("invalid claims")
 	}
 
-	// Only short-lived access tokens may authenticate ordinary API requests.
-	// Refresh tokens are accepted exclusively by the dedicated refresh endpoint.
+	// Only real session tokens may authenticate. One-time tokens (password
+	// reset, email verification) are signed with the same key but must never
+	// act as credentials.
+	//
+	// Only short-lived access tokens may authorize ordinary API requests.
+	// The long-lived refresh token is accepted exclusively by /auth/refresh;
+	// it must never become a general-purpose API credential.
 	typ, _ := claims["typ"].(string)
-	if typ != "access" || source == tokenSourceSessionCookie {
-		return AuthUser{}, "", fmt.Errorf("only access tokens may authenticate API requests")
+	switch typ {
+	case "access":
+		if source == tokenSourceSessionCookie {
+			return AuthUser{}, "", fmt.Errorf("access token must not arrive via the session cookie")
+		}
+	case "refresh":
+		return AuthUser{}, "", fmt.Errorf("refresh tokens cannot authorize API requests")
+	default:
+		return AuthUser{}, "", fmt.Errorf("token type %q cannot authenticate", typ)
 	}
 
 	user := AuthUser{
@@ -167,11 +179,9 @@ func extractToken(c *fiber.Ctx) (string, string) {
 		return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer ")), tokenSourceBearer
 	}
 
-	// Cookies are namespaced per client app (ray_access-DASHBOARD,
-	// ray_session-MARKET, ...) so the dashboard and the marketplace keep
-	// independent logins. Prefer the short-lived access cookie; fall back to
-	// the refresh session cookie for clients that have not yet received an
-	// access cookie (compatibility with pre-upgrade sessions).
+	// Cookies are namespaced per client app (ray_access-DASHBOARD, etc.) so
+	// each frontend keeps an independent login. Only access cookies are read
+	// here; ray_session is a refresh-only credential for /auth/refresh.
 	scope := scopedCookieSuffix(c.Get("X-App-Scope"))
 	if scope != "" {
 		if cookie := c.Cookies("ray_access" + scope); cookie != "" {
@@ -187,19 +197,6 @@ func extractToken(c *fiber.Ctx) (string, string) {
 		}
 	}
 
-	if scope != "" {
-		if cookie := c.Cookies("ray_session" + scope); cookie != "" {
-			return cookie, tokenSourceSessionCookie
-		}
-	}
-	if cookie := c.Cookies("ray_session"); cookie != "" {
-		return cookie, tokenSourceSessionCookie
-	}
-	for _, s := range fallbackScopes {
-		if cookie := c.Cookies("ray_session" + s); cookie != "" {
-			return cookie, tokenSourceSessionCookie
-		}
-	}
 
 	return "", ""
 }

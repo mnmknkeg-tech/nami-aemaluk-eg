@@ -95,13 +95,15 @@ export async function uploadMediaFile(
     // data/blob URLs are temporary browser previews, not durable product media.
     try {
       const directUrl = await directUpload(uploadFile, shopId, purpose);
-      if (directUrl && /^https:\/\//i.test(directUrl)) return directUrl;
+      if (directUrl && /^https:\/\//i.test(directUrl) && !/^blob:/i.test(directUrl)) {
+        return directUrl;
+      }
     } catch (directError) {
       console.warn('[media] direct upload failed', directError);
     }
 
-    // Never persist a data URL as a substitute for object storage.
-    throw new Error('تعذّر رفع الصورة إلى التخزين الدائم. تحقق من الاتصال ثم أعد المحاولة.');
+    // Never return data:, blob:, or an unverified URL as if it were permanent.
+    throw new Error('فشل رفع الصورة إلى التخزين الدائم. تحقق من الاتصال وإعدادات التخزين ثم أعد المحاولة.');
   }
 
   // The bytes are already stored. Bookkeeping is idempotent and best-effort;

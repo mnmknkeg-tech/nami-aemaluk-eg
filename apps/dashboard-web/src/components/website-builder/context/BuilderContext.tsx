@@ -411,6 +411,53 @@ export const BuilderProvider: React.FC<{
     return `${window.location.origin}/preview`;
   }, []);
 
+  const openStandalonePreview = useCallback(() => {
+    if (typeof window === 'undefined' || !liveWebsiteUrl || !activePage?.id) return;
+    if (!builderShopId) {
+      window.alert('لا يمكن فتح المعاينة قبل تحميل بيانات المتجر.');
+      return;
+    }
+    const token =
+      typeof window.crypto?.randomUUID === 'function'
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const storageKey = `ray_builder_preview_snapshot_${token}`;
+    const cleanup = () => {
+      try {
+        window.localStorage.removeItem(storageKey);
+      } catch {
+        // Storage may be blocked in private browsing.
+      }
+    };
+    const snapshot: BuilderPreviewSnapshot = {
+      version: 1,
+      createdAt: Date.now(),
+      shopId: builderShopId,
+      shopName: currentTenant.name,
+      website: previewWebsite,
+      activePageId: activePage.id,
+      isRtl,
+    };
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(snapshot));
+      const previewUrl = new URL(liveWebsiteUrl, window.location.origin);
+      previewUrl.searchParams.set('snapshot', token);
+      // Avoid the noopener feature string: browsers may return null for that
+      // combination even when the new tab opened, causing a false blocked-popup state.
+      const opened = window.open(previewUrl.toString(), '_blank');
+      if (!opened) {
+        cleanup();
+        window.alert('المتصفح منع فتح المعاينة. اسمح بالنوافذ المنبثقة ثم حاول مرة أخرى.');
+        return;
+      }
+      opened.opener = null;
+    } catch (error) {
+      cleanup();
+      console.error('[builder] unable to create standalone preview snapshot', error);
+      window.alert('تعذّر تجهيز المعاينة. احفظ بعض التعديلات أو قلّل حجم محتوى الصفحة ثم حاول مرة أخرى.');
+    }
+  }, [activePage?.id, builderShopId, currentTenant.name, isRtl, liveWebsiteUrl, previewWebsite]);
+
   // ── Publishing sub-hook ────────────────────────────────────────────────────
   const publishing = useBuilderPublishing(
     websiteRef,
@@ -517,6 +564,7 @@ export const BuilderProvider: React.FC<{
       const shopId = initialPreviewSnapshot.shopId;
       setBuilderShopId(shopId);
       builderShopIdRef.current = shopId;
+      setBuilderShopName(initialPreviewSnapshot.shopName || '');
       setIsInitializing(false);
       apiRequest(`/products?shopId=${encodeURIComponent(shopId)}&surface=site&limit=100`)
         .then((res: any) => {
@@ -996,6 +1044,7 @@ export const BuilderProvider: React.FC<{
         builderShopName,
         shopProducts,
         liveWebsiteUrl,
+        openStandalonePreview,
         isMobileInspectorOpen,
         setIsMobileInspectorOpen,
         isMobileSidebarOpen,

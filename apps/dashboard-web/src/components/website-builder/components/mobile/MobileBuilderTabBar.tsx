@@ -12,7 +12,7 @@ export const MobileBuilderTabBar: React.FC = () => {
     isMobileInspectorOpen,
     setIsMobileInspectorOpen,
     selectedNode,
-    setIsLivePreviewOpen,
+    openStandalonePreview,
     isFocusMode,
   } = useBuilder();
 
@@ -116,7 +116,7 @@ export const MobileBuilderTabBar: React.FC = () => {
       {!HIDE_UNPUBLISHED && (
         <button
           type="button"
-          onClick={() => setIsLivePreviewOpen(true)}
+          onClick={openStandalonePreview}
           className="flex flex-col items-center justify-center gap-1 py-1 px-2 rounded-xl text-slate-600 hover:text-slate-900 active:scale-95 transition-all cursor-pointer"
         >
           <Play className="w-4 h-4 text-emerald-600 fill-emerald-600" />

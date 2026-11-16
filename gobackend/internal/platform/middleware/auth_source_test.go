@@ -72,8 +72,8 @@ func TestAuthSource_AccessCookie(t *testing.T) {
 	assert.Contains(t, readBody(t, resp), `"source":"cookie"`)
 }
 
-// Refresh tokens must never authenticate ordinary API requests.
-func TestAuthSource_RefreshTokenCannotAuthenticate(t *testing.T) {
+// Refresh cookies must not authorize ordinary API requests.
+func TestAuthSource_SessionCookieBridge(t *testing.T) {
 	cfg := testConfig(t)
 	token := buildToken(t, cfg.Auth.JWTSecret, jwt.MapClaims{
 		"sub": "user-123",

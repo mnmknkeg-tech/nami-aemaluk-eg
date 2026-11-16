@@ -105,6 +105,7 @@ export const TopBar: React.FC = () => {
     isCodeWorkspaceOpen,
     setIsCodeWorkspaceOpen,
     hasCodeDrafts,
+    liveWebsiteUrl,
     isPublishModalOpen,
     setIsPublishModalOpen,
     isAiModalOpen,
@@ -116,7 +117,6 @@ export const TopBar: React.FC = () => {
     onExit,
     isFocusMode,
     toggleFocusMode,
-    liveWebsiteUrl,
   } = useBuilder();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -155,7 +155,9 @@ export const TopBar: React.FC = () => {
     } catch (error) {
       window.localStorage.removeItem(storageKey);
       console.error('[builder] unable to create standalone preview snapshot', error);
-      window.alert('تعذّر تجهيز المعاينة. احفظ بعض التعديلات أو قلّل حجم محتوى الصفحة ثم حاول مرة أخرى.');
+      window.alert(
+        'تعذّر تجهيز المعاينة. احفظ بعض التعديلات أو قلّل حجم محتوى الصفحة ثم حاول مرة أخرى.'
+      );
     }
   };
 

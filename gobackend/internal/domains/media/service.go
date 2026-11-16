@@ -56,7 +56,10 @@ func (s *Service) PresignUpload(ctx context.Context, userID, actorRole, actorSho
 		purpose = "images"
 	}
 
-	if req.FileSize != nil && *req.FileSize > 0 {
+	if req.FileSize != nil {
+		if *req.FileSize <= 0 {
+			return nil, errors.Validation("invalid_file_size", "حجم الملف غير صالح")
+		}
 		maxBytes := s.maxUploadBytes()
 		if maxBytes > 0 && *req.FileSize > maxBytes {
 			return nil, errors.Validation("file_too_large", "حجم الملف أكبر من المسموح")
@@ -150,6 +153,7 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 		purpose = "images"
 	}
 
+	// Public URL is derived only from our configured storage base; never trust a client URL.
 	publicURL := s.s3.PublicURL(req.Key)
 
 	// Determine compression quality based on purpose

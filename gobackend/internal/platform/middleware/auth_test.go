@@ -76,8 +76,7 @@ func TestRequireAuth_RejectsOneTimeTokenTypes(t *testing.T) {
 	}
 }
 
-// Refresh cookies are only valid at the dedicated refresh endpoint; they must
-// not authenticate ordinary API requests.
+// Refresh cookies are reserved for /auth/refresh and must not authorize API calls.
 func TestRequireAuth_RejectsRefreshTokenFromSessionCookie(t *testing.T) {
 	cfg := testConfig(t)
 	token := buildToken(t, cfg.Auth.JWTSecret, jwt.MapClaims{

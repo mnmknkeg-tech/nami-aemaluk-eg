@@ -77,9 +77,9 @@ func TestFiberMiddleware_RecordsBearerSource(t *testing.T) {
 	assert.Equal(t, float64(1), testutil.ToFloat64(m.HTTPRequestTotal.WithLabelValues("GET", "/me", "200")))
 }
 
-// Refresh cookies must not authenticate ordinary API requests after the
-// access-token-only policy is enabled.
-func TestFiberMiddleware_RejectsRefreshSessionCookie(t *testing.T) {
+// Refresh cookies are not accepted by protected API routes and therefore
+// must not be recorded as authenticated session traffic.
+func TestFiberMiddleware_RecordsSessionCookieBridge(t *testing.T) {
 	m := newProbeMetrics()
 	app := newProbeApp(t, m, true)
 

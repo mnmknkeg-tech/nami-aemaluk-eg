@@ -64,9 +64,13 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 	// stored byte-for-byte, everything else raster gets re-encoded. Any failure
 	// here falls back to storing the original bytes — uploads never fail
 	// because of compression.
-	raw, err := io.ReadAll(src)
+	maxBytes := s.maxUploadBytes()
+	raw, err := io.ReadAll(io.LimitReader(src, maxBytes+1))
 	if err != nil {
 		return nil, errors.Internal("upload_read_failed", err)
+	}
+	if int64(len(raw)) > maxBytes {
+		return nil, errors.Validation("file_too_large", "حجم الملف أكبر من المسموح")
 	}
 	if strings.HasPrefix(ct, "image/") && !isValidImageSignature(raw, ct) {
 		return nil, errors.Validation("content_mismatch", "محتوى الملف لا يطابق نوعه المعلن")
