@@ -313,13 +313,20 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
   const visitedRoots = new Set<string>();
   const claimedByPage = new Map<string, string>();
 
-  const cloneSubtreeForPage = (sourceRootId: string, pageId: string): string | null => {
+  const cloneSubtreeForPage = (
+    sourceRootId: string,
+    pageId: string,
+    parentId: string | null = null,
+    pageRootId?: string,
+    productSectionSeen = { value: false }
+  ): string | null => {
     const safePageId = pageId.replace(/[^a-zA-Z0-9_-]/g, '_');
     const localClaimed = new Set<string>();
     const clone = (
       sourceId: string,
-      parentId: string | null,
-      trail: Set<string>
+      cloneParentId: string | null,
+      trail: Set<string>,
+      currentPageRootId: string | null
     ): string | null => {
       const source = components[sourceId];
       if (!source || trail.has(sourceId) || localClaimed.has(sourceId)) return null;
@@ -331,12 +338,27 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
       const clonedNode: ComponentNode = {
         ...source,
         id: clonedId,
-        parentId,
+        parentId: cloneParentId,
         childrenIds: [],
         props: { ...source.props },
         styles: { ...source.styles },
       };
       components[clonedId] = clonedNode;
+
+      const effectivePageRootId = currentPageRootId || clonedId;
+      if (source.type === 'products') {
+        const parent = cloneParentId ? components[cloneParentId] : null;
+        if (
+          !parent ||
+          !isAllowedProductsParent(parent, effectivePageRootId) ||
+          productSectionSeen.value
+        ) {
+          delete components[clonedId];
+          return null;
+        }
+        productSectionSeen.value = true;
+      }
+
       claimed.add(clonedId);
       claimedByPage.set(clonedId, pageId);
       const nextTrail = new Set(trail).add(sourceId);
@@ -350,12 +372,17 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
         )
           continue;
         childSeen.add(childId);
-        const clonedChildId = clone(childId, clonedId, nextTrail);
+        const clonedChildId = clone(
+          childId,
+          clonedId,
+          nextTrail,
+          effectivePageRootId
+        );
         if (clonedChildId) clonedNode.childrenIds.push(clonedChildId);
       }
       return clonedId;
     };
-    return clone(sourceRootId, null, new Set());
+    return clone(sourceRootId, parentId, new Set(), pageRootId || null);
   };
 
   const normalizeChildren = (
@@ -381,7 +408,13 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
       if (claimed.has(childId)) {
         const ownerPageId = claimedByPage.get(childId);
         if (ownerPageId && ownerPageId !== pageId) {
-          const clonedChildId = cloneSubtreeForPage(childId, pageId);
+          const clonedChildId = cloneSubtreeForPage(
+            childId,
+            pageId,
+            parentId,
+            pageRootId,
+            productSectionSeen
+          );
           if (clonedChildId) {
             components[clonedChildId].parentId = parentId;
             result.push(clonedChildId);

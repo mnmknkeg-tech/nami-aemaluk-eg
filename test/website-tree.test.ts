@@ -214,3 +214,57 @@ it('anchors absolute children to their immediate parent in each viewport', () =>
   ).toBe('relative');
   expect(normalized.components.root.styles.mobile.position).toBe('static');
 });
+
+
+describe('shared subtree cloning keeps product placement rules', () => {
+  it('does not clone a second products section into another page', () => {
+    const input = {
+      id: 'shared_products',
+      pages: [
+        { id: 'page_one', name: 'One', slug: '', rootNodeId: 'root_one' },
+        { id: 'page_two', name: 'Two', slug: 'two', rootNodeId: 'root_two' },
+      ],
+      components: {
+        root_one: node('root_one', 'container', null, ['shared_layout']),
+        root_two: node('root_two', 'container', null, ['shared_layout']),
+        shared_layout: node('shared_layout', 'container', null, ['products_one', 'products_two']),
+        products_one: node('products_one', 'products', 'shared_layout'),
+        products_two: node('products_two', 'products', 'shared_layout'),
+      },
+    } as any;
+
+    const normalized = normalizeWebsiteTree(input);
+    const firstLayoutId = normalized.components.root_one.childrenIds[0];
+    const secondLayoutId = normalized.components.root_two.childrenIds[0];
+
+    expect(firstLayoutId).toBe('shared_layout');
+    expect(secondLayoutId).not.toBe(firstLayoutId);
+    expect(normalized.components[firstLayoutId].childrenIds).toEqual(['products_one']);
+    expect(normalized.components[secondLayoutId].childrenIds).toHaveLength(1);
+    expect(normalized.components[secondLayoutId].childrenIds[0]).not.toBe('products_one');
+    expect(normalized.components[secondLayoutId].childrenIds[0]).not.toBe('products_two');
+  });
+
+  it('does not clone a products section under an unsupported shared parent', () => {
+    const input = {
+      id: 'shared_invalid_products',
+      pages: [
+        { id: 'page_one', name: 'One', slug: '', rootNodeId: 'root_one' },
+        { id: 'page_two', name: 'Two', slug: 'two', rootNodeId: 'root_two' },
+      ],
+      components: {
+        root_one: node('root_one', 'container', null, ['shared_header']),
+        root_two: node('root_two', 'container', null, ['shared_header']),
+        shared_header: node('shared_header', 'header', null, ['products_in_header']),
+        products_in_header: node('products_in_header', 'products', 'shared_header'),
+      },
+    } as any;
+
+    const normalized = normalizeWebsiteTree(input);
+    const secondHeaderId = normalized.components.root_two.childrenIds[0];
+
+    expect(normalized.components.shared_header.childrenIds).toEqual([]);
+    expect(secondHeaderId).not.toBe('shared_header');
+    expect(normalized.components[secondHeaderId].childrenIds).toEqual([]);
+  });
+});
