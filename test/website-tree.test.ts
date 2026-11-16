@@ -192,3 +192,27 @@ describe('shared website tree normalization and diagnostics', () => {
     ]);
   });
 });
+
+
+it('anchors absolute children to their immediate parent in each viewport', () => {
+  const input = website({
+    root: {
+      ...node('root', 'container', null, ['child']),
+      styles: { desktop: { position: 'static' }, mobile: { position: 'static' } },
+    },
+    child: {
+      ...node('child', 'card', 'root'),
+      styles: {
+        desktop: { position: 'absolute', top: '10px' },
+        tablet: { position: 'absolute', left: '8px' },
+        mobile: { position: 'static' },
+      },
+    },
+  });
+  const normalized = normalizeWebsiteTree(input);
+  expect(normalized.components.root.styles.desktop.position).toBe('relative');
+  expect(
+    normalized.components.root.styles.tablet?.position ?? normalized.components.root.styles.desktop.position
+  ).toBe('relative');
+  expect(normalized.components.root.styles.mobile.position).toBe('static');
+});

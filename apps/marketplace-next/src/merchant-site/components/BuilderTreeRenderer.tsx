@@ -22,7 +22,6 @@ import {
   LayoutGrid,
   Loader2,
 } from 'lucide-react';
-import { sanitizeHtml } from '@/lib/sanitize';
 import { api, jsonRequest } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 // سلة موقع التاجر المستقلة — مش سلة الماركت (decoupling): الـ add-to-cart في
@@ -38,6 +37,7 @@ import {
   isLegacyProductCardNode,
   productGridClass,
   PublishedProductCard,
+  CustomCodeFrame,
   resolveTheme,
   resolveProductCardOptions,
   useResponsiveViewport,
@@ -79,7 +79,7 @@ interface ComponentNode {
     tablet?: StyleProperties;
     mobile?: StyleProperties;
   };
-  customCode?: { tsxSnippet?: string; cssSnippet?: string };
+  customCode?: { tsx?: string; tsxSnippet?: string; css?: string; cssSnippet?: string; js?: string; jsSnippet?: string };
   isHidden?: boolean;
   /** Canonical link destination (page/section/order/external) set by the builder. */
   destination?: Record<string, any>;
@@ -255,10 +255,9 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
 
   // ── custom-code ────────────────────────────────────────────────────────────
   if (node.type === 'custom-code') {
-    const html = node.customCode?.tsxSnippet || node.props?.html || '';
     return (
-      <div id={node.id} style={computed}>
-        {html && <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }} />}
+      <div id={node.id} style={computed} data-builder-node-id={node.id}>
+        <CustomCodeFrame node={node as any} />
         {renderChildren()}
       </div>
     );

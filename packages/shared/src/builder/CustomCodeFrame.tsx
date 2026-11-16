@@ -125,7 +125,12 @@ export const CustomCodeFrame: React.FC<{ node: ComponentNode }> = ({ node }) => 
     return () => window.removeEventListener('message', handler);
   }, [node.id]);
 
-  if (!node.props.html && !node.customCode?.tsxSnippet && !node.customCode?.tsx) return null;
+  if (
+    !node.props.html &&
+    !node.props.customHtml &&
+    !node.customCode?.tsxSnippet &&
+    !node.customCode?.tsx
+  ) return null;
 
   return (
     <div className="custom-code-node-wrapper relative w-full overflow-hidden">

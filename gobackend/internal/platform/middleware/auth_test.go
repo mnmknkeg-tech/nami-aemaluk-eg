@@ -76,9 +76,9 @@ func TestRequireAuth_RejectsOneTimeTokenTypes(t *testing.T) {
 	}
 }
 
-// The session cookie stores the refresh token — cookie-sourced refresh tokens
-// keep working for the httpOnly-cookie auth flow.
-func TestRequireAuth_AcceptsRefreshTokenFromSessionCookie(t *testing.T) {
+// Refresh cookies are only valid at the dedicated refresh endpoint; they must
+// not authenticate ordinary API requests.
+func TestRequireAuth_RejectsRefreshTokenFromSessionCookie(t *testing.T) {
 	cfg := testConfig(t)
 	token := buildToken(t, cfg.Auth.JWTSecret, jwt.MapClaims{
 		"sub":   "user-123",
@@ -98,7 +98,7 @@ func TestRequireAuth_AcceptsRefreshTokenFromSessionCookie(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "ray_session", Value: token})
 	resp, err := app.Test(req)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
 // A refresh token presented via the Authorization header is rejected — that

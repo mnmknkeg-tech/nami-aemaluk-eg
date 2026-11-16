@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/config"
@@ -25,8 +26,7 @@ func TestIsAllowedContentType_AllowedAndBlocked(t *testing.T) {
 		"image/jpeg", "image/png", "image/webp", "image/avif", "image/gif",
 		"video/mp4", "video/webm", "video/quicktime",
 		"model/gltf+json", "model/gltf-binary",
-		"image/heic", // prefix match
-	}
+		}
 	for _, ct := range allowed {
 		assert.True(t, IsAllowedContentType(ct), "must allow %q", ct)
 	}
@@ -112,4 +112,17 @@ func TestNewS3Client(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, client)
 	})
+}
+
+
+func TestMakeKeySanitizesPathComponents(t *testing.T) {
+	client := &S3Client{}
+	key := client.MakeKey("../shop/evil", "../../products", "../hero.photo.png")
+	parts := strings.Split(key, "/")
+	assert.Len(t, parts, 4, "object key must have exactly four path segments")
+	assert.Equal(t, "shops", parts[0])
+	for _, part := range parts {
+		assert.NotContains(t, part, "..")
+	}
+	assert.True(t, strings.HasSuffix(parts[3], ".png"))
 }

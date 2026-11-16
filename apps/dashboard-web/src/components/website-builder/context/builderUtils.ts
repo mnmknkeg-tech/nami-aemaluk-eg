@@ -29,13 +29,22 @@ export const localBuilderSiteKey = (): string => {
   return uid ? `ray_builder_site_local_${uid}` : 'ray_builder_site_anonymous';
 };
 
+let fallbackBuilderIdCounter = 0;
+
 export const createUniqueBuilderId = (
   prefix: string,
   usedIds: Set<string>,
-  generateRandomId: () => string = () =>
-    typeof globalThis.crypto?.randomUUID === 'function'
-      ? globalThis.crypto.randomUUID()
-      : `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`
+  generateRandomId: () => string = () => {
+    const cryptoApi = globalThis.crypto;
+    if (typeof cryptoApi?.randomUUID === 'function') return cryptoApi.randomUUID();
+    if (typeof cryptoApi?.getRandomValues === 'function') {
+      const bytes = new Uint8Array(16);
+      cryptoApi.getRandomValues(bytes);
+      return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('');
+    }
+    fallbackBuilderIdCounter += 1;
+    return `${Date.now().toString(36)}_${fallbackBuilderIdCounter.toString(36)}`;
+  }
 ): string => {
   const randomId = generateRandomId();
   const baseId = `${prefix}_${randomId}`;

@@ -417,5 +417,51 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
     }
   }
 
-  return { ...website, pages, components };
+  return anchorAbsoluteChildren({ ...website, pages, components });
+}
+
+/**
+ * Give absolute children a positioned immediate parent without changing tree
+ * ownership. Safe for the live editor canvas as well as published snapshots.
+ */
+export function anchorAbsoluteChildren<T extends Website>(website: T): T {
+  if (!isRecord(website) || !isRecord(website.components)) return website;
+  const components = { ...(website.components as Record<string, any>) };
+
+  for (const [parentId, parent] of Object.entries(components)) {
+    if (!isRecord(parent) || !Array.isArray(parent.childrenIds)) continue;
+    const parentStyles: Record<string, any> = {
+      ...(isRecord(parent.styles) ? parent.styles : {}),
+    };
+    let changed = false;
+
+    for (const childId of parent.childrenIds as string[]) {
+      const child = components[childId];
+      if (!isRecord(child)) continue;
+      for (const viewport of ['desktop', 'tablet', 'mobile'] as const) {
+        const childStyles = isRecord(child.styles?.[viewport]) ? child.styles[viewport] : {};
+        const desktopStyles = isRecord(child.styles?.desktop) ? child.styles.desktop : {};
+        if ((childStyles.position ?? desktopStyles.position) !== 'absolute') continue;
+
+        const viewportStyles: Record<string, any> = {
+          ...(isRecord(parentStyles[viewport]) ? parentStyles[viewport] : {}),
+        };
+        const inheritedPosition =
+          viewportStyles.position ??
+          (isRecord(parentStyles.desktop) ? parentStyles.desktop.position : undefined) ??
+          'static';
+        if (inheritedPosition === 'static') {
+          viewportStyles.position = 'relative';
+          parentStyles[viewport] = viewportStyles;
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      components[parentId] = { ...parent, styles: parentStyles };
+    }
+  }
+
+  return { ...website, components } as T;
 }

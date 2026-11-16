@@ -145,10 +145,12 @@ export const TopBar: React.FC = () => {
       window.localStorage.setItem(storageKey, JSON.stringify(snapshot));
       const previewUrl = new URL(liveWebsiteUrl, window.location.origin);
       previewUrl.searchParams.set('snapshot', token);
-      const opened = window.open(previewUrl.toString(), '_blank', 'noopener,noreferrer');
+      const opened = window.open(previewUrl.toString(), '_blank');
       if (!opened) {
         window.localStorage.removeItem(storageKey);
         window.alert('المتصفح منع فتح المعاينة. اسمح بالنوافذ المنبثقة ثم حاول مرة أخرى.');
+      } else {
+        opened.opener = null;
       }
     } catch (error) {
       window.localStorage.removeItem(storageKey);
@@ -569,7 +571,7 @@ export const TopBar: React.FC = () => {
 
             <button
               onClick={() => {
-                if (liveWebsiteUrl) window.open(liveWebsiteUrl, '_blank', 'noopener,noreferrer');
+                handleOpenStandalonePreview();
                 setIsMobileMenuOpen(false);
               }}
               className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 border border-blue-200 text-xs font-bold text-blue-800"

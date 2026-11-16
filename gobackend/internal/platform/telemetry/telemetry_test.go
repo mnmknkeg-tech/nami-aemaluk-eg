@@ -77,9 +77,9 @@ func TestFiberMiddleware_RecordsBearerSource(t *testing.T) {
 	assert.Equal(t, float64(1), testutil.ToFloat64(m.HTTPRequestTotal.WithLabelValues("GET", "/me", "200")))
 }
 
-// This is the metric that decides when the ray_session compatibility bridge can
-// be retired, so it must be reported separately from the access cookie.
-func TestFiberMiddleware_RecordsSessionCookieBridge(t *testing.T) {
+// Refresh cookies must not authenticate ordinary API requests after the
+// access-token-only policy is enabled.
+func TestFiberMiddleware_RejectsRefreshSessionCookie(t *testing.T) {
 	m := newProbeMetrics()
 	app := newProbeApp(t, m, true)
 
@@ -90,9 +90,9 @@ func TestFiberMiddleware_RecordsSessionCookieBridge(t *testing.T) {
 	})
 	resp, err := app.Test(req)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 
-	assert.Equal(t, float64(1), testutil.ToFloat64(m.HTTPAuthSourceTotal.WithLabelValues("GET", "/me", "session_cookie")))
+	assert.Equal(t, float64(0), testutil.ToFloat64(m.HTTPAuthSourceTotal.WithLabelValues("GET", "/me", "session_cookie")))
 	assert.Equal(t, float64(0), testutil.ToFloat64(m.HTTPAuthSourceTotal.WithLabelValues("GET", "/me", "bearer")))
 }
 

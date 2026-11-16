@@ -120,3 +120,11 @@ func findCookie(resp *http.Response, name string) *http.Cookie {
 	}
 	return nil
 }
+
+
+func TestCSRF_ExemptPathMatchingIsSegmentBounded(t *testing.T) {
+	assert.True(t, isCSRFExempt("/api/v1/auth/login"))
+	assert.True(t, isCSRFExempt("/api/v1/auth/login/provider"))
+	assert.False(t, isCSRFExempt("/api/v1/auth/login-evil"))
+	assert.False(t, isCSRFExempt("/api/v1/auth/loginanything"))
+}

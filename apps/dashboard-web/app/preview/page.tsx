@@ -28,7 +28,9 @@ export default function PreviewPage() {
     }
 
     try {
-      const raw = window.localStorage.getItem(`ray_builder_preview_snapshot_${token}`);
+      const storageKey = `ray_builder_preview_snapshot_${token}`;
+      const raw = window.localStorage.getItem(storageKey);
+      window.localStorage.removeItem(storageKey);
       if (!raw) throw new Error('Preview snapshot not found');
       const parsed = JSON.parse(raw) as Partial<BuilderPreviewSnapshot>;
       const valid =

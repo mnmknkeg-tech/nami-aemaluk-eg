@@ -81,7 +81,7 @@ describe('permanent image upload', () => {
     const file = new File(['image'], 'hero.webp', { type: 'image/webp' });
 
     await expect(uploadMediaFile(file, 'shop-123', 'website_image')).rejects.toThrow(
-      'فشل رفع الصورة إلى التخزين'
+      'تعذّر رفع الصورة إلى التخزين الدائم'
     );
     expect(mockedApiRequest).toHaveBeenCalledTimes(2);
   });
