@@ -302,7 +302,7 @@ export default function TrackOrderPage() {
           {(order.deliveryFee != null || order.deliveryZone) && (
             <div className="flex justify-between text-sm font-semibold text-slate-500">
               <span>رسوم التوصيل{order.deliveryZone && ` (${order.deliveryZone})`}</span>
-              <span>{formatPrice(order.deliveryFee)}</span>
+              <span>{formatPrice(order.deliveryFee ?? 0)}</span>
             </div>
           )}
           <div className="flex justify-between text-lg font-black">
