@@ -330,6 +330,44 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 		order.Total = total - discount
 	}
 
+	// Marketplace delivery is priced from the shop's saved settings, never
+	// from a client-supplied amount. The selected zone name and fee are stored
+	// on the order so later settings edits cannot rewrite historical invoices.
+	if salesChannel == "marketplace" {
+		deliveryConfig, deliveryDisabled, configErr := s.repo.GetShopDeliveryConfig(ctx, shopID)
+		if configErr != nil { return nil, errors.Internal("delivery_settings_failed", configErr) }
+		if deliveryDisabled { return nil, errors.Validation("delivery_unavailable", "التوصيل غير متاح من هذا المتجر") }
+		baseFee := numberFromAny(deliveryConfig["deliveryFee"])
+		threshold := numberFromAny(deliveryConfig["freeDeliveryThreshold"])
+		fee := baseFee
+		zones, _ := deliveryConfig["deliveryZones"].([]any)
+		if len(zones) > 0 {
+			if strings.TrimSpace(req.DeliveryZoneID) == "" {
+				return nil, errors.Validation("delivery_zone_required", "اختر منطقة التوصيل")
+			}
+			found := false
+			for _, rawZone := range zones {
+				zone, ok := rawZone.(map[string]any); if !ok { continue }
+				id := strings.TrimSpace(stringFromAny(zone["id"]))
+				name := strings.TrimSpace(stringFromAny(zone["name"]))
+				if id != req.DeliveryZoneID || name == "" { continue }
+				fee = numberFromAny(zone["fee"])
+				if fee < 0 || math.IsNaN(fee) || math.IsInf(fee, 0) { return nil, errors.Validation("delivery_zone_invalid", "رسوم منطقة التوصيل غير صحيحة") }
+				zoneName := name
+				order.DeliveryZone = &zoneName
+				found = true
+				break
+			}
+			if !found { return nil, errors.Validation("delivery_zone_invalid", "منطقة التوصيل غير صالحة لهذا المتجر") }
+		} else if req.DeliveryZoneID != "" {
+			return nil, errors.Validation("delivery_zone_invalid", "منطقة التوصيل غير متاحة لهذا المتجر")
+		}
+		if fee < 0 || math.IsNaN(fee) || math.IsInf(fee, 0) { return nil, errors.Validation("delivery_fee_invalid", "رسوم التوصيل غير صحيحة") }
+		if threshold > 0 && total >= threshold { fee = 0 }
+		order.DeliveryFee = fee
+		order.Total += fee
+	}
+
 	created, duplicate, err := s.repo.CreateOrder(ctx, order, appliedCouponID)
 	if err != nil {
 		if _, ok := errors.IsAppError(err); ok {
