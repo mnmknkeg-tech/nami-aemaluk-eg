@@ -88,7 +88,9 @@ const PublishStateBadge: React.FC<{ onOpenPublish: () => void }> = ({ onOpenPubl
 export const TopBar: React.FC = () => {
   const {
     website,
+    previewWebsite,
     activePage,
+    currentTenant,
     switchPage,
     viewport,
     setViewport,
@@ -121,6 +123,43 @@ export const TopBar: React.FC = () => {
   const [isPageDropdownOpen, setIsPageDropdownOpen] = useState(false);
   const [isMoreToolsOpen, setIsMoreToolsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const handleOpenStandalonePreview = () => {
+    if (typeof window === 'undefined' || !liveWebsiteUrl) return;
+    const token =
+      typeof window.crypto?.randomUUID === 'function'
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const storageKey = `ray_builder_preview_snapshot_${token}`;
+    const snapshot = {
+      version: 1,
+      createdAt: Date.now(),
+      shopId: currentTenant.id,
+      shopName: currentTenant.name,
+      website: previewWebsite,
+      activePageId: activePage.id,
+      isRtl,
+    };
+
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(snapshot));
+      const previewUrl = new URL(liveWebsiteUrl, window.location.origin);
+      previewUrl.searchParams.set('snapshot', token);
+      const opened = window.open(previewUrl.toString(), '_blank');
+      if (!opened) {
+        window.localStorage.removeItem(storageKey);
+        window.alert('المتصفح منع فتح المعاينة. اسمح بالنوافذ المنبثقة ثم حاول مرة أخرى.');
+      } else {
+        opened.opener = null;
+      }
+    } catch (error) {
+      window.localStorage.removeItem(storageKey);
+      console.error('[builder] unable to create standalone preview snapshot', error);
+      window.alert(
+        'تعذّر تجهيز المعاينة. احفظ بعض التعديلات أو قلّل حجم محتوى الصفحة ثم حاول مرة أخرى.'
+      );
+    }
+  };
 
   const handleManualSave = async () => {
     setIsSaving(true);
@@ -385,9 +424,7 @@ export const TopBar: React.FC = () => {
         {/* Preview Button — opens the standalone full-site preview (/preview)
             in its own tab: the real renderer, no editor chrome inside. */}
         <button
-          onClick={() => {
-            if (liveWebsiteUrl) window.open(liveWebsiteUrl, '_blank', 'noopener,noreferrer');
-          }}
+          onClick={handleOpenStandalonePreview}
           title="فتح معاينة كاملة للموقع في نافذة مستقلة"
           className="hidden md:flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-800 shadow-xs transition-all shrink-0 cursor-pointer"
         >
@@ -438,10 +475,7 @@ export const TopBar: React.FC = () => {
 
                 {/* Standalone full-site preview */}
                 <button
-                  onClick={() => {
-                    if (liveWebsiteUrl)
-                      window.open(liveWebsiteUrl, '_blank', 'noopener,noreferrer');
-                  }}
+                  onClick={handleOpenStandalonePreview}
                   className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right"
                 >
                   <ExternalLink className="w-4 h-4 text-blue-600" />
@@ -539,7 +573,7 @@ export const TopBar: React.FC = () => {
 
             <button
               onClick={() => {
-                if (liveWebsiteUrl) window.open(liveWebsiteUrl, '_blank', 'noopener,noreferrer');
+                handleOpenStandalonePreview();
                 setIsMobileMenuOpen(false);
               }}
               className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 border border-blue-200 text-xs font-bold text-blue-800"

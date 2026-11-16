@@ -16,6 +16,7 @@ import { useToast } from '../ToastProvider';
 import { apiRequest } from '@/lib/auth';
 import { getLayoutBase, commitLayoutWrite } from '../layoutConfigDraft';
 import { compressForUpload } from '@/lib/upload-image';
+import { uploadMediaFile } from '@/lib/api/upload';
 
 interface ReceiptThemeTabProps {
   shop: any;
@@ -122,9 +123,21 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
       });
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => setReceiptLogoDataUrl(reader.result as string);
-    reader.readAsDataURL(compressed);
+    try {
+      const shopId = String(shop?.id || shop?.shopId || '');
+      if (!shopId) throw new Error('تعذر تحديد المتجر لرفع شعار الإيصال.');
+      const permanentUrl = await uploadMediaFile(compressed, shopId, 'receipt_logo');
+      if (!/^https?:\/\//i.test(permanentUrl) || /^(data:|blob:)/i.test(permanentUrl)) {
+        throw new Error('لم يرجع التخزين رابطًا دائمًا لشعار الإيصال.');
+      }
+      setReceiptLogoDataUrl(permanentUrl);
+    } catch (error) {
+      toast({
+        title: 'تعذّر رفع الشعار',
+        description: error instanceof Error ? error.message : 'حاول مرة أخرى.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Silent when invoked by the settings shell save-all (one summary toast).
@@ -134,13 +147,31 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
       // The tab READS the theme from layoutConfig.receiptTheme, so it must
       // also SAVE there — the old top-level receiptTheme key was silently
       // dropped by the backend, so the theme never persisted.
+      let permanentLogoUrl = receiptLogoDataUrl;
+      // Migrate old receipts that stored the logo as a base64 data URL.
+      if (/^data:image\//i.test(permanentLogoUrl)) {
+        const shopId = String(shop?.id || shop?.shopId || '');
+        if (!shopId) throw new Error('تعذر تحديد المتجر لترحيل شعار الإيصال القديم.');
+        const response = await fetch(permanentLogoUrl);
+        if (!response.ok) throw new Error('تعذر قراءة شعار الإيصال القديم.');
+        const blob = await response.blob();
+        const extension = blob.type === 'image/jpeg' ? 'jpg' : blob.type.split('/')[1] || 'png';
+        const legacyFile = new File([blob], `receipt-logo.${extension}`, {
+          type: blob.type || 'image/png',
+        });
+        permanentLogoUrl = await uploadMediaFile(legacyFile, shopId, 'receipt_logo');
+        setReceiptLogoDataUrl(permanentLogoUrl);
+      }
+      if (/^(data:|blob:)/i.test(permanentLogoUrl)) {
+        throw new Error('يجب رفع شعار الإيصال إلى التخزين الدائم قبل الحفظ.');
+      }
       const layout = getLayoutBase(shop);
       layout.receiptTheme = {
         shopName: receiptShopName,
         phone: receiptPhone,
         city: receiptCity,
         address: receiptAddress,
-        logoDataUrl: receiptLogoDataUrl,
+        logoDataUrl: permanentLogoUrl,
         footerNote: receiptFooterNote,
         vatRatePercent: Number(receiptVatRatePercent) || 0,
       };
@@ -154,7 +185,7 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
         phone: receiptPhone,
         city: receiptCity,
         address: receiptAddress,
-        logoDataUrl: receiptLogoDataUrl,
+        logoDataUrl: permanentLogoUrl,
         footerNote: receiptFooterNote,
         vatRatePercent: receiptVatRatePercent,
       };

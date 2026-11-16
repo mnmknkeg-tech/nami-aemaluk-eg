@@ -12,7 +12,7 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { compressForUpload } from '@/lib/upload-image';
+import { uploadMediaFile } from '@/lib/api/upload';
 
 interface KycData {
   taxNumber: string;
@@ -46,6 +46,7 @@ export default function KycPage() {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploadError, setUploadError] = useState('');
 
   const [form, setForm] = useState<KycData>({
     taxNumber: '',
@@ -91,28 +92,18 @@ export default function KycPage() {
 
   const handleFileUpload = async (file: File) => {
     setUploading(true);
+    setUploadError('');
     try {
-      const toUpload = await compressForUpload(file, 'document');
-      // Get presigned URL
-      const presignRes = await fetch('/api/v1/media/presign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ contentType: toUpload.type, fileName: toUpload.name }),
-      });
-      const presignData = await presignRes.json();
-      const { uploadUrl, fileUrl } = presignData?.data || presignData;
-
-      // Upload to storage
-      await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': toUpload.type },
-        body: toUpload,
-      });
-
-      setForm((prev) => ({ ...prev, idImageUrl: fileUrl }));
-    } catch {
-      // handle upload error
+      // The backend derives the authenticated merchant's shop ID when omitted.
+      // The shared helper performs presign -> PUT -> complete and returns only
+      // the canonical permanent URL.
+      const permanentUrl = await uploadMediaFile(file, '', 'kyc_document');
+      if (!/^https?:\/\//i.test(permanentUrl) || /^(data:|blob:)/i.test(permanentUrl)) {
+        throw new Error('لم يرجع التخزين رابطًا دائمًا لصورة الهوية.');
+      }
+      setForm((prev) => ({ ...prev, idImageUrl: permanentUrl }));
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'تعذّر رفع صورة الهوية.');
     } finally {
       setUploading(false);
     }
@@ -121,15 +112,16 @@ export default function KycPage() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      await fetch('/api/v1/shops/me/kyc', {
+      const response = await fetch('/api/v1/shops/me/kyc', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(form),
       });
+      if (!response.ok) throw new Error('تعذّر إرسال بيانات التوثيق.');
       setKycStatus('pending');
-    } catch {
-      // handle error
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'تعذّر إرسال بيانات التوثيق.');
     } finally {
       setSubmitting(false);
     }
@@ -292,6 +284,9 @@ export default function KycPage() {
                       className="mx-auto"
                     />
                   </>
+                )}
+                {uploadError && (
+                  <p className="mt-3 text-sm font-semibold text-red-600">{uploadError}</p>
                 )}
                 {uploading && (
                   <div className="mt-3">

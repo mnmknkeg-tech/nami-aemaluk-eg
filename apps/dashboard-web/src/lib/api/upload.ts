@@ -46,7 +46,16 @@ export async function uploadMediaFile(
 ): Promise<string> {
   // Presigned uploads bypass server-side image processing, so optimize before
   // requesting the URL. The helper is best-effort and leaves non-images alone.
-  const uploadFile = await compressForUpload(file, getUploadImageKind(purpose));
+  const compressedFile = await compressForUpload(file, getUploadImageKind(purpose));
+  // Normalize the non-standard browser MIME alias so the extension, signed
+  // Content-Type, R2 metadata and CompleteUpload record all agree.
+  const uploadFile =
+    compressedFile.type.toLowerCase() === 'image/jpg'
+      ? new File([compressedFile], compressedFile.name.replace(/\.[^.]+$/, '.jpg'), {
+          type: 'image/jpeg',
+          lastModified: compressedFile.lastModified,
+        })
+      : compressedFile;
   const presign = await apiRequest<any>('/media/presign', {
     method: 'POST',
     body: JSON.stringify({
@@ -81,8 +90,6 @@ export async function uploadMediaFile(
     if (uploadFile.type.toLowerCase().startsWith('video/')) {
       throw new Error('فشل رفع الفيديو على التخزين؛ تحقق من الاتصال ثم حاول مرة أخرى.');
     }
-    // Non-browser callers cannot use the multipart/data-URL fallback safely.
-    if (typeof FileReader === 'undefined') throw new Error('فشل رفع الصورة');
     try {
       const directUrl = await directUpload(uploadFile, shopId, purpose);
       if (directUrl) return directUrl;
@@ -90,13 +97,8 @@ export async function uploadMediaFile(
       console.warn('[media] direct upload failed', directError);
     }
 
-    // Keep the old offline-safe behavior, but only after both real upload paths fail.
-    return new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve((reader.result as string) || publicUrl || '');
-      reader.onerror = () => resolve(publicUrl || '');
-      reader.readAsDataURL(uploadFile);
-    });
+    // Never persist a data URL as a substitute for object storage.
+    throw new Error('تعذّر رفع الصورة إلى التخزين الدائم. تحقق من الاتصال ثم أعد المحاولة.');
   }
 
   // The bytes are already stored. Bookkeeping is idempotent and best-effort;

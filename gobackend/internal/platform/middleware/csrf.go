@@ -143,7 +143,7 @@ func setCSRFCookie(c *fiber.Ctx, value string, cfg *config.Config) {
 func isCSRFExempt(path string) bool {
 	path = strings.ToLower(path)
 	for _, p := range csrfExemptPrefixes {
-		if strings.HasPrefix(path, p) {
+		if path == p || strings.HasPrefix(path, p+"/") {
 			return true
 		}
 	}

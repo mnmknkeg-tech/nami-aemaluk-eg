@@ -72,9 +72,8 @@ func TestAuthSource_AccessCookie(t *testing.T) {
 	assert.Contains(t, readBody(t, resp), `"source":"cookie"`)
 }
 
-// The ray_session refresh-token cookie is the compatibility bridge that must be
-// measured before it is retired.
-func TestAuthSource_SessionCookieBridge(t *testing.T) {
+// Refresh tokens must never authenticate ordinary API requests.
+func TestAuthSource_RefreshTokenCannotAuthenticate(t *testing.T) {
 	cfg := testConfig(t)
 	token := buildToken(t, cfg.Auth.JWTSecret, jwt.MapClaims{
 		"sub": "user-123",
@@ -87,8 +86,8 @@ func TestAuthSource_SessionCookieBridge(t *testing.T) {
 
 	resp, err := app.Test(req)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Contains(t, readBody(t, resp), `"source":"session_cookie"`)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	assert.NotContains(t, readBody(t, resp), `"source":"session_cookie"`)
 }
 
 // Anonymous requests through OptionalAuth record no source at all — telemetry
