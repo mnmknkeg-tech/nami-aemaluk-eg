@@ -104,6 +104,27 @@ func (c *S3Client) PutObject(ctx context.Context, key, contentType string, body 
 	return c.PublicURL(key), nil
 }
 
+// HeadObject returns metadata for an uploaded object so completion cannot
+// create a media record for a key that was never successfully uploaded.
+func (c *S3Client) HeadObject(ctx context.Context, key string) (int64, string, error) {
+	out, err := c.client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(c.cfg.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return 0, "", fmt.Errorf("head object: %w", err)
+	}
+	var size int64
+	if out.ContentLength != nil {
+		size = *out.ContentLength
+	}
+	contentType := ""
+	if out.ContentType != nil {
+		contentType = strings.ToLower(strings.TrimSpace(*out.ContentType))
+	}
+	return size, contentType, nil
+}
+
 // PublicURL returns the public URL for an object key.
 func (c *S3Client) PublicURL(key string) string {
 	base := strings.TrimSuffix(c.cfg.PublicBaseURL, "/")
@@ -139,7 +160,7 @@ func sanitizeKeyComponent(s string) string {
 	s = strings.ReplaceAll(s, " ", "-")
 	var b strings.Builder
 	for _, r := range s {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' || r == '/' || r == '.' {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' || r == '.' {
 			b.WriteRune(r)
 		} else {
 			b.WriteRune('-')
@@ -153,31 +174,24 @@ func sanitizeKeyComponent(s string) string {
 	return res
 }
 
-// IsAllowedContentType validates an allowed image/video mime type.
+// IsAllowedContentType accepts only formats with an explicit storage and
+// serving policy. Prefix-based image/* or video/* checks admit unknown formats.
 func IsAllowedContentType(ct string) bool {
 	ct = strings.ToLower(strings.TrimSpace(ct))
-	// SVG is rejected explicitly: it can carry <script> payloads and is stored
-	// as-is (never re-encoded), so allowing it would enable stored XSS wherever
-	// uploads are served inline.
-	if ct == "image/svg+xml" {
+	switch ct {
+	case "image/jpeg", "image/png", "image/webp", "image/avif", "image/gif",
+		"video/mp4", "video/webm", "video/quicktime",
+		"model/gltf+json", "model/gltf-binary":
+		return true
+	default:
 		return false
 	}
-	allowed := []string{
-		"image/jpeg", "image/png", "image/webp", "image/avif", "image/gif",
-		"video/mp4", "video/webm", "video/quicktime",
-		"model/gltf+json", "model/gltf-binary",
-	}
-	for _, a := range allowed {
-		if ct == a {
-			return true
-		}
-	}
-	// Allow types with prefix. The explicit svg rejection above must stay
-	// ahead of this prefix match ("image/svg+xml" starts with "image/").
-	if strings.HasPrefix(ct, "image/") || strings.HasPrefix(ct, "video/") {
-		return true
-	}
-	return false
+}
+
+// IsCompatibleContentType ensures the declared MIME type matches the filename
+// extension instead of trusting a caller-controlled Content-Type header.
+func IsCompatibleContentType(filename, contentType string) bool {
+	return ParseContentTypeFromFilename(filename) == strings.ToLower(strings.TrimSpace(contentType))
 }
 
 // ParseContentTypeFromFilename returns a mime type based on extension.
@@ -200,6 +214,10 @@ func ParseContentTypeFromFilename(name string) string {
 		return "video/webm"
 	case ".mov":
 		return "video/quicktime"
+	case ".gltf":
+		return "model/gltf+json"
+	case ".glb":
+		return "model/gltf-binary"
 	}
 	return "application/octet-stream"
 }
@@ -219,18 +237,33 @@ func (c *S3Client) IsValidPublicURL(raw string) bool {
 
 // ValidateKey validates an S3 object key to prevent path traversal attacks.
 func (c *S3Client) ValidateKey(key string) error {
-	if key == "" {
-		return fmt.Errorf("key is required")
+	if key == "" || strings.HasPrefix(key, "/") || strings.ContainsAny(key, "\\\x00") {
+		return fmt.Errorf("invalid key")
 	}
-	// Reject keys with parent directory traversal patterns
 	for _, part := range strings.Split(key, "/") {
-		if part == ".." {
-			return fmt.Errorf("invalid key: path traversal not allowed")
+		if part == "" || part == "." || part == ".." {
+			return fmt.Errorf("invalid key: unsafe path segment")
 		}
 	}
-	// Reject keys with null bytes
-	if strings.ContainsAny(key, "\x00") {
-		return fmt.Errorf("invalid key: null bytes not allowed")
+	return nil
+}
+
+// ValidateShopKey ensures an uploaded key belongs to the authenticated shop
+// and purpose, not merely to the shared storage bucket.
+func (c *S3Client) ValidateShopKey(key, shopID, purpose string) error {
+	if err := c.ValidateKey(key); err != nil {
+		return err
+	}
+	if shopID == "" || purpose == "" {
+		return fmt.Errorf("shop and purpose are required")
+	}
+	prefix := fmt.Sprintf("shops/%s/%s/", sanitizeKeyComponent(shopID), sanitizeKeyComponent(purpose))
+	if !strings.HasPrefix(key, prefix) {
+		return fmt.Errorf("object key does not belong to requested shop and purpose")
+	}
+	name := strings.TrimPrefix(key, prefix)
+	if name == "" || strings.Contains(name, "/") {
+		return fmt.Errorf("invalid object key layout")
 	}
 	return nil
 }

@@ -41,6 +41,21 @@ func TestCSRF_ExemptAuthPath(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
+func TestCSRF_ExemptPrefixDoesNotMatchLookalikePath(t *testing.T) {
+	cfg := testConfig(t)
+	cfg.App.Env = "production"
+	cfg.Security.CSRFDisabled = false
+	app := fiber.New(fiber.Config{ErrorHandler: NewErrorHandler()})
+	app.Use(CSRF(cfg))
+	app.Post("/api/v1/auth/login-evil", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login-evil", nil)
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+}
+
 func TestCSRF_RequiresToken(t *testing.T) {
 	cfg := testConfig(t)
 	cfg.App.Env = "production"

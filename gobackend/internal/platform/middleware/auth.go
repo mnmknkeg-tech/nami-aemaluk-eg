@@ -30,8 +30,8 @@ type AuthUser struct {
 	ShopID string `json:"shopId,omitempty"`
 }
 
-// RequireAuth verifies the JWT (from Authorization header or ray_session cookie)
-// and injects an AuthUser into fiber Locals. If authentication fails it returns
+// RequireAuth verifies a short-lived access JWT (from Authorization header or ray_access cookie)
+// and injects an AuthUser into fiber Locals. Refresh cookies are reserved for /auth/refresh.
 // an authentication error.
 //
 // Security: issuer and audience are validated against the configured values so
@@ -127,11 +127,9 @@ func extractUser(c *fiber.Ctx, secret, issuer, audience string) (AuthUser, strin
 	// reset, email verification) are signed with the same key but must never
 	// act as credentials.
 	//
-	// Trust order: access tokens (header or the short-lived ray_access
-	// cookie) are the primary credential. Refresh tokens from the
-	// ray_session cookie remain accepted as a compatibility bridge for
-	// sessions established before the access cookie shipped — remove that
-	// branch once every active client has refreshed at least once.
+	// Only short-lived access tokens may authorize ordinary API requests.
+	// The long-lived refresh token is accepted exclusively by /auth/refresh;
+	// it must never become a general-purpose API credential.
 	typ, _ := claims["typ"].(string)
 	switch typ {
 	case "access":
@@ -139,9 +137,7 @@ func extractUser(c *fiber.Ctx, secret, issuer, audience string) (AuthUser, strin
 			return AuthUser{}, "", fmt.Errorf("access token must not arrive via the session cookie")
 		}
 	case "refresh":
-		if source != tokenSourceSessionCookie {
-			return AuthUser{}, "", fmt.Errorf("refresh token must be sent via session cookie")
-		}
+		return AuthUser{}, "", fmt.Errorf("refresh tokens cannot authorize API requests")
 	default:
 		return AuthUser{}, "", fmt.Errorf("token type %q cannot authenticate", typ)
 	}

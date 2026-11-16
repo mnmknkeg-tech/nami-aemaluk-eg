@@ -25,7 +25,6 @@ func TestIsAllowedContentType_AllowedAndBlocked(t *testing.T) {
 		"image/jpeg", "image/png", "image/webp", "image/avif", "image/gif",
 		"video/mp4", "video/webm", "video/quicktime",
 		"model/gltf+json", "model/gltf-binary",
-		"image/heic", // prefix match
 	}
 	for _, ct := range allowed {
 		assert.True(t, IsAllowedContentType(ct), "must allow %q", ct)
@@ -41,6 +40,28 @@ func TestIsAllowedContentType_AllowedAndBlocked(t *testing.T) {
 	for _, ct := range blocked {
 		assert.False(t, IsAllowedContentType(ct), "must reject %q", ct)
 	}
+}
+
+func TestIsAllowedContentType_RejectsUnknownImageAndVideoTypes(t *testing.T) {
+	assert.False(t, IsAllowedContentType("image/heic"))
+	assert.False(t, IsAllowedContentType("image/x-unknown"))
+	assert.False(t, IsAllowedContentType("video/x-unknown"))
+}
+
+func TestIsCompatibleContentType(t *testing.T) {
+	assert.True(t, IsCompatibleContentType("photo.jpg", "image/jpeg"))
+	assert.True(t, IsCompatibleContentType("photo.webp", "image/webp"))
+	assert.True(t, IsCompatibleContentType("clip.mp4", "video/mp4"))
+	assert.False(t, IsCompatibleContentType("photo.html", "image/jpeg"))
+	assert.False(t, IsCompatibleContentType("photo.png", "image/jpeg"))
+}
+
+func TestValidateShopKey(t *testing.T) {
+	client := &S3Client{}
+	assert.NoError(t, client.ValidateShopKey("shops/shop-1/product_image/123-photo.webp", "shop-1", "product_image"))
+	assert.Error(t, client.ValidateShopKey("shops/shop-2/product_image/123-photo.webp", "shop-1", "product_image"))
+	assert.Error(t, client.ValidateShopKey("shops/shop-1/gallery/123-photo.webp", "shop-1", "product_image"))
+	assert.Error(t, client.ValidateShopKey("shops/shop-1/product_image/../other.webp", "shop-1", "product_image"))
 }
 
 func TestPublicURL(t *testing.T) {
