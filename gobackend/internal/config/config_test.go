@@ -163,6 +163,8 @@ func TestLoadAcceptsSupabaseQueryExecModes(t *testing.T) {
 		})
 	}
 
+}
+
 func TestLoadAcceptsDatabasePoolOverrides(t *testing.T) {
 	setMinimalValidEnv(t)
 	_ = os.Setenv("DB_POOL_MAX_CONNS", "5")
@@ -203,4 +205,4 @@ func TestLoadRejectsInvalidDatabasePoolOverrides(t *testing.T) {
 		})
 	}
 }
-}
+

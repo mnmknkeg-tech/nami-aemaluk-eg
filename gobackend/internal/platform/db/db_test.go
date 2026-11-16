@@ -176,6 +176,8 @@ func TestSQLModeRegressionGuards(t *testing.T) {
 		t.Fatalf("supabase DSN must not carry the prisma schema param: %s", supabaseDSN)
 	}
 
+}
+
 func TestPoolBudgetHonorsExplicitOverrides(t *testing.T) {
 	max, min := 5, 1
 	cfg := config.DBConfig{MaxOpenConns: 8, MaxIdleConns: 2, PoolMaxConns: &max, PoolMinConns: &min}
@@ -207,5 +209,4 @@ func TestPoolBudgetCapsExplicitOverridesToSharedLimit(t *testing.T) {
 	if gotMax != 15 || gotMin != 0 {
 		t.Fatalf("expected hard max cap (15,0), got (%d,%d)", gotMax, gotMin)
 	}
-}
 }

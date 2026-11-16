@@ -173,6 +173,8 @@ func TestGetOrLoadJSONDoesNotCacheAcrossInvalidation(t *testing.T) {
 		t.Fatalf("in-flight stale load must not repopulate invalidated cache, len=%d", c.Len())
 	}
 
+}
+
 func TestCloseStopsPrunerAndIsIdempotent(t *testing.T) {
 	c := New()
 	c.Close()
@@ -213,4 +215,4 @@ func TestPruneEvictsOldestEntriesWithoutFlushingCache(t *testing.T) {
 		t.Fatal("newest entry should remain cached")
 	}
 }
-}
+
