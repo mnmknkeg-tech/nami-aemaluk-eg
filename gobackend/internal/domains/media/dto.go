@@ -34,7 +34,7 @@ type Media struct {
 
 // PresignUploadRequest is the payload for generating a presigned upload URL.
 type PresignUploadRequest struct {
-	ShopID      string  `json:"shopId" validate:"required"`
+	ShopID      string  `json:"shopId,omitempty"`
 	Filename    string  `json:"filename" validate:"required"`
 	ContentType string  `json:"contentType" validate:"required"`
 	Purpose     string  `json:"purpose,omitempty"`
@@ -54,7 +54,7 @@ type PresignUploadResponse struct {
 
 // CompleteUploadRequest finalizes a media upload after direct upload to S3.
 type CompleteUploadRequest struct {
-	ShopID     string  `json:"shopId" validate:"required"`
+	ShopID     string  `json:"shopId,omitempty"`
 	Key        string  `json:"key" validate:"required"`
 	MimeType   string  `json:"mimeType" validate:"required"`
 	Purpose    string  `json:"purpose,omitempty"`
