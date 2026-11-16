@@ -1,5 +1,4 @@
 import { Tenant } from '../types/builder';
-import { AssetDto } from '../types/dto';
 
 export const mockTenants: Tenant[] = [
   {
@@ -553,93 +552,5 @@ export const mockTenants: Tenant[] = [
       servicesCount: 16,
       testimonialsCount: 140,
     },
-  },
-];
-
-export const mockAssets: AssetDto[] = [
-  {
-    id: 'asset_car_1',
-    tenantId: 'tenant_al_majd_auto',
-    fileName: 'mercedes-amg-gt.jpg',
-    fileType: 'image',
-    url: 'https://images.unsplash.com/photo-1617788138017-80ad40651399?w=1200&auto=format&fit=crop&q=80',
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1617788138017-80ad40651399?w=300&auto=format&fit=crop&q=80',
-    sizeBytes: 420000,
-    width: 1920,
-    height: 1080,
-    altText: 'مرسيدس AMG GT سوداء فاخرة في المعرض',
-    category: 'Cars',
-    tags: ['luxury', 'amg', 'sport', 'hero'],
-    usageCount: 3,
-    createdAt: '2025-05-01T10:00:00Z',
-  },
-  {
-    id: 'asset_car_2',
-    tenantId: 'tenant_al_majd_auto',
-    fileName: 'porsche-911-gt3.jpg',
-    fileType: 'image',
-    url: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1200&auto=format&fit=crop&q=80',
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=300&auto=format&fit=crop&q=80',
-    sizeBytes: 380000,
-    width: 1920,
-    height: 1080,
-    altText: 'بورش 911 حديثة فائقة الأداء',
-    category: 'Cars',
-    tags: ['porsche', 'speed', 'showroom'],
-    usageCount: 2,
-    createdAt: '2025-05-02T11:00:00Z',
-  },
-  {
-    id: 'asset_realestate_1',
-    tenantId: 'tenant_afaq_real_estate',
-    fileName: 'luxury-villa-riyadh.jpg',
-    fileType: 'image',
-    url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80',
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=300&auto=format&fit=crop&q=80',
-    sizeBytes: 512000,
-    width: 1920,
-    height: 1280,
-    altText: 'فيلا فاخرة بتصميم معماري حديث ومسبح',
-    category: 'Properties',
-    tags: ['villa', 'modern', 'riyadh'],
-    usageCount: 4,
-    createdAt: '2025-05-03T12:00:00Z',
-  },
-  {
-    id: 'asset_saas_dashboard',
-    tenantId: 'tenant_noor_tech',
-    fileName: 'saas-dashboard-analytics.jpg',
-    fileType: 'image',
-    url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&auto=format&fit=crop&q=80',
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=300&auto=format&fit=crop&q=80',
-    sizeBytes: 310000,
-    width: 1600,
-    height: 1000,
-    altText: 'لوحة تحكم إحصائيات متقدمة',
-    category: 'Tech',
-    tags: ['dashboard', 'analytics', 'ui'],
-    usageCount: 2,
-    createdAt: '2025-05-04T09:00:00Z',
-  },
-  {
-    id: 'asset_clinic_hero',
-    tenantId: 'tenant_zaha_clinic',
-    fileName: 'doctor-consultation.jpg',
-    fileType: 'image',
-    url: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=1200&auto=format&fit=crop&q=80',
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=300&auto=format&fit=crop&q=80',
-    sizeBytes: 440000,
-    width: 1920,
-    height: 1080,
-    altText: 'فريق أطباء واستشارات طبية متخصصة',
-    category: 'Medical',
-    tags: ['doctor', 'clinic', 'care'],
-    usageCount: 2,
-    createdAt: '2025-05-05T14:00:00Z',
   },
 ];

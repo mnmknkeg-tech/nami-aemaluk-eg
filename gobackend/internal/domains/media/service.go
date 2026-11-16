@@ -141,6 +141,12 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 			return nil, errors.Validation("uploaded_object_signature_invalid", "محتوى الصورة المخزن غير صالح أو لا يطابق نوعه")
 		}
 	}
+	if strings.HasPrefix(actualMime, "video/") {
+		prefix, readErr := s.s3.ReadObjectPrefix(ctx, req.Key, 512)
+		if readErr != nil || !isValidVideoSignature(prefix, actualMime) {
+			return nil, errors.Validation("uploaded_object_signature_invalid", "محتوى الفيديو المخزن غير صالح أو لا يطابق نوعه")
+		}
+	}
 	if actualSize <= 0 || actualSize > s.maxUploadBytes() {
 		return nil, errors.Validation("uploaded_object_size_invalid", "حجم الملف المخزن غير صالح")
 	}

@@ -63,7 +63,7 @@ func CSRF(cfg *config.Config) fiber.Handler {
 			return c.Next()
 		}
 
-		// Exempt only the exact configured auth and public-ingress paths.
+		// Exempt auth flows.
 		if isCSRFExempt(path) {
 			return c.Next()
 		}

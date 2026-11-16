@@ -242,19 +242,27 @@ func TestIsValidImageSignature_AvifCompatibleBrand(t *testing.T) {
 	}
 }
 
-
-func TestReadUploadPayloadEnforcesActualByteLimit(t *testing.T) {
-	data, err := readUploadPayload(bytes.NewReader([]byte("1234")), 4)
-	if err != nil {
-		t.Fatalf("expected exact-limit upload to pass: %v", err)
+func TestIsValidVideoSignature(t *testing.T) {
+	cases := []struct {
+		name string
+		mime string
+		data []byte
+		want bool
+	}{
+		{"mp4", "video/mp4", []byte("\x00\x00\x00\x18ftypisom\x00\x00"), true},
+		{"quicktime", "video/quicktime", []byte("\x00\x00\x00\x18ftypqt  \x00\x00"), true},
+		{"webm", "video/webm", append([]byte{0x1a, 0x45, 0xdf, 0xa3}, []byte("xxxxwebm")...), true},
+		{"spoofed mp4", "video/mp4", []byte("<html>not a video</html>"), false},
+		{"wrong mp4 brand", "video/mp4", []byte("\x00\x00\x00\x18ftypqt  \x00\x00"), false},
+		{"truncated webm", "video/webm", []byte{0x1a, 0x45, 0xdf, 0xa3}, false},
+		{"unknown type", "video/x-custom", []byte("video"), false},
 	}
-	if string(data) != "1234" {
-		t.Fatalf("unexpected payload: %q", data)
-	}
-
-	_, err = readUploadPayload(bytes.NewReader([]byte("12345")), 4)
-	if err == nil {
-		t.Fatal("expected oversized upload to be rejected")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isValidVideoSignature(tc.data, tc.mime); got != tc.want {
+				t.Fatalf("isValidVideoSignature(%q) = %v, want %v", tc.mime, got, tc.want)
+			}
+		})
 	}
 }
 

@@ -422,7 +422,7 @@ func New(cfg *config.Config) (*App, error) {
 
                 // Initialize bookings service
                 bookingsRepo := bookings.NewRepository(pool)
-                bookingsSvc := bookings.NewService(bookingsRepo, compressionService)
+                bookingsSvc := bookings.NewService(bookingsRepo)
                 bookingsHandler = bookings.NewHandler(bookingsSvc, cfg)
 
                 // Initialize cart-event service
@@ -442,7 +442,7 @@ func New(cfg *config.Config) (*App, error) {
 
                 // Initialize shop-image-map service
                 shopImageMapRepo := shopimagemap.NewRepository(pool)
-                shopImageMapSvc := shopimagemap.NewService(shopImageMapRepo, compressionService)
+                shopImageMapSvc := shopimagemap.NewService(shopImageMapRepo)
                 shopImageMapHandler = shopimagemap.NewHandler(shopImageMapSvc, cfg)
 
                 // Initialize portal service

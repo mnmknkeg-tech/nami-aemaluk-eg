@@ -35,12 +35,6 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
   const [receiptVatRatePercent, setReceiptVatRatePercent] = useState('0');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      if (receiptLogoDataUrl.startsWith('blob:')) URL.revokeObjectURL(receiptLogoDataUrl);
-    };
-  }, [receiptLogoDataUrl]);
-
   const lastSavedRef = useRef({
     shopName: '',
     phone: '',

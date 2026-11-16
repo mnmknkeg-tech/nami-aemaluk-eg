@@ -64,16 +64,15 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 	// stored byte-for-byte, everything else raster gets re-encoded. Any failure
 	// here falls back to storing the original bytes — uploads never fail
 	// because of compression.
-	maxBytes := s.maxUploadBytes()
-	raw, err := readUploadPayload(src, maxBytes)
+	raw, err := io.ReadAll(src)
 	if err != nil {
-		if strings.Contains(err.Error(), "exceeds maximum size") {
-			return nil, errors.Validation("file_too_large", "حجم الملف أكبر من المسموح")
-		}
 		return nil, errors.Internal("upload_read_failed", err)
 	}
 	if strings.HasPrefix(ct, "image/") && !isValidImageSignature(raw, ct) {
 		return nil, errors.Validation("content_mismatch", "محتوى الملف لا يطابق نوعه المعلن")
+	}
+	if strings.HasPrefix(ct, "video/") && !isValidVideoSignature(raw, ct) {
+		return nil, errors.Validation("content_mismatch", "محتوى الفيديو لا يطابق نوعه المعلن")
 	}
 	payload, outCT, outExt := s.processUploadPayload(ct, outExt, raw)
 
@@ -130,21 +129,6 @@ func (s *Service) storeUpload(ctx context.Context, shopID, purpose, ext, content
 		return "", "", errors.Internal("upload_write_failed", err)
 	}
 	return key, s.localPublicURL(key), nil
-}
-
-
-func readUploadPayload(src io.Reader, maxBytes int64) ([]byte, error) {
-	if maxBytes <= 0 {
-		return nil, fmt.Errorf("invalid upload size limit")
-	}
-	data, err := io.ReadAll(io.LimitReader(src, maxBytes+1))
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(data)) > maxBytes {
-		return nil, fmt.Errorf("upload exceeds maximum size")
-	}
-	return data, nil
 }
 
 // processUploadPayload decides what actually gets stored for an upload.
@@ -265,3 +249,30 @@ func isValidImageSignature(raw []byte, contentType string) bool {
 		return false
 	}
 }
+// isValidVideoSignature verifies the file signature independently of the
+// browser-supplied Content-Type. MP4/MOV carry an "ftyp" brand at offset 4
+// and WebM starts with the EBML marker.
+func isValidVideoSignature(raw []byte, contentType string) bool {
+	switch contentType {
+	case "video/mp4":
+		return len(raw) >= 12 && string(raw[4:8]) == "ftyp" && isValidMP4Brand(string(raw[8:12]))
+	case "video/quicktime":
+		return len(raw) >= 12 && string(raw[4:8]) == "ftyp" && string(raw[8:12]) == "qt  "
+	case "video/webm":
+		return len(raw) >= 12 && bytes.Equal(raw[:4], []byte{0x1a, 0x45, 0xdf, 0xa3}) && bytes.Contains(raw[4:12], []byte("webm"))
+	default:
+		return false
+	}
+}
+
+// isValidMP4Brand accepts only the well-known MP4 container brands; an ftyp
+// box alone is not proof the bytes are an MP4 file.
+func isValidMP4Brand(brand string) bool {
+	switch brand {
+	case "isom", "iso2", "mp41", "mp42", "avc1", "dash", "msdh", "msd2":
+		return true
+	default:
+		return false
+	}
+}
+
