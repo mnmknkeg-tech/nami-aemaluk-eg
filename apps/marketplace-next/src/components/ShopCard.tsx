@@ -14,7 +14,7 @@ export function ShopCard({ shop }: { shop: Shop }) {
   return (
     <Link
       href={`/shop/${shop.slug}`}
-      className="card-contain group block bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-200/70 dark:border-slate-800 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+      className="card-contain group block bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/70 dark:border-slate-800 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
     >
       {/* Cover with gradient fallback + theme ribbon */}
       <div className="relative aspect-[16/9] overflow-hidden bg-slate-100 dark:bg-slate-800">
@@ -32,7 +32,7 @@ export function ShopCard({ shop }: { shop: Shop }) {
         />
         <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/50 to-transparent" />
         {/* Logo chip */}
-        <div className="absolute bottom-2.5 right-2.5 w-11 h-11 rounded-2xl bg-white dark:bg-slate-900 border border-white/40 shadow-lg flex items-center justify-center overflow-hidden">
+        <div className="absolute bottom-2.5 right-2.5 w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-white/40 shadow-lg flex items-center justify-center overflow-hidden">
           {shop.logo ? (
             <Image
               src={shop.logo}
@@ -53,9 +53,9 @@ export function ShopCard({ shop }: { shop: Shop }) {
       </div>
 
       {/* Info */}
-      <div className="p-3.5 md:p-4">
+      <div className="min-w-0 p-3 sm:p-3.5 md:p-4">
         <div className="flex items-center gap-1.5 mb-1">
-          <h3 className="font-black text-sm md:text-base text-slate-900 dark:text-white truncate flex-1">
+          <h3 className="font-black text-[13px] sm:text-sm md:text-base text-slate-900 dark:text-white truncate flex-1">
             {shop.name}
           </h3>
           {shop.isVerified && (
@@ -67,7 +67,7 @@ export function ShopCard({ shop }: { shop: Shop }) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-slate-500 font-bold">
+        <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-slate-500 font-bold">
           {shop.city && (
             <span className="inline-flex items-center gap-1 truncate">
               <MapPin className="w-3 h-3 shrink-0" />
@@ -87,7 +87,7 @@ export function ShopCard({ shop }: { shop: Shop }) {
         </div>
 
         {shop.bio && (
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold line-clamp-1 mt-1.5">
+          <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-semibold line-clamp-1 mt-1.5">
             {shop.bio}
           </p>
         )}

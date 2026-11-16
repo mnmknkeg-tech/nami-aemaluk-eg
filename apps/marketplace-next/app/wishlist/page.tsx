@@ -12,7 +12,7 @@ export default function WishlistPage() {
 
   if (items.length === 0) {
     return (
-      <div className="max-w-2xl mx-auto px-4 md:px-6 py-16 md:py-24 text-center">
+      <div className="max-w-2xl mx-auto px-4 md:px-6 py-12 sm:py-16 md:py-24 text-center">
         <Heart className="w-16 h-16 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
         <h1 className="text-2xl font-bold mb-2">قائمة المفضلة فارغة</h1>
         <p className="text-slate-500 font-semibold mb-6">أضف منتجاتك المفضلة لتجدها هنا</p>
@@ -27,14 +27,14 @@ export default function WishlistPage() {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-8 md:py-12">
-      <div className="flex items-center justify-between gap-4 mb-8">
+    <div className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 py-5 sm:py-8 md:py-12">
+      <div className="flex items-center justify-between gap-3 sm:gap-4 mb-5 sm:mb-8">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-red-500/10 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-2xl bg-red-500/10 flex items-center justify-center shrink-0">
             <Heart className="w-6 h-6 md:w-7 md:h-7 text-red-500 fill-red-500" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">المفضلة</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">المفضلة</h1>
             <p className="text-slate-500 dark:text-slate-400 font-semibold text-xs md:text-sm mt-0.5">
               كل اللي حبيته في مكان واحد
             </p>
@@ -54,7 +54,7 @@ export default function WishlistPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6">
         {items.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}

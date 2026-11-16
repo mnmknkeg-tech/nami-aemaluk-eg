@@ -107,7 +107,7 @@ export function ActivityStories({
       {/* الصف نفسه */}
       <div
         ref={scrollerRef}
-        className="flex items-start gap-3 md:gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory"
+        className="flex items-start gap-2.5 sm:gap-3 md:gap-4 overflow-x-auto overscroll-x-contain pb-3 -mx-4 px-4 sm:-mx-1 sm:px-1 snap-x snap-mandatory scroll-smooth"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {/* كل قسم = دائرة ستوريز */}
@@ -118,12 +118,12 @@ export function ActivityStories({
             <Link
               key={a.id}
               href={`/activity/${a.id}`}
-              className="group snap-start shrink-0 flex flex-col items-center gap-1.5 w-[72px] md:w-[88px] focus-visible:outline-none"
+              className="group snap-start shrink-0 flex flex-col items-center gap-2 w-[68px] sm:w-[76px] md:w-[88px] min-h-24 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-cyan focus-visible:ring-offset-2 rounded-xl"
               aria-label={`${a.label.ar} — تصفح القسم`}
             >
               {/* الدائرة بحلقة لونية */}
               <div
-                className="relative w-16 h-16 md:w-20 md:h-20 rounded-full p-[2.5px] transition-transform duration-300 group-hover:scale-105 group-active:scale-95"
+                className="relative w-[60px] h-[60px] sm:w-[68px] sm:h-[68px] md:w-20 md:h-20 rounded-full p-[2.5px] transition-transform duration-300 group-hover:scale-105 group-active:scale-95"
                 style={{
                   background: `linear-gradient(135deg, ${theme.from}, ${theme.to})`,
                 }}
@@ -151,7 +151,7 @@ export function ActivityStories({
                 )}
               </div>
               {/* الاسم */}
-              <span className="text-center text-[10.5px] md:text-[12px] font-bold text-slate-700 dark:text-slate-200 leading-tight line-clamp-2 w-full">
+              <span className="text-center text-[10px] sm:text-[11px] md:text-[12px] font-bold text-slate-700 dark:text-slate-200 leading-tight line-clamp-2 w-full">
                 {a.label.ar}
               </span>
             </Link>
