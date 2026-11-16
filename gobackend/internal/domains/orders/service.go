@@ -337,8 +337,10 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 		deliveryConfig, deliveryDisabled, configErr := s.repo.GetShopDeliveryConfig(ctx, shopID)
 		if configErr != nil { return nil, errors.Internal("delivery_settings_failed", configErr) }
 		if deliveryDisabled { return nil, errors.Validation("delivery_unavailable", "التوصيل غير متاح من هذا المتجر") }
-		baseFee := numberFromAny(deliveryConfig["deliveryFee"])
-		threshold := numberFromAny(deliveryConfig["freeDeliveryThreshold"])
+		baseFee := 30.0
+		if _, exists := deliveryConfig["deliveryFee"]; exists { baseFee = numberFromAny(deliveryConfig["deliveryFee"]) }
+		threshold := 500.0
+		if _, exists := deliveryConfig["freeDeliveryThreshold"]; exists { threshold = numberFromAny(deliveryConfig["freeDeliveryThreshold"]) }
 		fee := baseFee
 		zones, _ := deliveryConfig["deliveryZones"].([]any)
 		if len(zones) > 0 {
