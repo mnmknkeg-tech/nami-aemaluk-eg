@@ -61,7 +61,7 @@ export function ProductCard({
       className="
         card-contain group relative flex flex-col h-full
         bg-white dark:bg-slate-900
-        rounded-3xl overflow-hidden
+        rounded-2xl sm:rounded-3xl overflow-hidden
         border border-slate-200/70 dark:border-slate-800
         transition-all duration-300 ease-soft
         hover:-translate-y-1
@@ -99,8 +99,8 @@ export function ProductCard({
         {hasDiscount && (
           <div
             className="
-              absolute top-3 right-3
-              px-2.5 py-1 rounded-full
+              absolute top-2 right-2 sm:top-3 sm:right-3
+              px-2 py-1 sm:px-2.5 sm:py-1 rounded-full
               bg-gradient-to-br from-brand-orange-light to-brand-orange
               text-white text-[11px] font-black tracking-tight
               shadow-glow-orange-sm
@@ -142,16 +142,16 @@ export function ProductCard({
       </div>
 
       {/* Wishlist floating button */}
-      <div className="absolute top-3 left-3 z-10">
+      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10">
         <WishlistButton product={product} size="sm" />
       </div>
 
       {/* ─── Info Container ───────────────────────────────────────────── */}
-      <div className="flex flex-col flex-1 p-3.5 md:p-4 relative z-1 pointer-events-none">
+      <div className="flex flex-col flex-1 min-w-0 p-2.5 sm:p-3.5 md:p-4 relative z-1 pointer-events-none">
         {/* Vendor + Rating row */}
         <div className="flex items-center justify-between gap-1.5 mb-1.5 min-h-[16px]">
           {product.shopName ? (
-            <span className="flex items-center gap-1.5 text-[11px] text-brand-ink-muted dark:text-slate-400 font-semibold truncate">
+            <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-brand-ink-muted dark:text-slate-400 font-semibold truncate">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-amber shrink-0" />
               {product.shopName}
             </span>
@@ -170,10 +170,10 @@ export function ProductCard({
         {/* Title */}
         <h3
           className="
-            font-bold text-xs md:text-sm
+            font-bold text-[11px] sm:text-xs md:text-sm
             text-brand-ink dark:text-white
             line-clamp-2 leading-snug
-            min-h-[2.4rem]
+            min-h-[2.25rem] sm:min-h-[2.4rem]
             group-hover:text-brand-orange
             transition-colors duration-200
           "
@@ -182,20 +182,20 @@ export function ProductCard({
         </h3>
 
         {/* Price & Action Row — separated by hairline */}
-        <div className="mt-auto pt-3 flex items-end justify-between gap-2 border-t border-slate-100 dark:border-slate-800/80">
+        <div className="mt-auto pt-2.5 sm:pt-3 flex items-end justify-between gap-1.5 sm:gap-2 border-t border-slate-100 dark:border-slate-800/80">
           <div className="flex flex-col">
             {hasDiscount && (
-              <span className="text-[10px] md:text-xs text-brand-ink-faint line-through font-medium leading-none mb-1">
+              <span className="text-[9px] sm:text-[10px] md:text-xs text-brand-ink-faint line-through font-medium leading-none mb-1">
                 {formatPrice(product.oldPrice!, product.currency)}
               </span>
             )}
             {decision.showPrice ? (
-              <span className="font-black text-sm md:text-base text-brand-ink dark:text-white leading-tight">
+              <span className="font-black text-xs sm:text-sm md:text-base text-brand-ink dark:text-white leading-tight">
                 {product.price != null ? formatPrice(product.price, product.currency) : '—'}
               </span>
             ) : (
               <>
-                <span className="font-black text-[11px] md:text-xs text-brand-ink dark:text-white leading-tight">
+                <span className="font-black text-[10px] sm:text-[11px] md:text-xs text-brand-ink dark:text-white leading-tight">
                   السعر عند الطلب
                 </span>
                 {decision.booking === '24h' && (
