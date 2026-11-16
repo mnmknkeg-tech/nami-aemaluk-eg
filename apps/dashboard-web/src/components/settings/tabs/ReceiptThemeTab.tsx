@@ -35,6 +35,12 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
   const [receiptVatRatePercent, setReceiptVatRatePercent] = useState('0');
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    return () => {
+      if (receiptLogoDataUrl.startsWith('blob:')) URL.revokeObjectURL(receiptLogoDataUrl);
+    };
+  }, [receiptLogoDataUrl]);
+
   const lastSavedRef = useRef({
     shopName: '',
     phone: '',
@@ -116,17 +122,21 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-    const compressed = await compressForUpload(file, 'logo');
-    if (compressed.size > 2 * 1024 * 1024) {
-      toast({
-        title: 'خطأ',
-        description: 'حجم الصورة كبير جداً (الحد الأقصى 2MB)',
-        variant: 'destructive',
-      });
-      return;
-    }
-    setReceiptLogoFile(compressed);
-    setReceiptLogoDataUrl(URL.createObjectURL(compressed));
+      if (!file.type.startsWith('image/')) {
+        toast({ title: 'خطأ', description: 'يرجى اختيار ملف صورة صالح', variant: 'destructive' });
+        return;
+      }
+      const compressed = await compressForUpload(file, 'logo');
+      if (compressed.size > 2 * 1024 * 1024) {
+        toast({
+          title: 'خطأ',
+          description: 'حجم الصورة كبير جداً (الحد الأقصى 2MB)',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setReceiptLogoFile(compressed);
+      setReceiptLogoDataUrl(URL.createObjectURL(compressed));
     } catch {
       toast({ title: 'خطأ', description: 'تعذّر تجهيز صورة اللوجو', variant: 'destructive' });
     }
