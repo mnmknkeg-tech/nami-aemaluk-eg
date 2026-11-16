@@ -64,8 +64,12 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 	// stored byte-for-byte, everything else raster gets re-encoded. Any failure
 	// here falls back to storing the original bytes — uploads never fail
 	// because of compression.
-	raw, err := io.ReadAll(src)
+	maxBytes := s.maxUploadBytes()
+	raw, err := readUploadPayload(src, maxBytes)
 	if err != nil {
+		if strings.Contains(err.Error(), "exceeds maximum size") {
+			return nil, errors.Validation("file_too_large", "حجم الملف أكبر من المسموح")
+		}
 		return nil, errors.Internal("upload_read_failed", err)
 	}
 	if strings.HasPrefix(ct, "image/") && !isValidImageSignature(raw, ct) {
@@ -73,7 +77,7 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 	}
 	payload, outCT, outExt := s.processUploadPayload(ct, outExt, raw)
 
-	key, publicURL, err := s.storeUpload(shopID, purpose, outExt, outCT, payload)
+	key, publicURL, err := s.storeUpload(ctx, shopID, purpose, outExt, outCT, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -94,10 +98,10 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 // storeUpload writes the payload to object storage when it is configured and
 // falls back to the local disk otherwise. It returns the storage key and the
 // public URL the file is served from.
-func (s *Service) storeUpload(shopID, purpose, ext, contentType string, payload []byte) (string, string, error) {
+func (s *Service) storeUpload(ctx context.Context, shopID, purpose, ext, contentType string, payload []byte) (string, string, error) {
 	if s.s3 != nil {
 		key := s.s3.MakeKey(shopID, purpose, "upload"+ext)
-		publicURL, err := s.s3.PutObject(context.Background(), key, contentType, payload)
+		publicURL, err := s.s3.PutObject(ctx, key, contentType, payload)
 		if err != nil {
 			logger.Global().Error("failed to store upload in object storage", zap.Error(err))
 			return "", "", errors.Internal("object_storage_upload_failed", err)
@@ -126,6 +130,21 @@ func (s *Service) storeUpload(shopID, purpose, ext, contentType string, payload 
 		return "", "", errors.Internal("upload_write_failed", err)
 	}
 	return key, s.localPublicURL(key), nil
+}
+
+
+func readUploadPayload(src io.Reader, maxBytes int64) ([]byte, error) {
+	if maxBytes <= 0 {
+		return nil, fmt.Errorf("invalid upload size limit")
+	}
+	data, err := io.ReadAll(io.LimitReader(src, maxBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > maxBytes {
+		return nil, fmt.Errorf("upload exceeds maximum size")
+	}
+	return data, nil
 }
 
 // processUploadPayload decides what actually gets stored for an upload.

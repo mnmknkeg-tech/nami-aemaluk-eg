@@ -241,3 +241,20 @@ func TestIsValidImageSignature_AvifCompatibleBrand(t *testing.T) {
 		t.Fatal("AVIF with a compatible avif brand should be accepted")
 	}
 }
+
+
+func TestReadUploadPayloadEnforcesActualByteLimit(t *testing.T) {
+	data, err := readUploadPayload(bytes.NewReader([]byte("1234")), 4)
+	if err != nil {
+		t.Fatalf("expected exact-limit upload to pass: %v", err)
+	}
+	if string(data) != "1234" {
+		t.Fatalf("unexpected payload: %q", data)
+	}
+
+	_, err = readUploadPayload(bytes.NewReader([]byte("12345")), 4)
+	if err == nil {
+		t.Fatal("expected oversized upload to be rejected")
+	}
+}
+
