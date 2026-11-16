@@ -417,25 +417,51 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
     }
   }
 
-  // Absolute children must be positioned relative to their immediate parent.
-  // Apply the rule per viewport so editor, preview and published renderers use
-  // the same containing block instead of allowing cards to drift over siblings.
-  for (const parent of Object.values(components)) {
-    for (const childId of parent.childrenIds || []) {
+  return anchorAbsoluteChildren({ ...website, pages, components });
+}
+
+/**
+ * Give absolute children a positioned immediate parent without changing tree
+ * ownership. Safe for the live editor canvas as well as published snapshots.
+ */
+export function anchorAbsoluteChildren<T extends Website>(website: T): T {
+  if (!isRecord(website) || !isRecord(website.components)) return website;
+  const components = { ...(website.components as Record<string, any>) };
+
+  for (const [parentId, parent] of Object.entries(components)) {
+    if (!isRecord(parent) || !Array.isArray(parent.childrenIds)) continue;
+    const parentStyles: Record<string, any> = {
+      ...(isRecord(parent.styles) ? parent.styles : {}),
+    };
+    let changed = false;
+
+    for (const childId of parent.childrenIds as string[]) {
       const child = components[childId];
-      if (!child) continue;
+      if (!isRecord(child)) continue;
       for (const viewport of ['desktop', 'tablet', 'mobile'] as const) {
-        const childPosition =
-          child.styles?.[viewport]?.position ?? child.styles?.desktop?.position;
-        if (childPosition !== 'absolute') continue;
-        const parentStyles = parent.styles as Record<string, any>;
-        const viewportStyles = (parentStyles[viewport] ||= {});
+        const childStyles = isRecord(child.styles?.[viewport]) ? child.styles[viewport] : {};
+        const desktopStyles = isRecord(child.styles?.desktop) ? child.styles.desktop : {};
+        if ((childStyles.position ?? desktopStyles.position) !== 'absolute') continue;
+
+        const viewportStyles: Record<string, any> = {
+          ...(isRecord(parentStyles[viewport]) ? parentStyles[viewport] : {}),
+        };
         const inheritedPosition =
-          viewportStyles.position ?? parentStyles.desktop?.position ?? 'static';
-        if (inheritedPosition === 'static') viewportStyles.position = 'relative';
+          viewportStyles.position ??
+          (isRecord(parentStyles.desktop) ? parentStyles.desktop.position : undefined) ??
+          'static';
+        if (inheritedPosition === 'static') {
+          viewportStyles.position = 'relative';
+          parentStyles[viewport] = viewportStyles;
+          changed = true;
+        }
       }
+    }
+
+    if (changed) {
+      components[parentId] = { ...parent, styles: parentStyles };
     }
   }
 
-  return { ...website, pages, components };
+  return { ...website, components } as T;
 }
