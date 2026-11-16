@@ -99,10 +99,22 @@ const BuilderContext = createContext<BuilderContextType | null>(null);
 
 // ─── Provider ───────────────────────────────────────────────────────────────
 
-export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () => void }> = ({
-  children,
-  onExit,
-}) => {
+export type BuilderPreviewSnapshot = {
+  version: 1;
+  createdAt: number;
+  shopId: string;
+  shopName?: string;
+  website: Website;
+  activePageId: string;
+  isRtl: boolean;
+};
+
+export const BuilderProvider: React.FC<{
+  children: React.ReactNode;
+  onExit?: () => void;
+  initialPreviewSnapshot?: BuilderPreviewSnapshot | null;
+  readOnlyPreview?: boolean;
+}> = ({ children, onExit, initialPreviewSnapshot, readOnlyPreview = false }) => {
   // ── State ────────────────────────────────────────────────────────────────
   const [isMobileInspectorOpen, setIsMobileInspectorOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -117,7 +129,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   const [activeInspectorTab, setActiveInspectorTab] = useState<
     'style' | 'props' | 'responsive' | 'animation' | 'code'
   >('style');
-  const [isRtl, setIsRtl] = useState(true);
+  const [isRtl, setIsRtl] = useState(initialPreviewSnapshot?.isRtl ?? true);
 
   // Modals
   const [isCodeWorkspaceOpen, setIsCodeWorkspaceOpen] = useState(false);
@@ -129,7 +141,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isDevDrawerOpen, setIsDevDrawerOpen] = useState(false);
   const [isThemeLoading, setIsThemeLoading] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(!initialPreviewSnapshot);
 
   // ── Initializing state ───────────────────────────────────────────────────
   // Suppresses flicker when loading the saved project: we mount the real editor
@@ -148,8 +160,32 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   const draftVersionRef = useRef<number>(0);
 
   // ── Core website state ───────────────────────────────────────────────────
-  const [initialBuilderData] = useState(() => getInitialBuilderState());
-  const [currentTenant, setCurrentTenant] = useState<Tenant>(mockTenants[0]);
+  const [initialBuilderData] = useState(() => {
+    const initial = getInitialBuilderState();
+    if (!initialPreviewSnapshot) return initial;
+    const snapshotWebsite = normalizeWebsite(initialPreviewSnapshot.website);
+    return {
+      ...initial,
+      website: snapshotWebsite,
+      pageId:
+        snapshotWebsite.pages.find((page) => page.id === initialPreviewSnapshot.activePageId)?.id ||
+        getHomePageId(snapshotWebsite) ||
+        initial.pageId,
+    };
+  });
+  const [currentTenant, setCurrentTenant] = useState<Tenant>(() =>
+    initialPreviewSnapshot
+      ? {
+          ...mockTenants[0],
+          id: initialPreviewSnapshot.shopId,
+          name: initialPreviewSnapshot.shopName || mockTenants[0].name,
+          businessInfo: {
+            ...mockTenants[0].businessInfo,
+            brandName: initialPreviewSnapshot.shopName || mockTenants[0].businessInfo.brandName,
+          },
+        }
+      : mockTenants[0]
+  );
   const [website, setWebsiteState] = useState<Website>(initialBuilderData.website);
   const [activeTemplateId, setActiveTemplateId] = useState(initialBuilderData.templateId);
   const [templateError, setTemplateError] = useState<string | null>(
@@ -173,7 +209,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     setWebsiteState(next);
   }, []);
 
-  const [builderShopId, setBuilderShopId] = useState('');
+  const [builderShopId, setBuilderShopId] = useState(initialPreviewSnapshot?.shopId || '');
   const [builderShopSlug, setBuilderShopSlug] = useState('');
   const [builderShopName, setBuilderShopName] = useState('');
   const [shopProducts, setShopProducts] = useState<any[]>([]);
@@ -375,6 +411,49 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     return `${window.location.origin}/preview`;
   }, []);
 
+  const openStandalonePreview = useCallback(() => {
+    if (typeof window === 'undefined' || !liveWebsiteUrl || !activePage?.id) return;
+    const token =
+      typeof window.crypto?.randomUUID === 'function'
+        ? window.crypto.randomUUID()
+        : \`\${Date.now()}-\${Math.random().toString(36).slice(2)}\`;
+    const storageKey = \`ray_builder_preview_snapshot_\${token}\`;
+    const cleanup = () => {
+      try {
+        window.localStorage.removeItem(storageKey);
+      } catch {
+        // Storage may be blocked in private browsing.
+      }
+    };
+    const snapshot: BuilderPreviewSnapshot = {
+      version: 1,
+      createdAt: Date.now(),
+      shopId: currentTenant.id,
+      shopName: currentTenant.name,
+      website: previewWebsite,
+      activePageId: activePage.id,
+      isRtl,
+    };
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(snapshot));
+      const previewUrl = new URL(liveWebsiteUrl, window.location.origin);
+      previewUrl.searchParams.set('snapshot', token);
+      // Avoid the noopener feature string: browsers may return null for that
+      // combination even when the new tab opened, causing a false blocked-popup state.
+      const opened = window.open(previewUrl.toString(), '_blank');
+      if (!opened) {
+        cleanup();
+        window.alert('المتصفح منع فتح المعاينة. اسمح بالنوافذ المنبثقة ثم حاول مرة أخرى.');
+        return;
+      }
+      opened.opener = null;
+    } catch (error) {
+      cleanup();
+      console.error('[builder] unable to create standalone preview snapshot', error);
+      window.alert('تعذّر تجهيز المعاينة. احفظ بعض التعديلات أو قلّل حجم محتوى الصفحة ثم حاول مرة أخرى.');
+    }
+  }, [activePage?.id, currentTenant.id, currentTenant.name, isRtl, liveWebsiteUrl, previewWebsite]);
+
   // ── Publishing sub-hook ────────────────────────────────────────────────────
   const publishing = useBuilderPublishing(
     websiteRef,
@@ -453,6 +532,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   // user so another merchant's draft is never readable on a shared browser.
   useEffect(() => {
     if (
+      !readOnlyPreview &&
       !isInitializing &&
       typeof window !== 'undefined' &&
       website?.components &&
@@ -465,17 +545,36 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         }
       } catch {}
     }
-  }, [isInitializing, website]);
+  }, [isInitializing, readOnlyPreview, website]);
 
   // Autosave on unsaved changes
   useEffect(() => {
-    if (isInitializing) return undefined;
+    if (readOnlyPreview || isInitializing) return undefined;
     return runAutosave(website);
-  }, [autosaveStatus, builderShopId, isInitializing, website]); // eslint-disable-line
+  }, [autosaveStatus, builderShopId, isInitializing, readOnlyPreview, website]); // eslint-disable-line
 
   // Fetch shop & load builder config on mount
   useEffect(() => {
     let cancelled = false;
+    if (initialPreviewSnapshot) {
+      const shopId = initialPreviewSnapshot.shopId;
+      setBuilderShopId(shopId);
+      builderShopIdRef.current = shopId;
+      setBuilderShopName(initialPreviewSnapshot.shopName || '');
+      setIsInitializing(false);
+      apiRequest(\`/products?shopId=\${encodeURIComponent(shopId)}&surface=site&limit=100\`)
+        .then((res: any) => {
+          if (cancelled || !res) return;
+          const items = Array.isArray(res) ? res : res.data || res.items || [];
+          setShopProducts(
+            items.map((item: any, index: number) => normalizeCatalogProduct(item, index))
+          );
+        })
+        .catch(() => undefined);
+      return () => {
+        cancelled = true;
+      };
+    }
     setIsInitializing(true);
     (async () => {
       try {
@@ -633,7 +732,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     return () => {
       cancelled = true;
     };
-  }, [setAutosaveStatus, setTemplateError, setWebsite]);
+  }, [initialPreviewSnapshot, setAutosaveStatus, setTemplateError, setWebsite]);
 
   // ── Website utility helpers ───────────────────────────────────────────────
 
@@ -940,6 +1039,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         builderShopName,
         shopProducts,
         liveWebsiteUrl,
+        openStandalonePreview,
         isMobileInspectorOpen,
         setIsMobileInspectorOpen,
         isMobileSidebarOpen,

@@ -104,8 +104,7 @@ export const TopBar: React.FC = () => {
     isCodeWorkspaceOpen,
     setIsCodeWorkspaceOpen,
     hasCodeDrafts,
-    isLivePreviewOpen,
-    setIsLivePreviewOpen,
+    openStandalonePreview,
     isPublishModalOpen,
     setIsPublishModalOpen,
     isAiModalOpen,
@@ -117,7 +116,6 @@ export const TopBar: React.FC = () => {
     onExit,
     isFocusMode,
     toggleFocusMode,
-    liveWebsiteUrl,
   } = useBuilder();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -388,7 +386,7 @@ export const TopBar: React.FC = () => {
         {/* Preview Button — always available: a merchant must see his site
             before publishing it (was hidden in production builds). */}
         <button
-          onClick={() => setIsLivePreviewOpen(true)}
+          onClick={openStandalonePreview}
           title="معاينة حية للمتجر في كافة الشاشات"
           className="hidden md:flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-800 shadow-xs transition-all shrink-0 cursor-pointer"
         >
@@ -439,7 +437,7 @@ export const TopBar: React.FC = () => {
 
                 {/* Live Preview Modal */}
                 <button
-                  onClick={() => setIsLivePreviewOpen(true)}
+                  onClick={openStandalonePreview}
                   className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right"
                 >
                   <Play className="w-4 h-4 text-blue-600 fill-blue-600" />
@@ -559,13 +557,7 @@ export const TopBar: React.FC = () => {
 
             <button
               onClick={() => {
-                // The real published site (was a duplicate of the editor
-                // preview button above).
-                if (liveWebsiteUrl) {
-                  window.open(liveWebsiteUrl, '_blank', 'noopener,noreferrer');
-                } else {
-                  setIsLivePreviewOpen(true);
-                }
+                openStandalonePreview();
                 setIsMobileMenuOpen(false);
               }}
               className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800"

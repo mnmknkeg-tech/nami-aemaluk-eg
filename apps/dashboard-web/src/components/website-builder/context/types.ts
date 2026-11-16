@@ -224,6 +224,7 @@ export interface BuilderContextType {
   builderShopName: string;
   shopProducts: any[];
   liveWebsiteUrl: string;
+  openStandalonePreview: () => void;
   isMobileInspectorOpen: boolean;
   setIsMobileInspectorOpen: (open: boolean) => void;
   isMobileSidebarOpen: boolean;
