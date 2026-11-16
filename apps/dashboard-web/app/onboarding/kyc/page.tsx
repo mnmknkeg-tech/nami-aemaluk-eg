@@ -285,7 +285,9 @@ export default function KycPage() {
                     />
                   </>
                 )}
-                {uploadError && <p className="mt-3 text-sm font-semibold text-red-600">{uploadError}</p>}
+                {uploadError && (
+                  <p className="mt-3 text-sm font-semibold text-red-600">{uploadError}</p>
+                )}
                 {uploading && (
                   <div className="mt-3">
                     <div className="w-6 h-6 border-2 border-[#00E5FF] border-t-transparent rounded-full animate-spin mx-auto" />

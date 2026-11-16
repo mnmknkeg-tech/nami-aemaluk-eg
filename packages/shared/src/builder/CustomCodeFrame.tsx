@@ -130,7 +130,8 @@ export const CustomCodeFrame: React.FC<{ node: ComponentNode }> = ({ node }) => 
     !node.props.customHtml &&
     !node.customCode?.tsxSnippet &&
     !node.customCode?.tsx
-  ) return null;
+  )
+    return null;
 
   return (
     <div className="custom-code-node-wrapper relative w-full overflow-hidden">

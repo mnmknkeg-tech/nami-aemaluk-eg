@@ -44,9 +44,7 @@ describe('shared website tree normalization and diagnostics', () => {
     expect(report.duplicateChildren).toEqual([
       { pageId: 'page_home', parentId: 'root', childId: 'section' },
     ]);
-    expect(report.cycles).toEqual([
-      { pageId: 'page_home', nodeIds: ['root', 'section', 'root'] },
-    ]);
+    expect(report.cycles).toEqual([{ pageId: 'page_home', nodeIds: ['root', 'section', 'root'] }]);
     expect(normalized.components.root.childrenIds).toEqual(['section']);
     expect(normalized.components.section.parentId).toBe('root');
     expect(normalized.components.section.childrenIds).toEqual(['leaf']);
@@ -193,7 +191,6 @@ describe('shared website tree normalization and diagnostics', () => {
   });
 });
 
-
 it('anchors absolute children to their immediate parent in each viewport', () => {
   const input = website({
     root: {
@@ -212,7 +209,8 @@ it('anchors absolute children to their immediate parent in each viewport', () =>
   const normalized = normalizeWebsiteTree(input);
   expect(normalized.components.root.styles.desktop.position).toBe('relative');
   expect(
-    normalized.components.root.styles.tablet?.position ?? normalized.components.root.styles.desktop.position
+    normalized.components.root.styles.tablet?.position ??
+      normalized.components.root.styles.desktop.position
   ).toBe('relative');
   expect(normalized.components.root.styles.mobile.position).toBe('static');
 });

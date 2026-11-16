@@ -61,7 +61,11 @@ import {
 // استيراد نسبي مقصود (برنامج الـ typecheck الجذري بيخلي `@/*` على packages/shared)
 import { readUserId } from '../../../lib/session-keys';
 import { getMergedThemeTokens } from '../data/themes/utils';
-import { anchorAbsoluteChildren, applyWebsiteFileDrafts, normalizeCatalogProduct } from '@ray-eg/shared/builder';
+import {
+  anchorAbsoluteChildren,
+  applyWebsiteFileDrafts,
+  normalizeCatalogProduct,
+} from '@ray-eg/shared/builder';
 
 // Types
 import { BuilderContextType } from './types';
@@ -454,7 +458,9 @@ export const BuilderProvider: React.FC<{
     } catch (error) {
       cleanup();
       console.error('[builder] unable to create standalone preview snapshot', error);
-      window.alert('تعذّر تجهيز المعاينة. احفظ بعض التعديلات أو قلّل حجم محتوى الصفحة ثم حاول مرة أخرى.');
+      window.alert(
+        'تعذّر تجهيز المعاينة. احفظ بعض التعديلات أو قلّل حجم محتوى الصفحة ثم حاول مرة أخرى.'
+      );
     }
   }, [activePage?.id, builderShopId, currentTenant.name, isRtl, liveWebsiteUrl, previewWebsite]);
 

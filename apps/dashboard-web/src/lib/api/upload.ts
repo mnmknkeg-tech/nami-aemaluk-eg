@@ -51,11 +51,10 @@ export async function uploadMediaFile(
   // Content-Type, R2 metadata and CompleteUpload record all agree.
   const uploadFile =
     compressedFile.type.toLowerCase() === 'image/jpg'
-      ? new File(
-          [compressedFile],
-          compressedFile.name.replace(/\.[^.]+$/, '.jpg'),
-          { type: 'image/jpeg', lastModified: compressedFile.lastModified }
-        )
+      ? new File([compressedFile], compressedFile.name.replace(/\.[^.]+$/, '.jpg'), {
+          type: 'image/jpeg',
+          lastModified: compressedFile.lastModified,
+        })
       : compressedFile;
   const presign = await apiRequest<any>('/media/presign', {
     method: 'POST',
@@ -103,7 +102,9 @@ export async function uploadMediaFile(
     }
 
     // Never return data:, blob:, or an unverified URL as if it were permanent.
-    throw new Error('فشل رفع الصورة إلى التخزين الدائم. تحقق من الاتصال وإعدادات التخزين ثم أعد المحاولة.');
+    throw new Error(
+      'فشل رفع الصورة إلى التخزين الدائم. تحقق من الاتصال وإعدادات التخزين ثم أعد المحاولة.'
+    );
   }
 
   // The bytes are already stored. Bookkeeping is idempotent and best-effort;

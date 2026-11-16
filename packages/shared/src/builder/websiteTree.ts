@@ -192,7 +192,11 @@ export function inspectWebsiteTree(input: unknown): WebsiteTreeReport {
     if (!reachable.has(nodeId)) report.unreachableNodeIds.push({ pageId: '(unreachable)', nodeId });
     const parents = [...(parentEdges.get(nodeId) || [])];
     if (parents.length > 1) {
-      report.multipleParents.push({ pageId: pageIds[0] || '(multiple-pages)', nodeId, parentIds: parents });
+      report.multipleParents.push({
+        pageId: pageIds[0] || '(multiple-pages)',
+        nodeId,
+        parentIds: parents,
+      });
     }
 
     const styles = isRecord(node.styles) ? node.styles : {};
@@ -201,13 +205,17 @@ export function inspectWebsiteTree(input: unknown): WebsiteTreeReport {
       Object.keys(styles.desktop).length > 0 &&
       !isRecord(styles.mobile)
     ) {
-      report.missingMobileStyles.push({ pageIds: pageIds.length ? pageIds : ['(unreachable)'], nodeId });
+      report.missingMobileStyles.push({
+        pageIds: pageIds.length ? pageIds : ['(unreachable)'],
+        nodeId,
+      });
     }
     for (const viewport of ['desktop', 'tablet', 'mobile']) {
       const viewportStyles = styles[viewport];
       if (!isRecord(viewportStyles)) continue;
       for (const [property, value] of Object.entries(viewportStyles)) {
-        const numericAllowed = property === 'opacity' || property === 'zIndex' || property === 'flexShrink';
+        const numericAllowed =
+          property === 'opacity' || property === 'zIndex' || property === 'flexShrink';
         const valid =
           typeof value === 'string' ||
           (numericAllowed && typeof value === 'number' && Number.isFinite(value));
@@ -232,11 +240,17 @@ export function inspectWebsiteTree(input: unknown): WebsiteTreeReport {
     report.invalidProductParents,
     (x) => `${x.pageId}:${x.nodeId}:${x.parentId}`
   );
-  report.cycles = dedupeRecords(report.cycles, (x) => `${x.pageId}:${[...x.nodeIds].sort().join('|')}`);
+  report.cycles = dedupeRecords(
+    report.cycles,
+    (x) => `${x.pageId}:${[...x.nodeIds].sort().join('|')}`
+  );
   report.duplicateProductSections = report.duplicateProductSections.filter(
     (x) => x.nodeIds.length > 1
   );
-  report.missingRootNodeIds = dedupeRecords(report.missingRootNodeIds, (x) => `${x.pageId}:${x.rootNodeId || ''}`);
+  report.missingRootNodeIds = dedupeRecords(
+    report.missingRootNodeIds,
+    (x) => `${x.pageId}:${x.rootNodeId || ''}`
+  );
   report.missingMobileStyles = dedupeRecords(
     report.missingMobileStyles,
     (x) => `${x.pageIds.join(',')}:${x.nodeId}`
@@ -284,7 +298,9 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
     originalChildren.set(
       key,
       Array.isArray(rawNode.childrenIds)
-        ? rawNode.childrenIds.filter((childId: unknown): childId is string => typeof childId === 'string')
+        ? rawNode.childrenIds.filter(
+            (childId: unknown): childId is string => typeof childId === 'string'
+          )
         : []
     );
   }
@@ -300,7 +316,11 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
   const cloneSubtreeForPage = (sourceRootId: string, pageId: string): string | null => {
     const safePageId = pageId.replace(/[^a-zA-Z0-9_-]/g, '_');
     const localClaimed = new Set<string>();
-    const clone = (sourceId: string, parentId: string | null, trail: Set<string>): string | null => {
+    const clone = (
+      sourceId: string,
+      parentId: string | null,
+      trail: Set<string>
+    ): string | null => {
       const source = components[sourceId];
       if (!source || trail.has(sourceId) || localClaimed.has(sourceId)) return null;
       localClaimed.add(sourceId);
@@ -322,7 +342,13 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
       const nextTrail = new Set(trail).add(sourceId);
       const childSeen = new Set<string>();
       for (const childId of originalChildren.get(sourceId) || []) {
-        if (childSeen.has(childId) || pageRootIds.has(childId) || nextTrail.has(childId) || !components[childId]) continue;
+        if (
+          childSeen.has(childId) ||
+          pageRootIds.has(childId) ||
+          nextTrail.has(childId) ||
+          !components[childId]
+        )
+          continue;
         childSeen.add(childId);
         const clonedChildId = clone(childId, clonedId, nextTrail);
         if (clonedChildId) clonedNode.childrenIds.push(clonedChildId);
@@ -373,7 +399,13 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
       child.parentId = parentId;
       const nextTrail = new Set(trail);
       nextTrail.add(childId);
-      child.childrenIds = normalizeChildren(childId, pageRootId, pageId, nextTrail, productSectionSeen);
+      child.childrenIds = normalizeChildren(
+        childId,
+        pageRootId,
+        pageId,
+        nextTrail,
+        productSectionSeen
+      );
       result.push(childId);
     }
     return result;

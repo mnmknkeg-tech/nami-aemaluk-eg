@@ -79,7 +79,14 @@ interface ComponentNode {
     tablet?: StyleProperties;
     mobile?: StyleProperties;
   };
-  customCode?: { tsx?: string; tsxSnippet?: string; css?: string; cssSnippet?: string; js?: string; jsSnippet?: string };
+  customCode?: {
+    tsx?: string;
+    tsxSnippet?: string;
+    css?: string;
+    cssSnippet?: string;
+    js?: string;
+    jsSnippet?: string;
+  };
   isHidden?: boolean;
   /** Canonical link destination (page/section/order/external) set by the builder. */
   destination?: Record<string, any>;
