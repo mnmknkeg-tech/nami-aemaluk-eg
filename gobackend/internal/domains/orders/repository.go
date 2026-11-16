@@ -566,7 +566,8 @@ const orderColumns = `
         o.delivery_address_manual, o.delivery_lat, o.delivery_lng, o.delivery_note, o.customer_note,
         o.user_id, o.shop_id, o.customer_id, o.courier_id, o.handed_to_courier_at, o.cod_collected_at, o.delivered_at,
         o.source, o.sales_channel, o.created_at, o.updated_at,
-        COALESCE(NULLIF(TRIM(o.customer_name), ''), NULLIF(TRIM(c.name), ''), NULLIF(TRIM(u.name), '')) AS customer_name
+        COALESCE(NULLIF(TRIM(o.customer_name), ''), NULLIF(TRIM(c.name), ''), NULLIF(TRIM(u.name), '')) AS customer_name,
+        o.delivery_fee, o.delivery_zone
 `
 
 // orderColumnsNoAlias is used in INSERT/UPDATE ... RETURNING clauses where the
@@ -576,7 +577,7 @@ const orderColumnsNoAlias = `
         id, total, discount, coupon_code, status, payment_method, payment_status, notes, customer_phone,
         delivery_address_manual, delivery_lat, delivery_lng, delivery_note, customer_note,
         user_id, shop_id, customer_id, courier_id, handed_to_courier_at, cod_collected_at, delivered_at,
-        source, sales_channel, created_at, updated_at, customer_name
+        source, sales_channel, created_at, updated_at, customer_name, delivery_fee, delivery_zone
 `
 
 const selectOrder = "SELECT " + orderColumns + " FROM orders o LEFT JOIN customers c ON c.id = o.customer_id LEFT JOIN users u ON u.id = o.user_id"
@@ -595,7 +596,7 @@ func scanOrder(row pgx.Row) (*Order, error) {
 		&o.ID, &o.Total, &discount, &couponCode, &o.Status, &paymentMethod, &paymentStatus, &notes, &customerPhone,
 		&deliveryAddressManual, &deliveryLat, &deliveryLng, &deliveryNote, &customerNote,
 		&userID, &o.ShopID, &customerID, &courierID, &handedAt, &codAt, &deliveredAt, &source, &salesChannel,
-		&o.CreatedAt, &o.UpdatedAt, &deliveryFee, &deliveryZone, &customerName,
+		&o.CreatedAt, &o.UpdatedAt, &customerName, &deliveryFee, &deliveryZone,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
