@@ -128,7 +128,7 @@ export default function CheckoutPage() {
       slug: String((group as any[])[0]?.shopSlug || ''),
     }));
     Promise.all(entries.map(async ({ shopId, slug }) => {
-      if (!slug) return [shopId, { zones: [], defaultFee: 30, freeThreshold: 0 }] as const;
+      if (!slug) return [shopId, { zones: [], defaultFee: 30, freeThreshold: 500 }] as const;
       try {
         const response = await jsonRequest<any>(`/shops/${encodeURIComponent(slug)}`);
         const shop = response?.shop || response?.data?.shop || response?.data || response;
@@ -276,6 +276,7 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return;
+    if (deliverySettingsLoading) { setError('جاري تحميل مناطق ورسوم التوصيل، حاول بعد لحظات.'); return; }
     setLoading(true);
     setError('');
 
