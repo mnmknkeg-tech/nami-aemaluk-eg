@@ -117,6 +117,8 @@ export const TopBar: React.FC = () => {
     isFocusMode,
     toggleFocusMode,
     liveWebsiteUrl,
+    publishedSiteUrl,
+    publishState,
   } = useBuilder();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -595,17 +597,21 @@ export const TopBar: React.FC = () => {
 
             <button
               onClick={() => {
-                // The real published site (was a duplicate of the editor
-                // preview button above).
-                if (liveWebsiteUrl) {
-                  window.open(liveWebsiteUrl, '_blank', 'noopener,noreferrer');
+                // Open the published storefront, not the editor's /preview route.
+                if (publishState.status === 'never_published' || publishState.status === 'checking') {
+                  setIsPublishModalOpen(true);
+                } else if (publishedSiteUrl) {
+                  window.open(publishedSiteUrl, '_blank', 'noopener,noreferrer');
+                } else {
+                  setIsPublishModalOpen(true);
                 }
                 setIsMobileMenuOpen(false);
               }}
+              title="فتح النسخة المنشورة من موقع المتجر"
               className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800"
             >
               <Globe className="w-4 h-4 text-emerald-600" />
-              <span>معاينة حية</span>
+              <span>الموقع المنشور</span>
             </button>
 
             {/* Market-launch switch: AI assistant is local-only for now. */}
