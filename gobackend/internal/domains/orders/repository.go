@@ -325,12 +325,13 @@ func (r *Repository) CreateOrder(ctx context.Context, order *Order, couponID str
 	var createdCustomerID sql.NullString
 	var createdUserID sql.NullString
 	var createdCustomerName sql.NullString
+	var createdDeliveryFee sql.NullFloat64
 	err = tx.QueryRow(ctx, insertOrderQuery, orderInsertArgs(order)...).Scan(
 		&order.ID, &order.Total, &order.Discount, &order.CouponCode, &order.Status, &order.PaymentMethod, &order.PaymentStatus,
 		&order.Notes, &order.CustomerPhone, &order.DeliveryAddressManual, &order.DeliveryLat,
 		&order.DeliveryLng, &order.DeliveryNote, &order.CustomerNote, &createdUserID, &order.ShopID,
 		&createdCustomerID, &order.CourierID, &order.HandedToCourierAt, &order.CodCollectedAt, &order.DeliveredAt,
-		&order.Source, &order.SalesChannel, &order.CreatedAt, &order.UpdatedAt, &createdCustomerName, &order.DeliveryFee, &order.DeliveryZone,
+		&order.Source, &order.SalesChannel, &order.CreatedAt, &order.UpdatedAt, &createdCustomerName, &createdDeliveryFee, &order.DeliveryZone,
 	)
 	if err == pgx.ErrNoRows && order.IdempotencyKey != nil && order.RequestHash != nil {
 		var existingID, existingHash string
@@ -353,6 +354,7 @@ func (r *Repository) CreateOrder(ctx context.Context, order *Order, couponID str
 	order.CustomerID = nullStringPtr(createdCustomerID)
 	order.UserID = createdUserID.String
 	order.CustomerName = nullStringPtr(createdCustomerName)
+	if createdDeliveryFee.Valid { fee := createdDeliveryFee.Float64; order.DeliveryFee = &fee }
 
 	// Insert items.
 	for i := range order.Items {
@@ -606,7 +608,7 @@ func scanOrder(row pgx.Row) (*Order, error) {
 	}
 
 	o.CustomerName = nullStringPtr(customerName)
-	o.DeliveryFee = deliveryFee.Float64
+	if deliveryFee.Valid { fee := deliveryFee.Float64; o.DeliveryFee = &fee }
 	o.DeliveryZone = nullStringPtr(deliveryZone)
 	o.PaymentMethod = nullStringPtr(paymentMethod)
 	o.UserID = userID.String
