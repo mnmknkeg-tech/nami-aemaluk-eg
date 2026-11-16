@@ -43,6 +43,8 @@ type Order struct {
 	DeliveryLat           *float64    `json:"deliveryLat,omitempty"`
 	DeliveryLng           *float64    `json:"deliveryLng,omitempty"`
 	DeliveryNote          *string     `json:"deliveryNote,omitempty"`
+	DeliveryFee           float64     `json:"deliveryFee"`
+	DeliveryZone          *string     `json:"deliveryZone,omitempty"`
 	CustomerNote          *string     `json:"customerNote,omitempty"`
 	UserID                string      `json:"userId"`
 	ShopID                string      `json:"shopId"`
@@ -143,6 +145,7 @@ type CreateOrderRequest struct {
 	DeliveryLat           *float64          `json:"deliveryLat,omitempty"`
 	DeliveryLng           *float64          `json:"deliveryLng,omitempty"`
 	DeliveryNote          *string           `json:"deliveryNote,omitempty"`
+	DeliveryZoneID        string            `json:"deliveryZoneId,omitempty"`
 	CustomerNote          *string           `json:"customerNote,omitempty"`
 	Source                *string           `json:"source,omitempty"`
 	SalesChannel          *string           `json:"salesChannel,omitempty"`
