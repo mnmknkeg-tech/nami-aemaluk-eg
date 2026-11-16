@@ -168,7 +168,11 @@ func New(ctx context.Context, cfg config.DBConfig, log *zap.Logger) (*Pool, erro
 			zap.Error(err),
 			zap.String("fix", "set DB_MIGRATE_ON_BOOT=true (or run: go run scripts/migrate.go up)"),
 		)
-		return p, err
+		// New() is retried by the application on startup failure. Close the
+		// pool before returning so each failed schema check releases its
+		// PostgreSQL sessions instead of exhausting the pooler's client budget.
+		p.Close()
+		return nil, err
 	}
 
 	return p, nil
