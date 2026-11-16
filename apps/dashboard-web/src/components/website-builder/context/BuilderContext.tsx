@@ -420,8 +420,8 @@ export const BuilderProvider: React.FC<{
     const token =
       typeof window.crypto?.randomUUID === 'function'
         ? window.crypto.randomUUID()
-        : \`\${Date.now()}-\${Math.random().toString(36).slice(2)}\`;
-    const storageKey = \`ray_builder_preview_snapshot_\${token}\`;
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const storageKey = `ray_builder_preview_snapshot_${token}`;
     const cleanup = () => {
       try {
         window.localStorage.removeItem(storageKey);
@@ -566,7 +566,7 @@ export const BuilderProvider: React.FC<{
       builderShopIdRef.current = shopId;
       setBuilderShopName(initialPreviewSnapshot.shopName || '');
       setIsInitializing(false);
-      apiRequest(\`/products?shopId=\${encodeURIComponent(shopId)}&surface=site&limit=100\`)
+      apiRequest(`/products?shopId=${encodeURIComponent(shopId)}&surface=site&limit=100`)
         .then((res: any) => {
           if (cancelled || !res) return;
           const items = Array.isArray(res) ? res : res.data || res.items || [];

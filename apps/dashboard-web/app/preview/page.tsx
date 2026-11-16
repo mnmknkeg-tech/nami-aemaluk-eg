@@ -26,7 +26,7 @@ export default function PreviewPage() {
       return;
     }
     try {
-      const raw = window.localStorage.getItem(\`ray_builder_preview_snapshot_\${token}\`);
+      const raw = window.localStorage.getItem(`ray_builder_preview_snapshot_${token}`);
       if (!raw) throw new Error('Preview snapshot not found');
       const parsed = JSON.parse(raw) as Partial<BuilderPreviewSnapshot>;
       const age = Date.now() - Number(parsed.createdAt);
