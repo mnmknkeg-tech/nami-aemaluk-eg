@@ -53,7 +53,7 @@ export async function uploadMediaFile(
     compressedFile.type.toLowerCase() === 'image/jpg'
       ? new File(
           [compressedFile],
-          compressedFile.name.replace(/\\.[^.]+$/, '.jpg'),
+          compressedFile.name.replace(/\.[^.]+$/, '.jpg'),
           { type: 'image/jpeg', lastModified: compressedFile.lastModified }
         )
       : compressedFile;
