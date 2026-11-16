@@ -128,8 +128,15 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 	}
 	actualMime := strings.ToLower(strings.TrimSpace(aws.ToString(head.ContentType)))
 	actualSize := aws.ToInt64(head.ContentLength)
-	if !storage.IsAllowedContentType(actualMime) || actualMime != mimeType {
-		return nil, errors.Validation("uploaded_object_type_mismatch", "نوع الملف المخزن لا يطابق الطلب")
+	if !storage.IsAllowedContentType(actualMime) || actualMime != mimeType ||
+		storage.ParseContentTypeFromFilename(req.Key) != actualMime {
+		return nil, errors.Validation("uploaded_object_type_mismatch", "نوع الملف المخزن لا يطابق امتداده أو الطلب")
+	}
+	if strings.HasPrefix(actualMime, "image/") {
+		prefix, readErr := s.s3.ReadObjectPrefix(ctx, req.Key, 512)
+		if readErr != nil || !isValidImageSignature(prefix, actualMime) {
+			return nil, errors.Validation("uploaded_object_signature_invalid", "محتوى الصورة المخزن غير صالح أو لا يطابق نوعه")
+		}
 	}
 	if actualSize <= 0 || actualSize > s.maxUploadBytes() {
 		return nil, errors.Validation("uploaded_object_size_invalid", "حجم الملف المخزن غير صالح")

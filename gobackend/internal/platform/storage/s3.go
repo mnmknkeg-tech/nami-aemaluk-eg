@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/url"
 	"path"
 	"strings"
@@ -114,6 +115,28 @@ func (c *S3Client) HeadObject(ctx context.Context, key string) (*s3.HeadObjectOu
 		return nil, fmt.Errorf("head object: %w", err)
 	}
 	return out, nil
+}
+
+// ReadObjectPrefix reads only the leading bytes needed to verify an uploaded
+// image signature without downloading the full object into application memory.
+func (c *S3Client) ReadObjectPrefix(ctx context.Context, key string, limit int64) ([]byte, error) {
+	if limit <= 0 || limit > 4096 {
+		limit = 512
+	}
+	out, err := c.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(c.cfg.Bucket),
+		Key:    aws.String(key),
+		Range:  aws.String(fmt.Sprintf("bytes=0-%d", limit-1)),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get object prefix: %w", err)
+	}
+	defer out.Body.Close()
+	prefix, err := io.ReadAll(io.LimitReader(out.Body, limit))
+	if err != nil {
+		return nil, fmt.Errorf("read object prefix: %w", err)
+	}
+	return prefix, nil
 }
 
 // PublicURL returns the public URL for an object key.

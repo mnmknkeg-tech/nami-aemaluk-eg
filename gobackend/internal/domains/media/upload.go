@@ -1,6 +1,7 @@
 package media
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -68,11 +69,8 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 	if err != nil {
 		return nil, errors.Internal("upload_read_failed", err)
 	}
-	if strings.HasPrefix(ct, "image/") {
-		detected := http.DetectContentType(raw)
-		if detected != "application/octet-stream" && detected != "application/zip" && detected != ct {
-			return nil, errors.Validation("content_mismatch", "محتوى الملف لا يطابق نوعه المعلن")
-		}
+	if strings.HasPrefix(ct, "image/") && !isValidImageSignature(raw, ct) {
+		return nil, errors.Validation("content_mismatch", "محتوى الملف لا يطابق نوعه المعلن")
 	}
 	payload, outCT, outExt := s.processUploadPayload(ct, outExt, raw)
 
@@ -221,4 +219,25 @@ func (s *Service) localPublicURL(key string) string {
 		base = fmt.Sprintf("http://localhost:%d", s.cfg.App.Port)
 	}
 	return base + "/uploads/" + key
+}
+
+
+// isValidImageSignature verifies the file signature independently of the
+// browser-supplied Content-Type. SVG and unknown image formats are rejected.
+func isValidImageSignature(raw []byte, contentType string) bool {
+	switch contentType {
+	case "image/jpeg":
+		return len(raw) >= 3 && bytes.Equal(raw[:3], []byte{0xff, 0xd8, 0xff})
+	case "image/png":
+		return len(raw) >= 8 && bytes.Equal(raw[:8], []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a})
+	case "image/gif":
+		return len(raw) >= 6 && (string(raw[:6]) == "GIF87a" || string(raw[:6]) == "GIF89a")
+	case "image/webp":
+		return len(raw) >= 12 && string(raw[:4]) == "RIFF" && string(raw[8:12]) == "WEBP"
+	case "image/avif":
+		return len(raw) >= 12 && string(raw[4:8]) == "ftyp" &&
+			(string(raw[8:12]) == "avif" || string(raw[8:12]) == "avis")
+	default:
+		return false
+	}
 }

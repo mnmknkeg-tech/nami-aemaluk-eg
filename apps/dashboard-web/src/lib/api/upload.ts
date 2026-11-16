@@ -81,8 +81,6 @@ export async function uploadMediaFile(
     if (uploadFile.type.toLowerCase().startsWith('video/')) {
       throw new Error('فشل رفع الفيديو على التخزين؛ تحقق من الاتصال ثم حاول مرة أخرى.');
     }
-    // Non-browser callers cannot use the multipart/data-URL fallback safely.
-    if (typeof FileReader === 'undefined') throw new Error('فشل رفع الصورة');
     try {
       const directUrl = await directUpload(uploadFile, shopId, purpose);
       if (directUrl) return directUrl;

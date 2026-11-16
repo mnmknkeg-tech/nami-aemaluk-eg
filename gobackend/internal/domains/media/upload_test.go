@@ -207,3 +207,29 @@ func TestIsValidExt(t *testing.T) {
 		}
 	}
 }
+
+
+func TestIsValidImageSignature(t *testing.T) {
+	cases := []struct {
+		name string
+		mime string
+		data []byte
+		want bool
+	}{
+		{"jpeg", "image/jpeg", []byte{0xff, 0xd8, 0xff, 0x00}, true},
+		{"png", "image/png", []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a}, true},
+		{"gif", "image/gif", []byte("GIF89a-data"), true},
+		{"webp", "image/webp", []byte("RIFFxxxxWEBP"), true},
+		{"avif", "image/avif", []byte("xxxxftypavif"), true},
+		{"spoofed png", "image/png", []byte("<html>not image</html>"), false},
+		{"wrong signature", "image/jpeg", []byte("GIF89a"), false},
+		{"unknown mime", "image/svg+xml", []byte("<svg/>"), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isValidImageSignature(tc.data, tc.mime); got != tc.want {
+				t.Fatalf("isValidImageSignature(%q) = %v, want %v", tc.mime, got, tc.want)
+			}
+		})
+	}
+}
