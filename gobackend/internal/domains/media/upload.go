@@ -75,6 +75,9 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 	if strings.HasPrefix(ct, "image/") && !isValidImageSignature(raw, ct) {
 		return nil, errors.Validation("content_mismatch", "محتوى الملف لا يطابق نوعه المعلن")
 	}
+	if strings.HasPrefix(ct, "video/") && !isValidVideoSignature(raw, ct) {
+		return nil, errors.Validation("content_mismatch", "محتوى الفيديو لا يطابق نوعه المعلن")
+	}
 	payload, outCT, outExt := s.processUploadPayload(ct, outExt, raw)
 
 	key, publicURL, err := s.storeUpload(ctx, shopID, purpose, outExt, outCT, payload)
@@ -239,6 +242,38 @@ func (s *Service) localPublicURL(key string) string {
 	return base + "/uploads/" + key
 }
 
+
+// isValidVideoSignature checks the container header instead of trusting
+// the browser-supplied MIME type. This is intentionally conservative: files
+// with unrecognized or truncated container headers are rejected.
+func isValidVideoSignature(raw []byte, contentType string) bool {
+	switch contentType {
+	case "video/mp4":
+		if len(raw) < 12 || string(raw[4:8]) != "ftyp" {
+			return false
+		}
+		brand := string(raw[8:12])
+		switch brand {
+		case "isom", "iso2", "mp41", "mp42", "avc1", "M4V ", "dash", "MSNV":
+			return true
+		default:
+			return false
+		}
+	case "video/quicktime":
+		return len(raw) >= 12 && string(raw[4:8]) == "ftyp" && string(raw[8:12]) == "qt  "
+	case "video/webm":
+		if len(raw) < 12 || !bytes.Equal(raw[:4], []byte{0x1a, 0x45, 0xdf, 0xa3}) {
+			return false
+		}
+		prefix := raw
+		if len(prefix) > 512 {
+			prefix = prefix[:512]
+		}
+		return bytes.Contains(prefix, []byte("webm"))
+	default:
+		return false
+	}
+}
 
 // isValidImageSignature verifies the file signature independently of the
 // browser-supplied Content-Type. SVG and unknown image formats are rejected.

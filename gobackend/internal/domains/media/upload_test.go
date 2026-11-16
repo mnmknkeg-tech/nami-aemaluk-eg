@@ -235,6 +235,30 @@ func TestIsValidImageSignature(t *testing.T) {
 }
 
 
+func TestIsValidVideoSignature(t *testing.T) {
+	cases := []struct {
+		name string
+		mime string
+		data []byte
+		want bool
+	}{
+		{"mp4", "video/mp4", []byte("\x00\x00\x00\x18ftypisom\x00\x00"), true},
+		{"quicktime", "video/quicktime", []byte("\x00\x00\x00\x18ftypqt  \x00\x00"), true},
+		{"webm", "video/webm", append([]byte{0x1a, 0x45, 0xdf, 0xa3}, []byte("xxxxwebm")...), true},
+		{"spoofed mp4", "video/mp4", []byte("<html>not a video</html>"), false},
+		{"wrong mp4 brand", "video/mp4", []byte("\x00\x00\x00\x18ftypqt  \x00\x00"), false},
+		{"truncated webm", "video/webm", []byte{0x1a, 0x45, 0xdf, 0xa3}, false},
+		{"unknown type", "video/x-custom", []byte("video"), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isValidVideoSignature(tc.data, tc.mime); got != tc.want {
+				t.Fatalf("isValidVideoSignature(%q) = %v, want %v", tc.mime, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestIsValidImageSignature_AvifCompatibleBrand(t *testing.T) {
 	data := []byte("xxxxftypmif1xxxxavif")
 	if !isValidImageSignature(data, "image/avif") {
