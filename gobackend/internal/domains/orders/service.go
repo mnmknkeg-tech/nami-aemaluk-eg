@@ -343,8 +343,9 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 		if _, exists := deliveryConfig["freeDeliveryThreshold"]; exists { threshold = numberFromAny(deliveryConfig["freeDeliveryThreshold"]) }
 		fee := baseFee
 		zones, _ := deliveryConfig["deliveryZones"].([]any)
+		zoneID := strings.TrimSpace(req.DeliveryZoneID)
 		if len(zones) > 0 {
-			if strings.TrimSpace(req.DeliveryZoneID) == "" {
+			if zoneID == "" {
 				return nil, errors.Validation("delivery_zone_required", "اختر منطقة التوصيل")
 			}
 			found := false
@@ -352,7 +353,7 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 				zone, ok := rawZone.(map[string]any); if !ok { continue }
 				id := strings.TrimSpace(stringFromAny(zone["id"]))
 				name := strings.TrimSpace(stringFromAny(zone["name"]))
-				if id != req.DeliveryZoneID || name == "" { continue }
+				if id != zoneID || name == "" { continue }
 				fee = numberFromAny(zone["fee"])
 				if fee < 0 || math.IsNaN(fee) || math.IsInf(fee, 0) { return nil, errors.Validation("delivery_zone_invalid", "رسوم منطقة التوصيل غير صحيحة") }
 				zoneName := name
@@ -361,7 +362,7 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 				break
 			}
 			if !found { return nil, errors.Validation("delivery_zone_invalid", "منطقة التوصيل غير صالحة لهذا المتجر") }
-		} else if req.DeliveryZoneID != "" {
+		} else if zoneID != "" {
 			return nil, errors.Validation("delivery_zone_invalid", "منطقة التوصيل غير متاحة لهذا المتجر")
 		}
 		if fee < 0 || math.IsNaN(fee) || math.IsInf(fee, 0) { return nil, errors.Validation("delivery_fee_invalid", "رسوم التوصيل غير صحيحة") }
