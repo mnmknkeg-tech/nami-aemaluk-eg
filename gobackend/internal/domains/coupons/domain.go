@@ -104,6 +104,11 @@ func (r *Repository) Consume(ctx context.Context, id string) error {
 }
 
 func Validate(c Coupon, subtotal float64, now time.Time) (float64, error) {
+	// Coupon values are merchant-configured input. Reject negative amounts
+	// rather than allowing a negative "discount" to increase the order total.
+	if c.Value < 0 || subtotal < 0 || c.MinOrderValue < 0 || c.MaxDiscountValue < 0 {
+		return 0, appErrors.Validation("coupon_invalid", "قيمة الكوبون أو الطلب غير صحيحة")
+	}
 	if c.Status != "active" || now.Before(c.StartDate) || (c.EndDate != nil && !now.Before(*c.EndDate)) || (c.UsageLimit > 0 && c.UsedCount >= c.UsageLimit) {
 		return 0, appErrors.Validation("coupon_invalid", "الكوبون غير صالح أو منتهي")
 	}
