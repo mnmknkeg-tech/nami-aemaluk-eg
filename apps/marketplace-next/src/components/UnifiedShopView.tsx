@@ -98,9 +98,9 @@ export function UnifiedShopView({
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-5">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6 space-y-3 sm:space-y-4 md:space-y-5">
         {/* ─── البنر + اللوجو: تركيبة موحدة نظيفة لكل المتاجر ─── */}
-        <div className="relative rounded-3xl overflow-hidden shadow-card bg-slate-200 h-44 md:h-64">
+        <div className="relative rounded-3xl overflow-hidden shadow-card bg-slate-200 h-40 sm:h-48 md:h-64">
           {bannerUrl ? (
             bannerIsVideo ? (
               <video
@@ -137,7 +137,7 @@ export function UnifiedShopView({
           {/* تدرّج خفيف أسفل البنر يبرز اللوجو */}
           <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/45 to-transparent" />
           {/* اللوجو: كارت أبيض مدوّر قاعد على حافة البنر — نفس تركيبة كارت المتجر في التطبيق */}
-          <div className="absolute bottom-4 right-4 w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white border border-white/60 shadow-lg p-1 flex items-center justify-center overflow-hidden">
+          <div className="absolute bottom-4 right-4 w-[72px] h-[72px] sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl bg-white border border-white/60 shadow-lg p-1 flex items-center justify-center overflow-hidden">
             {logoUrl ? (
               <Image
                 src={logoUrl}
@@ -159,9 +159,9 @@ export function UnifiedShopView({
         </div>
 
         {/* ─── كارت معلومات المتجر ─── */}
-        <section className="bg-white rounded-3xl border border-slate-200/70 shadow-card p-5 md:p-6">
+        <section className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/70 shadow-card p-4 sm:p-5 md:p-6">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <h2 className="text-xl md:text-2xl font-black text-slate-900">{shop.name}</h2>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900">{shop.name}</h2>
             {shop.isVerified && (
               <span className="w-5 h-5 rounded-full bg-brand-gradient flex items-center justify-center shrink-0">
                 <Star className="w-3 h-3 text-white fill-white" />
@@ -204,7 +204,7 @@ export function UnifiedShopView({
           </div>
 
           {/* أزرار التواصل — نفس ستايل التطبيق */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             {/* زر المتابعة بمحاذاة ارتفاع باقي الأزرار */}
             <div className="[&>button]:h-11 [&>button]:px-5 [&>button]:rounded-xl [&>button]:text-sm">
               <FollowButton shopId={shop.id} shopSlug={shop.slug} />
