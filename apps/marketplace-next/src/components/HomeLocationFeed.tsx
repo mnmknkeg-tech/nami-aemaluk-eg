@@ -120,36 +120,36 @@ export function HomeLocationFeed({ shops, products }: HomeLocationFeedProps) {
   return (
     <>
       {/* ===== متاجر حولك — تابات صغيرة حسب النشاط ===== */}
-      <section aria-label="متاجر حولك" className="py-8 md:py-12">
+      <section aria-label="متاجر حولك" className="py-6 sm:py-8 md:py-12">
         <div className="max-w-[1400px] mx-auto px-4 md:px-6">
-          <div className="flex items-start justify-between gap-3 mb-1">
+          <div className="flex items-start justify-between gap-2 sm:gap-3 mb-1">
             <div>
-              <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <span className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center shadow-glow-orange-sm">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-brand-gradient flex items-center justify-center shadow-glow-orange-sm">
                   <Store className="w-4 h-4 text-white" />
                 </span>
                 {hasNearby ? 'متاجر قريبة منك' : 'متاجر مميزة'}
               </h2>
-              <p className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-[11px] sm:text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 mt-1">
                 {hasNearby
                   ? `مرتبة حسب أقرب مسافة من ${loc?.label}`
                   : 'فعّل موقعك من فوق عشان نشوفلك الأقرب ليك الأول'}
               </p>
             </div>
             {!hasNearby && (
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-orange-soft text-brand-orange-dark text-[11px] font-black shrink-0">
-                <Navigation className="w-3.5 h-3.5" />
-                اختار موقعك من الشيب فوق
+              <span className="inline-flex items-center gap-1 px-2 py-1 sm:gap-1.5 sm:px-3 sm:py-1.5 rounded-full bg-brand-orange-soft text-brand-orange-dark text-[11px] font-black shrink-0">
+                <Navigation className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span className="text-[9px] sm:text-[11px]">حدد موقعك</span>
               </span>
             )}
           </div>
 
           {/* التابات الصغيرة — نفس نمط منيو المطاعم */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4 mt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center gap-2 overflow-x-auto overscroll-x-contain pb-2.5 mb-3 mt-3 -mx-4 px-4 sm:mx-0 sm:px-0 sm:mb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory">
             <button
               type="button"
               onClick={() => setActiveTab('all')}
-              className={`shrink-0 px-4 py-2 rounded-full text-xs font-black transition-all border ${
+              className={`min-h-10 shrink-0 px-4 py-2 rounded-full text-xs font-black transition-all border snap-start ${
                 activeTab === 'all'
                   ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white'
                   : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400'
@@ -179,13 +179,13 @@ export function HomeLocationFeed({ shops, products }: HomeLocationFeedProps) {
               مفيش متاجر في النشاط ده حاليًا
             </div>
           ) : (
-            <div className="flex gap-3 md:gap-4 overflow-x-auto pb-3 [scrollbar-width:thin] snap-x">
+            <div className="flex gap-3 md:gap-4 overflow-x-auto overscroll-x-contain -mx-4 px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory">
               {visibleShops.map((shop) => {
                 const km = distances.get(shop.id);
                 return (
                   <div
                     key={shop.id}
-                    className="relative shrink-0 w-[240px] md:w-[280px] snap-start"
+                    className="relative shrink-0 w-[78vw] max-w-[280px] sm:w-[260px] md:w-[280px] snap-start"
                   >
                     <ShopCard shop={shop} />
                     {km != null && (
@@ -199,7 +199,7 @@ export function HomeLocationFeed({ shops, products }: HomeLocationFeedProps) {
               })}
               <Link
                 href="/dalil"
-                className="shrink-0 w-[140px] rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-brand-cyan hover:border-brand-cyan/50 transition-colors"
+                className="shrink-0 w-[42vw] max-w-[150px] min-h-[190px] rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-brand-cyan hover:border-brand-cyan/50 transition-colors"
               >
                 <Store className="w-6 h-6" />
                 <span className="text-xs font-black">كل المتاجر</span>
@@ -211,7 +211,7 @@ export function HomeLocationFeed({ shops, products }: HomeLocationFeedProps) {
 
       {/* ===== الأقرب ليك — منتجات المتاجر القريبة ===== */}
       {hasNearby && nearbyProducts.length > 0 && (
-        <section className="py-8 md:py-12 bg-gradient-to-b from-white to-slate-50 dark:from-brand-black dark:to-slate-950/60">
+        <section className="py-6 sm:py-8 md:py-12 bg-gradient-to-b from-white to-slate-50 dark:from-brand-black dark:to-slate-950/60">
           <div className="max-w-[1400px] mx-auto px-4 md:px-6">
             <ProductRail
               title="الأقرب ليك"
