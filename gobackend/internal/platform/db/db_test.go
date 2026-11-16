@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Sayedtaha55/ray-eg/gobackend/internal/config"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -174,4 +175,37 @@ func TestSQLModeRegressionGuards(t *testing.T) {
 	if strings.Contains(supabaseDSN, "schema=") {
 		t.Fatalf("supabase DSN must not carry the prisma schema param: %s", supabaseDSN)
 	}
+
+func TestPoolBudgetHonorsExplicitOverrides(t *testing.T) {
+	max, min := 5, 1
+	cfg := config.DBConfig{MaxOpenConns: 8, MaxIdleConns: 2, PoolMaxConns: &max, PoolMinConns: &min}
+	gotMax, gotMin := cfg.PoolBudget(15)
+	if gotMax != 5 || gotMin != 1 {
+		t.Fatalf("expected explicit pool budget (5,1), got (%d,%d)", gotMax, gotMin)
+	}
+}
+
+func TestPoolBudgetUsesLegacyDefaultsWhenOverridesUnset(t *testing.T) {
+	cfg := config.DBConfig{MaxOpenConns: 8, MaxIdleConns: 2}
+	gotMax, gotMin := cfg.PoolBudget(15)
+	if gotMax != 8 || gotMin != 2 {
+		t.Fatalf("expected legacy pool budget (8,2), got (%d,%d)", gotMax, gotMin)
+	}
+}
+
+func TestPoolBudgetCapsExplicitOverridesToSharedLimit(t *testing.T) {
+	max, min := 14, 4
+	cfg := config.DBConfig{MaxOpenConns: 8, MaxIdleConns: 2, PoolMaxConns: &max, PoolMinConns: &min}
+	gotMax, gotMin := cfg.PoolBudget(15)
+	if gotMax != 14 || gotMin != 1 {
+		t.Fatalf("expected capped budget (14,1), got (%d,%d)", gotMax, gotMin)
+	}
+
+	max, min = 20, 2
+	cfg.PoolMaxConns, cfg.PoolMinConns = &max, &min
+	gotMax, gotMin = cfg.PoolBudget(15)
+	if gotMax != 15 || gotMin != 0 {
+		t.Fatalf("expected hard max cap (15,0), got (%d,%d)", gotMax, gotMin)
+	}
+}
 }

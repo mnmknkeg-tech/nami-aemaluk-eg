@@ -162,4 +162,45 @@ func TestLoadAcceptsSupabaseQueryExecModes(t *testing.T) {
 			}
 		})
 	}
+
+func TestLoadAcceptsDatabasePoolOverrides(t *testing.T) {
+	setMinimalValidEnv(t)
+	_ = os.Setenv("DB_POOL_MAX_CONNS", "5")
+	_ = os.Setenv("DB_POOL_MIN_CONNS", "1")
+	defer os.Clearenv()
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("expected valid pool overrides to load: %v", err)
+	}
+	if cfg.DB.PoolMaxConns == nil || *cfg.DB.PoolMaxConns != 5 {
+		t.Fatalf("expected DB_POOL_MAX_CONNS=5, got %v", cfg.DB.PoolMaxConns)
+	}
+	if cfg.DB.PoolMinConns == nil || *cfg.DB.PoolMinConns != 1 {
+		t.Fatalf("expected DB_POOL_MIN_CONNS=1, got %v", cfg.DB.PoolMinConns)
+	}
+}
+
+func TestLoadRejectsInvalidDatabasePoolOverrides(t *testing.T) {
+	cases := []struct {
+		name string
+		max  string
+		min  string
+	}{
+		{name: "zero max", max: "0", min: "0"},
+		{name: "negative min", max: "5", min: "-1"},
+		{name: "min exceeds max", max: "2", min: "3"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			setMinimalValidEnv(t)
+			_ = os.Setenv("DB_POOL_MAX_CONNS", tc.max)
+			_ = os.Setenv("DB_POOL_MIN_CONNS", tc.min)
+			defer os.Clearenv()
+			if _, err := Load(); err == nil {
+				t.Fatal("expected invalid DB pool overrides to be rejected")
+			}
+		})
+	}
+}
 }

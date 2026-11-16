@@ -73,19 +73,17 @@ type DBConfig struct {
 	// transaction-mode pooler is detected — Supabase's Supavisor on port 6543
 	// cannot keep prepared statements across transactions.
 	QueryExecMode string `env:"DB_QUERY_EXEC_MODE" envDefault:"auto"`
-	// PoolMaxConns is the application-wide PostgreSQL session budget that
-	// leaves headroom under the Supabase Session Pooler limit. It is the sum
-	// of MaxOpenConns and MaxIdleConns. It MUST stay below the pooler's
-	// max_clients value (15 in the reported environment). If unset, it is
-	// derived automatically from MaxOpenConns + MaxIdleConns.
+	// PoolMaxConns overrides the effective pgx MaxConns limit for this process.
+	// If unset, DB_MAX_OPEN_CONNS is used. Keep this value within the share of
+	// the database pooler's session limit allocated to this application replica.
 	//
 	// IMPORTANT: when deploying N replicas (or when other clients share the
 	// same Supabase project), this value must be divided across all replicas
 	// and consumers, i.e. PoolMaxConns <= 15 / N.
-	PoolMaxConns int `env:"DB_POOL_MAX_CONNS"`
-	// PoolMinConns is the minimum number of idle connections the pool keeps
-	// open to avoid connection churn. It is also part of the session budget.
-	PoolMinConns int `env:"DB_POOL_MIN_CONNS"`
+	PoolMaxConns *int `env:"DB_POOL_MAX_CONNS"`
+	// PoolMinConns overrides pgx MinConns (the minimum idle connections).
+	// If unset, DB_MAX_IDLE_CONNS is used. It must not exceed PoolMaxConns.
+	PoolMinConns *int `env:"DB_POOL_MIN_CONNS"`
 }
 
 // Redis holds Redis settings used for cache, sessions, queues and rate limiting.
@@ -298,6 +296,23 @@ func (c *Config) validate() error {
 	if c.DB.MaxIdleConns > c.DB.MaxOpenConns {
 		return fmt.Errorf("DB_MAX_IDLE_CONNS cannot exceed DB_MAX_OPEN_CONNS")
 	}
+	if c.DB.PoolMaxConns != nil && *c.DB.PoolMaxConns < 1 {
+		return fmt.Errorf("DB_POOL_MAX_CONNS must be greater than 0 when set")
+	}
+	if c.DB.PoolMinConns != nil && *c.DB.PoolMinConns < 0 {
+		return fmt.Errorf("DB_POOL_MIN_CONNS cannot be negative")
+	}
+	effectiveMax := c.DB.MaxOpenConns
+	if c.DB.PoolMaxConns != nil {
+		effectiveMax = *c.DB.PoolMaxConns
+	}
+	effectiveMin := c.DB.MaxIdleConns
+	if c.DB.PoolMinConns != nil {
+		effectiveMin = *c.DB.PoolMinConns
+	}
+	if effectiveMin > effectiveMax {
+		return fmt.Errorf("DB_POOL_MIN_CONNS cannot exceed the effective DB pool max")
+	}
 	if err := validatePositiveDuration("DB_CONN_MAX_LIFETIME", c.DB.ConnMaxLifetime); err != nil {
 		return err
 	}
@@ -499,34 +514,7 @@ func (c *Config) IsProduction() bool {
 // that MaxConns >= 1 and MinConns <= MaxConns, and the total budget
 // (MaxConns + MinConns) is capped at maxTotal if maxTotal > 0.
 func (c *Config) PoolBudget(maxTotal int) (maxConns, minConns int) {
-	max := c.DB.MaxOpenConns
-	min := c.DB.MaxIdleConns
-	if max < 1 {
-		max = 1
-	}
-	if min < 0 {
-		min = 0
-	}
-	if min > max {
-		min = max
-	}
-	if maxTotal > 0 && (max+min) > maxTotal {
-		// Scale the budget down to stay under the pooler limit.
-		total := max + min
-		if min > 0 {
-			max = (maxTotal * max) / total
-			min = maxTotal - max
-			if min < 0 {
-				min = 0
-			}
-		} else {
-			max = maxTotal
-		}
-		if max < 1 {
-			max = 1
-		}
-	}
-	return max, min
+	return c.DB.PoolBudget(maxTotal)
 }
 
 // PoolBudget computes the effective pool budget for a DBConfig value. This is
@@ -534,7 +522,13 @@ func (c *Config) PoolBudget(maxTotal int) (maxConns, minConns int) {
 // budget is applied without requiring a *config.Config.
 func (d DBConfig) PoolBudget(maxTotal int) (maxConns, minConns int) {
 	max := d.MaxOpenConns
+	if d.PoolMaxConns != nil {
+		max = *d.PoolMaxConns
+	}
 	min := d.MaxIdleConns
+	if d.PoolMinConns != nil {
+		min = *d.PoolMinConns
+	}
 	if max < 1 {
 		max = 1
 	}
@@ -544,20 +538,18 @@ func (d DBConfig) PoolBudget(maxTotal int) (maxConns, minConns int) {
 	if min > max {
 		min = max
 	}
-	if maxTotal > 0 && (max+min) > maxTotal {
-		// Scale the budget down to stay under the pooler limit.
-		total := max + min
-		if min > 0 {
-			max = (maxTotal * max) / total
-			min = maxTotal - max
-			if min < 0 {
-				min = 0
-			}
-		} else {
+	if maxTotal > 0 {
+		// MaxConns is the hard cap. MinConns is kept within the remaining
+		// shared-pooler budget rather than allowing the combined values to
+		// exceed the configured limit.
+		if max > maxTotal {
 			max = maxTotal
 		}
-		if max < 1 {
-			max = 1
+		if min > max {
+			min = max
+		}
+		if max+min > maxTotal {
+			min = maxTotal - max
 		}
 	}
 	return max, min
