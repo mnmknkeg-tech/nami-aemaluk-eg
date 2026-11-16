@@ -153,12 +153,14 @@ export default function CheckoutPage() {
             shopId,
             shopName: shopItems[0]?.shopName || shopId,
             discount: Math.max(0, Number(result?.discountAmount) || 0),
+            message: undefined,
             valid: true,
           };
         } catch (err: any) {
           return {
             shopId,
             shopName: shopItems[0]?.shopName || shopId,
+            discount: 0,
             message: err?.message || 'الكوبون غير صالح لهذا المتجر',
             valid: false,
           };
