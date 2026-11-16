@@ -3,6 +3,7 @@ import { PublishingPipelineStatus, VersionHistoryItem, Website } from '../../typ
 import { apiRequest, clearApiCache } from '../../../../lib/api/client';
 import { validateWebsiteForPublishing } from './publishValidation';
 import { inspectWebsiteTree, normalizeWebsiteTree } from '@ray-eg/shared/builder';
+import { getMerchantStorefrontUrl } from '@ray-eg/shared/merchant/siteUrls';
 
 function findInvalidLinks(website: Website): string[] {
   const invalid: string[] = [];
@@ -53,7 +54,6 @@ export const useBuilderPublishing = (
   websiteRef: { current: Website },
   builderShopIdRef: { current: string },
   builderShopSlugRef: { current: string },
-  liveWebsiteUrl: string,
   saveDraft: (website: Website, manual?: boolean) => Promise<boolean>,
   setHistoryLog: React.Dispatch<React.SetStateAction<string[]>>,
   recordHistory: (actionDesc: string, newWebsite: Website) => void,
@@ -102,17 +102,7 @@ export const useBuilderPublishing = (
   const publicSiteUrl = useCallback((): string => {
     const slug = builderShopSlugRef.current;
     if (typeof window === 'undefined' || !slug) return '';
-
-    // The dashboard must publish links to the merchant storefront app,
-    // never to the Menmakank marketplace's /site/:slug route.
-    const storefrontBase = (
-      process.env.NEXT_PUBLIC_MERCHANT_STOREFRONT_URL ||
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:3001'
-        : 'https://nami-aemaluk-eg-fib3.vercel.app')
-    ).replace(/\/+$/, '');
-
-    return `${storefrontBase}/${encodeURIComponent(slug)}`;
+    return getMerchantStorefrontUrl(slug);
   }, [builderShopSlugRef]);
 
   /**
@@ -340,7 +330,6 @@ export const useBuilderPublishing = (
     builderShopIdRef,
     builderShopSlugRef,
     websiteRef,
-    liveWebsiteUrl,
     saveDraft,
     setHistoryLog,
     draftVersionRef,

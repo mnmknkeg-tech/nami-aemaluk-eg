@@ -44,6 +44,7 @@ import { isSessionActive, jsonRequest } from '@/lib/api';
 import { trackCartEvent } from '@/lib/cartEvents';
 import { LocationPicker } from '@/components/LocationPicker';
 import { playOrderNotifSound } from '@/lib/sounds';
+import { getMerchantOrderTrackPath, getPublishedSitePath } from '@ray-eg/shared/merchant/siteUrls';
 
 /** تحويل أرقام الهاتف العربي (٠-٩ / ۰-۹) والأرقام غير الرقمية لرقم لاتيني مجرد. */
 function toEgyptianPhoneDigits(raw: string): string {
@@ -118,7 +119,7 @@ export default function SiteCheckout() {
   // The site cart is scoped to ONE merchant — take shop identity from the
   // first entry so header/summary/order payload all come from the same place.
   const shop = siteCart.items[0]?.shop || null;
-  const shopHomeUrl = shop?.slug ? `/site/${shop.slug}` : '/';
+  const shopHomeUrl = shop?.slug ? getPublishedSitePath(shop.slug) : '/';
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -337,7 +338,11 @@ export default function SiteCheckout() {
                 </div>
               </div>
               <Link
-                href={`/track/${order?.id || order?.orderNumber || ''}?from=${encodeURIComponent(success.shopHomeUrl)}`}
+                href={getMerchantOrderTrackPath(
+                  success.shopSlug,
+                  order?.id || order?.orderNumber || '',
+                  success.shopHomeUrl
+                )}
                 className="text-brand-cyan font-bold text-sm hover:underline"
               >
                 تتبع الطلب

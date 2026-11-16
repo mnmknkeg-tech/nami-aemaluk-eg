@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSiteCart } from '@/lib/site-cart';
 import { jsonRequest } from '@/lib/api';
 import { normalizeWebsiteTree, PublicSiteRenderer, SiteCartDrawer } from '@ray-eg/shared/builder';
+import { getBookingTrackPath, getPublishedSitePath } from '@ray-eg/shared/merchant/siteUrls';
 import type {
   SiteProduct,
   SiteBookingService,
@@ -98,7 +99,7 @@ export function SiteCartBridge({
           const data = response?.data ?? response ?? {};
           return { bookingNumber: data?.bookingNumber };
         }}
-        bookingTrackHref={(number) => `/bookings/track?number=${encodeURIComponent(number)}`}
+        bookingTrackHref={(number) => `${getBookingTrackPath(shop.slug)}?number=${encodeURIComponent(number)}`}
       />
       <SiteCartDrawer
         isOpen={isCartOpen}
@@ -127,7 +128,7 @@ export function SiteCartBridge({
         onRemoveItem={removeItem}
         onProceedToCheckout={() => {
           setCartOpen(false);
-          router.push(`/site/${shop.slug}/checkout`);
+          router.push(getPublishedSitePath(shop.slug, '/checkout'));
         }}
       />
     </div>

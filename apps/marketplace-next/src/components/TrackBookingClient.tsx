@@ -75,7 +75,7 @@ function playTurnAlert() {
   } catch {}
 }
 
-function TrackBookingInner() {
+function TrackBookingInner({ homeHref, homeLabel }: { homeHref: string; homeLabel: string }) {
   const searchParams = useSearchParams();
   const [number, setNumber] = useState(() => searchParams.get('number') ?? '');
   const [phone, setPhone] = useState('');
@@ -283,8 +283,8 @@ function TrackBookingInner() {
           لو المعادلة اتغيرت أو عايز تعدّل الموعد — كلّم المتجر مباشرة.
         </p>
         <div className="text-center">
-          <Link href="/" className="text-xs font-black text-brand-cyan hover:underline">
-            الرجوع للسوق
+          <Link href={homeHref} className="text-xs font-black text-brand-cyan hover:underline">
+            {homeLabel}
           </Link>
         </div>
       </div>
@@ -292,7 +292,13 @@ function TrackBookingInner() {
   );
 }
 
-export function TrackBookingClient() {
+export function TrackBookingClient({
+  homeHref = '/',
+  homeLabel = 'الرجوع للسوق',
+}: {
+  homeHref?: string;
+  homeLabel?: string;
+} = {}) {
   return (
     <Suspense
       fallback={
@@ -301,7 +307,7 @@ export function TrackBookingClient() {
         </div>
       }
     >
-      <TrackBookingInner />
+      <TrackBookingInner homeHref={homeHref} homeLabel={homeLabel} />
     </Suspense>
   );
 }

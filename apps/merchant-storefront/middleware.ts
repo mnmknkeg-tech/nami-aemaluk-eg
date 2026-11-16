@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveLegacyMerchantPath } from './lib/legacy-site-route';
 
 export const config = {
   matcher: ['/((?!api/|_next/|.*\\.[^/]+$).*)']
@@ -16,24 +17,27 @@ export default function middleware(request: NextRequest) {
   const host = (request.headers.get('host') || '').toLowerCase().replace(/:\d+$/, '');
   const rootDomain = [...ROOT_DOMAINS].find((domain) => host.endsWith('.' + domain));
 
-  // Root domains are not merchant tenants. Custom domains require an explicit
-  // verified domain-to-shop resolver and are intentionally not guessed here.
-  if (!rootDomain) return NextResponse.next();
-
-  const tenantSlug = host.slice(0, -(rootDomain.length + 1)).split('.')[0];
-  if (!tenantSlug || tenantSlug === 'www' || tenantSlug.includes('.')) {
-    return NextResponse.next();
+  let tenantSlug: string | null = null;
+  if (rootDomain) {
+    const candidate = host.slice(0, -(rootDomain.length + 1)).split('.')[0];
+    if (candidate && candidate !== 'www' && !candidate.includes('.')) {
+      tenantSlug = candidate;
+    }
   }
 
-  // Compatibility with the old /site/:slug URLs emitted by the shared
-  // published-site renderer. Only rewrite when the URL slug matches the
-  // tenant resolved from the platform subdomain.
-  const legacySitePath = url.pathname.match(/^\/site\/([^/]+)(.*)$/);
-  if (legacySitePath) {
-    if (legacySitePath[1] !== tenantSlug) return NextResponse.next();
-    url.pathname = '/' + tenantSlug + (legacySitePath[2] || '');
-    return NextResponse.rewrite(url);
+  // Shared renderer components still emit /site/:slug links. Redirect those
+  // links to the standalone route on Vercel domains, and to the tenant root
+  // path on verified platform subdomains.
+  const legacyPath = resolveLegacyMerchantPath(url.pathname, tenantSlug);
+  if (legacyPath === null) return new NextResponse('Not Found', { status: 404 });
+  if (typeof legacyPath === 'string') {
+    url.pathname = legacyPath;
+    return NextResponse.redirect(url, 308);
   }
+
+  // Root domains are not merchant tenants. Custom domains still require an
+  // explicit verified domain-to-shop resolver; never guess a shop from a host.
+  if (!tenantSlug) return NextResponse.next();
 
   // Prevent accidental double-prefixing when the tenant slug is already present.
   if (url.pathname === '/' + tenantSlug || url.pathname.startsWith('/' + tenantSlug + '/')) {

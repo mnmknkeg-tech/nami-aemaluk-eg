@@ -8,6 +8,7 @@ import {
   type PublicBookingService,
 } from '@/merchant-site/components/SiteBookingFlow';
 import { readShopBookingConfig } from '@ray-eg/shared/booking';
+import { getPublishedSitePath } from '@ray-eg/shared/merchant/siteUrls';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -86,7 +87,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `احجز موعدك — ${name}`,
     description: `احجز موعدك في ${name} مباشرة من المواعيد المتاحة.`,
-    alternates: { canonical: `/site/${slug}/book` },
+    alternates: { canonical: getPublishedSitePath(slug, '/book') },
   };
 }
 

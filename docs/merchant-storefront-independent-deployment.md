@@ -1,58 +1,64 @@
 # Independent Merchant Storefront
 
-## Goal
+## Production routing contract
 
-Run published merchant websites as a separate Next.js deployment from the Menmakank marketplace. The dashboard remains the publishing/control plane and the Go API remains the source of truth for shops, published builder configuration, products, inventory, and orders.
+The independent Merchant Storefront is a separate Next.js deployment:
 
-## Current implementation slice
+- Vercel project root: `apps/merchant-storefront`
+- Current production origin: `https://nami-aemaluk-eg-fib3.vercel.app`
+- Public merchant URL: `https://nami-aemaluk-eg-fib3.vercel.app/{slug}`
+- Example: `https://nami-aemaluk-eg-fib3.vercel.app/al-islam`
+- The app root `/` is informational, not a merchant's shop.
 
-- Added `apps/merchant-storefront` as a separate Next.js workspace.
-- Its merchant route reuses the existing published-site renderer and the dedicated `SiteCartProvider` / `SiteCheckout` implementation from `apps/marketplace-next`.
-- Marketplace discovery must remain on `/shop/:slug` with the Menmakank theme. Publishing a website only enables the merchant's explicit official-site URL.
-- Merchant site cart remains separate from the marketplace cart; this app does not introduce a second product or inventory database.
-- New orders record `salesChannel` as `website`, `marketplace`, or `pos`, while the legacy `source` field remains intact for existing consumers.
+The dashboard publish link and the Marketplace's explicit «الموقع الرسمي» link use one shared URL helper from `packages/shared/src/merchant/siteUrls.ts`. The old Marketplace path is not the default destination.
 
-## Deployment setup
+## Architecture
 
-Create a separate Vercel project for this app:
+- Nami Dashboard / Website Builder remains the publishing/control plane.
+- Menmakank Marketplace remains the discovery and unified shop experience.
+- Merchant Storefront renders each merchant's original published website.
+- Go API + PostgreSQL remain the shared source of truth for shops, products, inventory, published builder configuration, bookings and orders.
+- The Storefront reuses the published-site renderer and the merchant-only `SiteCartProvider` / `SiteCheckout` implementation. It does not create a second product or inventory database.
 
-- Root Directory: `apps/merchant-storefront`
-- Install command: run from the monorepo root using the repository's configured package manager/workspace lockfile.
-- Build command: `npm run build` (or the repository's workspace-aware equivalent).
-- Output: Next.js default.
+## Routes
 
-Required environment:
+- `/{slug}` — published home page
+- `/{slug}/product/{id}` — product details
+- `/{slug}/book` — booking flow
+- `/{slug}/bookings/track` — booking tracking
+- `/{slug}/checkout` — merchant-site checkout
+- `/{slug}/track/{id}` — order tracking
 
-- `BACKEND_URL`: private/public Go API origin reachable by the deployment.
-- `NEXT_PUBLIC_MERCHANT_ROOT_DOMAINS`: comma-separated platform root domains, for example `mnmknk.com,ray.eg`.
-- `NEXT_PUBLIC_MERCHANT_STOREFRONT_MODE=standalone`: makes published-site canonical URLs match the standalone `/:slug` route.
-- `NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE`: canonical tenant URL template, for example `https://{slug}.mnmknk.com`.
-- Configure wildcard DNS and wildcard domain assignment for each platform root domain.
-- Set `NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE` on **both** the merchant storefront and Marketplace deployments so official-site links and canonical metadata point to the same tenant host.
+The shared renderer still emits older internal links such as `/site/{slug}/checkout`. Storefront middleware redirects those legacy paths to the equivalent standalone path, including nested routes. Marketplace discovery remains on `/shop/{slug}`; only the explicit official-site action opens the standalone site.
 
-## Important cutover constraints
+## Deployment configuration
 
-1. This is a scaffold and source-reuse boundary, not a completed production migration. Build/typecheck and end-to-end checks are required before routing live domains to it.
-2. Platform subdomains can derive the tenant slug. Custom domains must NOT be mapped by guessing the hostname as a shop slug; add a verified backend domain-resolution endpoint and ownership verification before enabling custom domains here.
-3. Keep the existing `/site/:slug` renderer and its domain routing alive as a rollback path until the independent deployment passes smoke tests.
-4. Do not remove the old renderer, change database schemas, or change order semantics in this phase.
-5. Confirm the deployed API permits the storefront origin in CORS and that guest checkout cookies / idempotency behavior work cross-origin as designed.
-6. The app currently imports the renderer and supporting source from `apps/marketplace-next`. This isolates deployment and routing, but a later cleanup should extract the shared storefront runtime into a dedicated workspace package to remove cross-app source imports.
+The Storefront enforces these build-time values in `apps/merchant-storefront/next.config.mjs`:
 
-## Required validation before cutover
+- `NEXT_PUBLIC_MERCHANT_STOREFRONT_MODE=standalone`
+- `NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE=https://nami-aemaluk-eg-fib3.vercel.app/{slug}`
 
-- Workspace install and `apps/merchant-storefront` build/typecheck (`npm run build:merchant-storefront`, `npm run typecheck:merchant-storefront`).
-- Published builder site renders for a real shop and returns 404 for an unpublished/unknown shop.
-- Cart persistence is scoped by merchant slug and does not read/write the marketplace cart key.
-- Checkout creates an order for the correct shop and cannot accept a forged shop/product/price from the browser.
-- Verify subdomain root, nested paths, checkout path, refresh, and browser back behavior.
-- Verify marketplace pages continue to open the unified Menmakank shop page regardless of website publication state.
-- Verify rollback to the existing marketplace-hosted `/site/:slug` route.
+Optional overrides for Dashboard and Marketplace:
 
-## Not included yet
+- `NEXT_PUBLIC_MERCHANT_STOREFRONT_URL`: storefront origin, without a trailing slash.
+- `NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE`: verified URL template containing `{slug}`, e.g. `https://{slug}.mnmknk.com`.
+- `NEXT_PUBLIC_MERCHANT_ALLOW_LEGACY_SITE_URL=true`: emergency rollback only; permits the old `NEXT_PUBLIC_MERCHANT_BASE_URL` / `/site/{slug}` destination.
+- `BACKEND_URL`: Go API origin.
+- `NEXT_PUBLIC_MERCHANT_ROOT_DOMAINS`: optional platform root domains for verified tenant subdomains.
 
-- Verified custom-domain mapping.
-- Deployment project creation or DNS changes.
-- Multi-merchant marketplace parent/child order redesign.
-- Multi-merchant marketplace parent/child order redesign.
-- Removal of legacy storefront routes.
+Do not use an old Marketplace `/site/{slug}` URL as the normal storefront template. Custom domains still require verified domain-to-shop resolution and ownership checks; never infer a shop from an arbitrary custom hostname.
+
+## Validation
+
+- A real published shop renders at `/{slug}`; an unknown/unpublished shop returns 404.
+- Refresh and nested routes work for product, booking, checkout, booking tracking and order tracking.
+- Old `/site/{slug}` links redirect to the correct standalone path.
+- Merchant site cart remains isolated by shop slug and never reads/writes the Marketplace cart key.
+- Checkout creates a website-channel order for the correct shop.
+- Marketplace cards/search/maps still open `/shop/{slug}`; only «الموقع الرسمي» opens the independent site.
+- Dashboard publish modal and copy/share links use the same standalone URL.
+- Keep the old Marketplace `/site/{slug}` renderer available as rollback until standalone smoke tests pass.
+
+## Known boundary
+
+This is application-level separation with shared renderer source imports from `apps/marketplace-next`. Extracting that runtime into a dedicated shared package is a later cleanup. Verified custom-domain mapping and multi-merchant parent/child orders are not part of this cutover.

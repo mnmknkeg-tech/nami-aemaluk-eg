@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { getProducts } from '@/lib/services';
 import { SiteStoreProductCard } from '@/merchant-site/components/SiteStoreProductCard';
 import { siteConfig } from '@/lib/config';
+import { getPublishedSitePath } from '@ray-eg/shared/merchant/siteUrls';
 import {
   mapSiteProduct,
   type SiteProduct,
@@ -25,16 +26,8 @@ export const revalidate = 0;
 
 type BuilderConfig = Record<string, any>;
 
-/** Route differs by deployment: legacy renderer uses /site/:slug; the
- * standalone merchant app serves the tenant at /:slug. */
-function publishedSitePath(slug: string): string {
-  return process.env.NEXT_PUBLIC_MERCHANT_STOREFRONT_MODE === 'standalone'
-    ? `/${encodeURIComponent(slug)}`
-    : `/site/${encodeURIComponent(slug)}`;
-}
-
 function publishedSiteUrl(slug: string): string {
-  const route = publishedSitePath(slug);
+  const route = getPublishedSitePath(slug);
   const template = process.env.NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE;
   if (process.env.NEXT_PUBLIC_MERCHANT_STOREFRONT_MODE === 'standalone' && template) {
     return template.replace('{slug}', encodeURIComponent(slug)).replace(/\/$/, '');

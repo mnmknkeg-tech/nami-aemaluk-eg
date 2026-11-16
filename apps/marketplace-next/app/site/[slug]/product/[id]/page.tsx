@@ -22,6 +22,7 @@ import { SiteProductActions } from '@/merchant-site/components/SiteProductAction
 import { SiteStoreProductCard } from '@/merchant-site/components/SiteStoreProductCard';
 import { SafeProductImage } from '@/components/SafeProductImage';
 import { ReviewsSection } from '@/components/ReviewsSection';
+import { getPublishedSitePath } from '@ray-eg/shared/merchant/siteUrls';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -86,7 +87,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: seoDesc,
     keywords,
     icons: icon ? { icon, shortcut: icon, apple: icon } : undefined,
-    alternates: { canonical: `/site/${site.shop.slug}/product/${product.id}` },
+    alternates: {
+      canonical: getPublishedSitePath(site.shop.slug, `/product/${encodeURIComponent(String(product.id))}`),
+    },
     openGraph: {
       title: pageTitle,
       description: seoDesc,

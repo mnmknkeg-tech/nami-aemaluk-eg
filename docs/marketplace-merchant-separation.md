@@ -44,11 +44,12 @@
 ```env
 BACKEND_URL=https://<go-backend-origin>
 NEXT_PUBLIC_MERCHANT_ROOT_DOMAINS=mnmknk.com,ray.eg
-NEXT_PUBLIC_MERCHANT_STOREFRONT_MODE=standalone
-NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE=https://{slug}.mnmknk.com
+NEXT_PUBLIC_MERCHANT_STOREFRONT_URL=https://nami-aemaluk-eg-fib3.vercel.app
+NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE=
+NEXT_PUBLIC_MERCHANT_ALLOW_LEGACY_SITE_URL=false
 ```
 
-يجب ضبط `NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE` أيضًا في مشروع Marketplace حتى يفتح زر «الموقع الرسمي» التطبيق المستقل. يجب أن يتطابق القالب مع النطاقات التي تم إعداد DNS لها.
+زر «الموقع الرسمي» في Marketplace ورابط النشر في Dashboard يستخدمان مولّد الروابط المشترك. في إعداد Vercel الحالي يكون الرابط `https://nami-aemaluk-eg-fib3.vercel.app/{slug}` تلقائيًا؛ وعند تفعيل دومين موثّق يمكن ضبط `NEXT_PUBLIC_MERCHANT_SITE_URL_TEMPLATE` في Dashboard وMarketplace وStorefront بالقالب نفسه. لا تستخدم `/site/{slug}` كوجهة افتراضية.
 
 **لا يتم تحويل DNS أو إيقاف renderer القديم قبل نجاح build وsmoke tests على مشروع النشر الجديد.** أبقِ `/site/:slug` القديم كمسار rollback مؤقتًا.
 

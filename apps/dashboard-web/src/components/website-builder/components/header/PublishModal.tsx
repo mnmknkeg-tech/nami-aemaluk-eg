@@ -21,7 +21,6 @@ export const PublishModal: React.FC = () => {
     website,
     publishingStatus,
     runPublishPipeline,
-    liveWebsiteUrl,
     publishedSiteUrl,
     builderShopName,
     publishState,
@@ -197,7 +196,7 @@ export const PublishModal: React.FC = () => {
               {/* Published Success Card & Live Store Marketing Link */}
               {publishingStatus.status === 'published' &&
                 (() => {
-                  const targetUrl = publishingStatus.liveUrl || liveWebsiteUrl || '';
+                  const targetUrl = publishingStatus.liveUrl || publishedSiteUrl || '';
                   const copyStoreLink = () => {
                     if (!targetUrl) return;
                     navigator.clipboard.writeText(targetUrl);

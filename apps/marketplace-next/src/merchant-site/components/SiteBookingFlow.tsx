@@ -20,6 +20,7 @@ import { api } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 import { buildWhatsAppLink } from '@ray-eg/shared/builder';
 import { cn } from '@/lib/utils';
+import { getBookingTrackPath } from '@ray-eg/shared/merchant/siteUrls';
 
 /**
  * SiteBookingFlow — تدفّق الحجز الحقيقي على الموقع المنشور.
@@ -285,7 +286,7 @@ export function SiteBookingFlow({
         )}
         <div className="max-w-md mx-auto">
           <Link
-            href={`/bookings/track?number=${encodeURIComponent(result.bookingNumber || '')}`}
+            href={`${getBookingTrackPath(slug)}?number=${encodeURIComponent(result.bookingNumber || '')}`}
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 text-white py-3 font-black text-sm hover:bg-slate-800"
           >
             <SearchCheck className="w-4 h-4" />

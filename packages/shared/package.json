@@ -16,6 +16,7 @@
     "./builder": "./src/builder/index.ts",
     "./builder/*": "./src/builder/*",
     "./booking": "./src/booking/index.ts",
+    "./merchant/*": "./src/merchant/*",
     "./utils/*": "./src/utils/*"
   },
   "scripts": {

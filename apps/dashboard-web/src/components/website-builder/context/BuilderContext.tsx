@@ -380,7 +380,6 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     websiteRef,
     builderShopIdRef,
     builderShopSlugRef,
-    liveWebsiteUrl,
     saveDraft,
     setHistoryLog,
     recordHistory,
