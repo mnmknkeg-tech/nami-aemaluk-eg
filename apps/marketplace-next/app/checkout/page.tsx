@@ -144,6 +144,11 @@ export default function CheckoutPage() {
             method: 'POST',
             body: JSON.stringify({ shopId, code, subtotal }),
           });
+          // Do not present unsupported shipping / buy-X-get-Y coupons as
+          // applied even while an older backend version is still deployed.
+          if (!['percentage', 'fixed'].includes(result?.coupon?.type)) {
+            throw new Error('نوع الكوبون غير مدعوم في Checkout حالياً');
+          }
           return {
             shopId,
             shopName: shopItems[0]?.shopName || shopId,
