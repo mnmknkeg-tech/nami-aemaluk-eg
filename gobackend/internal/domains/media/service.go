@@ -33,6 +33,12 @@ func NewService(cfg *config.Config, repo *Repository, s3 *storage.S3Client, jobs
 
 // PresignUpload generates a presigned PUT URL for direct S3/R2 uploads.
 func (s *Service) PresignUpload(ctx context.Context, userID, actorRole, actorShopID string, req PresignUploadRequest) (*PresignUploadResponse, error) {
+	if strings.TrimSpace(req.ShopID) == "" {
+		req.ShopID = actorShopID
+	}
+	if req.ShopID == "" {
+		return nil, errors.Validation("shop_id_required", "معرف المتجر مطلوب")
+	}
 	if err := s.authorizeShop(req.ShopID, actorRole, actorShopID); err != nil {
 		return nil, err
 	}
@@ -80,6 +86,12 @@ func (s *Service) PresignUpload(ctx context.Context, userID, actorRole, actorSho
 // It is idempotent: if a media record with the same key already exists, the
 // existing record is returned without creating a duplicate.
 func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorShopID string, req CompleteUploadRequest) (*Media, error) {
+	if strings.TrimSpace(req.ShopID) == "" {
+		req.ShopID = actorShopID
+	}
+	if req.ShopID == "" {
+		return nil, errors.Validation("shop_id_required", "معرف المتجر مطلوب")
+	}
 	if err := s.authorizeShop(req.ShopID, actorRole, actorShopID); err != nil {
 		return nil, err
 	}
