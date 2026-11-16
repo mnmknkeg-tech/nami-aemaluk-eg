@@ -81,6 +81,7 @@ describe('permanent image upload', () => {
     await expect(uploadMediaFile(file, 'shop-123', 'website_image')).rejects.toThrow(
       'فشل رفع الصورة إلى التخزين الدائم'
     );
-    expect(mockedApiRequest).toHaveBeenCalledTimes(1);
+    expect(mockedApiRequest).toHaveBeenCalledTimes(2);
+    expect(mockedApiRequest.mock.calls[1][0]).toBe('/media/upload');
   });
 });
