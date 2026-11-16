@@ -367,7 +367,8 @@ func (s *Service) createOrderCore(ctx context.Context, req CreateOrderRequest, u
 		}
 		if fee < 0 || math.IsNaN(fee) || math.IsInf(fee, 0) { return nil, errors.Validation("delivery_fee_invalid", "رسوم التوصيل غير صحيحة") }
 		if threshold > 0 && total >= threshold { fee = 0 }
-		order.DeliveryFee = fee
+		feeSnapshot := fee
+		order.DeliveryFee = &feeSnapshot
 		order.Total += fee
 	}
 
