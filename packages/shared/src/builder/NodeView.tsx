@@ -51,6 +51,7 @@ import {
   resolveWebsiteLinkDestination,
   inferWebsiteLinkDestinationFromLabel,
   isSafeExternalDestination,
+  isSafeExternalUrl,
 } from './linkDestinations';
 import {
   getMobileDrawerPages,
@@ -276,12 +277,7 @@ function handleInteraction(e: React.MouseEvent, node: ComponentNode, ctx: NodeVi
     );
     if (pageBySlug) return go(pageBySlug);
 
-    if (
-      url.startsWith('http://') ||
-      url.startsWith('https://') ||
-      url.startsWith('tel:') ||
-      url.startsWith('mailto:')
-    ) {
+    if (isSafeExternalUrl(url)) {
       if (ctx.previewMode) {
         e.preventDefault();
         e.stopPropagation();

@@ -3,6 +3,8 @@ import {
   applyWebsiteBackgroundToPageRoot,
   applyThemeVariables,
   computeThemeResponsiveNodeStyles,
+  isSafeExternalDestination,
+  isSafeExternalUrl,
   resolveWebsiteLinkDestination,
 } from '@ray-eg/shared/builder';
 import { useBuilder } from '../../context/BuilderContext';
@@ -159,6 +161,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
       e.preventDefault();
       e.stopPropagation();
       if (destination.type === 'external') {
+        if (!isSafeExternalDestination(destination)) return;
         window.open(destination.url, '_blank', 'noopener,noreferrer');
         return;
       }
@@ -277,12 +280,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
         return;
       }
 
-      if (
-        url.startsWith('http://') ||
-        url.startsWith('https://') ||
-        url.startsWith('tel:') ||
-        url.startsWith('mailto:')
-      ) {
+      if (isSafeExternalUrl(url)) {
         e.preventDefault();
         e.stopPropagation();
         window.open(url, '_blank', 'noopener,noreferrer');
