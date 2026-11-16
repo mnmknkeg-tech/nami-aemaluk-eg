@@ -20,20 +20,15 @@ import React, {
   useRef,
 } from 'react';
 import { Tenant, Website, ViewportBreakpoint, WebsiteSettings } from '../types/builder';
-import { AssetDto } from '../types/dto';
 import { EditingModeId } from './types';
-import { mockTenants, mockAssets } from '../data/mockTenants';
 import {
   TEMPLATE_SCHEMA_VERSIONS,
   type FullWebsiteTemplateEntry,
   getFullWebsiteTemplateMetadata,
-  getFullWebsiteTemplates,
   loadFullWebsiteTemplate,
   loadThemePreset,
 } from '../data/registry';
 import { apiRequest } from '../../../lib/api/client';
-import { uploadMediaFile } from '../../../lib/api/upload';
-import { validateImageFile } from '../../../lib/image-utils';
 
 // Sub-hooks
 import { useBuilderCart } from './hooks/useBuilderCart';
@@ -93,6 +88,17 @@ const BLANK_TEMPLATE_ENTRY: FullWebsiteTemplateEntry = {
   website: BLANK_WEBSITE,
 };
 
+const EMPTY_TENANT: Tenant = {
+  id: '',
+  name: '',
+  ownerEmail: '',
+  businessActivity: 'general',
+  plan: 'starter',
+  createdAt: '',
+  businessInfo: { brandName: '', phone: '', email: '', address: '', whatsappNumber: '', currency: 'EGP', logoUrl: '' },
+  dataSources: { productsCount: 0, servicesCount: 0, testimonialsCount: 0 },
+};
+
 // ─── Context ────────────────────────────────────────────────────────────────
 
 const BuilderContext = createContext<BuilderContextType | null>(null);
@@ -149,7 +155,7 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
 
   // ── Core website state ───────────────────────────────────────────────────
   const [initialBuilderData] = useState(() => getInitialBuilderState());
-  const [currentTenant, setCurrentTenant] = useState<Tenant>(mockTenants[0]);
+  const [currentTenant, setCurrentTenant] = useState<Tenant>(EMPTY_TENANT);
   const [website, setWebsiteState] = useState<Website>(initialBuilderData.website);
   const [activeTemplateId, setActiveTemplateId] = useState(initialBuilderData.templateId);
   const [templateError, setTemplateError] = useState<string | null>(
@@ -187,7 +193,6 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
   }, [builderShopSlug]);
 
   // Assets
-  const [assets, setAssets] = useState<AssetDto[]>(mockAssets);
 
   // ── History sub-hook ─────────────────────────────────────────────────────
   const {
@@ -197,7 +202,6 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     setHistoryLog,
     canUndo,
     canRedo,
-    resetHistory,
     saveDraft,
     runAutosave,
     recordHistory: _recordHistoryRaw,
@@ -788,57 +792,6 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
     });
   }, [builderShopId, isInitializing, switchWebsite]);
 
-  const switchTenant = useCallback(
-    (tenantId: string) => {
-      const found = mockTenants.find((t) => t.id === tenantId);
-      if (!found) return;
-      setCurrentTenant(found);
-      const entry = getFullWebsiteTemplates().find(
-        ({ website: site }) =>
-          site.tenantId === tenantId || site.activity === found.businessActivity
-      );
-      if (entry) {
-        const { id, website: site } = entry;
-        setWebsite(normalizeWebsite(site));
-        setActiveTemplateId(id);
-        const firstPage = site.pages[0];
-        setActivePageId(firstPage ? firstPage.id : 'page_home');
-        componentOps.setSelectedNodeId(firstPage ? firstPage.rootNodeId : 'comp_hero');
-        resetHistory(`تم تبديل القالب والمستأجر إلى (${site.name})`);
-        setAutosaveStatus('unsaved');
-        setTemplateError(null);
-      }
-    },
-    [componentOps, resetHistory, setAutosaveStatus, setWebsite]
-  );
-
-  const uploadMockAsset = useCallback(
-    async (file: File) => {
-      const validation = validateImageFile(file);
-      if (!validation.valid) throw new Error(validation.error || 'نوع أو حجم الصورة غير مقبول.');
-      if (!currentTenant.id) throw new Error('تعذر تحديد المتجر لرفع الصورة.');
-      const url = await uploadMediaFile(file, currentTenant.id, 'website_image');
-      if (!url || !/^https:\/\//i.test(url) || /^blob:/i.test(url)) {
-        throw new Error('لم يُرجع التخزين رابط صورة دائمًا وآمنًا.');
-      }
-      const newAsset: AssetDto = {
-        id: `asset_${Date.now()}`,
-        tenantId: currentTenant.id,
-        fileName: file.name,
-        fileType: 'image',
-        url,
-        thumbnailUrl: url,
-        sizeBytes: file.size,
-        altText: file.name,
-        category: 'Uploads',
-        tags: ['user-upload'],
-        usageCount: 0,
-        createdAt: new Date().toISOString(),
-      };
-      setAssets((prev) => [newAsset, ...prev]);
-    },
-    [currentTenant.id]
-  );
   // ── Context value ────────────────────────────────────────────────────────
 
   return (
@@ -846,8 +799,6 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
       value={{
         // Tenant & Website
         currentTenant,
-        tenantsList: mockTenants,
-        switchTenant,
         website,
         activeTemplateId,
         templateError,
@@ -897,10 +848,6 @@ export const BuilderProvider: React.FC<{ children: React.ReactNode; onExit?: () 
         setIsAiModalOpen,
         isDevDrawerOpen,
         setIsDevDrawerOpen,
-
-        // Assets
-        assets,
-        uploadMockAsset,
 
         // History
         canUndo,
