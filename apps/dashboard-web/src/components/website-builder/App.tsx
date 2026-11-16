@@ -9,7 +9,6 @@ import { CanvasArea } from './components/canvas/CanvasArea';
 import { RightInspector } from './components/inspector/RightInspector';
 import { CodeEnvironment } from './components/code/CodeEnvironment';
 import { AiAssistantModal } from './components/ai/AiAssistantModal';
-import { SecurePreview } from './components/preview/SecurePreview';
 import { DeveloperModeDrawer } from './components/dev/DeveloperModeDrawer';
 import { MobileBuilderTabBar } from './components/mobile/MobileBuilderTabBar';
 
@@ -95,10 +94,6 @@ const BuilderWorkspace: React.FC<{ fullScreen?: boolean }> = ({ fullScreen = fal
       <PublishModal />
       {/* Market-launch switch: the AI assistant is local-only for now. */}
       {!HIDE_UNPUBLISHED && <AiAssistantModal />}
-      {/* SecurePreview IS the live preview modal opened by the TopBar "معاينة"
-          button — a merchant must see his site before publishing, so it is NOT
-          hidden in production (unlike AI / dev tools). */}
-      <SecurePreview />
       {!HIDE_UNPUBLISHED && <DeveloperModeDrawer />}
 
       {/* Mobile bottom tab bar — only visible on small screens (hidden on lg+) */}

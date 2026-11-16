@@ -2,8 +2,19 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Menu, Bell, Search, LogOut, User, ChevronDown, PanelTop, Settings } from 'lucide-react';
+import {
+  Menu,
+  Bell,
+  Search,
+  LogOut,
+  User,
+  ChevronDown,
+  PanelTop,
+  Settings,
+  Globe,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { getMerchantStorefrontUrl } from '@ray-eg/shared/merchant/siteUrls';
 import { sectionSettingsHref } from '@/lib/sectionSettings';
 import { useOrderBell } from '@/hooks/useOrderBell';
 import { useShop } from '@/hooks/useShop';
@@ -21,6 +32,7 @@ export default function Header({
   const { user, logout } = useAuth();
   const { unreadCount } = useOrderBell();
   const { shop } = useShop();
+  const publishedSiteUrl = shop?.slug ? getMerchantStorefrontUrl(shop.slug) : '';
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { openModal } = useSettingsModal();
@@ -75,6 +87,18 @@ export default function Header({
           >
             <PanelTop size={20} />
           </button>
+        )}
+        {/* Published site shortcut — the merchant's real storefront */}
+        {publishedSiteUrl && (
+          <a
+            href={publishedSiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="فتح الموقع المنشور في نافذة جديدة"
+            className="p-2 text-white/80 hover:text-white hover:bg-white/15 rounded-xl transition-colors"
+          >
+            <Globe size={20} className="text-white/90" />
+          </a>
         )}
         <button
           onClick={handleBellClick}

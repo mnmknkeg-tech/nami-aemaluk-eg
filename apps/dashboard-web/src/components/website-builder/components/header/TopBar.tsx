@@ -5,7 +5,6 @@ import {
   Smartphone,
   Undo2,
   Redo2,
-  Play,
   Code2,
   Sparkles,
   CloudUpload,
@@ -104,8 +103,6 @@ export const TopBar: React.FC = () => {
     isCodeWorkspaceOpen,
     setIsCodeWorkspaceOpen,
     hasCodeDrafts,
-    isLivePreviewOpen,
-    setIsLivePreviewOpen,
     isPublishModalOpen,
     setIsPublishModalOpen,
     isAiModalOpen,
@@ -385,14 +382,16 @@ export const TopBar: React.FC = () => {
           )}
         </button>
 
-        {/* Preview Button — always available: a merchant must see his site
-            before publishing it (was hidden in production builds). */}
+        {/* Preview Button — opens the standalone full-site preview (/preview)
+            in its own tab: the real renderer, no editor chrome inside. */}
         <button
-          onClick={() => setIsLivePreviewOpen(true)}
-          title="معاينة حية للمتجر في كافة الشاشات"
+          onClick={() => {
+            if (liveWebsiteUrl) window.open(liveWebsiteUrl, '_blank', 'noopener,noreferrer');
+          }}
+          title="فتح معاينة كاملة للموقع في نافذة مستقلة"
           className="hidden md:flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-800 shadow-xs transition-all shrink-0 cursor-pointer"
         >
-          <Play className="w-3.5 h-3.5 text-blue-600 fill-blue-600" />
+          <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
           <span>معاينة</span>
         </button>
 
@@ -437,13 +436,16 @@ export const TopBar: React.FC = () => {
                   </button>
                 )}
 
-                {/* Live Preview Modal */}
+                {/* Standalone full-site preview */}
                 <button
-                  onClick={() => setIsLivePreviewOpen(true)}
+                  onClick={() => {
+                    if (liveWebsiteUrl)
+                      window.open(liveWebsiteUrl, '_blank', 'noopener,noreferrer');
+                  }}
                   className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 text-slate-700 font-semibold transition-colors w-full text-right"
                 >
-                  <Play className="w-4 h-4 text-blue-600 fill-blue-600" />
-                  <span>معاينة حية تفاعلية</span>
+                  <ExternalLink className="w-4 h-4 text-blue-600" />
+                  <span>معاينة في نافذة مستقلة</span>
                 </button>
 
                 {/* Code Environment — file-tree code workspace (Shopify "Edit code" model) */}
@@ -537,12 +539,12 @@ export const TopBar: React.FC = () => {
 
             <button
               onClick={() => {
-                setIsLivePreviewOpen(true);
+                if (liveWebsiteUrl) window.open(liveWebsiteUrl, '_blank', 'noopener,noreferrer');
                 setIsMobileMenuOpen(false);
               }}
               className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 border border-blue-200 text-xs font-bold text-blue-800"
             >
-              <Play className="w-4 h-4 text-blue-600 fill-blue-600" />
+              <ExternalLink className="w-4 h-4 text-blue-600" />
               <span>معاينة</span>
             </button>
 
@@ -563,8 +565,6 @@ export const TopBar: React.FC = () => {
                 // preview button above).
                 if (liveWebsiteUrl) {
                   window.open(liveWebsiteUrl, '_blank', 'noopener,noreferrer');
-                } else {
-                  setIsLivePreviewOpen(true);
                 }
                 setIsMobileMenuOpen(false);
               }}
