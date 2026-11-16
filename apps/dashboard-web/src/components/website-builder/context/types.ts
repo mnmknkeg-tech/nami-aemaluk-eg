@@ -18,7 +18,6 @@ import {
 } from '../types/builder';
 import { StructuredAiPatch } from '../types/ai';
 import { ActivityTemplateMeta } from '../data/allActivityTemplates';
-import { AssetDto } from '../types/dto';
 import type { BuilderPublishState } from './hooks/useBuilderPublishing';
 
 export type EditingModeId = 'visual' | 'html_only' | 'css_only' | 'full_code';
@@ -26,8 +25,6 @@ export type EditingModeId = 'visual' | 'html_only' | 'css_only' | 'full_code';
 export interface BuilderContextType {
   // Multi-tenant & Website State
   currentTenant: Tenant;
-  tenantsList: Tenant[];
-  switchTenant: (tenantId: string) => void;
   website: Website;
   activeTemplateId: string;
   templateError: string | null;
@@ -158,10 +155,6 @@ export interface BuilderContextType {
   bookingItem?: any;
   openBookingModal?: (item?: any) => void;
   closeBookingModal?: () => void;
-
-  // Assets Library
-  assets: AssetDto[];
-  uploadMockAsset: (file: File) => Promise<void>;
 
   // History & Autosave
   canUndo: boolean;

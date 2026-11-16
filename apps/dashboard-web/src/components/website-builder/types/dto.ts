@@ -78,23 +78,6 @@ export interface PublishWebsiteResponseDto {
   };
 }
 
-export interface AssetDto {
-  id: string;
-  tenantId: string;
-  fileName: string;
-  fileType: 'image' | 'video' | 'icon' | 'font' | 'document';
-  url: string;
-  thumbnailUrl: string;
-  sizeBytes: number;
-  width?: number;
-  height?: number;
-  altText: string;
-  category: string;
-  tags: string[];
-  usageCount: number;
-  createdAt: string;
-}
-
 export interface NextJsPageExportDto {
   pageSlug: string;
   pageComponentTsx: string;

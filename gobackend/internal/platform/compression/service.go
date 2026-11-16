@@ -7,7 +7,6 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
-	"strings"
 
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/errors"
 	"github.com/disintegration/imaging"
@@ -231,23 +230,6 @@ func (s *Service) CompressForBooking(input []byte) (*CompressionResult, error) {
 	return s.Compress(input, QualityMedium)
 }
 
-// GetCompressedURL returns a URL for a compressed version of an image
-func (s *Service) GetCompressedURL(originalURL string, quality Quality) string {
-	if !s.enabled || quality == QualityOriginal {
-		return originalURL
-	}
-
-	// Extract filename and add quality suffix
-	parts := strings.Split(originalURL, ".")
-	if len(parts) < 2 {
-		return originalURL
-	}
-
-	base := strings.Join(parts[:len(parts)-1], ".")
-
-	return fmt.Sprintf("%s_%s.%s", base, quality, "webp")
-}
-
 // detectFormat detects the image format from bytes
 func detectFormat(data []byte) string {
 	if len(data) < 12 {
@@ -304,5 +286,3 @@ func ReadAll(r io.Reader) ([]byte, error) {
 	return io.ReadAll(r)
 }
 
-// suppress unused import
-var _ = strings.Join

@@ -138,6 +138,12 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 			return nil, errors.Validation("uploaded_object_signature_invalid", "محتوى الصورة المخزن غير صالح أو لا يطابق نوعه")
 		}
 	}
+	if strings.HasPrefix(actualMime, "video/") {
+		prefix, readErr := s.s3.ReadObjectPrefix(ctx, req.Key, 512)
+		if readErr != nil || !isValidVideoSignature(prefix, actualMime) {
+			return nil, errors.Validation("uploaded_object_signature_invalid", "محتوى الفيديو المخزن غير صالح أو لا يطابق نوعه")
+		}
+	}
 	if actualSize <= 0 || actualSize > s.maxUploadBytes() {
 		return nil, errors.Validation("uploaded_object_size_invalid", "حجم الملف المخزن غير صالح")
 	}
@@ -152,28 +158,6 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 
 	publicURL := s.s3.PublicURL(req.Key)
 
-	// Determine compression quality based on purpose
-	var quality compression.Quality
-	switch purpose {
-	case "gallery":
-		quality = compression.QualityUltra
-	case "products":
-		quality = compression.QualityHigh
-	case "avatars":
-		quality = compression.QualityMedium
-	case "thumbnails":
-		quality = compression.QualityThumbnail
-	default:
-		quality = compression.QualityHigh
-	}
-
-	compressedURLs := make(map[string]string)
-	if s.compression != nil && strings.HasPrefix(strings.ToLower(req.MimeType), "image/") {
-		compressedURLs["high"] = s.compression.GetCompressedURL(publicURL, compression.QualityHigh)
-		compressedURLs["medium"] = s.compression.GetCompressedURL(publicURL, compression.QualityMedium)
-		compressedURLs["thumbnail"] = s.compression.GetCompressedURL(publicURL, compression.QualityThumbnail)
-		compressedURLs["default"] = s.compression.GetCompressedURL(publicURL, quality)
-	}
 
 	m := &Media{
 		ShopID:         req.ShopID,

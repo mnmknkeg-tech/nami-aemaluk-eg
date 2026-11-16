@@ -92,7 +92,7 @@ export async function uploadMediaFile(
     }
     try {
       const directUrl = await directUpload(uploadFile, shopId, purpose);
-      if (directUrl) return directUrl;
+      if (directUrl && /^https:\/\//i.test(directUrl) && !/^blob:/i.test(directUrl)) return directUrl;
     } catch (directError) {
       console.warn('[media] direct upload failed', directError);
     }

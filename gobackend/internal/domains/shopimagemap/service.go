@@ -6,19 +6,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/compression"
 	"github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/errors"
 )
 
 // Service implements the ShopImageMap domain business logic.
 type Service struct {
 	repo        *Repository
-	compression *compression.Service
 }
 
 // NewService creates a new shop image map service.
-func NewService(repo *Repository, compressionSvc *compression.Service) *Service {
-	return &Service{repo: repo, compression: compressionSvc}
+func NewService(repo *Repository) *Service {
+	return &Service{repo: repo}
 }
 
 // GetActiveForCustomer returns the active image map for a shop by slug.
@@ -121,11 +119,9 @@ func (s *Service) SaveLayout(ctx context.Context, shopID, mapID string, req Save
 
 	var imageURLPtr *string
 	if req.ImageURL != "" {
+		// Keep the real uploaded object URL. GetCompressedURL only predicts a
+		// filename; it does not create a variant in object storage.
 		url := req.ImageURL
-		// Compress the image URL for map use
-		if s.compression != nil {
-			url = s.compression.GetCompressedURL(req.ImageURL, compression.QualityHigh)
-		}
 		imageURLPtr = &url
 	}
 

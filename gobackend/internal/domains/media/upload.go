@@ -71,6 +71,9 @@ func (s *Service) DirectUpload(ctx context.Context, userID, actorRole, actorShop
 	if strings.HasPrefix(ct, "image/") && !isValidImageSignature(raw, ct) {
 		return nil, errors.Validation("content_mismatch", "محتوى الملف لا يطابق نوعه المعلن")
 	}
+	if strings.HasPrefix(ct, "video/") && !isValidVideoSignature(raw, ct) {
+		return nil, errors.Validation("content_mismatch", "محتوى الفيديو لا يطابق نوعه المعلن")
+	}
 	payload, outCT, outExt := s.processUploadPayload(ct, outExt, raw)
 
 	key, publicURL, err := s.storeUpload(shopID, purpose, outExt, outCT, payload)
