@@ -33,6 +33,8 @@ interface ImageMapEditorModalProps {
   onSave?: (hotspots: Hotspot[]) => void;
   /** Optional callback fired after products are synced (so parent can refetch). */
   onProductsSynced?: () => void;
+  /** 'page' يعرضه مدموجاً في التاب بدل النافذة العائمة (شريط تابات المنتجات). */
+  variant?: 'modal' | 'page';
 }
 
 const normalizeText = (v: any) => String(v ?? '').trim();
@@ -105,6 +107,7 @@ export default function ImageMapEditorModal({
   products,
   onSave,
   onProductsSynced,
+  variant = 'modal',
 }: ImageMapEditorModalProps) {
   const [loading, setLoading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
@@ -608,11 +611,18 @@ export default function ImageMapEditorModal({
 
   if (!open) return null;
 
+  const isPage = variant === 'page';
   return (
-    <div className="fixed inset-0 z-[600]" dir="rtl">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-4">
-        <div className="w-full h-full sm:h-[95vh] bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
+    <div className={isPage ? 'w-full' : 'fixed inset-0 z-[600]'} dir="rtl">
+      {!isPage && <div className="absolute inset-0 bg-black/60" onClick={onClose} />}
+      <div className={isPage ? '' : 'absolute inset-0 flex items-center justify-center p-2 sm:p-4'}>
+        <div
+          className={
+            isPage
+              ? 'w-full h-[calc(100vh-230px)] min-h-[560px] bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col'
+              : 'w-full h-full sm:h-[95vh] bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden flex flex-col'
+          }
+        >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-slate-100 flex-row-reverse gap-2">
             <h2 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900">
@@ -675,13 +685,15 @@ export default function ImageMapEditorModal({
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                 حفظ
               </button>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-xl hover:bg-slate-100 transition-all"
-                type="button"
-              >
-                <X size={20} />
-              </button>
+              {!isPage && (
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-xl hover:bg-slate-100 transition-all"
+                  type="button"
+                >
+                  <X size={20} />
+                </button>
+              )}
             </div>
           </div>
 

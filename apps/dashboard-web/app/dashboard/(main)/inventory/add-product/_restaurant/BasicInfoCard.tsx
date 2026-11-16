@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Image as ImageIcon, Map, Info, ChevronDown } from 'lucide-react';
+import { Image as ImageIcon, Info, ChevronDown } from 'lucide-react';
 import { RichDescriptionEditor } from '@/components/products/RichDescriptionEditor';
 import { GOOGLE_PRODUCT_CATEGORIES } from './types';
 
@@ -32,8 +32,6 @@ interface BasicInfoCardProps {
   onDescriptionChange: (v: string) => void;
   isActive: boolean;
   onIsActiveChange: (v: boolean) => void;
-  canEditImageMap: boolean;
-  onOpenImageMap: () => void;
 }
 
 export default function BasicInfoCard({
@@ -63,8 +61,6 @@ export default function BasicInfoCard({
   onDescriptionChange,
   isActive,
   onIsActiveChange,
-  canEditImageMap,
-  onOpenImageMap,
 }: BasicInfoCardProps) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 space-y-4 shadow-xs">
@@ -105,16 +101,6 @@ export default function BasicInfoCard({
                 اختار من المعرض
                 <input type="file" accept="image/*" onChange={onImageUpload} className="hidden" />
               </label>
-              {canEditImageMap && (
-                <button
-                  type="button"
-                  onClick={onOpenImageMap}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00E5FF] text-slate-900 text-xs font-bold hover:bg-[#00B8CC] transition-all"
-                >
-                  <Map size={13} />
-                  <span>خريطة الصور</span>
-                </button>
-              )}
             </div>
           </div>
         </div>

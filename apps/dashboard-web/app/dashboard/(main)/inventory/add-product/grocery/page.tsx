@@ -1,22 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-  Package,
-  Plus,
-  Trash2,
-  X,
-  Loader2,
-  Save,
-  Upload,
-  Image as ImageIcon,
-  Map,
-} from 'lucide-react';
+import { Package, Plus, Trash2, X, Loader2, Save, Upload, Image as ImageIcon } from 'lucide-react';
 import { useShop } from '@/hooks/useShop';
-import { useInstalledApps } from '@/hooks/useInstalledApps';
 import { apiRequest } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import ImageMapEditorModal from '@/components/apps/image-editor/ImageMapEditor';
 
 type AddonItem = {
   id: string;
@@ -68,10 +56,8 @@ import { uploadMediaFile } from '@/lib/api/upload';
 export default function GroceryAddProductPage() {
   const { shop } = useShop();
   const router = useRouter();
-  const { isInstalled } = useInstalledApps();
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
-  const [imageMapModalOpen, setImageMapModalOpen] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
 
   // Product form state
@@ -423,16 +409,6 @@ export default function GroceryAddProductPage() {
                   className="hidden"
                 />
               </label>
-              {isInstalled('image-editor') && (
-                <button
-                  type="button"
-                  onClick={() => setImageMapModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#00E5FF] text-slate-900 text-sm font-bold hover:bg-[#00B8CC] transition-all"
-                >
-                  <Map size={16} />
-                  <span>خريطة الصور</span>
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -651,16 +627,6 @@ export default function GroceryAddProductPage() {
           <span>حفظ المنتج</span>
         </button>
       </div>
-
-      {/* Image Map Editor Modal */}
-      {shop && (
-        <ImageMapEditorModal
-          open={imageMapModalOpen}
-          onClose={() => setImageMapModalOpen(false)}
-          shopId={shop.id}
-          products={products}
-        />
-      )}
     </div>
   );
 }
