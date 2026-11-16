@@ -234,8 +234,14 @@ func isValidImageSignature(raw []byte, contentType string) bool {
 	case "image/webp":
 		return len(raw) >= 12 && string(raw[:4]) == "RIFF" && string(raw[8:12]) == "WEBP"
 	case "image/avif":
-		return len(raw) >= 12 && string(raw[4:8]) == "ftyp" &&
-			(string(raw[8:12]) == "avif" || string(raw[8:12]) == "avis")
+		if len(raw) < 12 || string(raw[4:8]) != "ftyp" {
+			return false
+		}
+		brandBytes := raw[:len(raw)]
+		if len(brandBytes) > 64 {
+			brandBytes = brandBytes[:64]
+		}
+		return bytes.Contains(brandBytes, []byte("avif")) || bytes.Contains(brandBytes, []byte("avis"))
 	default:
 		return false
 	}

@@ -46,7 +46,17 @@ export async function uploadMediaFile(
 ): Promise<string> {
   // Presigned uploads bypass server-side image processing, so optimize before
   // requesting the URL. The helper is best-effort and leaves non-images alone.
-  const uploadFile = await compressForUpload(file, getUploadImageKind(purpose));
+  const compressedFile = await compressForUpload(file, getUploadImageKind(purpose));
+  // Normalize the non-standard browser MIME alias so the extension, signed
+  // Content-Type, R2 metadata and CompleteUpload record all agree.
+  const uploadFile =
+    compressedFile.type.toLowerCase() === 'image/jpg'
+      ? new File(
+          [compressedFile],
+          compressedFile.name.replace(/\\.[^.]+$/, '.jpg'),
+          { type: 'image/jpeg', lastModified: compressedFile.lastModified }
+        )
+      : compressedFile;
   const presign = await apiRequest<any>('/media/presign', {
     method: 'POST',
     body: JSON.stringify({

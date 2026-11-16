@@ -233,3 +233,11 @@ func TestIsValidImageSignature(t *testing.T) {
 		})
 	}
 }
+
+
+func TestIsValidImageSignature_AvifCompatibleBrand(t *testing.T) {
+	data := []byte("xxxxftypmif1xxxxavif")
+	if !isValidImageSignature(data, "image/avif") {
+		t.Fatal("AVIF with a compatible avif brand should be accepted")
+	}
+}
