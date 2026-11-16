@@ -171,7 +171,6 @@ func (s *Service) CompleteUpload(ctx context.Context, userID, actorRole, actorSh
 		Height:         req.Height,
 		LinkedType:     req.LinkedType,
 		LinkedID:       req.LinkedID,
-		CompressedURLs: compressedURLs,
 	}
 
 	created, err := s.repo.Create(ctx, m)
