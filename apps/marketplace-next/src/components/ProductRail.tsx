@@ -77,12 +77,12 @@ export function ProductRail({
   if (!products || products.length === 0) return null;
 
   return (
-    <section className={cn('relative py-3 md:py-4', className)}>
+    <section className={cn('relative py-2.5 sm:py-3 md:py-4', className)}>
       {(title || viewAllHref) && (
-        <div className="flex items-end justify-between gap-4 mb-3 md:mb-4">
+        <div className="flex items-end justify-between gap-2 sm:gap-4 mb-3 md:mb-4">
           <div>
             {title && (
-              <h2 className="text-base md:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-[15px] sm:text-base md:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
                 {icon && <span className="text-brand-cyan">{icon}</span>}
                 {title}
               </h2>
@@ -98,7 +98,7 @@ export function ProductRail({
             {viewAllHref && (
               <Link
                 href={viewAllHref}
-                className="text-xs md:text-sm font-bold text-brand-cyan hover:underline transition"
+                className="min-h-10 inline-flex items-center text-[11px] sm:text-xs md:text-sm font-bold text-brand-cyan hover:underline transition whitespace-nowrap"
               >
                 {viewAllLabel}
               </Link>
@@ -128,7 +128,7 @@ export function ProductRail({
         </div>
       )}
 
-      <div ref={scrollerRef} className={RAIL_SCROLLER_CLASS}>
+      <div ref={scrollerRef} className={cn(RAIL_SCROLLER_CLASS, "touch-pan-x overscroll-x-contain")}>
         {visibleProducts.map((product, idx) => (
           <div key={product.id} className={RAIL_ITEM_WIDTH}>
             <ProductCard product={product} priority={idx < 2} />
