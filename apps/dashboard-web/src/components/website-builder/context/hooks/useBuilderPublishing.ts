@@ -98,16 +98,21 @@ export const useBuilderPublishing = (
     liveUrl: '',
   });
 
-  /** Public marketplace URL for this shop's published site. */
+  /** Public URL for this merchant's independently deployed storefront. */
   const publicSiteUrl = useCallback((): string => {
     const slug = builderShopSlugRef.current;
     if (typeof window === 'undefined' || !slug) return '';
-    const marketplaceBase =
-      process.env.NEXT_PUBLIC_MARKETPLACE_URL ||
+
+    // The dashboard must publish links to the merchant storefront app,
+    // never to the Menmakank marketplace's /site/:slug route.
+    const storefrontBase = (
+      process.env.NEXT_PUBLIC_MERCHANT_STOREFRONT_URL ||
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:5174'
-        : 'https://nami-aemaluk-marketplace-eg.vercel.app');
-    return `${marketplaceBase}/site/${slug}`;
+        ? 'http://localhost:3001'
+        : 'https://nami-aemaluk-eg-fib3.vercel.app')
+    ).replace(/\\/+$/, '');
+
+    return `${storefrontBase}/${encodeURIComponent(slug)}`;
   }, [builderShopSlugRef]);
 
   /**
