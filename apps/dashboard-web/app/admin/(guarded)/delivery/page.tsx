@@ -949,6 +949,11 @@ function AdminDeliveryContent() {
                             <div className="text-cyan-700 font-black">
                               {formatEGP(order?.total)}
                             </div>
+                            {(order?.deliveryFee != null || order?.deliveryZone) && (
+                              <div className="text-[11px] text-slate-500 font-bold mt-1">
+                                التوصيل{order?.deliveryZone ? ` · ${order.deliveryZone}` : ''}: {formatEGP(order?.deliveryFee || 0)}
+                              </div>
+                            )}
                             <div className="text-[11px] text-slate-500 font-bold mt-1">
                               {String(order?.status || '-').toUpperCase()}
                             </div>
