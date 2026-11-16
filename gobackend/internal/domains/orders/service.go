@@ -813,6 +813,8 @@ func (s *Service) GetPublic(ctx context.Context, id string) (*PublicOrderRespons
 		CreatedAt:     order.CreatedAt,
 		UpdatedAt:     order.UpdatedAt,
 		PaymentMethod: order.PaymentMethod,
+		DeliveryFee:   order.DeliveryFee,
+		DeliveryZone:  order.DeliveryZone,
 		Items:         items,
 		Shop:          shop,
 	}, nil
