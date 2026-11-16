@@ -367,6 +367,11 @@ function AdminDeliveryContent() {
                   const lat = Number(order?.deliveryLat ?? order?.delivery_lat);
                   const lng = Number(order?.deliveryLng ?? order?.delivery_lng);
                   const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0);
+                  const mapHref = hasCoordinates
+                    ? `https://www.google.com/maps?q=${lat},${lng}`
+                    : address
+                      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+                      : '';
                   const courier = order?.courier;
                   return (
                     <article key={String(order.id)} className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
@@ -402,9 +407,9 @@ function AdminDeliveryContent() {
                       </div>
 
                       <div className="flex flex-wrap gap-2 justify-end border-t border-slate-100 pt-3">
-                        {hasCoordinates && (
+                        {mapHref && (
                           <a
-                            href={`https://www.google.com/maps?q=${lat},${lng}`}
+                            href={mapHref}
                             target="_blank"
                             rel="noreferrer"
                             className={BTN_SOFT}
