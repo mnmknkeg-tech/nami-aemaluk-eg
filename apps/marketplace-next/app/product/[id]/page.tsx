@@ -176,7 +176,7 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <div
-      className="max-w-[1400px] mx-auto px-4 md:px-6 py-8 md:py-12"
+      className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 py-5 sm:py-8 md:py-12"
       style={{ backgroundColor: pageBg, color: pageText }}
     >
       <script
@@ -188,7 +188,7 @@ export default async function ProductPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbLd) }}
       />
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-6">
+      <nav className="flex items-center gap-2 text-[10px] sm:text-xs font-semibold text-slate-500 mb-4 sm:mb-5 sm:mb-6">
         <Link href="/" className="hover:text-brand-cyan transition-colors">
           الرئيسية
         </Link>
@@ -204,9 +204,9 @@ export default async function ProductPage({ params }: Props) {
         <span className="text-slate-600 dark:text-slate-300 truncate">{product.name}</span>
       </nav>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8 md:gap-12">
         {/* Image */}
-        <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800">
+        <div className="relative aspect-square rounded-2xl sm:rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800">
           <ProductImage
             src={product.imageUrl || product.images?.[0] || '/placeholder-product.png'}
             alt={product.name || 'منتج'}
@@ -244,7 +244,7 @@ export default async function ProductPage({ params }: Props) {
             </ShopLink>
           )}
 
-          <h1 className="text-2xl md:text-4xl font-bold tracking-tight mb-3">{product.name}</h1>
+          <h1 className="text-xl sm:text-2xl md:text-4xl font-bold tracking-tight mb-3">{product.name}</h1>
 
           {product.rating != null && product.rating > 0 && (
             <div className="flex items-center gap-2 mb-4">
@@ -265,7 +265,7 @@ export default async function ProductPage({ params }: Props) {
           {/* Price — التاجر ممكن يخفي السعر ويعرض "السعر عند الطلب" */}
           {decision.showPrice && product.price != null ? (
             <div className="flex items-center gap-3 mb-6">
-              <span className="text-3xl md:text-4xl font-bold" style={{ color: priceColor }}>
+              <span className="text-2xl sm:text-3xl md:text-4xl font-bold" style={{ color: priceColor }}>
                 {formatPrice(product.price, product.currency)}
               </span>
               {hasDiscount && (
