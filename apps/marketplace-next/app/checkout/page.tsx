@@ -123,10 +123,12 @@ export default function CheckoutPage() {
   useEffect(() => {
     let active = true;
     setDeliverySettingsLoading(true);
-    const entries = Object.entries(shopGroups).map(([shopId, group]) => ({
-      shopId,
-      slug: String((group as any[])[0]?.shopSlug || ''),
-    }));
+    const entries = shopLookupKey
+      ? shopLookupKey.split('|').map((entry) => {
+          const [shopId, slug = ''] = entry.split(':');
+          return { shopId, slug };
+        })
+      : [];
     Promise.all(entries.map(async ({ shopId, slug }) => {
       if (!slug) return [shopId, { zones: [], defaultFee: 30, freeThreshold: 500 }] as const;
       try {
