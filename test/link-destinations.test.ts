@@ -241,7 +241,7 @@ describe('external destination safety', () => {
   it('rejects unsafe explicit destinations and malformed WhatsApp URLs', () => {
     expect(
       resolveWebsiteLinkDestination(fixtureWebsite, {
-        destination: { type: 'external', url: 'javascript:alert(1)' },
+        destination: { type: 'external' as const, url: 'javascript:alert(1)' },
       })
     ).toBeUndefined();
     expect(
