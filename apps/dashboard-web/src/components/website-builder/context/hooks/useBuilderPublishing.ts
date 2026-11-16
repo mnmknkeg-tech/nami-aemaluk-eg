@@ -110,7 +110,7 @@ export const useBuilderPublishing = (
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? 'http://localhost:3001'
         : 'https://nami-aemaluk-eg-fib3.vercel.app')
-    ).replace(/\\/+$/, '');
+    ).replace(/\/+$/, '');
 
     return `${storefrontBase}/${encodeURIComponent(slug)}`;
   }, [builderShopSlugRef]);
@@ -133,7 +133,11 @@ export const useBuilderPublishing = (
       const res = await apiRequest<any>(`/shops/${slug}/website`, { cache: 'no-store' });
       const publishedWebsite = res?.data?.config?.website || null;
       if (!publishedWebsite || !publishedWebsite.components) {
-        setPublishState({ status: 'never_published', publishedSnapshot: null, lastPublishedAt: null });
+        setPublishState({
+          status: 'never_published',
+          publishedSnapshot: null,
+          lastPublishedAt: null,
+        });
         return;
       }
       setPublishState({
@@ -147,7 +151,11 @@ export const useBuilderPublishing = (
       });
     } catch (err: any) {
       if (err?.status === 404) {
-        setPublishState({ status: 'never_published', publishedSnapshot: null, lastPublishedAt: null });
+        setPublishState({
+          status: 'never_published',
+          publishedSnapshot: null,
+          lastPublishedAt: null,
+        });
       } else {
         setPublishState((prev) => ({ ...prev, status: 'unknown' }));
       }
@@ -169,7 +177,11 @@ export const useBuilderPublishing = (
     lastComparedStatusRef.current = autosaveStatus;
     if (autosaveStatus !== 'saved') return;
     setPublishState((prev) => {
-      if (prev.status === 'never_published' || prev.status === 'unknown' || prev.status === 'checking') {
+      if (
+        prev.status === 'never_published' ||
+        prev.status === 'unknown' ||
+        prev.status === 'checking'
+      ) {
         return prev;
       }
       if (!prev.publishedSnapshot) return prev;
@@ -256,7 +268,8 @@ export const useBuilderPublishing = (
           status: 'failed',
           currentStep: 1,
           totalSteps: 5,
-          stepMessage: 'تعذّر حفظ المسودة أو نشرها — أصلح أخطاء التحقق من صفحات ومكونات الموقع أولًا.',
+          stepMessage:
+            'تعذّر حفظ المسودة أو نشرها — أصلح أخطاء التحقق من صفحات ومكونات الموقع أولًا.',
           errors: validationErrors.slice(0, 8),
         });
         return;
@@ -284,12 +297,15 @@ export const useBuilderPublishing = (
         totalSteps: 5,
         stepMessage: '2/5 تم حفظ مسودة الموقع وتجهيز حزم النشر السريع...',
       });
-      const publishResult = await apiRequest<{ versionNumber?: number }>(`/builder/${builderShopId}/publish`, {
-        method: 'POST',
-        // Publish the draft just saved by this editor session using the
-        // server version tracked by the builder save flow.
-        body: JSON.stringify({ clientVersion: draftVersionRef.current }),
-      });
+      const publishResult = await apiRequest<{ versionNumber?: number }>(
+        `/builder/${builderShopId}/publish`,
+        {
+          method: 'POST',
+          // Publish the draft just saved by this editor session using the
+          // server version tracked by the builder save flow.
+          body: JSON.stringify({ clientVersion: draftVersionRef.current }),
+        }
+      );
       // Publishing creates a new globally-monotonic builder_versions row.
       // Keep the editor's optimistic-concurrency token in sync so subsequent
       // autosaves do not fail with a 409 immediately after a successful publish.
