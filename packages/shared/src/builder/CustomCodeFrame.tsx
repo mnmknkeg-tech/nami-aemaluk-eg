@@ -11,8 +11,9 @@ import type { ComponentNode } from './types';
 //     and NO allow-same-origin. Scripts run but cannot access the parent DOM,
 //     cookies, or localStorage because the sandboxed iframe is treated as a
 //     unique opaque origin.
-//   • postMessage uses a strict allowlist: only messages from our own iframe
-//     with a known type and valid shape are accepted. No wildcard origin.
+//   • postMessage uses a strict source/type/shape allowlist. The sandbox has an
+//     opaque origin, so the child must use targetOrigin="*"; the parent accepts
+//     messages only from this exact iframe window.
 //   • Custom JS is denied access to parent/top/opener, localStorage, cookies,
 //     and fetch/XHR via a deny-list injected into the iframe's script context.
 // ---------------------------------------------------------------------------
@@ -44,7 +45,7 @@ const JS_DENY_PATTERNS = [
   '\\bFunction\\s*\\(',
 ];
 
-function buildSandboxHtml(node: ComponentNode): string {
+export function buildSandboxHtml(node: ComponentNode): string {
   const customHtml =
     node.props.html ||
     node.props.customHtml ||
@@ -55,10 +56,12 @@ function buildSandboxHtml(node: ComponentNode): string {
   const customCss = node.customCode?.css || node.customCode?.cssSnippet || '';
   const customJs = node.customCode?.js || node.customCode?.jsSnippet || '';
 
-  // Escape the node id for safe JS string interpolation.
-  const safeId = node.id.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-
-  const denyCheck = JS_DENY_PATTERNS.map((p) => `new RegExp('${p}', 'i)`).join(',');
+  // Embed the id as a JSON string literal and prevent HTML script termination.
+  const safeId = JSON.stringify(node.id).replace(/</g, '\\u003c');
+  // A literal closing script tag would terminate the generated inline script,
+  // even when it appears inside a custom JS string or comment.
+  const safeCustomJs = customJs.replace(/<\/script/gi, '<\\/script');
+  const safeRawJs = JSON.stringify(customJs).replace(/<\/script/gi, '<\\/script');
 
   return `<!DOCTYPE html>
 <html dir="rtl">
@@ -75,8 +78,10 @@ function buildSandboxHtml(node: ComponentNode): string {
 ${customHtml.replace(/<\/script>/gi, '\\u003c/script\\u003e')}
 <script>
   (function () {
-    var denyPatterns = [${denyCheck}];
-    var rawJs = ${JSON.stringify(customJs)};
+    var denyPatterns = ${JSON.stringify(JS_DENY_PATTERNS)}.map(function (pattern) {
+      return new RegExp(pattern, 'i');
+    });
+    var rawJs = ${safeRawJs};
     for (var i = 0; i < denyPatterns.length; i++) {
       if (denyPatterns[i].test(rawJs)) {
         console.warn('Blocked dangerous JS pattern:', denyPatterns[i]);
@@ -86,7 +91,7 @@ ${customHtml.replace(/<\/script>/gi, '\\u003c/script\\u003e')}
     function reportHeight() {
       try {
         var height = document.documentElement.scrollHeight;
-        parent.postMessage({ type: 'custom-code-height', id: '${safeId}', height: height }, '*');
+        parent.postMessage({ type: 'custom-code-height', id: ${safeId}, height: height }, '*');
       } catch (e) {}
     }
     window.addEventListener('load', reportHeight);
@@ -94,7 +99,7 @@ ${customHtml.replace(/<\/script>/gi, '\\u003c/script\\u003e')}
     setTimeout(reportHeight, 50);
     setTimeout(reportHeight, 500);
     try {
-      (function () { ${customJs} })();
+      (function () { ${safeCustomJs} })();
     } catch (err) {
       console.warn('Custom Script Runtime:', err);
     }
