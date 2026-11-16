@@ -94,21 +94,14 @@ function AdminDeliveryContent() {
     }
   };
 
-  const assignMarketplaceOrder = async (order: any) => {
+  const assignMarketplaceOrder = async (order: any, courierId: string) => {
     const activeCouriers = couriers.filter((courier) => courier?.isActive);
     if (!activeCouriers.length) {
       toast({ title: 'لا يوجد مندوب نشط. فعّل مندوباً أو أنشئ مندوباً أولاً.', variant: 'destructive' });
       return;
     }
-    const current = order?.courier?.id ? String(order.courier.id) : '';
-    const options = activeCouriers
-      .map((courier) => `${courier.id}::${courier.name || courier.phone || courier.email || courier.id}`)
-      .join('\n');
-    const selected = window.prompt(`اختار المندوب المسؤول عن الطلب:\n${options}`, current);
-    if (!selected) return;
-    const courierId = String(selected).split('::')[0].trim();
-    if (!activeCouriers.some((courier) => String(courier.id) === courierId)) {
-      toast({ title: 'اختيار المندوب غير صحيح', variant: 'destructive' });
+    if (!activeCouriers.some((courier) => String(courier.id) === String(courierId))) {
+      toast({ title: 'اختار مندوباً نشطاً أولاً', variant: 'destructive' });
       return;
     }
     try {
@@ -424,14 +417,32 @@ function AdminDeliveryContent() {
                             <Phone size={15} /> اتصال بالعميل
                           </a>
                         )}
+                        <select
+                          aria-label="اختيار مندوب للطلب"
+                          defaultValue={String(order?.courier?.id || order?.courierId || '')}
+                          id={`courier-${order.id}`}
+                          className="min-w-[150px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700"
+                          disabled={actionId === String(order.id)}
+                        >
+                          <option value="">اختر المندوب</option>
+                          {couriers.filter((item) => item?.isActive).map((item) => (
+                            <option key={String(item.id)} value={String(item.id)}>
+                              {item.name || item.phone || item.email || 'مندوب'}
+                            </option>
+                          ))}
+                        </select>
                         <button
                           type="button"
-                          disabled={actionId === String(order.id)}
-                          onClick={() => assignMarketplaceOrder(order)}
+                          disabled={actionId === String(order.id) || !couriers.some((item) => item?.isActive)}
+                          onClick={() => {
+                            const select = document.getElementById(`courier-${order.id}`) as HTMLSelectElement | null;
+                            if (select?.value) assignMarketplaceOrder(order, select.value);
+                            else toast({ title: 'اختار مندوباً أولاً', variant: 'destructive' });
+                          }}
                           className={BTN_PRIMARY}
                         >
                           {actionId === String(order.id) ? <Spinner /> : <Truck size={15} />}
-                          {courier?.name ? 'تغيير المندوب' : 'تعيين مندوب'}
+                          {courier?.name ? 'حفظ التعيين' : 'تعيين مندوب'}
                         </button>
                       </div>
                     </article>
