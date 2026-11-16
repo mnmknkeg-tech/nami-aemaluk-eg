@@ -79,6 +79,7 @@ type App struct {
         Config                   *config.Config
         Fiber                    *fiber.App
         DB                       *db.Pool
+        hotReadCache             *cache.Cache
         Redis                    *redis.Client
         Jobs                     *jobs.Client
         Metrics                  *telemetry.Metrics
@@ -232,7 +233,13 @@ func New(cfg *config.Config) (*App, error) {
                 reportsHandler           *reports.Handler
                 subscriptionsHandler     *subscriptions.Handler
         )
-        var compressionService *compression.Service
+        var (
+
+                compressionService *compression.Service
+
+                hotReadCache *cache.Cache
+
+        )
         if pool != nil {
                 // Initialize compression service early for all domains
                 compressionService = compression.NewService(compression.Quality(cfg.Compression.DefaultQuality), cfg.Compression.Enabled)
@@ -291,7 +298,7 @@ func New(cfg *config.Config) (*App, error) {
 
                 // Shared in-process TTL cache for hot public reads (shops/products/
                 // offers lists) — absorbs repeated homepage/catalog queries.
-                hotReadCache := cache.New()
+                hotReadCache = cache.New()
 
                 shopsRepo := shops.NewRepository(pool)
                 shopsSvc := shops.NewService(cfg, shopsRepo, appMailer, notificationSvc, hotReadCache)
@@ -500,6 +507,7 @@ func New(cfg *config.Config) (*App, error) {
                 Config:                   cfg,
                 Fiber:                    f,
                 DB:                       pool,
+                hotReadCache:             hotReadCache,
                 Redis:                    redisClient,
                 Jobs:                     jobsClient,
                 Metrics:                  metrics,
@@ -931,6 +939,9 @@ func (a *App) Shutdown(ctx context.Context) error {
         }
         if a.Jobs != nil {
                 _ = a.Jobs.Close()
+        }
+        if a.hotReadCache != nil {
+                a.hotReadCache.Close()
         }
         if a.DB != nil {
                 a.DB.Close()

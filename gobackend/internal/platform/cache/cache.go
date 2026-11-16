@@ -7,6 +7,7 @@ package cache
 
 import (
 	"encoding/json"
+	"sort"
 	"sync"
 	"time"
 )
@@ -37,6 +38,9 @@ type Cache struct {
 	loads      map[string]*loadCall
 	generation uint64
 	nowFunc    func() time.Time
+	stop       chan struct{}
+	done       chan struct{}
+	closeOnce  sync.Once
 }
 
 // New creates a ready-to-use cache and starts a background pruner.
@@ -45,6 +49,8 @@ func New() *Cache {
 		items:   make(map[string]entry, initialCapacity),
 		loads:   make(map[string]*loadCall),
 		nowFunc: time.Now,
+		stop:    make(chan struct{}),
+		done:    make(chan struct{}),
 	}
 	go c.pruneLoop()
 	return c
@@ -117,11 +123,27 @@ func (c *Cache) Len() int {
 
 func (c *Cache) pruneLoop() {
 	ticker := time.NewTicker(pruneInterval)
-	for range ticker.C {
-		c.mu.Lock()
-		c.pruneLocked()
-		c.mu.Unlock()
+	defer ticker.Stop()
+	defer close(c.done)
+	for {
+		select {
+		case <-ticker.C:
+			c.mu.Lock()
+			c.pruneLocked()
+			c.mu.Unlock()
+		case <-c.stop:
+			return
+		}
 	}
+}
+
+// Close stops the background pruner. It is safe to call more than once.
+func (c *Cache) Close() {
+	if c == nil {
+		return
+	}
+	c.closeOnce.Do(func() { close(c.stop) })
+	<-c.done
 }
 
 // pruneLocked must be called with the write lock held.
@@ -132,10 +154,23 @@ func (c *Cache) pruneLocked() {
 			delete(c.items, k)
 		}
 	}
-	if len(c.items) > maxEntries {
-		// Still over budget after expiry pruning: drop everything. Cheap and
-		// safe — the cache is an optimization, not a source of truth.
-		c.items = make(map[string]entry, initialCapacity)
+	if excess := len(c.items) - maxEntries; excess > 0 {
+		// Keep the newest-lived entries instead of flushing the entire cache
+		// when a burst temporarily exceeds the memory budget.
+		type expiringEntry struct {
+			key       string
+			expiresAt time.Time
+		}
+		oldest := make([]expiringEntry, 0, len(c.items))
+		for key, item := range c.items {
+			oldest = append(oldest, expiringEntry{key: key, expiresAt: item.expiresAt})
+		}
+		sort.Slice(oldest, func(i, j int) bool {
+			return oldest[i].expiresAt.Before(oldest[j].expiresAt)
+		})
+		for _, item := range oldest[:excess] {
+			delete(c.items, item.key)
+		}
 	}
 }
 

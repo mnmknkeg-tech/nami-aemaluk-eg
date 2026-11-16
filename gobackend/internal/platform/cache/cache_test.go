@@ -9,7 +9,8 @@ import (
 
 func TestSetGetExpiry(t *testing.T) {
 	c := New()
-	defer func() { _ = c }()
+	defer c.Close()
+	defer c.Close()
 
 	c.Set("k", []byte("v"), 50*time.Millisecond)
 	if _, ok := c.Get("k"); !ok {
@@ -23,6 +24,7 @@ func TestSetGetExpiry(t *testing.T) {
 
 func TestDeleteAndPrefix(t *testing.T) {
 	c := New()
+	defer c.Close()
 	c.Set("offers:public:1", []byte("a"), time.Minute)
 	c.Set("offers:public:2", []byte("b"), time.Minute)
 	c.Set("shops:public:1", []byte("c"), time.Minute)
@@ -42,6 +44,7 @@ func TestDeleteAndPrefix(t *testing.T) {
 
 func TestGetOrLoadJSON(t *testing.T) {
 	c := New()
+	defer c.Close()
 	calls := 0
 	load := func() (map[string]int, error) {
 		calls++
@@ -75,6 +78,7 @@ func TestGetOrLoadJSON(t *testing.T) {
 
 func TestConcurrentAccess(t *testing.T) {
 	c := New()
+	defer c.Close()
 	var wg sync.WaitGroup
 	for i := 0; i < 32; i++ {
 		wg.Add(1)
@@ -92,6 +96,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 func TestSetGetCopiesByteSlices(t *testing.T) {
 	c := New()
+	defer c.Close()
 	input := []byte("original")
 	c.Set("copy", input, time.Minute)
 	input[0] = 'X'
@@ -109,6 +114,7 @@ func TestSetGetCopiesByteSlices(t *testing.T) {
 
 func TestGetOrLoadJSONSingleFlight(t *testing.T) {
 	c := New()
+	defer c.Close()
 	const workers = 16
 	var calls atomic.Int32
 	started := make(chan struct{}, 1)
@@ -145,6 +151,7 @@ func TestGetOrLoadJSONSingleFlight(t *testing.T) {
 
 func TestGetOrLoadJSONDoesNotCacheAcrossInvalidation(t *testing.T) {
 	c := New()
+	defer c.Close()
 	started := make(chan struct{}, 1)
 	release := make(chan struct{})
 	var wg sync.WaitGroup
@@ -164,4 +171,15 @@ func TestGetOrLoadJSONDoesNotCacheAcrossInvalidation(t *testing.T) {
 	if c.Len() != 0 {
 		t.Fatalf("in-flight stale load must not repopulate invalidated cache, len=%d", c.Len())
 	}
+
+func TestCloseStopsPrunerAndIsIdempotent(t *testing.T) {
+	c := New()
+	c.Close()
+	select {
+	case <-c.done:
+	case <-time.After(time.Second):
+		t.Fatal("cache pruner did not stop after Close")
+	}
+	c.Close()
+}
 }
