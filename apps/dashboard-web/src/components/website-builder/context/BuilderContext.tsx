@@ -242,6 +242,7 @@ export const BuilderProvider: React.FC<{
     setHistoryLog,
     canUndo,
     canRedo,
+    resetHistory,
     saveDraft,
     runAutosave,
     recordHistory: _recordHistoryRaw,
