@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import EmptyState from '@/components/EmptyState';
 import PageBack from '@/components/PageBack';
-import { Plus, Info, Package, Target, Loader2, Upload, Download, X } from 'lucide-react';
+import { Plus, Info, Package, Loader2, Upload, Download, X } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
 import { useShop } from '@/hooks/useShop';
 import { useInstalledApps } from '@/hooks/useInstalledApps';
@@ -63,20 +63,27 @@ function ProductsPageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [showAddonsModal, setShowAddonsModal] = useState(false);
-  const [showImageMapModal, setShowImageMapModal] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [addonItems, setAddonItems] = useState<any[]>([]);
   const [savingAddons, setSavingAddons] = useState(false);
-  const [activeTab, setTab] = useInvSectionTab(
-    PRODUCT_SECTION_TABS.map((t) => t.id),
-    'products'
-  );
-
   const shopCategory = shop?.category?.toUpperCase() || 'RETAIL';
   const isRestaurant = shopCategory === 'RESTAURANT';
   const isRetail = shopCategory === 'RETAIL' || !isRestaurant;
   // Image map editor is available for every non-restaurant shop (mirrors legacy dashboard).
   const canUseImageMapEditor = !isRestaurant && Boolean(String(shop?.id || '').trim());
+  // تاب «محرر الصور» يظهر في شريط قسم المنتجات فقط بعد تثبيت التطبيق من سوق التطبيقات.
+  const imageEditorInstalled = canUseImageMapEditor && isInstalled('image-editor');
+  const productSectionTabs = useMemo(
+    () =>
+      imageEditorInstalled
+        ? [...PRODUCT_SECTION_TABS, { id: 'image-editor', label: 'محرر الصور' }]
+        : PRODUCT_SECTION_TABS,
+    [imageEditorInstalled]
+  );
+  const [activeTab, setTab] = useInvSectionTab(
+    productSectionTabs.map((t) => t.id),
+    'products'
+  );
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -370,16 +377,6 @@ function ProductsPageContent() {
                     الإضافات
                   </button>
                 )}
-                {/* تطبيق محرر الصور — يظهر فقط بعد تثبيته من صفحة التطبيقات */}
-                {canUseImageMapEditor && isInstalled('image-editor') && (
-                  <button
-                    onClick={() => setShowImageMapModal(true)}
-                    className="h-10 px-4 rounded-full border border-slate-200 bg-white text-[12px] font-bold text-slate-700 hover:bg-slate-50 hidden sm:flex items-center gap-1.5"
-                  >
-                    <Target size={14} />
-                    خريطة الصور
-                  </button>
-                )}
                 <label className="h-10 px-4 rounded-full border border-slate-200 bg-white text-[12px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer">
                   {importParsing ? (
                     <Loader2 size={14} className="animate-spin" />
@@ -508,7 +505,7 @@ function ProductsPageContent() {
       </div>
 
       {/* تبويبات قسم المنتجات — الفئات والمتغيرات والباركود تابعة للمنتجات مش صفحات مستقلة */}
-      <SectionTabs tabs={PRODUCT_SECTION_TABS} active={activeTab} onChange={setTab} />
+      <SectionTabs tabs={productSectionTabs} active={activeTab} onChange={setTab} />
 
       {activeTab !== 'products' && (
         <>
@@ -629,15 +626,18 @@ function ProductsPageContent() {
         />
       )}
 
-      {/* Image Map Editor Modal */}
-      {showImageMapModal && shop && (
-        <ImageMapEditorModal
-          open={showImageMapModal}
-          onClose={() => setShowImageMapModal(false)}
-          shopId={shop.id}
-          products={products}
-          onProductsSynced={fetchProducts}
-        />
+      {/* تطبيق محرر الصور — صفحة كاملة داخل التاب المخصص بعد التثبيت */}
+      {activeTab === 'image-editor' && shop && (
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 mt-4 pb-10">
+          <ImageMapEditorModal
+            variant="page"
+            open
+            onClose={() => setTab('products')}
+            shopId={shop.id}
+            products={products}
+            onProductsSynced={fetchProducts}
+          />
+        </div>
       )}
 
       {/* ===== Visibility Dropdown Portal (fixed, escapes overflow) ===== */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { Image as ImageIcon, Info, ChevronDown, Map, Plus, X } from 'lucide-react';
+import { Image as ImageIcon, Info, ChevronDown, Plus, X } from 'lucide-react';
 import { RichDescriptionEditor } from '@/components/products/RichDescriptionEditor';
 import { GOOGLE_PRODUCT_CATEGORIES } from './types';
 
@@ -39,8 +39,6 @@ type Props = {
   handleExtraImagesChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   removeExtraImage: (index: number) => void;
   extraImagePreviews: string[];
-  isInstalled: (app: string) => boolean;
-  setImageMapModalOpen: (v: boolean) => void;
   onQuickAddCategory: () => void;
 };
 
@@ -79,8 +77,6 @@ export default function ClothingBasicInfoCard({
   handleExtraImagesChange,
   removeExtraImage,
   extraImagePreviews,
-  isInstalled,
-  setImageMapModalOpen,
   onQuickAddCategory,
 }: Props) {
   return (
@@ -127,16 +123,6 @@ export default function ClothingBasicInfoCard({
                   className="hidden"
                 />
               </label>
-              {isInstalled('image-editor') && (
-                <button
-                  type="button"
-                  onClick={() => setImageMapModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00E5FF] text-slate-900 text-xs font-bold hover:bg-[#00B8CC] transition-all"
-                >
-                  <Map size={13} />
-                  <span>خريطة الصور</span>
-                </button>
-              )}
             </div>
           </div>
         </div>

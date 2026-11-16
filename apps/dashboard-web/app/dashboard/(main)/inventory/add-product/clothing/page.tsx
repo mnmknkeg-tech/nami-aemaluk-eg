@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { useShop } from '@/hooks/useShop';
-import { useInstalledApps } from '@/hooks/useInstalledApps';
 import ExtendedProductSections, {
   type ProductExtraData,
   defaultExtraData,
@@ -11,7 +10,6 @@ import ExtendedProductSections, {
 import { RichDescriptionEditor } from '@/components/products/RichDescriptionEditor';
 import { apiRequest } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import ImageMapEditorModal from '@/components/apps/image-editor/ImageMapEditor';
 import { compressForUpload } from '@/lib/upload-image';
 import { uploadMediaFile } from '@/lib/api/upload';
 import {
@@ -29,10 +27,8 @@ import QuickCategoryModal from '../_clothing/QuickCategoryModal';
 export default function ClothingAddProductPage() {
   const { shop } = useShop();
   const router = useRouter();
-  const { isInstalled } = useInstalledApps();
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
-  const [imageMapModalOpen, setImageMapModalOpen] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
 
   // Product form state
@@ -494,8 +490,6 @@ export default function ClothingAddProductPage() {
             handleExtraImagesChange={handleExtraImagesChange}
             removeExtraImage={removeExtraImage}
             extraImagePreviews={extraImagePreviews}
-            isInstalled={isInstalled}
-            setImageMapModalOpen={setImageMapModalOpen}
             onQuickAddCategory={() => setShowQuickCategoryModal(true)}
           />
 
@@ -560,16 +554,6 @@ export default function ClothingAddProductPage() {
           setNewName={setNewCategoryName}
           onConfirm={handleQuickAddCategory}
           onClose={() => setShowQuickCategoryModal(false)}
-        />
-      )}
-
-      {/* Image Map Editor Modal */}
-      {shop && (
-        <ImageMapEditorModal
-          open={imageMapModalOpen}
-          onClose={() => setImageMapModalOpen(false)}
-          shopId={shop.id}
-          products={products}
         />
       )}
     </div>
