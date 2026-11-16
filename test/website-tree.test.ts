@@ -212,7 +212,7 @@ it('anchors absolute children to their immediate parent in each viewport', () =>
   const normalized = normalizeWebsiteTree(input);
   expect(normalized.components.root.styles.desktop.position).toBe('relative');
   expect(
-    normalized.components.root.styles.tablet.position ?? normalized.components.root.styles.desktop.position
+    normalized.components.root.styles.tablet?.position ?? normalized.components.root.styles.desktop.position
   ).toBe('relative');
   expect(normalized.components.root.styles.mobile.position).toBe('static');
 });
