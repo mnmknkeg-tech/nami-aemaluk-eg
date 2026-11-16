@@ -30,7 +30,7 @@ export function isSafeExternalUrl(value: unknown): value is string {
   if (!/^(?:https?:\/\/|\/\/)/i.test(url)) return false;
 
   try {
-    const parsed = new URL(url.startsWith('//') ? \`https:\${url}\` : url);
+    const parsed = new URL(url.startsWith('//') ? 'https:' + url : url);
     return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && Boolean(parsed.hostname);
   } catch {
     return false;
