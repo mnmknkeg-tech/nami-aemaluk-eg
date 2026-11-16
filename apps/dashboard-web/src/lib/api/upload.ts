@@ -81,22 +81,16 @@ export async function uploadMediaFile(
     if (uploadFile.type.toLowerCase().startsWith('video/')) {
       throw new Error('فشل رفع الفيديو على التخزين؛ تحقق من الاتصال ثم حاول مرة أخرى.');
     }
-    // Non-browser callers cannot use the multipart/data-URL fallback safely.
-    if (typeof FileReader === 'undefined') throw new Error('فشل رفع الصورة');
+    // A failed object-storage upload must never be converted into a data URL:
+    // data/blob URLs are temporary browser previews, not durable product media.
     try {
       const directUrl = await directUpload(uploadFile, shopId, purpose);
-      if (directUrl) return directUrl;
+      if (directUrl && /^https:\/\//i.test(directUrl)) return directUrl;
     } catch (directError) {
       console.warn('[media] direct upload failed', directError);
     }
 
-    // Keep the old offline-safe behavior, but only after both real upload paths fail.
-    return new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve((reader.result as string) || publicUrl || '');
-      reader.onerror = () => resolve(publicUrl || '');
-      reader.readAsDataURL(uploadFile);
-    });
+    throw new Error('فشل رفع الصورة إلى التخزين. تحقق من الاتصال وحاول مرة أخرى.');
   }
 
   // The bytes are already stored. Bookkeeping is idempotent and best-effort;
