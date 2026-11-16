@@ -16,6 +16,7 @@ import { useToast } from '../ToastProvider';
 import { apiRequest } from '@/lib/auth';
 import { getLayoutBase, commitLayoutWrite } from '../layoutConfigDraft';
 import { compressForUpload } from '@/lib/upload-image';
+import { uploadMediaFile } from '@/lib/api/upload';
 
 interface ReceiptThemeTabProps {
   shop: any;
@@ -29,6 +30,7 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
   const [receiptCity, setReceiptCity] = useState('');
   const [receiptAddress, setReceiptAddress] = useState('');
   const [receiptLogoDataUrl, setReceiptLogoDataUrl] = useState('');
+  const [receiptLogoFile, setReceiptLogoFile] = useState<File | null>(null);
   const [receiptFooterNote, setReceiptFooterNote] = useState('');
   const [receiptVatRatePercent, setReceiptVatRatePercent] = useState('0');
   const [saving, setSaving] = useState(false);
@@ -113,6 +115,7 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
   const handleReceiptLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    try {
     const compressed = await compressForUpload(file, 'logo');
     if (compressed.size > 2 * 1024 * 1024) {
       toast({
@@ -122,9 +125,11 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
       });
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => setReceiptLogoDataUrl(reader.result as string);
-    reader.readAsDataURL(compressed);
+    setReceiptLogoFile(compressed);
+    setReceiptLogoDataUrl(URL.createObjectURL(compressed));
+    } catch {
+      toast({ title: 'خطأ', description: 'تعذّر تجهيز صورة اللوجو', variant: 'destructive' });
+    }
   };
 
   // Silent when invoked by the settings shell save-all (one summary toast).
@@ -134,13 +139,18 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
       // The tab READS the theme from layoutConfig.receiptTheme, so it must
       // also SAVE there — the old top-level receiptTheme key was silently
       // dropped by the backend, so the theme never persisted.
+      let savedLogoUrl = receiptLogoDataUrl;
+      if (receiptLogoFile) {
+        if (!shop?.id) throw new Error('لم يتم العثور على المتجر لرفع اللوجو');
+        savedLogoUrl = await uploadMediaFile(receiptLogoFile, String(shop.id), 'receipt_logo');
+      }
       const layout = getLayoutBase(shop);
       layout.receiptTheme = {
         shopName: receiptShopName,
         phone: receiptPhone,
         city: receiptCity,
         address: receiptAddress,
-        logoDataUrl: receiptLogoDataUrl,
+        logoDataUrl: savedLogoUrl,
         footerNote: receiptFooterNote,
         vatRatePercent: Number(receiptVatRatePercent) || 0,
       };
@@ -149,12 +159,14 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
         method: 'PATCH',
         body: JSON.stringify({ layoutConfig: layout }),
       });
+      setReceiptLogoDataUrl(savedLogoUrl);
+      setReceiptLogoFile(null);
       lastSavedRef.current = {
         shopName: receiptShopName,
         phone: receiptPhone,
         city: receiptCity,
         address: receiptAddress,
-        logoDataUrl: receiptLogoDataUrl,
+        logoDataUrl: savedLogoUrl,
         footerNote: receiptFooterNote,
         vatRatePercent: receiptVatRatePercent,
       };
@@ -273,7 +285,11 @@ export default function ReceiptThemeTab({ shop }: ReceiptThemeTabProps) {
                   </Button>
                   <Button
                     type="button"
-                    onClick={() => setReceiptLogoDataUrl('')}
+                    onClick={() => {
+                      if (receiptLogoDataUrl.startsWith('blob:')) URL.revokeObjectURL(receiptLogoDataUrl);
+                      setReceiptLogoDataUrl('');
+                      setReceiptLogoFile(null);
+                    }}
                     variant="secondary"
                   >
                     حذف اللوجو
