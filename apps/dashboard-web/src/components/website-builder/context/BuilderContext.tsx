@@ -364,7 +364,7 @@ export const BuilderProvider: React.FC<{
   }, []);
 
   const previewWebsite = useMemo(
-    () => applyWebsiteFileDrafts(website, codeDrafts),
+    () => normalizeWebsiteTree(applyWebsiteFileDrafts(website, codeDrafts)),
     [website, codeDrafts]
   );
   const hasCodeDrafts = Object.keys(codeDrafts).length > 0;

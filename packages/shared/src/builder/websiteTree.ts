@@ -417,5 +417,25 @@ export function normalizeWebsiteTree<T extends Website>(website: T): T {
     }
   }
 
+  // Absolute children must be positioned relative to their immediate parent.
+  // Apply the rule per viewport so editor, preview and published renderers use
+  // the same containing block instead of allowing cards to drift over siblings.
+  for (const parent of Object.values(components)) {
+    for (const childId of parent.childrenIds || []) {
+      const child = components[childId];
+      if (!child) continue;
+      for (const viewport of ['desktop', 'tablet', 'mobile'] as const) {
+        const childPosition =
+          child.styles?.[viewport]?.position ?? child.styles?.desktop?.position;
+        if (childPosition !== 'absolute') continue;
+        const parentStyles = parent.styles as Record<string, any>;
+        const viewportStyles = (parentStyles[viewport] ||= {});
+        const inheritedPosition =
+          viewportStyles.position ?? parentStyles.desktop?.position ?? 'static';
+        if (inheritedPosition === 'static') viewportStyles.position = 'relative';
+      }
+    }
+  }
+
   return { ...website, pages, components };
 }
