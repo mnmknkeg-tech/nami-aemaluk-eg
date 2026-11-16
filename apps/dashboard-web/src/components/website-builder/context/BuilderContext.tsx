@@ -413,6 +413,10 @@ export const BuilderProvider: React.FC<{
 
   const openStandalonePreview = useCallback(() => {
     if (typeof window === 'undefined' || !liveWebsiteUrl || !activePage?.id) return;
+    if (!builderShopId) {
+      window.alert('لا يمكن فتح المعاينة قبل تحميل بيانات المتجر.');
+      return;
+    }
     const token =
       typeof window.crypto?.randomUUID === 'function'
         ? window.crypto.randomUUID()
@@ -428,7 +432,7 @@ export const BuilderProvider: React.FC<{
     const snapshot: BuilderPreviewSnapshot = {
       version: 1,
       createdAt: Date.now(),
-      shopId: currentTenant.id,
+      shopId: builderShopId,
       shopName: currentTenant.name,
       website: previewWebsite,
       activePageId: activePage.id,
@@ -452,7 +456,7 @@ export const BuilderProvider: React.FC<{
       console.error('[builder] unable to create standalone preview snapshot', error);
       window.alert('تعذّر تجهيز المعاينة. احفظ بعض التعديلات أو قلّل حجم محتوى الصفحة ثم حاول مرة أخرى.');
     }
-  }, [activePage?.id, currentTenant.id, currentTenant.name, isRtl, liveWebsiteUrl, previewWebsite]);
+  }, [activePage?.id, builderShopId, currentTenant.name, isRtl, liveWebsiteUrl, previewWebsite]);
 
   // ── Publishing sub-hook ────────────────────────────────────────────────────
   const publishing = useBuilderPublishing(

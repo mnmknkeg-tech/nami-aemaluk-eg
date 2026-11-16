@@ -76,8 +76,7 @@ func TestRequireAuth_RejectsOneTimeTokenTypes(t *testing.T) {
 	}
 }
 
-// The session cookie stores the refresh token — cookie-sourced refresh tokens
-// keep working for the httpOnly-cookie auth flow.
+// Refresh cookies are reserved for /auth/refresh and must not authorize API calls.
 func TestRequireAuth_RejectsRefreshTokenFromSessionCookie(t *testing.T) {
 	cfg := testConfig(t)
 	token := buildToken(t, cfg.Auth.JWTSecret, jwt.MapClaims{

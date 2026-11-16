@@ -179,11 +179,9 @@ func extractToken(c *fiber.Ctx) (string, string) {
 		return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer ")), tokenSourceBearer
 	}
 
-	// Cookies are namespaced per client app (ray_access-DASHBOARD,
-	// ray_session-MARKET, ...) so the dashboard and the marketplace keep
-	// independent logins. Prefer the short-lived access cookie; fall back to
-	// the refresh session cookie for clients that have not yet received an
-	// access cookie (compatibility with pre-upgrade sessions).
+	// Cookies are namespaced per client app (ray_access-DASHBOARD, etc.) so
+	// each frontend keeps an independent login. Only access cookies are read
+	// here; ray_session is a refresh-only credential for /auth/refresh.
 	scope := scopedCookieSuffix(c.Get("X-App-Scope"))
 	if scope != "" {
 		if cookie := c.Cookies("ray_access" + scope); cookie != "" {
@@ -199,19 +197,6 @@ func extractToken(c *fiber.Ctx) (string, string) {
 		}
 	}
 
-	if scope != "" {
-		if cookie := c.Cookies("ray_session" + scope); cookie != "" {
-			return cookie, tokenSourceSessionCookie
-		}
-	}
-	if cookie := c.Cookies("ray_session"); cookie != "" {
-		return cookie, tokenSourceSessionCookie
-	}
-	for _, s := range fallbackScopes {
-		if cookie := c.Cookies("ray_session" + s); cookie != "" {
-			return cookie, tokenSourceSessionCookie
-		}
-	}
 
 	return "", ""
 }

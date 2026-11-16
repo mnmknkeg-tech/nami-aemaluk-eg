@@ -535,7 +535,7 @@ export const TopBar: React.FC = () => {
 
             <button
               onClick={() => {
-                setIsLivePreviewOpen(true);
+                openStandalonePreview();
                 setIsMobileMenuOpen(false);
               }}
               className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 border border-blue-200 text-xs font-bold text-blue-800"
