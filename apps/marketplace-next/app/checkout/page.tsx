@@ -263,7 +263,9 @@ export default function CheckoutPage() {
         const payload = {
           shopId,
           items: shopItems.map((i: any) => ({
-            productId: i.productId,
+            // Cart productId may include a ::variant/addon suffix to distinguish configured lines.
+            // The API requires the real products.id; variant/addon selections travel separately below.
+            productId: i.productId.split('::', 1)[0],
             quantity: i.quantity,
             addons: i.addons || undefined,
             variantSelection: i.variantSelection || undefined,
