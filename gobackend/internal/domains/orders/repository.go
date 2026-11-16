@@ -272,10 +272,10 @@ const insertOrderQuery = `
 		id, total, discount, coupon_code, status, payment_method, payment_status, notes, customer_phone,
 		delivery_address_manual, delivery_lat, delivery_lng, delivery_note, customer_note,
 		user_id, shop_id, customer_id, courier_id, source, sales_channel, pos_shift_id, created_at, updated_at,
-		idempotency_key, request_hash, customer_name
+		idempotency_key, request_hash, customer_name, delivery_fee, delivery_zone
 	) VALUES (
 		gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-		NULLIF($14, ''), $15, NULL, NULL, $16, $17, $18, NOW(), NOW(), $19, $20, $21
+		NULLIF($14, ''), $15, NULL, NULL, $16, $17, $18, NOW(), NOW(), $19, $20, $21, $22, $23
 	)
 	ON CONFLICT (shop_id, idempotency_key) DO NOTHING
 	RETURNING ` + orderColumnsNoAlias
@@ -289,7 +289,7 @@ func orderInsertArgs(order *Order) []any {
 		order.Total, order.Discount, order.CouponCode, order.Status, order.PaymentMethod, order.PaymentStatus, order.Notes,
 		order.CustomerPhone, order.DeliveryAddressManual, order.DeliveryLat, order.DeliveryLng,
 		order.DeliveryNote, order.CustomerNote, order.UserID, order.ShopID, order.Source,
-		salesChannel, order.PosShiftID, order.IdempotencyKey, order.RequestHash, order.CustomerName,
+		salesChannel, order.PosShiftID, order.IdempotencyKey, order.RequestHash, order.CustomerName, order.DeliveryFee, order.DeliveryZone,
 	}
 }
 
@@ -329,7 +329,7 @@ func (r *Repository) CreateOrder(ctx context.Context, order *Order, couponID str
 		&order.Notes, &order.CustomerPhone, &order.DeliveryAddressManual, &order.DeliveryLat,
 		&order.DeliveryLng, &order.DeliveryNote, &order.CustomerNote, &createdUserID, &order.ShopID,
 		&createdCustomerID, &order.CourierID, &order.HandedToCourierAt, &order.CodCollectedAt, &order.DeliveredAt,
-		&order.Source, &order.SalesChannel, &order.CreatedAt, &order.UpdatedAt, &createdCustomerName,
+		&order.Source, &order.SalesChannel, &order.CreatedAt, &order.UpdatedAt, &createdCustomerName, &order.DeliveryFee, &order.DeliveryZone,
 	)
 	if err == pgx.ErrNoRows && order.IdempotencyKey != nil && order.RequestHash != nil {
 		var existingID, existingHash string
@@ -570,14 +570,15 @@ func scanOrder(row pgx.Row) (*Order, error) {
 	var couponCode, paymentMethod, paymentStatus, notes, customerPhone, deliveryAddressManual, deliveryNote, customerNote, customerID, courierID, source, salesChannel sql.NullString
 	var customerName sql.NullString
 	var discount sql.NullFloat64
-	var deliveryLat, deliveryLng sql.NullFloat64
+	var deliveryLat, deliveryLng, deliveryFee sql.NullFloat64
+	var deliveryZone sql.NullString
 	var handedAt, codAt, deliveredAt sql.NullTime
 
 	err := row.Scan(
 		&o.ID, &o.Total, &discount, &couponCode, &o.Status, &paymentMethod, &paymentStatus, &notes, &customerPhone,
 		&deliveryAddressManual, &deliveryLat, &deliveryLng, &deliveryNote, &customerNote,
 		&userID, &o.ShopID, &customerID, &courierID, &handedAt, &codAt, &deliveredAt, &source, &salesChannel,
-		&o.CreatedAt, &o.UpdatedAt, &customerName,
+		&o.CreatedAt, &o.UpdatedAt, &deliveryFee, &deliveryZone, &customerName,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -587,6 +588,8 @@ func scanOrder(row pgx.Row) (*Order, error) {
 	}
 
 	o.CustomerName = nullStringPtr(customerName)
+	o.DeliveryFee = deliveryFee.Float64
+	o.DeliveryZone = nullStringPtr(deliveryZone)
 	o.PaymentMethod = nullStringPtr(paymentMethod)
 	o.UserID = userID.String
 	o.Discount = discount.Float64
