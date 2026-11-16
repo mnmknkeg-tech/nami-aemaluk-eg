@@ -2,6 +2,7 @@ package cache
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -86,4 +87,81 @@ func TestConcurrentAccess(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
+}
+
+
+func TestSetGetCopiesByteSlices(t *testing.T) {
+	c := New()
+	input := []byte("original")
+	c.Set("copy", input, time.Minute)
+	input[0] = 'X'
+
+	got, ok := c.Get("copy")
+	if !ok || string(got) != "original" {
+		t.Fatalf("cache must copy input bytes, got %q (ok=%v)", got, ok)
+	}
+	got[0] = 'Y'
+	again, ok := c.Get("copy")
+	if !ok || string(again) != "original" {
+		t.Fatalf("mutating a returned value must not mutate cache, got %q (ok=%v)", again, ok)
+	}
+}
+
+func TestGetOrLoadJSONSingleFlight(t *testing.T) {
+	c := New()
+	const workers = 16
+	var calls atomic.Int32
+	started := make(chan struct{}, 1)
+	release := make(chan struct{})
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			value, err := GetOrLoadJSON(c, "shared", time.Minute, func() (map[string]int, error) {
+				if calls.Add(1) == 1 {
+					started <- struct{}{}
+				}
+				<-release
+				return map[string]int{"value": 42}, nil
+			})
+			if err != nil || value["value"] != 42 {
+				t.Errorf("unexpected singleflight result: value=%v err=%v", value, err)
+			}
+		}()
+	}
+	close(start)
+	<-started
+	time.Sleep(20 * time.Millisecond)
+	close(release)
+	wg.Wait()
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("expected one load for concurrent misses, got %d", got)
+	}
+}
+
+func TestGetOrLoadJSONDoesNotCacheAcrossInvalidation(t *testing.T) {
+	c := New()
+	started := make(chan struct{}, 1)
+	release := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, _ = GetOrLoadJSON(c, "shops:public:1", time.Minute, func() (map[string]int, error) {
+			started <- struct{}{}
+			<-release
+			return map[string]int{"value": 1}, nil
+		})
+	}()
+	<-started
+	c.DeletePrefix("shops:public:")
+	close(release)
+	wg.Wait()
+	if c.Len() != 0 {
+		t.Fatalf("in-flight stale load must not repopulate invalidated cache, len=%d", c.Len())
+	}
 }
