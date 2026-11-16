@@ -234,11 +234,8 @@ func New(cfg *config.Config) (*App, error) {
                 subscriptionsHandler     *subscriptions.Handler
         )
         var (
-
                 compressionService *compression.Service
-
-                hotReadCache *cache.Cache
-
+                hotReadCache       *cache.Cache
         )
         if pool != nil {
                 // Initialize compression service early for all domains

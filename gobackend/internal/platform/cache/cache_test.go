@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -181,5 +182,35 @@ func TestCloseStopsPrunerAndIsIdempotent(t *testing.T) {
 		t.Fatal("cache pruner did not stop after Close")
 	}
 	c.Close()
+}
+
+func TestPruneEvictsOldestEntriesWithoutFlushingCache(t *testing.T) {
+	c := New()
+	defer c.Close()
+
+	now := time.Now()
+	c.mu.Lock()
+	for i := 0; i < maxEntries+2; i++ {
+		key := fmt.Sprintf("entry:%d", i)
+		c.items[key] = entry{
+			value:     []byte(key),
+			expiresAt: now.Add(time.Duration(i+1) * time.Second),
+		}
+	}
+	c.pruneLocked()
+	c.mu.Unlock()
+
+	if got := c.Len(); got != maxEntries {
+		t.Fatalf("expected cache to retain %d entries, got %d", maxEntries, got)
+	}
+	if _, ok := c.Get("entry:0"); ok {
+		t.Fatal("oldest entry should be evicted first")
+	}
+	if _, ok := c.Get("entry:1"); ok {
+		t.Fatal("second-oldest entry should be evicted")
+	}
+	if _, ok := c.Get(fmt.Sprintf("entry:%d", maxEntries+1)); !ok {
+		t.Fatal("newest entry should remain cached")
+	}
 }
 }
