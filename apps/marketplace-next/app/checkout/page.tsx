@@ -136,9 +136,9 @@ export default function CheckoutPage() {
         const zones = Array.isArray(design.deliveryZones)
           ? design.deliveryZones.filter((z: any) => z && z.id && z.name).map((z: any) => ({ id: String(z.id), name: String(z.name), fee: Math.max(0, Number(z.fee) || 0) }))
           : [];
-        return [shopId, { zones, defaultFee: Math.max(0, Number(design.deliveryFee) || 0), freeThreshold: Math.max(0, Number(design.freeDeliveryThreshold) || 0) }] as const;
+        return [shopId, { zones, defaultFee: Math.max(0, Number(design.deliveryFee ?? 30) || 0), freeThreshold: Math.max(0, Number(design.freeDeliveryThreshold ?? 500) || 0) }] as const;
       } catch {
-        return [shopId, { zones: [], defaultFee: 0, freeThreshold: 0 }] as const;
+        return [shopId, { zones: [], defaultFee: 30, freeThreshold: 500 }] as const;
       }
     })).then((results) => {
       if (!active) return;
