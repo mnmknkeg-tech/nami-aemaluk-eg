@@ -45,7 +45,7 @@ export function CartDrawer() {
             transition={{ type: 'tween', duration: 0.3 }}
             /* Must sit above MobileFooter (z-[100]), otherwise the bottom bar
                floats over the drawer and hides the total + "إتمام الطلب". */
-            className="fixed top-0 left-0 bottom-0 w-full max-w-md bg-white dark:bg-slate-900 z-[115] flex flex-col shadow-2xl"
+            className="fixed top-0 left-0 bottom-0 w-[min(100vw,28rem)] max-w-md bg-white dark:bg-slate-900 z-[115] flex flex-col shadow-2xl"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-800">
