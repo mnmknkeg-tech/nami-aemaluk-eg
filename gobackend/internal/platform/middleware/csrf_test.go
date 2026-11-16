@@ -112,6 +112,29 @@ func TestCSRF_BearerTokenRequestsAreExempt(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, respNoAuth.StatusCode)
 }
 
+func TestCSRF_ExemptPathDoesNotMatchLongerPath(t *testing.T) {
+	cfg := testConfig(t)
+	cfg.App.Env = "production"
+	cfg.Security.CSRFDisabled = false
+
+	app := fiber.New(fiber.Config{ErrorHandler: NewErrorHandler()})
+	app.Use(CSRF(cfg))
+	app.Post("/api/v1/auth/login/attacker", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login/attacker", nil)
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+}
+
+func TestIsCSRFExemptRequiresExactPath(t *testing.T) {
+	assert.True(t, isCSRFExempt("/api/v1/auth/login"))
+	assert.False(t, isCSRFExempt("/api/v1/auth/login/attacker"))
+	assert.False(t, isCSRFExempt("/api/v1/auth/login-extra"))
+}
+
 func findCookie(resp *http.Response, name string) *http.Cookie {
 	for _, c := range resp.Cookies() {
 		if c.Name == name {

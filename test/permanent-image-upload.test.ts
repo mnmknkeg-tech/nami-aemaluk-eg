@@ -69,18 +69,58 @@ describe('permanent image upload', () => {
     );
   });
 
-  it('rejects failed object storage uploads before marking them complete', async () => {
-    mockedApiRequest.mockResolvedValueOnce({
-      url: 'https://r2.example/signed-put',
-      key: 'shop/hero.webp',
-      publicUrl: 'https://cdn.example/hero.webp',
-    } as never);
+  it('rejects failed object storage and direct uploads without returning a temporary data URL', async () => {
+    mockedApiRequest
+      .mockResolvedValueOnce({
+        url: 'https://r2.example/signed-put',
+        key: 'shop/hero.webp',
+        publicUrl: 'https://cdn.example/hero.webp',
+      } as never)
+      .mockRejectedValueOnce(new Error('direct upload unavailable'));
     jest.spyOn(global, 'fetch').mockResolvedValue({ ok: false } as Response);
     const file = new File(['image'], 'hero.webp', { type: 'image/webp' });
 
     await expect(uploadMediaFile(file, 'shop-123', 'website_image')).rejects.toThrow(
-      'فشل رفع الصورة'
+      'فشل رفع الصورة إلى التخزين'
     );
-    expect(mockedApiRequest).toHaveBeenCalledTimes(1);
+    expect(mockedApiRequest).toHaveBeenCalledTimes(2);
   });
+
+  it('never accepts a temporary data URL from the multipart fallback', async () => {
+    mockedApiRequest
+      .mockResolvedValueOnce({
+        url: 'https://r2.example/signed-put',
+        key: 'shop/hero.webp',
+        publicUrl: 'https://cdn.example/hero.webp',
+      } as never)
+      .mockResolvedValueOnce({
+        originalUrl: 'data:image/webp;base64,ZmFrZQ==',
+      } as never);
+    jest.spyOn(global, 'fetch').mockResolvedValue({ ok: false } as Response);
+    const file = new File(['image'], 'hero.webp', { type: 'image/webp' });
+
+    await expect(uploadMediaFile(file, 'shop-123', 'website_image')).rejects.toThrow(
+      'فشل رفع الصورة إلى التخزين'
+    );
+    expect(mockedApiRequest).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a temporary URL returned by media completion', async () => {
+    mockedApiRequest
+      .mockResolvedValueOnce({
+        url: 'https://r2.example/signed-put',
+        key: 'shop/hero.webp',
+        publicUrl: 'https://cdn.example/hero.webp',
+      } as never)
+      .mockResolvedValueOnce({
+        originalUrl: 'data:image/webp;base64,ZmFrZQ==',
+      } as never);
+    jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true } as Response);
+    const file = new File(['image'], 'hero.webp', { type: 'image/webp' });
+
+    await expect(uploadMediaFile(file, 'shop-123', 'website_image')).rejects.toThrow(
+      'لم يُرجع التخزين رابط صورة دائمًا وآمنًا.'
+    );
+  });
+
 });

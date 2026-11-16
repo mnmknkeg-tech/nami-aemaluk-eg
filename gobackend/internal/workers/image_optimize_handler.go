@@ -12,10 +12,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// ImageOptimizeHandler processes jobs.TypeImageOptimize tasks. It currently
-// marks the upload as optimized without resizing/re-encoding; real
-// resize/webp conversion (e.g. via govips) can be plugged in here without
-// changing the queue contract.
+// ImageOptimizeHandler records that optimization is unavailable until a real
+// image transformation pipeline is configured. The original upload remains usable.
 type ImageOptimizeHandler struct {
 	media *media.Service
 }
@@ -36,13 +34,15 @@ func (h *ImageOptimizeHandler) ProcessTask(ctx context.Context, t *asynq.Task) e
 		return fmt.Errorf("%w: missing media_id", asynq.SkipRetry)
 	}
 
-	// TODO: integrate real image processing (resize/thumbnail/webp) here,
-	// e.g. via govips against s.s3, then pass the resulting keys/URLs below.
-	logger.Global().Info("image optimize job received (no-op placeholder)",
+	reason := "Image optimization is not configured; the original uploaded file remains available."
+	_, err := h.media.UpdateOptimizationStatus(ctx, p.MediaID, "FAILED", map[string]string{}, &reason)
+	if err != nil {
+		return fmt.Errorf("record image optimization status: %w", err)
+	}
+
+	logger.Global().Warn("image optimization unavailable; original media retained",
 		zap.String("media_id", p.MediaID),
 		zap.String("key", p.Key),
 	)
-
-	_, err := h.media.UpdateOptimizationStatus(ctx, p.MediaID, "completed", map[string]string{}, nil)
-	return err
+	return nil
 }
