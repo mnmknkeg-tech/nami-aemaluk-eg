@@ -61,7 +61,7 @@ import {
 // استيراد نسبي مقصود (برنامج الـ typecheck الجذري بيخلي `@/*` على packages/shared)
 import { readUserId } from '../../../lib/session-keys';
 import { getMergedThemeTokens } from '../data/themes/utils';
-import { applyWebsiteFileDrafts, normalizeCatalogProduct } from '@ray-eg/shared/builder';
+import { applyWebsiteFileDrafts, normalizeCatalogProduct, normalizeWebsiteTree } from '@ray-eg/shared/builder';
 
 // Types
 import { BuilderContextType } from './types';
