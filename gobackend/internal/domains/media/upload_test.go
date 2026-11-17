@@ -266,3 +266,29 @@ func TestIsValidVideoSignature(t *testing.T) {
 	}
 }
 
+
+func TestValidatePresignFileSize(t *testing.T) {
+	max := int64(10 << 20)
+	zero := int64(0)
+	tooLarge := max + 1
+	valid := max
+
+	cases := []struct {
+		name string
+		size *int64
+		wantErr bool
+	}{
+		{name: "missing", size: nil, wantErr: true},
+		{name: "zero", size: &zero, wantErr: true},
+		{name: "over limit", size: &tooLarge, wantErr: true},
+		{name: "at limit", size: &valid, wantErr: false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validatePresignFileSize(tc.size, max)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("validatePresignFileSize() error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}
