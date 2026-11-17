@@ -62,6 +62,7 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
   fileInputRef,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [viewport, setViewport] = useState({ cw: 0, ch: 0 });
   const [zoom, setZoom] = useState(MIN_ZOOM);
@@ -94,6 +95,16 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
     setImgSrc(mapImageUrl);
     setImgFailed(false);
   }, [mapImageUrl]);
+
+  // صورة اكتمل تحميلها قبل أن يربط React onLoad (كاش المتصفح عند إعادة فتح
+  // المحرر) لا تُطلق الحدث إطلاقًا — افحص complete يدويًا وإلا بقيت اللوحة
+  // سوداء بصمت رغم أن الصورة محمّلة فعلًا.
+  useEffect(() => {
+    const el = imgRef.current;
+    if (el && el.complete && el.naturalWidth > 0 && el.naturalHeight > 0) {
+      setNatural({ w: el.naturalWidth, h: el.naturalHeight });
+    }
+  }, [imgSrc]);
 
   // عند فشل رابط التخزين العام في المتصفح (نطاقات R2/S3 العامة قد تكون معطلة
   // أو محجوبة)، نجرّب مرة واحدة عبر بروكسي الـ API قبل إظهار بطاقة خطأ.
@@ -271,6 +282,7 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
         }
       >
         <img
+          ref={imgRef}
           src={imgSrc || mapImageUrl}
           onLoad={onImgLoad}
           onError={onImgError}

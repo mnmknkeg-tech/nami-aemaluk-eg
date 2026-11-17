@@ -1,6 +1,7 @@
 package media
 
 import (
+	"io"
 	"strconv"
 	"strings"
 
@@ -114,15 +115,23 @@ func (h *Handler) Upload(c *fiber.Ctx) error {
 // validated and only image/video content types are served.
 func (h *Handler) Serve(c *fiber.Ctx) error {
 	key := strings.TrimPrefix(c.Params("*"), "/")
-	body, ct, size, err := h.service.StreamObject(c.UserContext(), key)
+	body, ct, _, err := h.service.StreamObject(c.UserContext(), key)
 	if err != nil {
 		return err
 	}
-	defer body.Close()
+	// Buffer the whole object before responding: Railway's edge replies
+	// «upstream error» when the handler returns while fasthttp still has to
+	// drain a body stream (defer Close would fire first). Uploads are
+	// size-capped by the media service, so this fits memory comfortably.
+	data, err := io.ReadAll(body)
+	body.Close()
+	if err != nil {
+		return errors.Internal("media_read_failed", err)
+	}
 	c.Set("Content-Type", ct)
 	c.Set("Cache-Control", "public, max-age=604800, immutable")
 	c.Set("X-Content-Type-Options", "nosniff")
-	return c.SendStream(body, int(size))
+	return c.Send(data)
 }
 
 func (h *Handler) PresignUpload(c *fiber.Ctx) error {

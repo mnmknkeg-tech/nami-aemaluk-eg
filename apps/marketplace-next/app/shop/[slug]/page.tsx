@@ -8,9 +8,11 @@ import {
   getPublishedWebsiteBySlug,
   getProducts,
   getShops,
+  getShopImageMap,
   type Shop,
 } from '@/lib/services';
 import { ShopProducts } from '@/components/ShopProducts';
+import { ShopImageMap } from '@/components/ShopImageMap';
 import ShareButton from '@/components/ShareButton';
 import { FollowButton } from '@/components/FollowButton';
 import { ReviewsSection } from '@/components/ReviewsSection';
@@ -71,6 +73,9 @@ export default async function ShopPage({ params }: Props) {
   if (!shop) notFound();
 
   const publishedWebsite = await getPublishedWebsiteBySlug(slug);
+
+  // خريطة المتجر النشطة — تُعرض فوق قائمة المنتجات؛ غيابها لا يعطل الصفحة.
+  const imageMap = await getShopImageMap(slug);
 
   // Only products the merchant kept VISIBLE from the dashboard products page
   // appear on the storefront (same rule as published /site/ pages).
@@ -331,6 +336,9 @@ function LegacyShopLayout({
           </div>
         </div>
       </div>
+
+      {/* خريطة المتجر التفاعلية — إن أعدّها التاجر من محرر الخريطة */}
+      {imageMap && <ShopImageMap map={imageMap} />}
 
       {/* Products */}
       <div

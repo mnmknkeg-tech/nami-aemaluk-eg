@@ -190,6 +190,57 @@ export async function getPublishedWebsiteBySlug(slug: string): Promise<Published
   }
 }
 
+export interface ShopImageMapHotspot {
+  id: string;
+  productId: string | null;
+  label: string | null;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  shape: string | null;
+}
+
+export interface ShopImageMapData {
+  name?: string;
+  imageUrl: string;
+  hotspots: ShopImageMapHotspot[];
+}
+
+/** الخريطة النشطة للمتجر (عامة) — صورة فضاء المتجر ونقاط ضغط على المنتجات.
+ *  ترجع null بهدوء إن لم توجد خريطة أو فشل الجلب فلا تعطل صفحة المتجر. */
+export async function getShopImageMap(slug: string): Promise<ShopImageMapData | null> {
+  if (!slug) return null;
+  try {
+    const data = await api.get<any>(`/shops/${encodeURIComponent(slug)}/image-map/active`, {
+      revalidate: 0,
+      tags: [`image-map:${slug}`],
+    });
+    const map = data?.data ?? data;
+    const imageUrl = normalizeImageUrl(map?.imageUrl ?? map?.image_url);
+    if (!imageUrl) return null;
+    const hotspotsRaw = Array.isArray(map?.hotspots) ? map.hotspots : [];
+    return {
+      name: typeof map?.name === 'string' && map.name.trim() ? map.name.trim() : undefined,
+      imageUrl,
+      hotspots: hotspotsRaw
+        .map((h: any, i: number) => ({
+          id: String(h?.id ?? i),
+          productId: h?.productId ?? h?.product_id ?? null,
+          label: typeof h?.label === 'string' && h.label.trim() ? h.label.trim() : null,
+          x: Number(h?.x) || 0,
+          y: Number(h?.y) || 0,
+          width: Number(h?.width) || 0,
+          height: Number(h?.height) || 0,
+          shape: typeof h?.shape === 'string' ? h.shape : null,
+        }))
+        .filter((h: ShopImageMapHotspot) => h.width > 0 && h.height > 0),
+    };
+  } catch {
+    return null;
+  }
+}
+
 // surface: 'site' يعرض ما هو معروض في موقع المتجر فقط، والافتراضي (بدون قيمة)
 // يعرض ما هو معروض في تطبيق الماركت (app_active) — كل سطح ليه علم مستقل عند التاجر.
 export async function getProducts(
