@@ -28,6 +28,13 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 
 // RegisterRoutes wires the media endpoints under the provided router.
 func (h *Handler) RegisterRoutes(r fiber.Router) {
+	// Public streaming of stored objects — registered outside the authed
+	// group on purpose: the storage public base URL (R2/S3 dev domain) can be
+	// unreachable from browsers, and the image-map editor falls back to this
+	// route so uploaded media always renders. Keys are validated against path
+	// traversal and only image/video content types are served.
+	r.Get("/media/serve/*", h.Serve)
+
 	g := r.Group("/media", middleware.RequireAuth(h.cfg, h.cfg.Auth.Issuer, h.cfg.Auth.Audience))
 
 	g.Post("/presign", requireRolesMiddleware(auth.RoleMerchant, auth.RoleAdmin), h.PresignUpload)
@@ -101,6 +108,21 @@ func (h *Handler) Upload(c *fiber.Ctx) error {
 		// The dashboard's upload helper reads "url" off the unwrapped payload.
 		"url": media.OriginalURL,
 	})
+}
+
+// Serve streams a stored media object publicly (no auth). The key layout is
+// validated and only image/video content types are served.
+func (h *Handler) Serve(c *fiber.Ctx) error {
+	key := strings.TrimPrefix(c.Params("*"), "/")
+	body, ct, size, err := h.service.StreamObject(c.UserContext(), key)
+	if err != nil {
+		return err
+	}
+	defer body.Close()
+	c.Set("Content-Type", ct)
+	c.Set("Cache-Control", "public, max-age=604800, immutable")
+	c.Set("X-Content-Type-Options", "nosniff")
+	return c.SendStream(body, int(size))
 }
 
 func (h *Handler) PresignUpload(c *fiber.Ctx) error {

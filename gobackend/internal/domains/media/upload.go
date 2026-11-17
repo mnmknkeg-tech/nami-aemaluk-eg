@@ -131,6 +131,27 @@ func (s *Service) storeUpload(ctx context.Context, shopID, purpose, ext, content
 	return key, s.localPublicURL(key), nil
 }
 
+// StreamObject returns a stored object for public streaming through the API.
+// It exists because the storage public base URL (R2/S3 dev domain) can be
+// unreachable from browsers; the image-map editor falls back to this path.
+func (s *Service) StreamObject(ctx context.Context, key string) (io.ReadCloser, string, int64, error) {
+	if s.s3 == nil {
+		return nil, "", 0, errors.Internal("object_storage_not_configured", fmt.Errorf("S3/R2 is required for streaming"))
+	}
+	if err := s.s3.ValidateKey(key); err != nil {
+		return nil, "", 0, errors.Validation("invalid_key", "مسار الملف غير صالح")
+	}
+	body, ct, size, err := s.s3.GetObject(ctx, key)
+	if err != nil {
+		return nil, "", 0, errors.NotFound("media_object", key)
+	}
+	if !strings.HasPrefix(ct, "image/") && !strings.HasPrefix(ct, "video/") {
+		body.Close()
+		return nil, "", 0, errors.NotFound("media_object", key)
+	}
+	return body, ct, size, nil
+}
+
 // processUploadPayload decides what actually gets stored for an upload.
 // Raster images that are not already small webp/jpeg are re-encoded at high
 // quality; everything else (and any compression failure) passes through

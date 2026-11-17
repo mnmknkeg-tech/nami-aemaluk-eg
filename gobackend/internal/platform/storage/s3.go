@@ -139,6 +139,27 @@ func (c *S3Client) ReadObjectPrefix(ctx context.Context, key string, limit int64
         return prefix, nil
 }
 
+// GetObject streams a full object back so the API can serve stored media
+// publicly when the storage public base URL is unreachable from browsers.
+func (c *S3Client) GetObject(ctx context.Context, key string) (io.ReadCloser, string, int64, error) {
+        out, err := c.client.GetObject(ctx, &s3.GetObjectInput{
+                Bucket: aws.String(c.cfg.Bucket),
+                Key:    aws.String(key),
+        })
+        if err != nil {
+                return nil, "", 0, fmt.Errorf("get object: %w", err)
+        }
+        ct := "application/octet-stream"
+        if out.ContentType != nil {
+                ct = *out.ContentType
+        }
+        var size int64 = -1
+        if out.ContentLength != nil {
+                size = *out.ContentLength
+        }
+        return out.Body, ct, size, nil
+}
+
 // PublicURL returns the public URL for an object key.
 func (c *S3Client) PublicURL(key string) string {
         base := strings.TrimSuffix(c.cfg.PublicBaseURL, "/")

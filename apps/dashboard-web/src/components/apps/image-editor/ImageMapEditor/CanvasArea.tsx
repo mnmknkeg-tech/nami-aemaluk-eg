@@ -70,6 +70,9 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
   const dragRef = useRef<{ px: number; py: number; panX: number; panY: number; moved: boolean } | null>(null);
   // علم منفصل يبقى متاحًا عند صدور الـ click (dragRef يتصفّر عند pointerup)
   const didDragRef = useRef(false);
+  // مصدر الصورة الحالي + حالة فشل التحميل (نجرّب بروكسي الـ API قبل إظهار الخطأ)
+  const [imgSrc, setImgSrc] = useState<string>(mapImageUrl);
+  const [imgFailed, setImgFailed] = useState(false);
 
   // قياس المساحة المتاحة (إعادة الحساب عند تغيّر حجم النافذة/اللوحة)
   useEffect(() => {
@@ -88,7 +91,29 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
     setNatural(null);
     setZoom(MIN_ZOOM);
     setPan({ x: 0, y: 0 });
+    setImgSrc(mapImageUrl);
+    setImgFailed(false);
   }, [mapImageUrl]);
+
+  // عند فشل رابط التخزين العام في المتصفح (نطاقات R2/S3 العامة قد تكون معطلة
+  // أو محجوبة)، نجرّب مرة واحدة عبر بروكسي الـ API قبل إظهار بطاقة خطأ.
+  const mediaProxyUrl = (u: string) => {
+    if (!u || u.startsWith('/')) return u;
+    try {
+      return `/api/v1/media/serve${new URL(u, window.location.origin).pathname}`;
+    } catch {
+      return u;
+    }
+  };
+
+  const onImgError = () => {
+    const proxied = mediaProxyUrl(mapImageUrl);
+    if (proxied && proxied !== imgSrc) {
+      setImgSrc(proxied);
+      return;
+    }
+    setImgFailed(true);
+  };
 
   // scale الأساس: ملاءمة كاملة داخل المساحة (بدون تكبير فوق الحجم الطبيعي)
   const baseScale = natural && viewport.cw > 0 && viewport.ch > 0
@@ -246,8 +271,9 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
         }
       >
         <img
-          src={mapImageUrl}
+          src={imgSrc || mapImageUrl}
           onLoad={onImgLoad}
+          onError={onImgError}
           className="block w-full h-full select-none"
           style={{ visibility: natural ? 'visible' : 'hidden' }}
           alt="Map"
@@ -268,6 +294,47 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
             />
           ))}
       </div>
+
+      {/* فشل تحميل الصورة حتى عبر البروكسي */}
+      {imgFailed && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-4">
+          <div className="max-w-md space-y-3 rounded-3xl border border-amber-400/40 bg-slate-900/95 p-6 text-center">
+            <div className="text-lg font-black text-amber-300">تعذر تحميل الصورة</div>
+            <p className="text-sm leading-6 text-slate-400">
+              الصورة محفوظة لكن رابط التخزين غير متاح من المتصفح. جرّب إعادة المحاولة عبر المسار البديل، وإن استمرت المشكلة ارفع الصورة من جديد.
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setImgFailed(false);
+                  setImgSrc(mapImageUrl);
+                }}
+                className="rounded-2xl bg-[#00E5FF] px-5 py-2.5 font-black text-black"
+              >
+                إعادة المحاولة
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-2xl border border-slate-600 px-5 py-2.5 font-bold text-slate-200"
+              >
+                رفع صورة من جديد
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* مؤشر تحميل الصورة */}
+      {!natural && !imgFailed && (
+        <div
+          className="absolute top-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/70 backdrop-blur px-4 py-1.5 text-white text-xs font-bold"
+          dir="rtl"
+        >
+          جارٍ تحميل الصورة…
+        </div>
+      )}
 
       {/* أدوات الزوم */}
       {natural && (

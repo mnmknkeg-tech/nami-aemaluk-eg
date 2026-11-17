@@ -110,7 +110,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <option value="">بدون</option>
             {maps.map((m: any) => (
               <option key={m.id} value={String(m.id)}>
-                {String(m.title || m.imageUrl || m.image_url || '').slice(0, 40)}
+                {String(m.title || m.name || 'خريطة').slice(0, 40)}
                 {m.isActive || m.is_active ? ' (نشط)' : ''}
               </option>
             ))}
