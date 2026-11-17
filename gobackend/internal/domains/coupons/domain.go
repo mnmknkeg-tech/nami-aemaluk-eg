@@ -104,23 +104,37 @@ func (r *Repository) Consume(ctx context.Context, id string) error {
 }
 
 func Validate(c Coupon, subtotal float64, now time.Time) (float64, error) {
+	// Coupon values are merchant-configured input. Reject negative amounts
+	// rather than allowing a negative "discount" to increase the order total.
+	if c.Value < 0 || subtotal < 0 || c.MinOrderValue < 0 || c.MaxDiscountValue < 0 {
+		return 0, appErrors.Validation("coupon_invalid", "قيمة الكوبون أو الطلب غير صحيحة")
+	}
 	if c.Status != "active" || now.Before(c.StartDate) || (c.EndDate != nil && !now.Before(*c.EndDate)) || (c.UsageLimit > 0 && c.UsedCount >= c.UsageLimit) {
 		return 0, appErrors.Validation("coupon_invalid", "الكوبون غير صالح أو منتهي")
 	}
 	if subtotal < c.MinOrderValue {
 		return 0, appErrors.Validation("coupon_min_order", "قيمة الطلب أقل من الحد الأدنى للكوبون")
 	}
-	if c.Type == "free_shipping" {
-		return 0, nil
-	}
 	var d float64
-	if c.Type == "percentage" {
+	switch c.Type {
+	case "percentage":
 		if c.Value > 100 {
 			return 0, appErrors.Validation("coupon_invalid", "قيمة الكوبون غير صحيحة")
 		}
 		d = subtotal * c.Value / 100
-	} else {
+	case "fixed":
 		d = c.Value
+	case "free_shipping":
+		// Orders currently have no authoritative shipping-fee field/calculation.
+		// Returning zero here used to consume a coupon while giving the customer
+		// no benefit, so fail closed until shipping is implemented end-to-end.
+		return 0, appErrors.Validation("coupon_shipping_unavailable", "كوبون الشحن المجاني غير متاح قبل تفعيل حساب رسوم التوصيل")
+	case "buy_x_get_y":
+		// The persisted coupon schema has no X/Y quantities or eligible-product
+		// rules. Treating Value as a fixed discount silently misapplies this offer.
+		return 0, appErrors.Validation("coupon_type_unsupported", "عرض اشترِ X واحصل على Y غير مدعوم في حساب الطلبات حالياً")
+	default:
+		return 0, appErrors.Validation("coupon_invalid", "نوع الكوبون غير صحيح")
 	}
 	if c.MaxDiscountValue > 0 && d > c.MaxDiscountValue {
 		d = c.MaxDiscountValue
