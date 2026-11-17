@@ -16,6 +16,13 @@ if git diff --cached --name-only --diff-filter=ACMR | grep -qE "\.env(\.|$)"; th
   fi
 fi
 
+# Scan staged changes for secrets when gitleaks is installed locally.
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact || exit 1
+else
+  echo "Warning: gitleaks is not installed locally; CI secret scanning remains mandatory."
+fi
+
 # Format & lint staged files
 npx lint-staged || exit 1
 
