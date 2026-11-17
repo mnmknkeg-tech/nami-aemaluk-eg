@@ -63,8 +63,7 @@ func SecurityHeaders(cfg *config.Config) fiber.Handler {
 		path := c.Path()
 		anonymousGET := c.Method() == fiber.MethodGet &&
 			c.Get("Authorization") == "" &&
-			c.Cookies("ray_session") == "" &&
-			c.Cookies("ray_access") == ""
+			!hasAuthCookie(c.Get(fiber.HeaderCookie))
 		cacheable := anonymousGET && isPublicCachePath(path)
 
 		err := c.Next()
@@ -79,6 +78,21 @@ func SecurityHeaders(cfg *config.Config) fiber.Handler {
 
 		return err
 	}
+}
+
+// hasAuthCookie detects both legacy and app-scoped session cookies. Scoped
+// cookies must disable shared caching just like the unscoped cookie names;
+// otherwise personalized catalog responses could be cached and served to
+// another visitor by a CDN.
+func hasAuthCookie(cookieHeader string) bool {
+	for _, part := range strings.Split(cookieHeader, ";") {
+		name, _, _ := strings.Cut(strings.TrimSpace(part), "=")
+		if name == "ray_access" || name == "ray_session" ||
+			strings.HasPrefix(name, "ray_access-") || strings.HasPrefix(name, "ray_session-") {
+			return true
+		}
+	}
+	return false
 }
 
 func buildCSP(isDev bool, frontend string) string {
