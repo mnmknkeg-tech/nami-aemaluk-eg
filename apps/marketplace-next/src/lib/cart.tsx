@@ -193,8 +193,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setItems((prev) => {
         const existing = prev.find((i) => i.productId === itemKey);
         if (existing) {
+          // Re-check the latest product stock on every add. The old code capped
+          // only the first add, so repeated taps could exceed the tracked stock.
+          const currentCap = stockState.maxQuantity;
+          const existingCap = existing.maxQuantity;
+          const effectiveCap =
+            currentCap != null && existingCap != null
+              ? Math.min(currentCap, existingCap)
+              : currentCap ?? existingCap;
+          const nextQuantity = existing.quantity + quantity;
+          const safeQuantity =
+            effectiveCap != null ? Math.min(nextQuantity, effectiveCap) : nextQuantity;
+
           return prev.map((i) =>
-            i.productId === itemKey ? { ...i, quantity: i.quantity + quantity } : i
+            i.productId === itemKey
+              ? {
+                  ...i,
+                  quantity: safeQuantity,
+                  maxQuantity: effectiveCap,
+                  price: finalPrice,
+                  name: product.name,
+                  image: product.imageUrl || product.images?.[0] || i.image,
+                }
+              : i
           );
         }
         const newItem: CartItem = {
