@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
@@ -15,6 +15,8 @@ import {
   ArrowLeft,
   XCircle,
   AlertCircle,
+  PackageCheck,
+  RefreshCw,
 } from 'lucide-react';
 import { jsonRequest } from '@/lib/api';
 import { formatPrice, formatDate } from '@/lib/utils';
@@ -56,6 +58,7 @@ const STATUS_STEPS = [
   { key: 'PENDING', label: 'تم إنشاء الطلب', icon: Clock, color: 'amber' },
   { key: 'CONFIRMED', label: 'تم تأكيد الطلب', icon: CheckCircle, color: 'blue' },
   { key: 'PREPARING', label: 'جاري التجهيز', icon: Package, color: 'purple' },
+  { key: 'READY', label: 'جاهز للتسليم', icon: PackageCheck, color: 'blue' },
   { key: 'OUT_FOR_DELIVERY', label: 'في الطريق إليك', icon: Truck, color: 'cyan' },
   { key: 'DELIVERED', label: 'تم التوصيل', icon: CheckCircle, color: 'green' },
 ];
@@ -64,10 +67,13 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
   CONFIRMED: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
   PREPARING: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  READY: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
   OUT_FOR_DELIVERY: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
   DELIVERED: 'bg-green-500/10 text-green-500 border-green-500/20',
   CANCELLED: 'bg-red-500/10 text-red-500 border-red-500/20',
   REJECTED: 'bg-red-500/10 text-red-500 border-red-500/20',
+  REFUNDED: 'bg-red-500/10 text-red-500 border-red-500/20',
+  RETURNED: 'bg-red-500/10 text-red-500 border-red-500/20',
 };
 
 function getStatusIndex(status: string): number {
@@ -82,6 +88,33 @@ export default function TrackOrderPage() {
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const requestInFlight = useRef(false);
+
+  const refreshOrder = useCallback(async (background = false) => {
+    if (!orderId || requestInFlight.current) return;
+    requestInFlight.current = true;
+    if (!background) setRefreshing(true);
+    try {
+      // Public tracking endpoint — works for guests and returns a limited,
+      // customer-safe view. Never use the owner-only order endpoint here.
+      const data = await jsonRequest<OrderData>(`/orders/public/${orderId}`);
+      setOrder(data);
+      setError('');
+      setLastUpdated(new Date());
+    } catch (err: any) {
+      // A background refresh must not replace the last known order with an
+      // error screen; the customer can still use the last successful snapshot.
+      if (!background) setError(err?.message || 'فشل تحميل الطلب');
+    } finally {
+      requestInFlight.current = false;
+      if (!background) {
+        setRefreshing(false);
+        setLoading(false);
+      }
+    }
+  }, [orderId]);
 
   const fromParam = searchParams?.get('from');
   const shopSlugParam = searchParams?.get('shopSlug') || (order as any)?.shop?.slug;
@@ -96,20 +129,28 @@ export default function TrackOrderPage() {
 
   useEffect(() => {
     if (!orderId) return;
-    (async () => {
-      setLoading(true);
-      try {
-        // Public tracking endpoint — works for guests (no login) and shows a
-        // limited PII-free view. The authed /orders/:id stays owner-only.
-        const data = await jsonRequest<OrderData>(`/orders/public/${orderId}`);
-        setOrder(data);
-      } catch (err: any) {
-        setError(err?.message || 'فشل تحميل الطلب');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [orderId]);
+    setLoading(true);
+    void refreshOrder(false);
+  }, [orderId, refreshOrder]);
+
+  // Keep the customer's order status fresh without requiring a manual reload.
+  // Poll only while the page is visible, and stop permanently at a terminal state.
+  const hasOrder = Boolean(order);
+  const currentOrderStatus = String(order?.status || '').toUpperCase();
+  const isTerminalStatus = ['DELIVERED', 'CANCELLED', 'REJECTED', 'REFUNDED', 'RETURNED'].includes(currentOrderStatus);
+
+  useEffect(() => {
+    if (!hasOrder || isTerminalStatus) return;
+    const refreshWhenVisible = () => {
+      if (!document.hidden) void refreshOrder(true);
+    };
+    const interval = window.setInterval(refreshWhenVisible, 30_000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [hasOrder, isTerminalStatus, refreshOrder]);
 
   if (loading) {
     return (
@@ -144,7 +185,7 @@ export default function TrackOrderPage() {
 
   const currentStatus = String(order.status || 'PENDING').toUpperCase();
   const currentStep = getStatusIndex(currentStatus);
-  const isCancelled = currentStatus === 'CANCELLED' || currentStatus === 'REJECTED';
+  const isCancelled = ['CANCELLED', 'REJECTED', 'REFUNDED', 'RETURNED'].includes(currentStatus);
 
   return (
     <div className="max-w-3xl mx-auto px-3 sm:px-4 md:px-6 py-5 sm:py-8 md:py-12">
@@ -171,14 +212,40 @@ export default function TrackOrderPage() {
               {formatDate(order.createdAt)}
             </p>
           </div>
-          <span
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border ${
-              STATUS_COLORS[currentStatus] || STATUS_COLORS.PENDING
-            }`}
-          >
-            {isCancelled ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-            {isCancelled ? 'ملغي' : STATUS_STEPS[currentStep]?.label || currentStatus}
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border ${
+                STATUS_COLORS[currentStatus] || STATUS_COLORS.PENDING
+              }`}
+            >
+              {isCancelled ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+              {currentStatus === 'RETURNED'
+                ? 'تم إرجاع الطلب'
+                : currentStatus === 'REFUNDED'
+                  ? 'تم رد المبلغ'
+                  : isCancelled
+                    ? 'ملغي'
+                    : STATUS_STEPS[currentStep]?.label || currentStatus}
+            </span>
+            <div className="flex items-center gap-2">
+              {lastUpdated && (
+                <span className="text-[10px] sm:text-xs text-slate-400 font-semibold">
+                  آخر تحديث {lastUpdated.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              {!isTerminalStatus && (
+                <button
+                  type="button"
+                  onClick={() => void refreshOrder(false)}
+                  disabled={refreshing}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:border-brand-cyan hover:text-brand-cyan disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                  تحديث الحالة
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
