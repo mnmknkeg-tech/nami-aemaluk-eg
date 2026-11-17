@@ -74,9 +74,15 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000')
-      .trim()
-      .replace(/^\uFEFF/, '');
+    const raw = (process.env.NEXT_PUBLIC_BACKEND_URL || '').trim().replace(/^\uFEFF/, '');
+    // Some Vercel projects set NEXT_PUBLIC_BACKEND_URL without a scheme, which
+    // makes Next reject the route with «Invalid rewrite found». Normalize it so
+    // the destination always starts with https:// (or localhost for dev).
+    const backendUrl = raw
+      ? /^https?:\/\//i.test(raw)
+        ? raw
+        : `https://${raw}`
+      : 'http://localhost:4000';
     return [{ source: '/api/:path*', destination: `${backendUrl}/api/:path*` }];
   },
 };
