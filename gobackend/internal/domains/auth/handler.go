@@ -596,10 +596,11 @@ func (h *Handler) getRefreshToken(c *fiber.Ctx) string {
 	if t := c.Cookies(h.sessionCookieName(c)); t != "" {
 		return t
 	}
-	for _, s := range []string{"-DASHBOARD", "-BUSINESS", "-MARKETPLACE", "-MARKET", "-ADMIN"} {
-		if t := c.Cookies("ray_session" + s); t != "" {
-			return t
-		}
+	// A scoped app request must never borrow another app's refresh cookie or
+	// a shared legacy/body token. Doing so would silently refresh the wrong
+	// account when multiple products share the same API host.
+	if appScope(c) != "" {
+		return ""
 	}
 	if h.cfg.Name != "" {
 		if t := c.Cookies(h.cfg.Name); t != "" {
