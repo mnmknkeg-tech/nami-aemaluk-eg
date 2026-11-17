@@ -164,8 +164,7 @@ func (s *Service) SaveLayout(ctx context.Context, shopID, mapID string, req Save
 	}
 	// Return the full shape (sections + hotspots) so the editor gets fresh
 	// state immediately after saving.
-	resp := s.shapeMapWithRelations(ctx, *updated)
-	return &resp, nil
+	return s.shapeMapWithRelations(ctx, *updated), nil
 }
 
 // Analyze returns a deterministic first-pass layout for image maps.
