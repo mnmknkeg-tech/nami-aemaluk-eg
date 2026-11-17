@@ -380,6 +380,9 @@ func (c *Config) validate() error {
 	}
 
 	if c.App.Env == "production" {
+		if strings.TrimSpace(c.Auth.AdminBootstrapToken) == "" {
+			return errors.New("ADMIN_BOOTSTRAP_TOKEN is required in production")
+		}
 		if len(c.Auth.JWTSecret) < 32 {
 			return errors.New("JWT_SECRET must be at least 32 characters in production")
 		}
