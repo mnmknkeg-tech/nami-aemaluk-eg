@@ -13,8 +13,9 @@ import {
   Star,
   Store,
 } from 'lucide-react';
-import type { Shop, Product } from '@/lib/services';
+import type { Shop, Product, ShopImageMapData } from '@/lib/services';
 import { ShopProducts } from '@/components/ShopProducts';
+import { ShopImageMap } from '@/components/ShopImageMap';
 import { ShopCard } from '@/components/ShopCard';
 import {
   getMerchantExternalUrl,
@@ -40,6 +41,8 @@ import { ReviewsSection } from '@/components/ReviewsSection';
 interface UnifiedShopViewProps {
   shop: Shop;
   products: Product[];
+  /** خريطة المتجر النشطة — إن أعدّها التاجر من محرر الخريطة. */
+  imageMap?: ShopImageMapData | null;
   /** هل التاجر عنده موقع منشور؟ ساعتها بنضيف زر «الموقع الرسمي» يفتح الشكل الأصلي. */
   hasOfficialSite?: boolean;
   /** متاجر مقترحة تظهر آخر الصفحة — نفس النشاط أولاً. */
@@ -49,6 +52,7 @@ interface UnifiedShopViewProps {
 export function UnifiedShopView({
   shop,
   products,
+  imageMap,
   hasOfficialSite,
   suggestions,
 }: UnifiedShopViewProps) {
@@ -161,7 +165,9 @@ export function UnifiedShopView({
         {/* ─── كارت معلومات المتجر ─── */}
         <section className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/70 shadow-card p-4 sm:p-5 md:p-6">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <h2 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900">{shop.name}</h2>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900">
+              {shop.name}
+            </h2>
             {shop.isVerified && (
               <span className="w-5 h-5 rounded-full bg-brand-gradient flex items-center justify-center shrink-0">
                 <Star className="w-3 h-3 text-white fill-white" />
@@ -254,6 +260,9 @@ export function UnifiedShopView({
             )}
           </div>
         </section>
+
+        {/* ─── خريطة المتجر التفاعلية ─── */}
+        {imageMap && <ShopImageMap map={imageMap} />}
 
         {/* ─── المنتجات ─── */}
         <section className="bg-white rounded-3xl border border-slate-200/70 shadow-card p-5 md:p-6">

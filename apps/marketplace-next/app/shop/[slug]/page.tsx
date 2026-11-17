@@ -12,7 +12,6 @@ import {
   type Shop,
 } from '@/lib/services';
 import { ShopProducts } from '@/components/ShopProducts';
-import { ShopImageMap } from '@/components/ShopImageMap';
 import ShareButton from '@/components/ShareButton';
 import { FollowButton } from '@/components/FollowButton';
 import { ReviewsSection } from '@/components/ReviewsSection';
@@ -161,6 +160,7 @@ export default async function ShopPage({ params }: Props) {
       <UnifiedShopView
         shop={shop}
         products={products}
+        imageMap={imageMap}
         hasOfficialSite={Boolean(publishedWebsite?.published)}
         suggestions={suggestions}
       />
@@ -336,9 +336,6 @@ function LegacyShopLayout({
           </div>
         </div>
       </div>
-
-      {/* خريطة المتجر التفاعلية — إن أعدّها التاجر من محرر الخريطة */}
-      {imageMap && <ShopImageMap map={imageMap} />}
 
       {/* Products */}
       <div
