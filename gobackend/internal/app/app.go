@@ -443,7 +443,7 @@ func New(cfg *config.Config) (*App, error) {
                 // Initialize shop-image-map service
                 shopImageMapRepo := shopimagemap.NewRepository(pool)
                 shopImageMapSvc := shopimagemap.NewService(shopImageMapRepo)
-                shopImageMapHandler = shopimagemap.NewHandler(shopImageMapSvc, cfg)
+                shopImageMapHandler = shopimagemap.NewHandler(shopImageMapSvc, mediaSvc, cfg)
 
                 // Initialize portal service
                 portalRepo := portal.NewRepository(pool)
