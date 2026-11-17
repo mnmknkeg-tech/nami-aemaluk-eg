@@ -11,7 +11,7 @@ type Media struct {
 	OriginalKey        string            `json:"originalKey"`
 	OriginalURL        string            `json:"originalUrl"`
 	MimeType           string            `json:"mimeType"`
-	FileSize           *int64            `json:"fileSize" validate:"required"`
+	FileSize           *int64            `json:"fileSize,omitempty"`
 	Width              *int              `json:"width,omitempty"`
 	Height             *int              `json:"height,omitempty"`
 	ThumbKey           *string           `json:"thumbKey,omitempty"`
@@ -38,7 +38,7 @@ type PresignUploadRequest struct {
 	Filename    string  `json:"filename" validate:"required"`
 	ContentType string  `json:"contentType" validate:"required"`
 	Purpose     string  `json:"purpose,omitempty"`
-	FileSize    *int64  `json:"fileSize,omitempty"`
+	FileSize    *int64  `json:"fileSize" validate:"required"`
 	LinkedType  *string `json:"linkedType,omitempty"`
 	LinkedID    *string `json:"linkedId,omitempty"`
 }
