@@ -146,7 +146,7 @@ func TestPostgresOrderIntegration(t *testing.T) {
         require.NoError(t, err)
         require.Equal(t, userID, authenticated.UserID)
         require.Equal(t, "customer", authenticated.Source)
-        require.Equal(t, 125.0, authenticated.Total)
+        require.Equal(t, 155.0, authenticated.Total) // item subtotal 125 + default delivery fee 30
 
         beforeRollbackCount := countShopOrders(t, ctx, pool.Pool, shopID)
         rollbackOrder := &Order{
