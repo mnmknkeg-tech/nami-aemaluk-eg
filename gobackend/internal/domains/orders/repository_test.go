@@ -38,8 +38,19 @@ func TestOrderInsertColumnsAndArgumentsMatch(t *testing.T) {
 		t.Fatalf("order insert has %d arguments, want 23", len(args))
 	}
 	if args[13] != id || args[14] != order.ShopID || args[15] != source ||
-		args[16] != salesChannel || args[17] != &shiftID || args[18] != &key || args[19] != &requestHash || args[20] != nil || args[21] != nil || args[22] != nil {
+		args[16] != salesChannel || args[17] != &shiftID || args[18] != &key || args[19] != &requestHash {
 		t.Fatal("order insert arguments do not match user, shop, source, sales channel, shift, and idempotency columns")
+	}
+	// Nil pointers become non-nil interfaces when stored in []any, so inspect
+	// their concrete pointer types instead of comparing the interface to nil.
+	if value, ok := args[20].(*string); !ok || value != nil {
+		t.Fatal("customer name argument should be a nil *string")
+	}
+	if value, ok := args[21].(*float64); !ok || value != nil {
+		t.Fatal("delivery fee argument should be a nil *float64")
+	}
+	if value, ok := args[22].(*string); !ok || value != nil {
+		t.Fatal("delivery zone argument should be a nil *string")
 	}
 	if !strings.Contains(insertOrderQuery, "NULLIF($14, '')") {
 		t.Fatal("guest orders must store an empty user id as SQL NULL")
