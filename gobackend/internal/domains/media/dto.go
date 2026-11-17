@@ -11,7 +11,7 @@ type Media struct {
 	OriginalKey        string            `json:"originalKey"`
 	OriginalURL        string            `json:"originalUrl"`
 	MimeType           string            `json:"mimeType"`
-	FileSize           *int64            `json:"fileSize,omitempty"`
+	FileSize           *int64            `json:"fileSize" validate:"required"`
 	Width              *int              `json:"width,omitempty"`
 	Height             *int              `json:"height,omitempty"`
 	ThumbKey           *string           `json:"thumbKey,omitempty"`
