@@ -112,11 +112,85 @@ export default function CheckoutPage() {
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const [couponCode, setCouponCode] = useState('');
-  const [couponDiscount, setCouponDiscount] = useState(0);
-  const payableTotal = Math.max(0, totalPrice - couponDiscount);
+  const [couponDiscounts, setCouponDiscounts] = useState<Record<string, number>>({});
+  const [couponCodesByShop, setCouponCodesByShop] = useState<Record<string, string>>({});
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponMessage, setCouponMessage] = useState('');
   const shopGroups = isShopCheckout
     ? { [String((items[0] as any)?.shopId || merchantSlug)]: items }
     : marketCart.itemsByShop();
+  const couponDiscount = Object.values(couponDiscounts).reduce((sum, value) => sum + value, 0);
+  const payableTotal = Object.entries(shopGroups).reduce((sum, [shopId, shopItems]) => {
+    const subtotal = shopItems.reduce((shopSum: number, item: any) => shopSum + item.price * item.quantity, 0);
+    return sum + Math.max(0, subtotal - (couponDiscounts[shopId] || 0));
+  }, 0);
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim().toUpperCase();
+    if (!code || couponLoading) return;
+
+    setCouponLoading(true);
+    setCouponMessage('');
+    setCouponDiscounts({});
+    setCouponCodesByShop({});
+
+    const results = await Promise.all(
+      Object.entries(shopGroups).map(async ([shopId, shopItems]) => {
+        const subtotal = shopItems.reduce(
+          (sum: number, item: any) => sum + item.price * item.quantity,
+          0
+        );
+        try {
+          const result = await jsonRequest<any>('/coupons/validate', {
+            method: 'POST',
+            body: JSON.stringify({ shopId, code, subtotal }),
+          });
+          // Do not present unsupported shipping / buy-X-get-Y coupons as
+          // applied even while an older backend version is still deployed.
+          if (!['percentage', 'fixed'].includes(result?.coupon?.type)) {
+            throw new Error('نوع الكوبون غير مدعوم في Checkout حالياً');
+          }
+          return {
+            shopId,
+            shopName: shopItems[0]?.shopName || shopId,
+            discount: Math.max(0, Number(result?.discountAmount) || 0),
+            message: undefined,
+            valid: true,
+          };
+        } catch (err: any) {
+          return {
+            shopId,
+            shopName: shopItems[0]?.shopName || shopId,
+            discount: 0,
+            message: err?.message || 'الكوبون غير صالح لهذا المتجر',
+            valid: false,
+          };
+        }
+      })
+    );
+
+    const discounts: Record<string, number> = {};
+    const codes: Record<string, string> = {};
+    const accepted = results.filter((result) => result.valid);
+    accepted.forEach((result) => {
+      discounts[result.shopId] = result.discount;
+      codes[result.shopId] = code;
+    });
+    setCouponDiscounts(discounts);
+    setCouponCodesByShop(codes);
+
+    const rejected = results.filter((result) => !result.valid);
+    if (accepted.length > 0 && rejected.length === 0) {
+      setCouponMessage('تم تطبيق الكوبون على جميع المتاجر.');
+    } else if (accepted.length > 0) {
+      setCouponMessage(
+        `تم تطبيق الكوبون على ${accepted.length} متجر، ولم يُقبل في ${rejected.length} متجر.`
+      );
+    } else {
+      setCouponMessage(rejected[0]?.message || 'الكوبون غير صالح للمتاجر الموجودة في السلة.');
+    }
+    setCouponLoading(false);
+  };
+
   const clearCart = isShopCheckout
     ? () => {
         const shopId = String((items[0] as any)?.shopId || '');
@@ -283,7 +357,9 @@ export default function CheckoutPage() {
           },
           customerNote: notes.trim() || undefined,
           notes: notes.trim() || undefined,
-          couponCode: couponCode || undefined,
+          // Coupon validation is shop-scoped: only send the code to shops
+          // where the customer successfully validated it in this checkout.
+          couponCode: couponCodesByShop[shopId] || undefined,
           deliveryAddressManual: [city, district, address].filter(Boolean).join('، ') || undefined,
           deliveryLat: coords?.lat,
           deliveryLng: coords?.lng,
@@ -761,12 +837,53 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
+              {/* Coupon — validated separately for every shop in a multi-shop cart. */}
+              <div className="mb-4 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                <label htmlFor="market-coupon-code" className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">
+                  كود الخصم
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="market-coupon-code"
+                    value={couponCode}
+                    onChange={(event) => {
+                      setCouponCode(event.target.value);
+                      setCouponDiscounts({});
+                      setCouponCodesByShop({});
+                      setCouponMessage('');
+                    }}
+                    className="min-w-0 flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-semibold outline-none focus:border-brand-cyan"
+                    placeholder="اكتب كود الخصم"
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    disabled={couponLoading || !couponCode.trim()}
+                    className="px-3 py-2 rounded-lg bg-brand-cyan text-white text-xs font-bold disabled:opacity-50"
+                  >
+                    {couponLoading ? 'جاري التحقق...' : 'تطبيق'}
+                  </button>
+                </div>
+                {couponMessage && (
+                  <p className="mt-2 text-[11px] font-semibold text-slate-500" role="status">
+                    {couponMessage}
+                  </p>
+                )}
+              </div>
+
               {/* Totals */}
               <div className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex justify-between text-sm font-semibold text-slate-500">
                   <span>عدد المنتجات</span>
                   <span>{totalItems}</span>
                 </div>
+                {couponDiscount > 0 && (
+                  <div className="flex justify-between text-sm font-bold text-green-600">
+                    <span>خصم الكوبون</span>
+                    <span>-{formatPrice(couponDiscount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm font-semibold text-slate-500">
                   <span>الشحن</span>
                   <span className="text-green-500">يُحدد لاحقاً</span>
