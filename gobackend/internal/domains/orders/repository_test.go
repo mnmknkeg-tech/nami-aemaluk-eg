@@ -16,8 +16,8 @@ func TestOrderInsertColumnsAndArgumentsMatch(t *testing.T) {
 		t.Fatal("order insert has no ON CONFLICT clause")
 	}
 	values := insertOrderQuery[valuesStart : valuesStart+valuesEnd]
-	if countSQLExpressions(values) != 26 {
-		t.Fatalf("order insert has %d values, want 26", countSQLExpressions(values))
+	if countSQLExpressions(values) != 28 {
+		t.Fatalf("order insert has %d values, want 28", countSQLExpressions(values))
 	}
 
 	id, source, salesChannel, shiftID, key, requestHash := "user-1", "website", "website", "shift-1", "request-1", "hash-1"
@@ -34,11 +34,11 @@ func TestOrderInsertColumnsAndArgumentsMatch(t *testing.T) {
 		RequestHash:    &requestHash,
 	}
 	args := orderInsertArgs(order)
-	if len(args) != 21 {
-		t.Fatalf("order insert has %d arguments, want 21", len(args))
+	if len(args) != 23 {
+		t.Fatalf("order insert has %d arguments, want 23", len(args))
 	}
 	if args[13] != id || args[14] != order.ShopID || args[15] != source ||
-		args[16] != salesChannel || args[17] != &shiftID || args[18] != &key || args[19] != &requestHash {
+		args[16] != salesChannel || args[17] != &shiftID || args[18] != &key || args[19] != &requestHash || args[20] != nil || args[21] != nil || args[22] != nil {
 		t.Fatal("order insert arguments do not match user, shop, source, sales channel, shift, and idempotency columns")
 	}
 	if !strings.Contains(insertOrderQuery, "NULLIF($14, '')") {

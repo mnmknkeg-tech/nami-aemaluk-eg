@@ -35,6 +35,7 @@ export default function OrdersSettingsTab({ shop, onSaved }: OrdersSettingsTabPr
       enableStorePickup: Boolean(pd.enableStorePickup ?? true),
       deliveryFee: Number(shop?.deliveryFee ?? pd.deliveryFee ?? 30),
       freeDeliveryThreshold: Number(shop?.freeDeliveryThreshold ?? pd.freeDeliveryThreshold ?? 500),
+      deliveryZones: Array.isArray(pd.deliveryZones) ? pd.deliveryZones.map((z: any, i: number) => ({ id: String(z?.id || `zone-${i + 1}`), name: String(z?.name || ''), fee: Math.max(0, Number(z?.fee) || 0) })) : [],
       allowCancellation: Boolean(pd.allowOrderCancellation ?? true),
       cancellationWindowHours: Number(pd.cancellationWindowHours ?? 2),
       returnPolicyNotice: String(
@@ -69,6 +70,7 @@ export default function OrdersSettingsTab({ shop, onSaved }: OrdersSettingsTabPr
       form.enableStorePickup !== initial.enableStorePickup ||
       form.deliveryFee !== initial.deliveryFee ||
       form.freeDeliveryThreshold !== initial.freeDeliveryThreshold ||
+      JSON.stringify(form.deliveryZones) !== JSON.stringify(initial.deliveryZones) ||
       form.allowCancellation !== initial.allowCancellation ||
       form.cancellationWindowHours !== initial.cancellationWindowHours ||
       form.returnPolicyNotice !== initial.returnPolicyNotice ||
@@ -102,6 +104,7 @@ export default function OrdersSettingsTab({ shop, onSaved }: OrdersSettingsTabPr
               enableStorePickup: current.enableStorePickup,
               deliveryFee: current.deliveryFee,
               freeDeliveryThreshold: current.freeDeliveryThreshold,
+              deliveryZones: current.deliveryZones,
               allowOrderCancellation: current.allowCancellation,
               cancellationWindowHours: current.cancellationWindowHours,
               returnPolicyNotice: current.returnPolicyNotice,
@@ -259,6 +262,30 @@ export default function OrdersSettingsTab({ shop, onSaved }: OrdersSettingsTabPr
                   onChange={(e) => setForm({ ...form, deliveryFee: Number(e.target.value) || 0 })}
                   className="rounded-xl border-slate-200 text-xs font-bold"
                 />
+              </div>
+              <div className="md:col-span-2 space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <Label className="text-xs font-bold text-slate-800">مناطق التوصيل وأسعارها</Label>
+                    <p className="text-[10px] text-slate-400 mt-1">أضف المناطق التي توصل إليها وحدد سعر كل منطقة. عند إضافة مناطق، سيختار العميل من بينها أثناء الطلب.</p>
+                  </div>
+                  <Button type="button" variant="outline" className="px-3 py-2 text-xs" onClick={() => setForm((prev) => ({ ...prev, deliveryZones: [...prev.deliveryZones, { id: `zone-${Date.now()}-${prev.deliveryZones.length}`, name: '', fee: prev.deliveryFee }] }))}>
+                    إضافة منطقة
+                  </Button>
+                </div>
+                {form.deliveryZones.length === 0 ? (
+                  <p className="text-xs text-slate-500">لم تضف مناطق بعد؛ سيُستخدم سعر التوصيل الافتراضي أعلاه.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {form.deliveryZones.map((zone, index) => (
+                      <div key={zone.id} className="grid grid-cols-1 sm:grid-cols-[1fr_150px_auto] gap-2 items-center">
+                        <Input value={zone.name} onChange={(e) => setForm((prev) => ({ ...prev, deliveryZones: prev.deliveryZones.map((z, i) => i === index ? { ...z, name: e.target.value } : z) }))} placeholder="اسم المنطقة - مثال: وسط البلد" className="rounded-xl text-xs" />
+                        <Input type="number" min="0" value={zone.fee} onChange={(e) => setForm((prev) => ({ ...prev, deliveryZones: prev.deliveryZones.map((z, i) => i === index ? { ...z, fee: Math.max(0, Number(e.target.value) || 0) } : z) }))} placeholder="رسوم التوصيل" className="rounded-xl text-xs" />
+                        <Button type="button" variant="secondary" className="px-3 py-2 text-xs" onClick={() => setForm((prev) => ({ ...prev, deliveryZones: prev.deliveryZones.filter((_, i) => i !== index) }))}>حذف</Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-800">حد الشحن المجاني (ج.م)</Label>

@@ -2,6 +2,7 @@ package shops
 
 import (
         "strings"
+	"math"
 
         "github.com/Sayedtaha55/ray-eg/gobackend/internal/platform/errors"
 )
@@ -26,6 +27,52 @@ func defaultDashboardConfig(category ShopCategory, activityID string) map[string
                 cfg["activityId"] = activityID
         }
         return cfg
+}
+
+// validateDeliveryZones prevents malformed merchant configuration from
+// creating ambiguous or unsafe delivery prices at checkout.
+func validateDeliveryZones(value any) error {
+	design, ok := value.(map[string]any)
+	if !ok { return nil }
+	for _, key := range []string{"deliveryFee", "freeDeliveryThreshold"} {
+		if rawValue, exists := design[key]; exists && rawValue != nil {
+			var amount float64
+			switch n := rawValue.(type) { case float64: amount = n; case int: amount = float64(n); case int64: amount = float64(n); default: return errors.Validation("delivery_fee_invalid", "إعدادات رسوم التوصيل يجب أن تكون أرقامًا") }
+			if amount < 0 || math.IsNaN(amount) || math.IsInf(amount, 0) || amount > 1000000 { return errors.Validation("delivery_fee_invalid", "إعدادات رسوم التوصيل خارج النطاق المسموح") }
+		}
+	}
+	raw, exists := design["deliveryZones"]
+	if !exists { return nil }
+	zones, ok := raw.([]any)
+	if !ok || len(zones) > 100 {
+		return errors.Validation("delivery_zones_invalid", "قائمة مناطق التوصيل غير صحيحة")
+	}
+	seen := map[string]bool{}
+	seenNames := map[string]bool{}
+	for _, item := range zones {
+		zone, ok := item.(map[string]any)
+		if !ok { return errors.Validation("delivery_zone_invalid", "بيانات منطقة التوصيل غير صحيحة") }
+		id, _ := zone["id"].(string)
+		name, _ := zone["name"].(string)
+		id, name = strings.TrimSpace(id), strings.TrimSpace(name)
+		normalizedName := strings.ToLower(name)
+		if id == "" || len(id) > 100 || name == "" || len(name) > 100 || seen[id] || seenNames[normalizedName] {
+			return errors.Validation("delivery_zone_invalid", "اسم أو معرف منطقة التوصيل غير صالح أو مكرر")
+		}
+		seen[id] = true
+		seenNames[normalizedName] = true
+		var fee float64
+		switch n := zone["fee"].(type) {
+		case float64: fee = n
+		case int: fee = float64(n)
+		case int64: fee = float64(n)
+		default: return errors.Validation("delivery_fee_invalid", "رسوم منطقة التوصيل يجب أن تكون رقمًا")
+		}
+		if fee < 0 || math.IsNaN(fee) || math.IsInf(fee, 0) || fee > 1000000 {
+			return errors.Validation("delivery_fee_invalid", "رسوم منطقة التوصيل خارج النطاق المسموح")
+		}
+	}
+	return nil
 }
 
 // parseUpdateFields normalizes the raw update body into database column names.
@@ -161,6 +208,7 @@ func parseUpdateFields(body map[string]any) (map[string]any, error) {
                 }
         }
         if v, ok := body["pageDesign"]; ok {
+                if err := validateDeliveryZones(v); err != nil { return nil, err }
                 fields["page_design"] = v
         }
         if v, ok := body["builderConfig"]; ok {

@@ -49,6 +49,7 @@ interface OrderData {
   };
   courier?: { name: string; phone?: string };
   deliveryFee?: number;
+  deliveryZone?: string;
 }
 
 const STATUS_STEPS = [
@@ -298,10 +299,10 @@ export default function TrackOrderPage() {
 
         {/* Totals */}
         <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
-          {order.deliveryFee != null && (
+          {(order.deliveryFee != null || order.deliveryZone) && (
             <div className="flex justify-between text-sm font-semibold text-slate-500">
-              <span>رسوم التوصيل</span>
-              <span>{formatPrice(order.deliveryFee)}</span>
+              <span>رسوم التوصيل{order.deliveryZone && ` (${order.deliveryZone})`}</span>
+              <span>{formatPrice(order.deliveryFee ?? 0)}</span>
             </div>
           )}
           <div className="flex justify-between text-lg font-black">

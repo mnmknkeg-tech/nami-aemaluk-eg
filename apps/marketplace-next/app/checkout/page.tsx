@@ -119,11 +119,59 @@ export default function CheckoutPage() {
   const shopGroups = isShopCheckout
     ? { [String((items[0] as any)?.shopId || merchantSlug)]: items }
     : marketCart.itemsByShop();
+  const shopLookupKey = Object.entries(shopGroups).map(([id, group]) => `${id}:${(group as any[])[0]?.shopSlug || ''}`).join('|');
+  const [deliverySettings, setDeliverySettings] = useState<Record<string, { zones: Array<{ id: string; name: string; fee: number }>; defaultFee: number; freeThreshold: number }>>({});
+  const [selectedDeliveryZones, setSelectedDeliveryZones] = useState<Record<string, string>>({});
+  const [deliverySettingsLoading, setDeliverySettingsLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    setDeliverySettingsLoading(true);
+    const entries = shopLookupKey
+      ? shopLookupKey.split('|').map((entry) => {
+          const [shopId, slug = ''] = entry.split(':');
+          return { shopId, slug };
+        })
+      : [];
+    Promise.all(entries.map(async ({ shopId, slug }) => {
+      if (!slug) return [shopId, { zones: [], defaultFee: 30, freeThreshold: 500 }] as const;
+      try {
+        const response = await jsonRequest<any>(`/shops/${encodeURIComponent(slug)}`);
+        const shop = response?.shop || response?.data?.shop || response?.data || response;
+        const design = shop?.pageDesign || {};
+        const zones = Array.isArray(design.deliveryZones)
+          ? design.deliveryZones.filter((z: any) => z && z.id && z.name).map((z: any) => ({ id: String(z.id), name: String(z.name), fee: Math.max(0, Number(z.fee) || 0) }))
+          : [];
+        return [shopId, { zones, defaultFee: Math.max(0, Number(design.deliveryFee ?? 30) || 0), freeThreshold: Math.max(0, Number(design.freeDeliveryThreshold ?? 500) || 0) }] as const;
+      } catch {
+        return [shopId, { zones: [], defaultFee: 30, freeThreshold: 500 }] as const;
+      }
+    })).then((results) => {
+      if (!active) return;
+      const next = Object.fromEntries(results);
+      setDeliverySettings(next);
+      setSelectedDeliveryZones((prev) => {
+        const updated = { ...prev };
+        for (const [shopId, config] of Object.entries(next)) {
+          if (!updated[shopId] && config.zones.length) updated[shopId] = config.zones[0].id;
+        }
+        return updated;
+      });
+    }).finally(() => { if (active) setDeliverySettingsLoading(false); });
+    return () => { active = false; };
+  }, [shopLookupKey]);
+  const deliveryTotal = Object.entries(shopGroups).reduce((sum, [shopId, group]) => {
+    const config = deliverySettings[shopId];
+    if (!config) return sum;
+    const subtotal = (group as any[]).reduce((n, item) => n + Number(item.price || 0) * Number(item.quantity || 0), 0);
+    const zone = config.zones.find((z) => z.id === selectedDeliveryZones[shopId]);
+    const fee = config.zones.length ? (zone?.fee ?? 0) : config.defaultFee;
+    return sum + (config.freeThreshold > 0 && subtotal >= config.freeThreshold ? 0 : fee);
+  }, 0);
   const couponDiscount = Object.values(couponDiscounts).reduce((sum, value) => sum + value, 0);
   const payableTotal = Object.entries(shopGroups).reduce((sum, [shopId, shopItems]) => {
     const subtotal = shopItems.reduce((shopSum: number, item: any) => shopSum + item.price * item.quantity, 0);
     return sum + Math.max(0, subtotal - (couponDiscounts[shopId] || 0));
-  }, 0);
+  }, 0) + deliveryTotal;
   const handleApplyCoupon = async () => {
     const code = couponCode.trim().toUpperCase();
     if (!code || couponLoading) return;
@@ -304,6 +352,7 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return;
+    if (deliverySettingsLoading) { setError('جاري تحميل مناطق ورسوم التوصيل، حاول بعد لحظات.'); return; }
     setLoading(true);
     setError('');
 
@@ -334,6 +383,10 @@ export default function CheckoutPage() {
       const shopEntries = Object.entries(shopGroups);
 
       for (const [shopId, shopItems] of shopEntries) {
+        const shopDelivery = deliverySettings[shopId];
+        if (shopDelivery?.zones.length && !selectedDeliveryZones[shopId]) {
+          throw new Error(`اختر منطقة التوصيل لمتجر ${shopItems[0]?.shopName || ''}`);
+        }
         const payload = {
           shopId,
           items: shopItems.map((i: any) => ({
@@ -367,6 +420,7 @@ export default function CheckoutPage() {
           paymentMethod: paymentMethod === 'cod' ? 'COD' : 'CARD',
           source: orderSource,
           salesChannel: 'marketplace',
+          deliveryZoneId: shopDelivery?.zones.length ? selectedDeliveryZones[shopId] : undefined,
         };
         const requestKey = await getCheckoutIdempotencyKey(shopId, payload);
         const order = await jsonRequest<any>(endpoint, {
@@ -833,6 +887,19 @@ export default function CheckoutPage() {
                         </div>
                       ))}
                     </div>
+                    <div className="mt-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 space-y-2">
+                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300">منطقة التوصيل</label>
+                      {deliverySettingsLoading ? (
+                        <p className="text-xs text-slate-400">جاري تحميل مناطق التوصيل...</p>
+                      ) : deliverySettings[shopId]?.zones.length ? (
+                        <select value={selectedDeliveryZones[shopId] || ''} onChange={(e) => setSelectedDeliveryZones((prev) => ({ ...prev, [shopId]: e.target.value }))} className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-semibold">
+                          <option value="">اختر المنطقة</option>
+                          {deliverySettings[shopId].zones.map((zone) => <option key={zone.id} value={zone.id}>{zone.name} — {formatPrice(zone.fee)}</option>)}
+                        </select>
+                      ) : (
+                        <p className="text-xs text-slate-500">رسوم التوصيل الافتراضية: {formatPrice(deliverySettings[shopId]?.defaultFee || 0)}</p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -886,7 +953,7 @@ export default function CheckoutPage() {
                 )}
                 <div className="flex justify-between text-sm font-semibold text-slate-500">
                   <span>الشحن</span>
-                  <span className="text-green-500">يُحدد لاحقاً</span>
+                  <span>{formatPrice(deliveryTotal)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-black pt-2 border-t border-slate-100 dark:border-slate-800">
                   <span>الإجمالي</span>
