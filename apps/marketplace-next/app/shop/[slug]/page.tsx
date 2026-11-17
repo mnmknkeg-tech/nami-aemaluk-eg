@@ -174,12 +174,14 @@ function LegacyShopLayout({
   design,
   primaryColor,
   bgColor,
+  imageMap,
 }: {
   shop: Shop;
   products: Awaited<ReturnType<typeof getProducts>>;
   design: Record<string, any>;
   primaryColor: string;
   bgColor: string;
+  imageMap?: Awaited<ReturnType<typeof getShopImageMap>>;
 }) {
   const headerBg = design.headerBackgroundColor || '#FFFFFF';
   const headerText = design.headerTextColor || '#0F172A';
