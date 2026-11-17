@@ -166,6 +166,9 @@ func New(cfg *config.Config) (*App, error) {
         // Rate limiter and idempotency store need Redis but degrade to memory.
         rateLimiter, err := middleware.NewRateLimiter(cfg, redisClient.UniversalClient)
         if err != nil {
+                if cfg.IsProduction() {
+                        return nil, fmt.Errorf("initialize production rate limiter: %w", err)
+                }
                 log.Warn("failed to init rate limiter", zap.Error(err))
         }
 
