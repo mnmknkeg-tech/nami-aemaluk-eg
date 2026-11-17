@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { apiRequest } from '@/lib/auth';
+import { fetchAdminOrders } from '@/lib/api/orders';
 import { useToast } from '@/components/settings/ToastProvider';
 import AdminModal from '@/components/admin/AdminModal';
 import {
@@ -45,13 +46,19 @@ import {
   formatEGP,
 } from '@/components/admin/ui';
 
-type TabKey = 'couriers' | 'pending' | 'create';
+type TabKey = 'orders' | 'couriers' | 'pending' | 'create';
 
 function AdminDeliveryContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
 
-  const [tab, setTab] = useState<TabKey>('couriers');
+  const [tab, setTab] = useState<TabKey>('orders');
+  const [marketOrders, setMarketOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [loadingMoreOrders, setLoadingMoreOrders] = useState(false);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [hasMoreOrders, setHasMoreOrders] = useState(false);
+  const [orderSearch, setOrderSearch] = useState('');
   const [couriers, setCouriers] = useState<any[]>([]);
   const [pendingCouriers, setPendingCouriers] = useState<any[]>([]);
   const [loadingCouriers, setLoadingCouriers] = useState(true);
@@ -69,6 +76,77 @@ function AdminDeliveryContent() {
   const [createPhone, setCreatePhone] = useState('');
   const [createPassword, setCreatePassword] = useState('');
   const [creating, setCreating] = useState(false);
+
+  const loadMarketplaceOrders = async (silent = false) => {
+    if (!silent) setLoadingOrders(true);
+    try {
+      const result = await fetchAdminOrders({ limit: 50, page: 1 });
+      const marketplace = (Array.isArray(result.orders) ? result.orders : []).filter((order: any) => {
+        const channel = String(order?.salesChannel || order?.sales_channel || '').toLowerCase();
+        const source = String(order?.source || '').toLowerCase();
+        return channel === 'marketplace' || source === 'marketplace';
+      });
+      setMarketOrders(marketplace);
+      setOrdersPage(1);
+      setHasMoreOrders(Boolean(result.meta?.hasMore));
+    } catch (e: any) {
+      setMarketOrders([]);
+      if (!silent) {
+        toast({ title: String(e?.message || 'فشل تحميل طلبات الماركت'), variant: 'destructive' });
+      }
+    } finally {
+      if (!silent) setLoadingOrders(false);
+    }
+  };
+
+  const loadMoreMarketplaceOrders = async () => {
+    if (loadingMoreOrders || !hasMoreOrders) return;
+    setLoadingMoreOrders(true);
+    try {
+      const nextPage = ordersPage + 1;
+      const result = await fetchAdminOrders({ limit: 50, page: nextPage });
+      const marketplace = (Array.isArray(result.orders) ? result.orders : []).filter((order: any) => {
+        const channel = String(order?.salesChannel || order?.sales_channel || '').toLowerCase();
+        const source = String(order?.source || '').toLowerCase();
+        return channel === 'marketplace' || source === 'marketplace';
+      });
+      setMarketOrders((previous) => {
+        const seen = new Set(previous.map((order) => String(order.id)));
+        return [...previous, ...marketplace.filter((order: any) => !seen.has(String(order.id)))];
+      });
+      setOrdersPage(nextPage);
+      setHasMoreOrders(Boolean(result.meta?.hasMore));
+    } catch (e: any) {
+      toast({ title: String(e?.message || 'فشل تحميل المزيد من الطلبات'), variant: 'destructive' });
+    } finally {
+      setLoadingMoreOrders(false);
+    }
+  };
+
+  const assignMarketplaceOrder = async (order: any, courierId: string) => {
+    const activeCouriers = couriers.filter((courier) => courier?.isActive);
+    if (!activeCouriers.length) {
+      toast({ title: 'لا يوجد مندوب نشط. فعّل مندوباً أو أنشئ مندوباً أولاً.', variant: 'destructive' });
+      return;
+    }
+    if (!activeCouriers.some((courier) => String(courier.id) === String(courierId))) {
+      toast({ title: 'اختار مندوباً نشطاً أولاً', variant: 'destructive' });
+      return;
+    }
+    try {
+      setActionId(String(order.id));
+      await apiRequest(`/orders/${order.id}/assign-courier`, {
+        method: 'PATCH',
+        body: JSON.stringify({ courierId }),
+      });
+      toast({ title: 'تم ربط الطلب بالمندوب', variant: 'success' });
+      await loadMarketplaceOrders(true);
+    } catch (e: any) {
+      toast({ title: String(e?.message || 'فشل تعيين المندوب'), variant: 'destructive' });
+    } finally {
+      setActionId('');
+    }
+  };
 
   const loadCouriers = async (silent = false) => {
     if (!silent) setLoadingCouriers(true);
@@ -95,6 +173,7 @@ function AdminDeliveryContent() {
   };
 
   useEffect(() => {
+    loadMarketplaceOrders();
     loadCouriers();
     loadPendingCouriers();
   }, []);
@@ -103,8 +182,28 @@ function AdminDeliveryContent() {
     const t = String(searchParams?.get('tab') || '')
       .trim()
       .toLowerCase();
-    if (t === 'couriers' || t === 'pending' || t === 'create') setTab(t as TabKey);
+    if (t === 'orders' || t === 'couriers' || t === 'pending' || t === 'create') setTab(t as TabKey);
   }, [searchParams]);
+
+  const filteredMarketplaceOrders = useMemo(() => {
+    const q = orderSearch.trim().toLowerCase();
+    if (!q) return marketOrders;
+    return marketOrders.filter((order) =>
+      [
+        order?.id,
+        order?.customerName,
+        order?.customerPhone,
+        order?.customer?.name,
+        order?.customer?.phone,
+        order?.shop?.name,
+        order?.shopName,
+        order?.deliveryAddressManual,
+      ]
+        .map((value) => String(value || '').toLowerCase())
+        .join(' ')
+        .includes(q)
+    );
+  }, [marketOrders, orderSearch]);
 
   const filteredCouriers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -231,6 +330,7 @@ function AdminDeliveryContent() {
         actions={
           <TabBar
             tabs={[
+              { id: 'orders', label: 'طلبات الماركت', icon: PackageCheck, badge: marketOrders.length },
               { id: 'couriers', label: 'المندوبون', icon: Users },
               {
                 id: 'pending',
@@ -245,6 +345,163 @@ function AdminDeliveryContent() {
           />
         }
       />
+
+      {tab === 'orders' && (
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+            <SearchInput
+              value={orderSearch}
+              onChange={setOrderSearch}
+              placeholder="ابحث برقم الطلب أو العميل أو الهاتف أو العنوان..."
+            />
+            <div className="flex gap-2 flex-wrap">
+              <StatChip label="طلبات الماركت" value={marketOrders.length} />
+              <StatChip
+                label="بدون مندوب"
+                value={marketOrders.filter((order) => !order?.courierId && !order?.courier?.id).length}
+                tone="amber"
+              />
+              <StatChip
+                label="تم التوصيل"
+                value={marketOrders.filter((order) => String(order?.status).toUpperCase() === 'DELIVERED').length}
+                tone="green"
+              />
+              <button
+                type="button"
+                onClick={() => loadMarketplaceOrders()}
+                disabled={loadingOrders}
+                className={BTN_SOFT}
+              >
+                {loadingOrders ? <Spinner /> : 'تحديث الطلبات'}
+              </button>
+            </div>
+          </div>
+
+          <Panel>
+            {loadingOrders ? (
+              <LoadingBlock />
+            ) : filteredMarketplaceOrders.length === 0 ? (
+              <EmptyState icon={PackageCheck} title="لا توجد طلبات ماركت حالياً" />
+            ) : (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 p-4">
+                {filteredMarketplaceOrders.map((order) => {
+                  const status = String(order?.status || 'PENDING').toUpperCase();
+                  const statusTone =
+                    status === 'DELIVERED' ? 'green' :
+                    status === 'CANCELLED' ? 'red' :
+                    status === 'READY' ? 'sky' : 'amber';
+                  const customerName = order?.customerName || order?.customer?.name || 'عميل الماركت';
+                  const customerPhone = order?.customerPhone || order?.customer?.phone || '';
+                  const address = order?.deliveryAddressManual || order?.deliveryAddress || order?.shippingAddress || '';
+                  const lat = Number(order?.deliveryLat ?? order?.delivery_lat);
+                  const lng = Number(order?.deliveryLng ?? order?.delivery_lng);
+                  const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0);
+                  const mapHref = hasCoordinates
+                    ? `https://www.google.com/maps?q=${lat},${lng}`
+                    : address
+                      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+                      : '';
+                  const courier = order?.courier;
+                  return (
+                    <article key={String(order.id)} className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 text-right">
+                          <div className="font-black text-slate-900">طلب #{String(order.id || '').slice(0, 8).toUpperCase()}</div>
+                          <div className="text-xs text-slate-500 font-bold mt-1">
+                            {order?.shop?.name || order?.shopName || 'متجر'} · {fmtDate(order?.createdAt)}
+                          </div>
+                        </div>
+                        <Badge tone={statusTone as any}>{status}</Badge>
+                      </div>
+
+                      <div className="rounded-xl bg-slate-50 p-3 text-right space-y-1">
+                        <div className="font-black text-slate-800">{customerName}</div>
+                        {customerPhone ? (
+                          <a href={`tel:${customerPhone}`} dir="ltr" className="inline-flex text-cyan-700 font-bold text-sm hover:underline">
+                            {customerPhone}
+                          </a>
+                        ) : (
+                          <div className="text-xs text-slate-400">لا يوجد رقم هاتف مسجل</div>
+                        )}
+                        <div className="text-sm text-slate-600 leading-6">{address || 'عنوان التوصيل غير متوفر'}</div>
+                        {order?.deliveryNote && <div className="text-xs text-slate-500">ملاحظة التوصيل: {order.deliveryNote}</div>}
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                        <div className="font-black text-cyan-700">{formatEGP(Number(order?.total || 0))}</div>
+                        <div className="text-slate-500 font-bold">
+                          {courier?.name ? `المندوب: ${courier.name}` : 'لم يتم تعيين مندوب'}
+                          {courier?.phone ? ` · ${courier.phone}` : ''}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 justify-end border-t border-slate-100 pt-3">
+                        {mapHref && (
+                          <a
+                            href={mapHref}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={BTN_SOFT}
+                          >
+                            <MapPin size={15} /> فتح موقع العميل
+                          </a>
+                        )}
+                        {customerPhone && (
+                          <a href={`tel:${customerPhone}`} className={BTN_SOFT}>
+                            <Phone size={15} /> اتصال بالعميل
+                          </a>
+                        )}
+                        <select
+                          aria-label="اختيار مندوب للطلب"
+                          defaultValue={String(order?.courier?.id || order?.courierId || '')}
+                          id={`courier-${order.id}`}
+                          className="min-w-[150px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700"
+                          disabled={actionId === String(order.id)}
+                        >
+                          <option value="">اختر المندوب</option>
+                          {couriers.filter((item) => item?.isActive).map((item) => (
+                            <option key={String(item.id)} value={String(item.id)}>
+                              {item.name || item.phone || item.email || 'مندوب'}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          disabled={actionId === String(order.id) || !couriers.some((item) => item?.isActive)}
+                          onClick={() => {
+                            const select = document.getElementById(`courier-${order.id}`) as HTMLSelectElement | null;
+                            if (select?.value) assignMarketplaceOrder(order, select.value);
+                            else toast({ title: 'اختار مندوباً أولاً', variant: 'destructive' });
+                          }}
+                          className={BTN_PRIMARY}
+                        >
+                          {actionId === String(order.id) ? <Spinner /> : <Truck size={15} />}
+                          {courier?.name ? 'حفظ التعيين' : 'تعيين مندوب'}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </Panel>
+          {hasMoreOrders && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={loadMoreMarketplaceOrders}
+                disabled={loadingMoreOrders}
+                className={BTN_SOFT + ' px-6'}
+              >
+                {loadingMoreOrders ? <Spinner /> : 'تحميل طلبات أقدم'}
+              </button>
+            </div>
+          )}
+          <p className="text-xs text-slate-500 font-bold text-right">
+            يتم تحميل الطلبات على دفعات من 50 طلباً حتى تقدر توصل لكل طلبات الماركت بدون تحميل السجل كله مرة واحدة. بعد تعيين المندوب سيظهر الطلب في قائمة طلباته الحالية؛ ويمكنك التواصل معه ومع العميل يدوياً من هنا.
+          </p>
+        </div>
+      )}
 
       {tab === 'couriers' && (
         <div className="space-y-4">
@@ -692,6 +949,11 @@ function AdminDeliveryContent() {
                             <div className="text-cyan-700 font-black">
                               {formatEGP(order?.total)}
                             </div>
+                            {(order?.deliveryFee != null || order?.deliveryZone) && (
+                              <div className="text-[11px] text-slate-500 font-bold mt-1">
+                                التوصيل{order?.deliveryZone ? ` · ${order.deliveryZone}` : ''}: {formatEGP(order?.deliveryFee || 0)}
+                              </div>
+                            )}
                             <div className="text-[11px] text-slate-500 font-bold mt-1">
                               {String(order?.status || '-').toUpperCase()}
                             </div>
