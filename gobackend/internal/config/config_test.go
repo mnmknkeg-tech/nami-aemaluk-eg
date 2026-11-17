@@ -163,3 +163,17 @@ func TestLoadAcceptsSupabaseQueryExecModes(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadProductionRequiresAdminBootstrapToken(t *testing.T) {
+	_ = os.Setenv("APP_ENV", "production")
+	_ = os.Setenv("DATABASE_URL", "postgres://localhost/test")
+	_ = os.Setenv("FRONTEND_APP_URL", "https://dashboard.example.com")
+	_ = os.Setenv("JWT_SECRET", "production-jwt-secret-with-at-least-32-characters")
+	_ = os.Unsetenv("ADMIN_BOOTSTRAP_TOKEN")
+	defer os.Clearenv()
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected production config to reject a missing ADMIN_BOOTSTRAP_TOKEN")
+	}
+}
