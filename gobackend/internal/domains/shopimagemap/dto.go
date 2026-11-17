@@ -30,30 +30,38 @@ type ImageSection struct {
 
 // ImageHotspot represents a clickable hotspot on a map.
 type ImageHotspot struct {
-	ID        string  `json:"id"`
-	MapID     string  `json:"mapId"`
-	SectionID *string `json:"sectionId,omitempty"`
-	ProductID *string `json:"productId,omitempty"`
-	Label     *string `json:"label,omitempty"`
-	X         float64 `json:"x"`
-	Y         float64 `json:"y"`
-	Width     float64 `json:"width"`
-	Height    float64 `json:"height"`
-	Shape     string  `json:"shape"`
-	Metadata  []byte  `json:"-"`
+	ID            string   `json:"id"`
+	MapID         string   `json:"mapId"`
+	SectionID     *string  `json:"sectionId,omitempty"`
+	ProductID     *string  `json:"productId,omitempty"`
+	Label         *string  `json:"label,omitempty"`
+	X             float64  `json:"x"`
+	Y             float64  `json:"y"`
+	Width         float64  `json:"width"`
+	Height        float64  `json:"height"`
+	Shape         string   `json:"shape"`
+	PriceOverride *float64 `json:"priceOverride,omitempty"`
+	SortOrder     int      `json:"sortOrder,omitempty"`
+	Metadata      []byte   `json:"-"`
 }
 
 // CreateMapRequest is the payload for creating an image map.
 type CreateMapRequest struct {
 	Name     string         `json:"name,omitempty"`
+	Title    string         `json:"title,omitempty"` // the dashboard sends title
 	ImageURL string         `json:"imageUrl,omitempty"`
+	IsActive bool           `json:"isActive,omitempty"`
 	Layout   map[string]any `json:"layout,omitempty"`
 }
 
-// SaveLayoutRequest is the payload for saving a map layout.
+// SaveLayoutRequest is the payload for saving a map layout. The dashboard
+// sends title/sections/hotspots inline; Layout stays for raw callers.
 type SaveLayoutRequest struct {
-	ImageURL string         `json:"imageUrl,omitempty"`
-	Layout   map[string]any `json:"layout"`
+	ImageURL string           `json:"imageUrl,omitempty"`
+	Title    string           `json:"title,omitempty"`
+	Layout   map[string]any   `json:"layout,omitempty"`
+	Sections []map[string]any `json:"sections,omitempty"`
+	Hotspots []map[string]any `json:"hotspots,omitempty"`
 }
 
 // AnalyzeRequest is the payload for layout analysis.

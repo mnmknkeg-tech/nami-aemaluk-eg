@@ -57,6 +57,9 @@ func (s *Service) Create(ctx context.Context, shopID string, req CreateMapReques
 	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
+		name = strings.TrimSpace(req.Title)
+	}
+	if name == "" {
 		name = "Main Map"
 	}
 
@@ -78,6 +81,12 @@ func (s *Service) Create(ctx context.Context, shopID string, req CreateMapReques
 	created, err := s.repo.Create(ctx, m)
 	if err != nil {
 		return nil, err
+	}
+	if req.IsActive {
+		if err := s.repo.Activate(ctx, shopID, created.ID); err != nil {
+			return nil, err
+		}
+		created.IsActive = true
 	}
 	resp := s.shapeMap(*created)
 	return &resp, nil
@@ -125,7 +134,23 @@ func (s *Service) SaveLayout(ctx context.Context, shopID, mapID string, req Save
 		imageURLPtr = &url
 	}
 
-	layoutBytes, _ := json.Marshal(req.Layout)
+	layout := req.Layout
+	if layout == nil {
+		// The dashboard PATCHes title/sections/hotspots inline with the save
+		// request; fold them into the layout document so hotspots survive
+		// reloads (the layout JSON is the editor's source of truth).
+		layout = map[string]any{}
+		if req.Title != "" {
+			layout["title"] = req.Title
+		}
+		if req.Sections != nil {
+			layout["sections"] = req.Sections
+		}
+		if req.Hotspots != nil {
+			layout["hotspots"] = req.Hotspots
+		}
+	}
+	layoutBytes, _ := json.Marshal(layout)
 	if err := s.repo.SaveLayout(ctx, mapID, imageURLPtr, layoutBytes); err != nil {
 		return nil, err
 	}
@@ -137,7 +162,9 @@ func (s *Service) SaveLayout(ctx context.Context, shopID, mapID string, req Save
 	if updated == nil {
 		return nil, errors.NotFound("image_map", mapID)
 	}
-	resp := s.shapeMap(*updated)
+	// Return the full shape (sections + hotspots) so the editor gets fresh
+	// state immediately after saving.
+	resp := s.shapeMapWithRelations(ctx, *updated)
 	return &resp, nil
 }
 
@@ -239,10 +266,14 @@ func (s *Service) shapeMapWithRelations(ctx context.Context, m ImageMap) *ImageM
 	sections, _ := s.repo.ListSections(ctx, m.ID)
 	if sections != nil {
 		resp.Sections = sections
+	} else if fromLayout := sectionsFromLayout(m.ID, m.Layout); len(fromLayout) > 0 {
+		resp.Sections = fromLayout
 	}
 	hotspots, _ := s.repo.ListHotspots(ctx, m.ID)
 	if hotspots != nil {
 		resp.Hotspots = hotspots
+	} else if fromLayout := hotspotsFromLayout(m.ID, m.Layout); len(fromLayout) > 0 {
+		resp.Hotspots = fromLayout
 	}
 	return &resp
 }
