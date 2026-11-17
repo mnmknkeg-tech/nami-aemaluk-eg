@@ -1,0 +1,86 @@
+# الستاك كامل على VPS واحد (Oracle Free / أي VPS)
+# التشغيل:  cp .env.example .env  → عدّل القيم →  docker compose up -d --build
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nami
+      POSTGRES_USER: nami
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?املأ POSTGRES_PASSWORD في .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nami -d nami"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+
+  api:
+    build:
+      context: ..
+      dockerfile: gobackend/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "4000"
+      HOST: "0.0.0.0"
+      APP_ENV: production
+      DATABASE_URL: postgres://nami:${POSTGRES_PASSWORD:?املأ POSTGRES_PASSWORD في .env}@postgres:5432/nami?sslmode=disable
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      DB_MIGRATE_ON_BOOT: "true"
+      DB_MIGRATIONS_PATH: /app/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    expose:
+      - "4000"
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgres://nami:${POSTGRES_PASSWORD:?املأ POSTGRES_PASSWORD في .env}@postgres:5432/nami?sslmode=disable
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?املأ API_DOMAIN في .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  redisdata:
+  caddydata:
+  caddyconfig:

@@ -1,0 +1,8 @@
+# Caddy — دومين الـ API + شهادة HTTPS تلقائية من Let's Encrypt
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy api:4000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+	}
+}
