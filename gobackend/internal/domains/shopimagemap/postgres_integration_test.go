@@ -21,7 +21,8 @@ import (
 // end to end: create → save layout with inline hotspots → reload → customer
 // fetch. It pins the schema alignment between the repository and the
 // migrations (000101 added name/layout and the sections/hotspots columns the
-// repository reads) and the layout-JSON hotspot round trip.
+// repository reads; 000102 added the id defaults the INSERT relies on) and
+// the layout-JSON hotspot round trip.
 func TestShopImageMapPostgresIntegration(t *testing.T) {
 	dsn := os.Getenv("ORDERS_TEST_DATABASE_URL")
 	if dsn == "" {
