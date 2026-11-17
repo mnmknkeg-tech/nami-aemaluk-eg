@@ -6,7 +6,6 @@ import PageBack from '@/components/PageBack';
 import { Plus, Info, Package, Loader2, Upload, Download, X } from 'lucide-react';
 import { apiRequest } from '@/lib/auth';
 import { useShop } from '@/hooks/useShop';
-import { useInstalledApps } from '@/hooks/useInstalledApps';
 import { useRouter } from 'next/navigation';
 import { PRODUCT_TYPES } from '@/config/productTypes';
 import ImageMapEditorModal from '@/components/apps/image-editor/ImageMapEditor';
@@ -39,7 +38,6 @@ import VisibilityMenuPortal from './_products/VisibilityMenu';
 
 function ProductsPageContent() {
   const { shop } = useShop();
-  const { isInstalled } = useInstalledApps();
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,10 +67,11 @@ function ProductsPageContent() {
   const shopCategory = shop?.category?.toUpperCase() || 'RETAIL';
   const isRestaurant = shopCategory === 'RESTAURANT';
   const isRetail = shopCategory === 'RETAIL' || !isRestaurant;
-  // Image map editor is available for every non-restaurant shop (mirrors legacy dashboard).
-  const canUseImageMapEditor = !isRestaurant && Boolean(String(shop?.id || '').trim());
-  // تاب «محرر الصور» يظهر في شريط قسم المنتجات فقط بعد تثبيت التطبيق من سوق التطبيقات.
-  const imageEditorInstalled = canUseImageMapEditor && isInstalled('image-editor');
+  // Image map editor is available for every shop (restaurants included) —
+  // product photo editing applies to all categories.
+  const canUseImageMapEditor = Boolean(String(shop?.id || '').trim());
+  // تاب «محرر الصور» يظهر دائمًا في شريط قسم المنتجات لأي متجر مسجّل.
+  const imageEditorInstalled = canUseImageMapEditor;
   const productSectionTabs = useMemo(
     () =>
       imageEditorInstalled
@@ -368,15 +367,6 @@ function ProductsPageContent() {
           <div className="flex items-center gap-2">
             {activeTab === 'products' && (
               <>
-                {isRestaurant && (
-                  <button
-                    onClick={() => setShowAddonsModal(true)}
-                    className="h-10 px-4 rounded-full border border-slate-200 bg-white text-[12px] font-bold text-slate-700 hover:bg-slate-50 hidden sm:flex items-center gap-1.5"
-                  >
-                    <Package size={14} />
-                    الإضافات
-                  </button>
-                )}
                 <label className="h-10 px-4 rounded-full border border-slate-200 bg-white text-[12px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer">
                   {importParsing ? (
                     <Loader2 size={14} className="animate-spin" />
