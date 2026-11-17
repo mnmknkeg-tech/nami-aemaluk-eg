@@ -171,8 +171,6 @@ const (
 // authenticated by RequireAuth or OptionalAuth.
 const AuthSourceAnonymous = "anonymous"
 
-var fallbackScopes = []string{"-DASHBOARD", "-BUSINESS", "-MARKETPLACE", "-MARKET", "-ADMIN"}
-
 func extractToken(c *fiber.Ctx) (string, string) {
 	auth := c.Get("Authorization")
 	if strings.HasPrefix(auth, "Bearer ") {
@@ -180,24 +178,21 @@ func extractToken(c *fiber.Ctx) (string, string) {
 	}
 
 	// Cookies are namespaced per client app (ray_access-DASHBOARD, etc.) so
-	// each frontend keeps an independent login. Only access cookies are read
-	// here; ray_session is a refresh-only credential for /auth/refresh.
+	// each frontend keeps an independent login. When a scope is supplied, only
+	// that app's cookie may authenticate the request; never fall back to a
+	// different app's cookie or a shared legacy cookie, which would silently
+	// cross app/session boundaries. Unscoped legacy API clients may use only
+	// the generic ray_access cookie.
 	scope := scopedCookieSuffix(c.Get("X-App-Scope"))
 	if scope != "" {
 		if cookie := c.Cookies("ray_access" + scope); cookie != "" {
 			return cookie, tokenSourceCookie
 		}
+		return "", ""
 	}
 	if cookie := c.Cookies("ray_access"); cookie != "" {
 		return cookie, tokenSourceCookie
 	}
-	for _, s := range fallbackScopes {
-		if cookie := c.Cookies("ray_access" + s); cookie != "" {
-			return cookie, tokenSourceCookie
-		}
-	}
-
-
 	return "", ""
 }
 

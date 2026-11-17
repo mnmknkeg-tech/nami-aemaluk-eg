@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -31,6 +32,9 @@ type RateLimiter struct {
 // NewRateLimiter creates the global and auth limiters backed by Redis when
 // available, otherwise in-memory.
 func NewRateLimiter(cfg *config.Config, client redis.UniversalClient) (*RateLimiter, error) {
+	if err := validateRateLimitStore(cfg, client); err != nil {
+		return nil, err
+	}
 	globalStore, err := newStore(client, "rl_global", limiter.Rate{
 		Period: cfg.RateLimit.GlobalWindow,
 		Limit:  int64(cfg.RateLimit.GlobalMax),
@@ -86,6 +90,22 @@ func NewRateLimiter(cfg *config.Config, client redis.UniversalClient) (*RateLimi
 		}),
 		failClosed: cfg.IsProduction(),
 	}, nil
+}
+
+// validateRateLimitStore prevents production from silently falling back to a
+// process-local limiter. A local memory store is acceptable for development,
+// but it is bypassable across replicas and restarts in production.
+func validateRateLimitStore(cfg *config.Config, client redis.UniversalClient) error {
+	if cfg == nil || !cfg.IsProduction() {
+		return nil
+	}
+	if client == nil {
+		return fmt.Errorf("production rate limiting requires a shared Redis client")
+	}
+	if _, ok := client.(*redis.Client); !ok {
+		return fmt.Errorf("production rate limiting requires a standalone Redis client; in-memory fallback is disabled")
+	}
+	return nil
 }
 
 // Global middleware applies the global rate limit to every request.
@@ -156,11 +176,11 @@ func newStore(client redis.UniversalClient, prefix string, _ limiter.Rate) (limi
 		return memory.NewStore(), nil
 	}
 
-	// The ulule redis store expects a concrete *redis.Client. If Redis is
-	// running in cluster mode we fall back to the in-memory store for now.
+	// The ulule Redis store expects a concrete *redis.Client. Cluster clients
+	// may use memory only in non-production; production is rejected above.
 	c, ok := client.(*redis.Client)
 	if !ok {
-		zap.L().Warn("redis cluster not supported by ulule limiter, falling back to memory store", zap.String("prefix", prefix))
+		zap.L().Warn("redis cluster not supported by ulule limiter; using memory store only outside production", zap.String("prefix", prefix))
 		return memory.NewStore(), nil
 	}
 

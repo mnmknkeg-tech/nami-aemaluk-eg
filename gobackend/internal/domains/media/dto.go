@@ -38,7 +38,7 @@ type PresignUploadRequest struct {
 	Filename    string  `json:"filename" validate:"required"`
 	ContentType string  `json:"contentType" validate:"required"`
 	Purpose     string  `json:"purpose,omitempty"`
-	FileSize    *int64  `json:"fileSize,omitempty"`
+	FileSize    *int64  `json:"fileSize" validate:"required"`
 	LinkedType  *string `json:"linkedType,omitempty"`
 	LinkedID    *string `json:"linkedId,omitempty"`
 }

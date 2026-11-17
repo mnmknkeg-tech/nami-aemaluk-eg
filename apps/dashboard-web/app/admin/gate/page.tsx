@@ -151,7 +151,7 @@ export default function AdminGatePage() {
   // Bootstrap
   const [bootstrapOpen, setBootstrapOpen] = useState(false);
   const [bootstrapToken, setBootstrapToken] = useState('');
-  const [bootstrapEmail, setBootstrapEmail] = useState('admin@mnmknk.com');
+  const [bootstrapEmail, setBootstrapEmail] = useState('');
   const [bootstrapPassword, setBootstrapPassword] = useState('');
   const [bootstrapName, setBootstrapName] = useState('Admin');
   const [bootstrapLoading, setBootstrapLoading] = useState(false);

@@ -109,3 +109,37 @@ func TestAuthSource_AnonymousWithOptionalAuth(t *testing.T) {
 	assert.Equal(t, "anonymous", AuthSourceAnonymous)
 	assert.Contains(t, readBody(t, plain), `"source":""`)
 }
+
+func TestAuthScopeDoesNotFallBackToAnotherAppsCookie(t *testing.T) {
+	cfg := testConfig(t)
+	otherAppToken := buildToken(t, cfg.Auth.JWTSecret, jwt.MapClaims{
+		"sub": "dashboard-user",
+		"typ": "access",
+	})
+
+	app := newSourceProbeApp(t, true)
+	req := httptest.NewRequest(http.MethodGet, "/me", nil)
+	req.Header.Set("X-App-Scope", "business")
+	req.AddCookie(&http.Cookie{Name: "ray_access-DASHBOARD", Value: otherAppToken})
+
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}
+
+func TestAuthScopeDoesNotFallBackToGenericCookie(t *testing.T) {
+	cfg := testConfig(t)
+	legacyToken := buildToken(t, cfg.Auth.JWTSecret, jwt.MapClaims{
+		"sub": "legacy-user",
+		"typ": "access",
+	})
+
+	app := newSourceProbeApp(t, true)
+	req := httptest.NewRequest(http.MethodGet, "/me", nil)
+	req.Header.Set("X-App-Scope", "business")
+	req.AddCookie(&http.Cookie{Name: "ray_access", Value: legacyToken})
+
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}

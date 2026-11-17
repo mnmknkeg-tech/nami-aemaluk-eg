@@ -56,14 +56,8 @@ func (s *Service) PresignUpload(ctx context.Context, userID, actorRole, actorSho
 		purpose = "images"
 	}
 
-	if req.FileSize != nil {
-		if *req.FileSize <= 0 {
-			return nil, errors.Validation("invalid_file_size", "حجم الملف غير صالح")
-		}
-		maxBytes := s.maxUploadBytes()
-		if maxBytes > 0 && *req.FileSize > maxBytes {
-			return nil, errors.Validation("file_too_large", "حجم الملف أكبر من المسموح")
-		}
+	if err := validatePresignFileSize(req.FileSize, s.maxUploadBytes()); err != nil {
+		return nil, err
 	}
 
 	key := s.s3.MakeKey(req.ShopID, purpose, req.Filename)
@@ -272,4 +266,21 @@ func strPtr(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+ 
+// validatePresignFileSize requires an explicit, positive size before issuing
+// a signed storage URL. Without it, callers could upload arbitrarily large
+// objects and only be rejected after storage and bandwidth costs were incurred.
+func validatePresignFileSize(size *int64, maxBytes int64) error {
+	if size == nil {
+		return errors.Validation("file_size_required", "حجم الملف مطلوب")
+	}
+	if *size <= 0 {
+		return errors.Validation("invalid_file_size", "حجم الملف غير صالح")
+	}
+	if maxBytes > 0 && *size > maxBytes {
+		return errors.Validation("file_too_large", "حجم الملف أكبر من المسموح")
+	}
+	return nil
 }
