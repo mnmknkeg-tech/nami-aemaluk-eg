@@ -398,13 +398,19 @@ export const useBuilderComponentOperations = ({
     (node: ComponentNode, parentId: string, index?: number) => {
       const current = websiteRef.current;
       if (!current.components[parentId] || current.components[node.id]) return;
+      if (!getPageReachableNodeIds(current, activePage.rootNodeId).has(parentId)) {
+        setTemplateError('لا يمكن إضافة المكون خارج الصفحة المفتوحة حاليًا.');
+        return;
+      }
       const parent = current.components[parentId];
       if (!componentSupportsChildren(parent.type)) {
         setTemplateError('هذا المكون لا يقبل إضافة عناصر بداخله. اختر حاوية أو قسمًا يدعم العناصر الفرعية.');
         return;
       }
-      if (node.childrenIds.some((childId) => !current.components[childId]) || node.childrenIds.includes(node.id)) {
-        setTemplateError('تعذر إضافة المكون بسبب وجود علاقات فرعية غير صالحة.');
+      // insertNode adds one standalone node; composite subtrees must go through
+      // the validated template path so every child receives a fresh ID.
+      if (!Array.isArray(node.childrenIds) || node.childrenIds.length > 0) {
+        setTemplateError('إضافة المكونات المركبة تتم من مكتبة القوالب لضمان سلامة روابط العناصر الداخلية.');
         return;
       }
       if (node.type === 'products' && parent) {
@@ -679,6 +685,8 @@ export const useBuilderComponentOperations = ({
       const oldParentId = dragged ? findUniqueTreeParentId(current, draggedId) : null;
       const targetParentId = target ? findUniqueTreeParentId(current, targetId) : null;
       if (!dragged || !target || !oldParentId) return false;
+      const activePageIds = getPageReachableNodeIds(current, activePage.rootNodeId);
+      if (!activePageIds.has(draggedId) || !activePageIds.has(targetId)) return false;
       // Walk authoritative parent edges to prevent moving a node into its own subtree.
       const visitedAncestors = new Set<string>();
       let ancestorId: string | null = targetId;
