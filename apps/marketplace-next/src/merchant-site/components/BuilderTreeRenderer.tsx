@@ -28,6 +28,7 @@ import {
 } from './BuilderPrimitiveNodes';
 import { MobileFooterBar } from './BuilderMobileFooterBar';
 import { PublishedContactForm } from './PublishedContactForm';
+import { PublishedFeaturesSection, PublishedTestimonialsSection } from './PublishedMarketingSections';
 // سلة موقع التاجر المستقلة — مش سلة الماركت (decoupling): الـ add-to-cart في
 // قالب التاجر بيخزن في merchant-site-cart:site:{slug} والـ checkout بيكمل
 // على /site/{slug}/checkout بسلته الخاصة، مالهمش أي دعوة بـ mnmknk_cart.
@@ -641,126 +642,25 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
 
   // ── testimonials ───────────────────────────────────────────────────────────
   if (node.type === 'testimonials') {
-    const reviews: any[] = node.props.testimonials || node.props.reviews || [];
     return (
-      <section id={node.id} style={computed} data-section="testimonials">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
-          {(node.props.title || node.props.badge) && (
-            <div className="text-center mb-10 space-y-2 max-w-2xl mx-auto">
-              {node.props.badge && (
-                <span
-                  style={{
-                    backgroundColor: `${theme.colors.primary}18`,
-                    color: theme.colors.primary,
-                  }}
-                  className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider inline-block"
-                >
-                  {node.props.badge}
-                </span>
-              )}
-              {node.props.title && (
-                <h2 className="text-3xl font-extrabold text-slate-900">{node.props.title}</h2>
-              )}
-              {node.props.subtitle && (
-                <p className="text-sm text-slate-600">{node.props.subtitle}</p>
-              )}
-            </div>
-          )}
-          {reviews.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {reviews.map((r: any, idx: number) => (
-                <div
-                  key={r.id || idx}
-                  className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all space-y-4 flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <div className="flex gap-1 text-amber-400">
-                      {Array.from({ length: r.rating || 5 }).map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                      ))}
-                    </div>
-                    <p className="text-sm text-slate-700 leading-relaxed italic">
-                      "{r.text || r.quote}"
-                    </p>
-                  </div>
-                  <div className="pt-2 border-t border-slate-100">
-                    <h4 className="text-xs font-bold text-slate-900">{r.name || r.author}</h4>
-                    {(r.role || r.position) && (
-                      <span className="text-[11px] text-slate-500">{r.role || r.position}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {renderChildren()}
-        </div>
-      </section>
+      <PublishedTestimonialsSection
+        node={node}
+        style={computed}
+        theme={theme}
+        renderChildren={renderChildren}
+      />
     );
   }
 
   // ── features ──────────────────────────────────────────────────────────────
   if (node.type === 'features') {
-    const featuresList: any[] = node.props.features || [];
     return (
-      <section id={node.id} style={computed}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
-          {(node.props.title || node.props.badge) && (
-            <div className="text-center mb-10 space-y-2 max-w-2xl mx-auto">
-              {node.props.badge && (
-                <span
-                  style={{
-                    backgroundColor: `${theme.colors.primary}18`,
-                    color: theme.colors.primary,
-                  }}
-                  className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider inline-block"
-                >
-                  {node.props.badge}
-                </span>
-              )}
-              {node.props.title && (
-                <h2 className="text-3xl font-extrabold text-slate-900">{node.props.title}</h2>
-              )}
-              {node.props.subtitle && (
-                <p className="text-sm text-slate-600">{node.props.subtitle}</p>
-              )}
-            </div>
-          )}
-          {featuresList.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuresList.map((feat: any, idx: number) => (
-                <div
-                  key={feat.id || idx}
-                  className="p-6 bg-white rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300 space-y-3"
-                >
-                  <div
-                    style={{
-                      backgroundColor: `${theme.colors.primary}15`,
-                      color: theme.colors.primary,
-                    }}
-                    className="w-12 h-12 rounded-xl flex items-center justify-center"
-                  >
-                    {feat.icon === 'ShieldCheck' ? (
-                      <ShieldCheck className="w-6 h-6" />
-                    ) : feat.icon === 'Truck' ? (
-                      <Truck className="w-6 h-6" />
-                    ) : feat.icon === 'CreditCard' ? (
-                      <CreditCard className="w-6 h-6" />
-                    ) : (
-                      <CheckCircle className="w-6 h-6" />
-                    )}
-                  </div>
-                  <h3 className="text-base font-bold text-slate-900">{feat.title}</h3>
-                  {feat.description && (
-                    <p className="text-xs text-slate-500 leading-relaxed">{feat.description}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {renderChildren()}
-        </div>
-      </section>
+      <PublishedFeaturesSection
+        node={node}
+        style={computed}
+        theme={theme}
+        renderChildren={renderChildren}
+      />
     );
   }
 
