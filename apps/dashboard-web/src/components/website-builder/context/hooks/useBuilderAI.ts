@@ -1,6 +1,8 @@
 import { useCallback } from 'react';
+import { componentSupportsChildren, isAllowedProductsParent, isRegisteredComponentType } from '@ray-eg/shared/builder';
 import { ComponentNode, Page, Website } from '../../types/builder';
 import { StructuredAiPatch } from '../../types/ai';
+import { getPageReachableNodeIds } from './useBuilderComponentOperations';
 
 export interface UseBuilderAIProps {
   website: Website;
@@ -41,6 +43,9 @@ export const useBuilderAI = ({
       const updatedComponents = { ...currentWebsite.components };
       let updatedTheme = { ...currentWebsite.theme };
       let targetSelectId = patch.targetNodeIds?.[0] || selectedNodeId;
+      // AI edits are scoped to the open page, just like manual editor operations.
+      // Newly inserted standalone nodes join this set for subsequent operations in the same patch.
+      const activePageNodeIds = getPageReachableNodeIds(currentWebsite, activePage.rootNodeId);
 
       patch.operations.forEach((op) => {
         const opType = op.op.toLowerCase();
@@ -48,6 +53,7 @@ export const useBuilderAI = ({
         if (
           (opType === 'update_style' || op.op === 'UPDATE_STYLE') &&
           op.targetId &&
+          activePageNodeIds.has(op.targetId) &&
           updatedComponents[op.targetId]
         ) {
           const target = updatedComponents[op.targetId];
@@ -73,6 +79,7 @@ export const useBuilderAI = ({
         } else if (
           (opType === 'update_prop' || op.op === 'UPDATE_PROPS') &&
           op.targetId &&
+          activePageNodeIds.has(op.targetId) &&
           updatedComponents[op.targetId]
         ) {
           const target = updatedComponents[op.targetId];
@@ -93,24 +100,51 @@ export const useBuilderAI = ({
             };
           }
         } else if (opType === 'insert_node' || opType === 'add_node') {
-          const newNode: ComponentNode = op.value?.node || op.value;
-          if (newNode && newNode.id) {
+          const candidate = op.value?.node || op.value;
+          const newNode = candidate as ComponentNode | undefined;
+          if (
+            newNode &&
+            typeof newNode === 'object' &&
+            typeof newNode.id === 'string' &&
+            newNode.id.trim() &&
+            isRegisteredComponentType(newNode.type) &&
+            !updatedComponents[newNode.id] &&
+            Array.isArray(newNode.childrenIds) &&
+            newNode.childrenIds.length === 0
+          ) {
             const targetParentId =
               op.value?.targetParentId || newNode.parentId || activePage.rootNodeId;
             const insertAfterId = op.value?.insertAfterId || op.targetId;
             const parentNode = updatedComponents[targetParentId];
+            const parentIsOnActivePage = activePageNodeIds.has(targetParentId);
 
-            if (parentNode) {
-              const currentChildren = [...(parentNode.childrenIds || [])];
-              const insertIdx = insertAfterId ? currentChildren.indexOf(insertAfterId) : -1;
-              if (insertIdx !== -1) {
-                currentChildren.splice(insertIdx + 1, 0, newNode.id);
-              } else {
-                currentChildren.push(newNode.id);
+            if (
+              parentNode &&
+              parentIsOnActivePage &&
+              componentSupportsChildren(parentNode.type) &&
+              Array.isArray(parentNode.childrenIds) &&
+              !parentNode.childrenIds.includes(newNode.id)
+            ) {
+              const isDuplicateProducts =
+                newNode.type === 'products' &&
+                [...activePageNodeIds].some((id) => updatedComponents[id]?.type === 'products');
+              const hasValidProductParent =
+                newNode.type !== 'products' ||
+                isAllowedProductsParent(parentNode, activePage.rootNodeId);
+
+              if (!isDuplicateProducts && hasValidProductParent) {
+                const currentChildren = [...parentNode.childrenIds];
+                const insertIdx = insertAfterId ? currentChildren.indexOf(insertAfterId) : -1;
+                if (insertIdx !== -1) {
+                  currentChildren.splice(insertIdx + 1, 0, newNode.id);
+                } else {
+                  currentChildren.push(newNode.id);
+                }
+                updatedComponents[newNode.id] = { ...newNode, parentId: targetParentId };
+                updatedComponents[targetParentId] = { ...parentNode, childrenIds: currentChildren };
+                activePageNodeIds.add(newNode.id);
+                targetSelectId = newNode.id;
               }
-              updatedComponents[newNode.id] = { ...newNode, parentId: targetParentId };
-              updatedComponents[targetParentId] = { ...parentNode, childrenIds: currentChildren };
-              targetSelectId = newNode.id;
             }
           }
         } else if (opType === 'update_theme_token' && op.path) {
@@ -120,8 +154,24 @@ export const useBuilderAI = ({
               colors: { ...updatedTheme.colors, primary: op.value, primaryHover: op.value },
             };
           }
-        } else if (opType === 'replace_node' && op.targetId && updatedComponents[op.targetId]) {
-          updatedComponents[op.targetId] = { ...updatedComponents[op.targetId], ...op.value };
+        } else if (
+          opType === 'replace_node' &&
+          op.targetId &&
+          activePageNodeIds.has(op.targetId) &&
+          updatedComponents[op.targetId] &&
+          typeof op.value === 'object' &&
+          op.value !== null &&
+          !Array.isArray(op.value)
+        ) {
+          const target = updatedComponents[op.targetId];
+          // Content replacement must never rewrite graph identity or parent/child edges.
+          updatedComponents[op.targetId] = {
+            ...target,
+            ...op.value,
+            id: target.id,
+            parentId: target.parentId,
+            childrenIds: target.childrenIds,
+          };
         }
       });
 
