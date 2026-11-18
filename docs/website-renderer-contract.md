@@ -73,3 +73,9 @@ coverage, categories, and persisted prop keys by component type. These are
 inventory facts only—not validated schemas, defaults, or permission to discard
 unrecognized props. Use the inventory to guide later schema work after checking
 insertion factories, Inspector controls, and both renderers.
+
+
+The section component usage inventory also records each persisted prop's observed
+runtime value kinds and occurrence count, without returning prop values. Mixed
+kinds are deliberately preserved as evidence of legacy variation; this report
+must not be treated as a validation schema or used to coerce saved data.

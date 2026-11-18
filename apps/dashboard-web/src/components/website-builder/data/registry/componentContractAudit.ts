@@ -137,6 +137,22 @@ export function auditSectionTemplateComponentContracts(
 }
 
 
+export type ObservedPropValueKind =
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'array'
+  | 'object'
+  | 'null'
+  | 'undefined';
+
+export interface SectionTemplatePropUsage {
+  key: string;
+  /** Runtime value kinds observed in saved templates; never used as a validator. */
+  valueKinds: ObservedPropValueKind[];
+  occurrenceCount: number;
+}
+
 export interface SectionTemplateComponentUsage {
   type: string;
   nodeCount: number;
@@ -144,11 +160,23 @@ export interface SectionTemplateComponentUsage {
   templateIds: string[];
   categories: string[];
   observedPropKeys: string[];
+  observedProps: SectionTemplatePropUsage[];
+}
+
+function getObservedPropValueKind(value: unknown): ObservedPropValueKind {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  if (typeof value === 'object') return 'object';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return typeof value;
+  }
+  return 'undefined';
 }
 
 /**
  * Reports observed persisted props; this is evidence for future schemas,
  * not an authoritative allow-list or a source of inferred defaults.
+ * Values themselves are intentionally never returned.
  */
 export function inspectSectionTemplateComponentUsage(
   templates: readonly SectionTemplate[]
@@ -157,7 +185,7 @@ export function inspectSectionTemplateComponentUsage(
     nodeCount: number;
     templateIds: Set<string>;
     categories: Set<string>;
-    propKeys: Set<string>;
+    props: Map<string, { valueKinds: Set<ObservedPropValueKind>; occurrenceCount: number }>;
   }>();
 
   templates.forEach((template) => {
@@ -166,13 +194,21 @@ export function inspectSectionTemplateComponentUsage(
         nodeCount: 0,
         templateIds: new Set<string>(),
         categories: new Set<string>(),
-        propKeys: new Set<string>(),
+        props: new Map<string, { valueKinds: Set<ObservedPropValueKind>; occurrenceCount: number }>(),
       };
       current.nodeCount += 1;
       current.templateIds.add(template.id);
       current.categories.add(node.category);
       if (node.props && typeof node.props === 'object' && !Array.isArray(node.props)) {
-        Object.keys(node.props).forEach((key) => current.propKeys.add(key));
+        Object.entries(node.props).forEach(([key, value]) => {
+          const prop = current.props.get(key) ?? {
+            valueKinds: new Set<ObservedPropValueKind>(),
+            occurrenceCount: 0,
+          };
+          prop.valueKinds.add(getObservedPropValueKind(value));
+          prop.occurrenceCount += 1;
+          current.props.set(key, prop);
+        });
       }
       usage.set(node.type, current);
     });
@@ -180,12 +216,22 @@ export function inspectSectionTemplateComponentUsage(
 
   return [...usage.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([type, value]) => ({
-      type,
-      nodeCount: value.nodeCount,
-      templateCount: value.templateIds.size,
-      templateIds: [...value.templateIds].sort(),
-      categories: [...value.categories].sort(),
-      observedPropKeys: [...value.propKeys].sort(),
-    }));
+    .map(([type, value]) => {
+      const observedProps = [...value.props.entries()]
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, prop]) => ({
+          key,
+          valueKinds: [...prop.valueKinds].sort(),
+          occurrenceCount: prop.occurrenceCount,
+        }));
+      return {
+        type,
+        nodeCount: value.nodeCount,
+        templateCount: value.templateIds.size,
+        templateIds: [...value.templateIds].sort(),
+        categories: [...value.categories].sort(),
+        observedPropKeys: observedProps.map((prop) => prop.key),
+        observedProps,
+      };
+    });
 }

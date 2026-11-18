@@ -126,6 +126,11 @@ describe('canonical website template registry', () => {
       expect(item.nodeCount).toBeGreaterThan(0);
       expect(item.templateCount).toBeGreaterThan(0);
       expect(item.observedPropKeys).toEqual([...item.observedPropKeys].sort());
+      expect(item.observedProps.map((prop) => prop.key)).toEqual(item.observedPropKeys);
+      item.observedProps.forEach((prop) => {
+        expect(prop.occurrenceCount).toBeGreaterThan(0);
+        expect(prop.valueKinds.length).toBeGreaterThan(0);
+      });
     });
   });
 
