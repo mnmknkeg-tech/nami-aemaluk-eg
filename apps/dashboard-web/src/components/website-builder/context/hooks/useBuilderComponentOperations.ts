@@ -104,6 +104,18 @@ function normalizeNodeStylesAfterMove(node: ComponentNode): ComponentNode {
   return { ...node, styles };
 }
 
+/** Resolve ownership from the authoritative childrenIds edges, never from a stale parentId. */
+export const findTreeParentIds = (website: Website, childId: string): string[] =>
+  Object.values(website.components)
+    .filter((candidate) => Array.isArray(candidate.childrenIds) && candidate.childrenIds.includes(childId))
+    .map((candidate) => candidate.id)
+    .sort();
+
+const findUniqueTreeParentId = (website: Website, childId: string): string | null => {
+  const parents = findTreeParentIds(website, childId);
+  return parents.length === 1 ? parents[0] : null;
+};
+
 const replaceNode = (
   website: Website,
   id: string,
@@ -464,7 +476,11 @@ export const useBuilderComponentOperations = ({
         );
         return;
       }
-      const parentId = target.parentId;
+      const parentId = findUniqueTreeParentId(websiteRef.current, id);
+      if (!parentId) {
+        setTemplateError('تعذر حذف العنصر لأن علاقته بالأب غير واضحة. راجع بنية الصفحة أولاً.');
+        return;
+      }
       recordHistory(`حذف (${target.name})`, (current) => {
         const node = current.components[id];
         if (!node) return current;
@@ -477,18 +493,11 @@ export const useBuilderComponentOperations = ({
         collect(id);
         const components = { ...current.components };
         remove.forEach((nodeId) => delete components[nodeId]);
-        if (!node.parentId) {
-          return {
-            ...current,
-            components,
-            pages: current.pages.map((page) =>
-              page.rootNodeId === id ? { ...page, rootNodeId: null as unknown as string } : page
-            ),
-          };
-        }
-        const parent = current.components[node.parentId];
+        const actualParentId = findUniqueTreeParentId(current, id);
+        if (!actualParentId) return current;
+        const parent = current.components[actualParentId];
         if (!parent) return current;
-        components[node.parentId] = {
+        components[actualParentId] = {
           ...parent,
           childrenIds: parent.childrenIds.filter((childId) => childId !== id),
         };
@@ -503,7 +512,8 @@ export const useBuilderComponentOperations = ({
     (id: string) => {
       const current = websiteRef.current;
       const target = current.components[id];
-      if (!target?.parentId) return;
+      const actualParentId = target ? findUniqueTreeParentId(current, id) : null;
+      if (!target || !actualParentId) return;
       // A duplicated products subtree would create a SECOND products section on
       // this page — the public normalizer detaches it silently on next save.
       if (subtreeContainsProducts(current, id)) {
@@ -530,14 +540,21 @@ export const useBuilderComponentOperations = ({
           ...original,
           id: idMap[origId],
           name: origId === id ? `${original.name} (نسخة)` : original.name,
-          parentId: origId === id ? target.parentId : idMap[original.parentId!],
+          parentId:
+            origId === id
+              ? actualParentId
+              : (() => {
+                  const originalParentId = findUniqueTreeParentId(current, origId);
+                  return originalParentId ? idMap[originalParentId] : undefined;
+                })() ?? null,
           childrenIds: original.childrenIds.map((childId) => idMap[childId]),
         };
       });
       const newId = idMap[id];
       recordHistory(`تكرار (${target.name})`, (latest) => {
         const node = latest.components[id];
-        const parent = node?.parentId ? latest.components[node.parentId] : undefined;
+        const latestParentId = node ? findUniqueTreeParentId(latest, id) : null;
+        const parent = latestParentId ? latest.components[latestParentId] : undefined;
         if (!node || !parent) return latest;
         const children = [...parent.childrenIds];
         const index = children.indexOf(id);
@@ -560,12 +577,14 @@ export const useBuilderComponentOperations = ({
   const moveNode = useCallback(
     (id: string, direction: 'up' | 'down') => {
       const target = websiteRef.current.components[id];
-      if (!target?.parentId) return;
+      const actualParentId = target ? findUniqueTreeParentId(websiteRef.current, id) : null;
+      if (!target || !actualParentId) return;
       recordHistory(
         `تحريك (${target.name}) ${direction === 'up' ? 'للأعلى' : 'للأسفل'}`,
         (current) => {
           const node = current.components[id];
-          const parent = node?.parentId ? current.components[node.parentId] : undefined;
+          const actualParentId = node ? findUniqueTreeParentId(current, id) : null;
+          const parent = actualParentId ? current.components[actualParentId] : undefined;
           if (!node || !parent) return current;
           const index = parent.childrenIds.indexOf(id);
           const nextIndex = direction === 'up' ? index - 1 : index + 1;
@@ -591,20 +610,24 @@ export const useBuilderComponentOperations = ({
       if (!draggedId || !targetId || draggedId === targetId) return false;
       const dragged = current.components[draggedId];
       const target = current.components[targetId];
-      if (!dragged?.parentId || !target) return false;
-      let ancestor = target;
-      while (ancestor.parentId) {
-        if (ancestor.parentId === draggedId) return false;
-        ancestor = current.components[ancestor.parentId];
-        if (!ancestor) break;
+      const oldParentId = dragged ? findUniqueTreeParentId(current, draggedId) : null;
+      const targetParentId = target ? findUniqueTreeParentId(current, targetId) : null;
+      if (!dragged || !target || !oldParentId) return false;
+      // Walk authoritative parent edges to prevent moving a node into its own subtree.
+      const visitedAncestors = new Set<string>();
+      let ancestorId: string | null = targetId;
+      while (ancestorId && !visitedAncestors.has(ancestorId)) {
+        if (ancestorId === draggedId) return false;
+        visitedAncestors.add(ancestorId);
+        ancestorId = findUniqueTreeParentId(current, ancestorId);
       }
-      const oldParent = current.components[dragged.parentId];
+      const oldParent = current.components[oldParentId];
       if (!oldParent) return false;
       let newParentId: string;
       if (position === 'inside') newParentId = targetId;
       else {
-        if (!target.parentId || !current.components[target.parentId]) return false;
-        newParentId = target.parentId;
+        if (!targetParentId || !current.components[targetParentId]) return false;
+        newParentId = targetParentId;
       }
       const newParent = current.components[newParentId];
       if (!newParent) return false;
@@ -625,9 +648,12 @@ export const useBuilderComponentOperations = ({
       recordHistory(`سحب وإفلات (${dragged.name}) إلى ${posLabel} (${target.name})`, (latest) => {
         const node = latest.components[draggedId];
         const targetNode = latest.components[targetId];
-        if (!node?.parentId || !targetNode) return latest;
-        const previousParent = latest.components[node.parentId];
-        const destinationId = position === 'inside' ? targetId : targetNode.parentId;
+        if (!node || !targetNode) return latest;
+        const latestPreviousParentId = findUniqueTreeParentId(latest, draggedId);
+        const latestTargetParentId = findUniqueTreeParentId(latest, targetId);
+        if (!latestPreviousParentId) return latest;
+        const previousParent = latest.components[latestPreviousParentId];
+        const destinationId = position === 'inside' ? targetId : latestTargetParentId;
         const destination = destinationId ? latest.components[destinationId] : undefined;
         if (!previousParent || !destination) return latest;
         const components = { ...latest.components };

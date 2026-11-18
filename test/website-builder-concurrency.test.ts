@@ -1,4 +1,5 @@
 import {
+  findTreeParentIds,
   reorderChildrenReducer,
   updateNodePropsReducer,
   updateNodeStyleReducer,
@@ -29,6 +30,29 @@ const baseWebsite = {
 } as unknown as Website;
 
 describe('website builder concurrent mutations', () => {
+  it('resolves parent ownership from childrenIds even when parentId is stale', () => {
+    const inconsistent = {
+      ...baseWebsite,
+      components: {
+        root: { ...baseWebsite.components.node, id: 'root', childrenIds: ['child'] },
+        child: { ...baseWebsite.components.node, id: 'child', parentId: 'missing-parent' },
+      },
+    } as Website;
+    expect(findTreeParentIds(inconsistent, 'child')).toEqual(['root']);
+  });
+
+  it('does not guess ownership when multiple parents list the same child', () => {
+    const inconsistent = {
+      ...baseWebsite,
+      components: {
+        first: { ...baseWebsite.components.node, id: 'first', childrenIds: ['child'] },
+        second: { ...baseWebsite.components.node, id: 'second', childrenIds: ['child'] },
+        child: { ...baseWebsite.components.node, id: 'child', parentId: 'first' },
+      },
+    } as Website;
+    expect(findTreeParentIds(inconsistent, 'child')).toEqual(['first', 'second']);
+  });
+
   it('reorders an exact set of children without changing parent links', () => {
     const withChildren = {
       ...baseWebsite,
