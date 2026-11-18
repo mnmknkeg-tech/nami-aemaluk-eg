@@ -37,6 +37,7 @@ export function auditSectionTemplateComponentContracts(
     const nodes = template.nodes;
     const visited = new Set<string>();
     const expectedParents = new Map<string, string>();
+    const ambiguousParents = new Set<string>();
 
     Object.entries(nodes).forEach(([nodeId, node]) => {
       if (!getPersistedComponentDefinition(node.type)) {
@@ -87,6 +88,7 @@ export function auditSectionTemplateComponentContracts(
         }
         const previousParent = expectedParents.get(childId);
         if (previousParent && previousParent !== nodeId) {
+          ambiguousParents.add(childId);
           issues.push({
             code: 'parent-link-mismatch',
             templateId: template.id,
@@ -114,7 +116,7 @@ export function auditSectionTemplateComponentContracts(
     // Compare the denormalized reverse link only when the child has one
     // unambiguous parent edge. Keep the root exempt for legacy compatibility.
     expectedParents.forEach((expectedParentId, nodeId) => {
-      if (expectedParents.has(nodeId) && nodes[nodeId]?.parentId !== expectedParentId) {
+      if (!ambiguousParents.has(nodeId) && nodes[nodeId]?.parentId !== expectedParentId) {
         issues.push({
           code: 'declared-parent-mismatch',
           templateId: template.id,
