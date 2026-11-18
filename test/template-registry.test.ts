@@ -25,6 +25,8 @@ describe('canonical website template registry', () => {
     expect(isRegisteredComponentCategory('commerce')).toBe(true);
     expect(isRegisteredComponentCategory('form')).toBe(true);
 
+    expect(COMPONENT_REGISTRY.bento.aliases).toContain('bento-grid');
+    expect(COMPONENT_REGISTRY.services.aliases).toContain('services-grid');
     expect(resolveComponentType('bento-grid')).toBe('bento');
     expect(resolveComponentType('services-grid')).toBe('services');
     expect(resolveComponentType('contact-section')).toBe('contact');

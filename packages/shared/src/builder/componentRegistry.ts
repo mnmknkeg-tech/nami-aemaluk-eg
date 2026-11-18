@@ -70,15 +70,14 @@ export const COMPONENT_CATEGORY_SET: ReadonlySet<string> = new Set([
   'form', // Legacy category alias retained for saved documents.
 ]);
 
-const COMPONENT_ALIAS_MAP: Readonly<Record<string, ComponentType>> = Object.freeze({
-  "bento-grid": "bento",
-  "services-grid": "services",
-  "contact-section": "contact",
-  "trust_badges": "trust-badges",
-  "before_after": "before-after",
-  "promo_banner": "promo-banner",
-  "announcement_bar": "announcement-bar"
-});
+const COMPONENT_ALIAS_MAP: Readonly<Record<string, ComponentType>> = Object.freeze(
+  Object.values(COMPONENT_REGISTRY).reduce((aliases, definition) => {
+    definition.aliases.forEach((alias) => {
+      aliases[alias] = definition.type;
+    });
+    return aliases;
+  }, {} as Record<string, ComponentType>)
+);
 
 export function resolveComponentType(type: string): ComponentType | undefined {
   return COMPONENT_ALIAS_MAP[type] ?? (Object.prototype.hasOwnProperty.call(COMPONENT_REGISTRY, type) ? type as ComponentType : undefined);
