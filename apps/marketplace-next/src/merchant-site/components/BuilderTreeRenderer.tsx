@@ -11,6 +11,9 @@ import {
   Sparkles,
   ArrowRight,
   MessageCircle,
+  Phone,
+  Mail,
+  MapPin,
 } from 'lucide-react';
 import { jsonRequest } from '@/lib/api';
 import { useRouter } from 'next/navigation';
