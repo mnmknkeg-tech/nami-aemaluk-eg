@@ -15,7 +15,7 @@ import {
 } from '../apps/dashboard-web/src/components/website-builder/data/registry';
 import { getInitialBuilderState } from '../apps/dashboard-web/src/components/website-builder/context/builderUtils';
 import { sectionCategoriesList } from '../apps/dashboard-web/src/components/website-builder/data/sections';
-import { auditSectionTemplateComponentContracts } from '../apps/dashboard-web/src/components/website-builder/data/registry/componentContractAudit';
+import { auditSectionTemplateComponentContracts, inspectSectionTemplateComponentUsage } from '../apps/dashboard-web/src/components/website-builder/data/registry/componentContractAudit';
 import { COMPONENT_REGISTRY, COMPONENT_TYPE_SET, componentSupportsChildren, getComponentDefinition, getComponentVersion, getPersistedComponentDefinition, isComponentVersionCurrent, isRegisteredComponentCategory, isRegisteredComponentType, resolveComponentType } from '../packages/shared/src/builder/componentRegistry';
 
 describe('canonical website template registry', () => {
@@ -88,6 +88,45 @@ describe('canonical website template registry', () => {
 
     expect(Array.isArray(issues)).toBe(true);
     expect(JSON.stringify(entries)).toBe(before);
+  });
+
+  it('reports reverse-parent mismatches without mutating section templates', () => {
+    const source = getSectionTemplateRecords()[0].template;
+    const root = source.nodes[source.rootNodeId];
+    const childId = root.childrenIds[0];
+    if (!childId) return;
+    const template = {
+      ...source,
+      id: 'audit-parent-link-mismatch',
+      nodes: {
+        ...source.nodes,
+        [childId]: { ...source.nodes[childId], parentId: 'stale-parent-id' },
+      },
+    };
+    const before = JSON.stringify(template);
+    const issues = auditSectionTemplateComponentContracts([template]);
+    expect(issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'declared-parent-mismatch',
+        templateId: template.id,
+        nodeId: childId,
+        relatedNodeId: source.rootNodeId,
+      }),
+    ]));
+    expect(JSON.stringify(template)).toBe(before);
+  });
+
+  it('summarizes observed section props without inventing component schemas', () => {
+    const usage = inspectSectionTemplateComponentUsage(
+      getSectionTemplateRecords().map((entry) => entry.template)
+    );
+    expect(usage.length).toBeGreaterThan(0);
+    expect(usage).toEqual([...usage].sort((a, b) => a.type.localeCompare(b.type)));
+    usage.forEach((item) => {
+      expect(item.nodeCount).toBeGreaterThan(0);
+      expect(item.templateCount).toBeGreaterThan(0);
+      expect(item.observedPropKeys).toEqual([...item.observedPropKeys].sort());
+    });
   });
 
   it('reports unsupported child ownership in a synthetic section without rewriting it', () => {

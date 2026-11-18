@@ -11,6 +11,7 @@ export type ComponentContractIssueCode =
   | 'duplicate-child-edge'
   | 'missing-child'
   | 'parent-link-mismatch'
+  | 'declared-parent-mismatch'
   | 'unreachable-node';
 
 export interface ComponentContractIssue {
@@ -41,11 +42,8 @@ export function auditSectionTemplateComponentContracts(
       if (!getPersistedComponentDefinition(node.type)) {
         issues.push({ code: 'unknown-component', templateId: template.id, nodeId });
       }
-      if (!getPersistedComponentDefinition(node.type) ||
-          !getPersistedComponentDefinition(node.type)?.category) {
-        return;
-      }
       const definition = getPersistedComponentDefinition(node.type);
+      if (!definition?.category) return;
       if (definition && definition.category !== node.category &&
           !(node.category === 'form' && definition.category === 'forms')) {
         issues.push({ code: 'unsupported-category', templateId: template.id, nodeId });
@@ -112,6 +110,20 @@ export function auditSectionTemplateComponentContracts(
     };
 
     visit(template.rootNodeId);
+
+    // Compare the denormalized reverse link only when the child has one
+    // unambiguous parent edge. Keep the root exempt for legacy compatibility.
+    expectedParents.forEach((expectedParentId, nodeId) => {
+      if (expectedParents.has(nodeId) && nodes[nodeId]?.parentId !== expectedParentId) {
+        issues.push({
+          code: 'declared-parent-mismatch',
+          templateId: template.id,
+          nodeId,
+          relatedNodeId: expectedParentId,
+        });
+      }
+    });
+
     Object.keys(nodes).forEach((nodeId) => {
       if (!visited.has(nodeId)) {
         issues.push({ code: 'unreachable-node', templateId: template.id, nodeId });
@@ -120,4 +132,58 @@ export function auditSectionTemplateComponentContracts(
   });
 
   return issues;
+}
+
+
+export interface SectionTemplateComponentUsage {
+  type: string;
+  nodeCount: number;
+  templateCount: number;
+  templateIds: string[];
+  categories: string[];
+  observedPropKeys: string[];
+}
+
+/**
+ * Reports observed persisted props; this is evidence for future schemas,
+ * not an authoritative allow-list or a source of inferred defaults.
+ */
+export function inspectSectionTemplateComponentUsage(
+  templates: readonly SectionTemplate[]
+): SectionTemplateComponentUsage[] {
+  const usage = new Map<string, {
+    nodeCount: number;
+    templateIds: Set<string>;
+    categories: Set<string>;
+    propKeys: Set<string>;
+  }>();
+
+  templates.forEach((template) => {
+    Object.values(template.nodes).forEach((node) => {
+      const current = usage.get(node.type) ?? {
+        nodeCount: 0,
+        templateIds: new Set<string>(),
+        categories: new Set<string>(),
+        propKeys: new Set<string>(),
+      };
+      current.nodeCount += 1;
+      current.templateIds.add(template.id);
+      current.categories.add(node.category);
+      if (node.props && typeof node.props === 'object' && !Array.isArray(node.props)) {
+        Object.keys(node.props).forEach((key) => current.propKeys.add(key));
+      }
+      usage.set(node.type, current);
+    });
+  });
+
+  return [...usage.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([type, value]) => ({
+      type,
+      nodeCount: value.nodeCount,
+      templateCount: value.templateIds.size,
+      templateIds: [...value.templateIds].sort(),
+      categories: [...value.categories].sort(),
+      observedPropKeys: [...value.propKeys].sort(),
+    }));
 }

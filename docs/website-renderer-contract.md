@@ -58,3 +58,18 @@ explicit, tested migration policy is introduced. Per-component defaults,
 property schemas, renderer slots, and Inspector field metadata remain
 intentionally unpopulated until they can be derived from actual insertion
 factories and both editor/published renderer contracts.
+
+
+## Section template component-contract diagnostics
+
+The dashboard registry exports a read-only section-template audit. In addition to
+checking child edges, it compares each reachable non-root node's persisted
+`parentId` with its unique incoming `childrenIds` edge; ambiguous multiple-parent
+nodes are reported separately and are not assigned an arbitrary expected parent.
+The root remains exempt from reverse-parent checks to preserve legacy root data.
+
+`inspectSectionTemplateComponentUsage` reports observed node counts, template
+coverage, categories, and persisted prop keys by component type. These are
+inventory facts only—not validated schemas, defaults, or permission to discard
+unrecognized props. Use the inventory to guide later schema work after checking
+insertion factories, Inspector controls, and both renderers.
