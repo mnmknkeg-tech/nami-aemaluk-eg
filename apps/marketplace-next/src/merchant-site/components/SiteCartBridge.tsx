@@ -3,7 +3,8 @@
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSiteCart } from '@/lib/site-cart';
-import { jsonRequest } from '@/lib/api';
+import { jsonRequest, markSessionActive } from '@/lib/api';
+import { normalizeEgyptianPhone } from '@/lib/phone';
 import { normalizeWebsiteTree, PublicSiteRenderer, SiteCartDrawer } from '@ray-eg/shared/builder';
 import { getBookingTrackPath, getPublishedSitePath } from '@ray-eg/shared/merchant/siteUrls';
 import type {
@@ -82,6 +83,21 @@ export function SiteCartBridge({
           setCartOpen(true);
         }}
         onOpenCart={() => setCartOpen(true)}
+        onAuthenticate={async (payload) => {
+          const phone = normalizeEgyptianPhone(payload.phone);
+          if (!phone) throw new Error('رقم الموبايل المصري غير صحيح');
+          if (payload.challenge) {
+            await jsonRequest('/auth/2fa/login', { method: 'POST', body: JSON.stringify({ challenge: payload.challenge, code: payload.code }) });
+          } else if (payload.mode === 'register') {
+            await jsonRequest('/auth/signup', { method: 'POST', body: JSON.stringify({ name: payload.name, phone, password: payload.password, role: 'CUSTOMER' }) });
+          } else {
+            const result = await jsonRequest<any>('/auth/login', { method: 'POST', body: JSON.stringify({ phone, password: payload.password }) });
+            if (result?.requires2FA && result?.challenge) return { requires2FA: true, challenge: result.challenge };
+          }
+          markSessionActive();
+          window.dispatchEvent(new Event('ray-session-changed'));
+          return {};
+        }}
         onSubmitBooking={async (payload) => {
           const response = await jsonRequest<any>('/bookings/guest', {
             method: 'POST',

@@ -89,6 +89,20 @@ export interface SiteBookingSubmitResult {
   bookingNumber?: string;
 }
 
+export interface SiteAuthenticationPayload {
+  mode: 'login' | 'register';
+  phone: string;
+  name?: string;
+  password?: string;
+  challenge?: string;
+  code?: string;
+}
+
+export interface SiteAuthenticationResult {
+  requires2FA?: boolean;
+  challenge?: string;
+}
+
 export interface NodeViewContext {
   website: Website;
   viewport: ViewportBreakpoint;
@@ -122,6 +136,8 @@ export interface NodeViewContext {
   cartCount?: number;
   /** Prevents checkout and other real-world actions in an isolated template preview. */
   previewMode?: boolean;
+  /** Authenticate a customer through the host app's real auth API. */
+  onAuthenticate?: (payload: SiteAuthenticationPayload) => Promise<SiteAuthenticationResult | void>;
   /** Real booking submit for site forms — host app persists via POST /bookings/guest
    *  and shows a real success state instead of the legacy WhatsApp hand-off. */
   onSubmitBooking?: (payload: SiteFormBookingPayload) => Promise<SiteBookingSubmitResult | void>;

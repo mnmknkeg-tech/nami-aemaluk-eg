@@ -35,6 +35,7 @@ export interface PublicSiteRendererProps {
   onNavigatePage?: (pageId: string) => void;
   /** Real booking submit for site forms (see NodeViewContext.onSubmitBooking). */
   onSubmitBooking?: (payload: SiteFormBookingPayload) => Promise<SiteBookingSubmitResult | void>;
+  onAuthenticate?: NodeViewContext['onAuthenticate'];
   /** Builds a tracking URL for a returned booking number. */
   bookingTrackHref?: (bookingNumber: string) => string;
   previewMode?: boolean;
@@ -85,6 +86,7 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
   cartCount,
   onNavigatePage,
   onSubmitBooking,
+  onAuthenticate,
   bookingTrackHref,
   previewMode = false,
   previewViewport,
@@ -349,6 +351,7 @@ export const PublicSiteRenderer: React.FC<PublicSiteRendererProps> = ({
               realSubscriptionPlans: previewMode ? [] : subscriptionPlans,
               onNavigatePage: handleNavigatePage,
               waLink,
+              onAuthenticate,
               onAddToCart: handleAddToCart,
               onOpenCart: handleOpenCart,
               onSubmitBooking,

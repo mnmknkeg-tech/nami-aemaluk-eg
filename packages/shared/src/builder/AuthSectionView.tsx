@@ -27,10 +27,10 @@ export const AuthSectionView: React.FC<{
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab);
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [otpCode, setOtpCode] = useState('');
+  const [authChallenge, setAuthChallenge] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -51,32 +51,30 @@ export const AuthSectionView: React.FC<{
     'دعم فني واستشارات مخصصة عبر واتساب',
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    if (!phone || phone.trim().length < 8) {
-      setErrorMessage('يرجى إدخال رقم هاتف صحيح');
-      return;
-    }
-    if (activeTab === 'register' && !name.trim()) {
-      setErrorMessage('يرجى إدخال اسمك الكريم');
-      return;
-    }
-
+    setSuccessMessage('');
+    if (!phone || phone.trim().length < 8) { setErrorMessage('يرجى إدخال رقم هاتف صحيح'); return; }
+    if (!password.trim()) { setErrorMessage('يرجى إدخال كلمة المرور'); return; }
+    if (activeTab === 'register' && !name.trim()) { setErrorMessage('يرجى إدخال اسمك الكريم'); return; }
+    if (isOtpSent && !otpCode.trim()) { setErrorMessage('يرجى إدخال رمز التحقق'); return; }
+    if (!ctx.onAuthenticate) { setErrorMessage('تسجيل الدخول غير متاح في هذه المعاينة'); return; }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      if (layout === 'phone_otp' && !isOtpSent) {
-        setIsOtpSent(true);
-        setSuccessMessage('تم إرسال رمز التحقق إلى رقم هاتفك ⚡');
-      } else {
-        setSuccessMessage(
-          activeTab === 'login'
-            ? 'تم تسجيل الدخول بنجاح! مرحباً بك مجدداً'
-            : 'تم إنشاء حسابك بنجاح! مرحباً بك كعضو جديد'
-        );
+    try {
+      const result = await ctx.onAuthenticate(isOtpSent
+        ? { mode: 'login', phone, password, challenge: authChallenge, code: otpCode }
+        : { mode: activeTab, phone, name: activeTab === 'register' ? name.trim() : undefined, password });
+      if (result?.requires2FA && result.challenge) {
+        setAuthChallenge(result.challenge); setIsOtpSent(true); setOtpCode('');
+        setSuccessMessage('أدخل رمز المصادقة الثنائية لإكمال تسجيل الدخول');
+        return;
       }
-    }, 700);
+      setIsOtpSent(false); setAuthChallenge(''); setOtpCode('');
+      setSuccessMessage(activeTab === 'login' ? 'تم تسجيل الدخول بنجاح! مرحباً بك مجدداً' : 'تم إنشاء حسابك بنجاح! مرحباً بك كعضو جديد');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'تعذر إكمال العملية، حاول مرة أخرى');
+    } finally { setLoading(false); }
   };
 
   return (
@@ -255,7 +253,7 @@ export const AuthSectionView: React.FC<{
                   </div>
                 </div>
 
-                {layout !== 'phone_otp' && (
+                {(activeTab === 'login' || activeTab === 'register') && (
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-xs font-bold text-slate-700">كلمة المرور</label>
@@ -296,7 +294,7 @@ export const AuthSectionView: React.FC<{
                   </div>
                 )}
 
-                {layout === 'phone_otp' && isOtpSent && (
+                {isOtpSent && (
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
                       رمز التحقق المرسل (OTP)
@@ -331,9 +329,7 @@ export const AuthSectionView: React.FC<{
                     <>
                       <UserCheck className="w-4 h-4" />
                       <span>
-                        {layout === 'phone_otp' && !isOtpSent
-                          ? 'إرسال رمز التحقق السريع'
-                          : 'تسجيل الدخول ��������لآن'}
+                        {isOtpSent ? 'تأكيد رمز المصادقة' : 'تسجيل الدخول الآن'}
                       </span>
                     </>
                   ) : (
