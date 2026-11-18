@@ -297,14 +297,14 @@ export const AuthSectionView: React.FC<{
                 {isOtpSent && (
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      رمز التحقق المرسل (OTP)
+                      رمز المصادقة الثنائية أو رمز الاسترداد
                     </label>
                     <input
                       type="text"
-                      maxLength={6}
+                      maxLength={10}
                       value={otpCode}
                       onChange={(e) => setOtpCode(e.target.value)}
-                      placeholder="• • • •"
+                      placeholder="رمز التحقق"
                       className="w-full py-2.5 rounded-xl border border-slate-200 text-center tracking-widest font-black text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-hidden"
                     />
                   </div>
