@@ -84,6 +84,11 @@ export function resolveComponentType(type: string): ComponentType | undefined {
   return COMPONENT_ALIAS_MAP[type] ?? (Object.prototype.hasOwnProperty.call(COMPONENT_REGISTRY, type) ? type as ComponentType : undefined);
 }
 
+export function componentSupportsChildren(type: string): boolean {
+  const canonicalType = resolveComponentType(type);
+  return canonicalType ? COMPONENT_REGISTRY[canonicalType].supportsChildren : false;
+}
+
 export function isRegisteredComponentType(type: unknown): type is ComponentType {
   return typeof type === 'string' && COMPONENT_TYPE_SET.has(type);
 }

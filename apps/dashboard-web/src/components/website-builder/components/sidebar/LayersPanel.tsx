@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { useBuilder } from '../../context/BuilderContext';
 import { ComponentNode, ComponentType } from '../../types/builder';
+import { componentSupportsChildren } from '@ray-eg/shared/builder';
 
 type DropPosition = 'before' | 'after' | 'inside';
 
@@ -173,25 +174,9 @@ export const LayersPanel: React.FC = () => {
     }
   };
 
-  const isContainerType = (type: ComponentType): boolean => {
-    return [
-      'container',
-      'flex',
-      'grid',
-      'card',
-      'header',
-      'footer',
-      'hero',
-      'bento-grid',
-      'pricing',
-      'features',
-      'gallery',
-      'testimonials',
-      'cta',
-      'products',
-      'section',
-    ].includes(type);
-  };
+  // Drop targets use the shared registry capability instead of a second local type list.
+  // Existing documents with children remain valid even if they contain an unknown legacy type.
+  const isContainerType = (type: ComponentType): boolean => componentSupportsChildren(type);
 
   const startRenaming = (node: ComponentNode, e: React.MouseEvent) => {
     e.stopPropagation();

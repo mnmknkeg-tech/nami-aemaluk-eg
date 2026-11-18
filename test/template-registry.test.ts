@@ -15,7 +15,7 @@ import {
 } from '../apps/dashboard-web/src/components/website-builder/data/registry';
 import { getInitialBuilderState } from '../apps/dashboard-web/src/components/website-builder/context/builderUtils';
 import { sectionCategoriesList } from '../apps/dashboard-web/src/components/website-builder/data/sections';
-import { COMPONENT_REGISTRY, COMPONENT_TYPE_SET, isRegisteredComponentCategory, isRegisteredComponentType, resolveComponentType } from '../packages/shared/src/builder/componentRegistry';
+import { COMPONENT_REGISTRY, COMPONENT_TYPE_SET, componentSupportsChildren, isRegisteredComponentCategory, isRegisteredComponentType, resolveComponentType } from '../packages/shared/src/builder/componentRegistry';
 
 describe('canonical website template registry', () => {
   it('keeps the canonical component registry complete and backward compatible', () => {
@@ -34,6 +34,11 @@ describe('canonical website template registry', () => {
     expect(resolveComponentType('announcement_bar')).toBe('announcement-bar');
     expect(resolveComponentType('hero')).toBe('hero');
     expect(resolveComponentType('not-a-component')).toBeUndefined();
+
+    expect(componentSupportsChildren('container')).toBe(true);
+    expect(componentSupportsChildren('bento-grid')).toBe(true);
+    expect(componentSupportsChildren('heading')).toBe(false);
+    expect(componentSupportsChildren('not-a-component')).toBe(false);
   });
 
   it('loads every registered full website template with its stable id and page roots', () => {
