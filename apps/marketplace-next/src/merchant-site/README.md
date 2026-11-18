@@ -14,7 +14,14 @@
 | `components/SiteStoreProductCard.tsx` | كارت المنتج بثيم موقع التاجر                                                                                                                  |
 | `components/SiteBookingFlow.tsx`      | تدفق الحجز على موقع التاجر (`/site/[slug]/book`)                                                                                              |
 | `components/ShopRenderer.tsx`         | عارض ثيم التاجر الأصلي (legacy — `/shop/[slug]?view=site`)                                                                                    |
-| `components/BuilderTreeRenderer.tsx`  | يبني شجرة مكوّنات الموقع (يستخدمه ShopRenderer)                                                                                               |
+| `components/BuilderTreeRenderer.tsx`  | ينسّق عرض شجرة الموقع المنشور ويربطها بسلة التاجر وتكاملاته                                                                                   |
+| `components/BuilderPrimitiveNodes.tsx` | عناصر النصوص والصور والشارات الأساسية المنشورة                                                                                               |
+| `components/PublishedProductsSection.tsx` | قسم المنتجات المنشور: الكتالوج والتصنيفات والسلة والحجز وطلب واتساب                                                                        |
+| `components/PublishedFooterSection.tsx` | فوتر الموقع المنشور وروابط الصفحات وبيانات التواصل                                                                                           |
+| `components/PublishedHeroSection.tsx` | بنر الموقع المنشور: الوسائط والمحتوى والأزرار مع دعم بيانات Hero القديمة والجديدة                                                            |
+| `components/PublishedContactForm.tsx` | نموذج التواصل والحجز المنشور                                                                                                                  |
+| `components/PublishedMarketingSections.tsx` | أقسام المزايا وآراء العملاء المنشورة                                                                                                       |
+| `components/BuilderMobileFooterBar.tsx` | شريط التنقل السفلي للموبايل مع ربط سلة موقع التاجر                                                                                          |
 
 ## قاعدة الفصل
 

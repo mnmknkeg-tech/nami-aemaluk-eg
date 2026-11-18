@@ -30,7 +30,9 @@ import { BuilderTreeRenderer } from '@/merchant-site/components/BuilderTreeRende
  *
  * If the shop has a `builderConfig.website` component tree (set by the
  * dashboard builder), we delegate entirely to BuilderTreeRenderer so the
- * live site is IDENTICAL to the builder preview.
+ * published Builder tree with the merchant-site cart and catalog adapters.
+ * Shared layout/data semantics are preserved; host-specific commerce behavior
+ * intentionally differs from the editor preview.
  *
  * Legacy shops that only have `pageDesign` / flat `builderConfig` fields
  * continue to use the LegacyShopView template below.
