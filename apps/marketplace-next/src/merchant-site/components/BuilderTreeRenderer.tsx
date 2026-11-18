@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { api, jsonRequest } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { PublishedBadgeNode, PublishedHeadingNode, PublishedImageNode } from './BuilderPrimitiveNodes';
 // سلة موقع التاجر المستقلة — مش سلة الماركت (decoupling): الـ add-to-cart في
 // قالب التاجر بيخزن في merchant-site-cart:site:{slug} والـ checkout بيكمل
 // على /site/{slug}/checkout بسلته الخاصة، مالهمش أي دعوة بـ mnmknk_cart.
@@ -272,64 +273,23 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
 
   // ── heading ────────────────────────────────────────────────────────────────
   if (node.type === 'heading') {
-    const tag = node.props.tag || 'h2';
-    const text = node.props.text || '';
-    // Editor parity: brand headings (id/name referencing brand/logo/شعار)
-    // show the merchant logo instead of plain text after publishing too.
     const storeLogo =
       node.id.toLowerCase().includes('logo') || String(node.props?.name || '').includes('شعار')
-        ? ctxShop?.logoUrl ||
-          ctxShop?.logo ||
-          resolveBrandLogoUrl(website as any, node) ||
-          undefined
+        ? ctxShop?.logoUrl || ctxShop?.logo || resolveBrandLogoUrl(website as any, node) || undefined
         : isBrandHeadingNode(node as any)
           ? resolveBrandLogoUrl(website as any, node) || undefined
           : undefined;
-    const content = (
-      <>
-        {storeLogo && (
-          <img
-            src={storeLogo}
-            alt={ctxShop?.name || 'شعار المتجر'}
-            className="inline-block max-h-12 max-w-[200px] object-contain align-middle ml-2"
-          />
-        )}
-        {text}
-        {node.props.badgeText && (
-          <span
-            style={{
-              backgroundColor: `${theme.colors.primary}20`,
-              color: theme.colors.primary,
-            }}
-            className="mr-2 text-xs font-bold px-2 py-0.5 rounded-full inline-block align-middle"
-          >
-            {node.props.badgeText}
-          </span>
-        )}
-      </>
-    );
-    if (tag === 'h1')
-      return (
-        <h1 id={node.id} style={computed}>
-          {content}
-        </h1>
-      );
-    if (tag === 'h3')
-      return (
-        <h3 id={node.id} style={computed}>
-          {content}
-        </h3>
-      );
-    if (tag === 'h4')
-      return (
-        <h4 id={node.id} style={computed}>
-          {content}
-        </h4>
-      );
     return (
-      <h2 id={node.id} style={computed}>
-        {content}
-      </h2>
+      <PublishedHeadingNode
+        id={node.id}
+        tag={node.props.tag || 'h2'}
+        text={node.props.text || ''}
+        badgeText={node.props.badgeText}
+        storeLogo={storeLogo}
+        shopName={ctxShop?.name}
+        primaryColor={theme.colors.primary}
+        style={computed}
+      />
     );
   }
 
@@ -424,27 +384,18 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
 
   // ── badge ─────────────────────────────────────────────────────────────────
   if (node.type === 'badge') {
-    return (
-      <div id={node.id} style={computed} className="inline-flex items-center">
-        {node.props.text || ''}
-      </div>
-    );
+    return <PublishedBadgeNode id={node.id} text={node.props.text || ''} style={computed} />;
   }
 
   // ── image ─────────────────────────────────────────────────────────────────
   if (node.type === 'image') {
     return (
-      <div id={node.id} style={computed} className="overflow-hidden">
-        <img
-          src={
-            node.props.src ||
-            'https://images.unsplash.com/photo-1617788138017-80ad40651399?w=800&auto=format&fit=crop&q=80'
-          }
-          alt={node.props.alt || ''}
-          className="w-full h-full object-cover"
-          referrerPolicy="no-referrer"
-        />
-      </div>
+      <PublishedImageNode
+        id={node.id}
+        src={node.props.src || 'https://images.unsplash.com/photo-1617788138017-80ad40651399?w=800&auto=format&fit=crop&q=80'}
+        alt={node.props.alt || ''}
+        style={computed}
+      />
     );
   }
 
