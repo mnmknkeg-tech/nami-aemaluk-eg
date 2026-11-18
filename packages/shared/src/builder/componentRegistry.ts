@@ -95,3 +95,24 @@ export function isRegisteredComponentType(type: unknown): type is ComponentType 
 export function isRegisteredComponentCategory(category: unknown): category is ComponentCategory {
   return typeof category === 'string' && COMPONENT_CATEGORY_SET.has(category);
 }
+
+/**
+ * Returns the canonical definition for a persisted component type.
+ * Legacy aliases resolve to their canonical definition without rewriting the
+ * saved node; callers that need to inspect the literal stored key can use
+ * getPersistedComponentDefinition instead.
+ */
+export function getComponentDefinition(type: string): ComponentDefinition | undefined {
+  const canonicalType = resolveComponentType(type);
+  return canonicalType ? COMPONENT_REGISTRY[canonicalType] : undefined;
+}
+
+/** Returns metadata for the exact persisted key, including legacy entries. */
+export function getPersistedComponentDefinition(type: string): ComponentDefinition | undefined {
+  return isRegisteredComponentType(type) ? COMPONENT_REGISTRY[type] : undefined;
+}
+
+/** Current schema version for a known component key, or undefined if unknown. */
+export function getComponentVersion(type: string): number | undefined {
+  return getComponentDefinition(type)?.version;
+}
