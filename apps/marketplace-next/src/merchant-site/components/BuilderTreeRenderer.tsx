@@ -24,6 +24,7 @@ import {
   PublishedParagraphNode,
 } from './BuilderPrimitiveNodes';
 import { MobileFooterBar } from './BuilderMobileFooterBar';
+import { PublishedProductsSection } from './PublishedProductsSection';
 import { PublishedContactForm } from './PublishedContactForm';
 import { PublishedFeaturesSection, PublishedTestimonialsSection } from './PublishedMarketingSections';
 // سلة موقع التاجر المستقلة — مش سلة الماركت (decoupling): الـ add-to-cart في
