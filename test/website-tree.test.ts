@@ -214,3 +214,81 @@ it('anchors absolute children to their immediate parent in each viewport', () =>
   ).toBe('relative');
   expect(normalized.components.root.styles.mobile.position).toBe('static');
 });
+
+
+describe('website tree parent-link diagnostics', () => {
+  it('reports a child edge whose child has no matching parentId', () => {
+    const input = website({
+      root: node('root', 'container', null, ['child']),
+      child: node('child', 'heading', null),
+    });
+
+    expect(inspectWebsiteTree(input).parentLinkConflicts).toEqual([
+      {
+        pageId: 'page_home',
+        nodeId: 'child',
+        kind: 'parent-mismatch',
+        declaredParentId: null,
+        actualParentIds: ['root'],
+      },
+    ]);
+
+    // The renderer continues to follow childrenIds for legacy compatibility.
+    expect(normalizeWebsiteTree(input).components.root.childrenIds).toEqual(['child']);
+    expect(normalizeWebsiteTree(input).components.child.parentId).toBe('root');
+  });
+
+  it('reports a declared parent that does not list the child', () => {
+    const input = website({
+      root: node('root', 'container', null, []),
+      child: node('child', 'heading', 'root'),
+    });
+
+    expect(inspectWebsiteTree(input).parentLinkConflicts).toContainEqual({
+      pageId: '(unreachable)',
+      nodeId: 'child',
+      kind: 'missing-child-edge',
+      declaredParentId: 'root',
+      actualParentIds: [],
+    });
+  });
+
+  it('reports a parent reference that points to a missing node', () => {
+    const input = website({
+      root: node('root', 'container', null, ['child']),
+      child: node('child', 'heading', 'missing-parent'),
+    });
+
+    expect(inspectWebsiteTree(input).parentLinkConflicts).toContainEqual({
+      pageId: 'page_home',
+      nodeId: 'child',
+      kind: 'missing-parent',
+      declaredParentId: 'missing-parent',
+      actualParentIds: ['root'],
+    });
+    expect(inspectWebsiteTree(input).parentLinkConflicts).toContainEqual({
+      pageId: 'page_home',
+      nodeId: 'child',
+      kind: 'parent-mismatch',
+      declaredParentId: 'missing-parent',
+      actualParentIds: ['root'],
+    });
+  });
+
+  it('keeps orphan and cyclic diagnostics separate from parent-link conflicts', () => {
+    const input = website({
+      root: node('root', 'container', null, ['child']),
+      child: node('child', 'container', 'root', ['root']),
+      orphan: node('orphan', 'heading', 'missing'),
+    });
+
+    const report = inspectWebsiteTree(input);
+    expect(report.cycles).toHaveLength(1);
+    expect(report.unreachableNodeIds).toContainEqual({
+      pageId: '(unreachable)',
+      nodeId: 'orphan',
+    });
+    expect(report.parentLinkConflicts.some((item) => item.nodeId === 'child')).toBe(false);
+    expect(report.parentLinkConflicts.some((item) => item.nodeId === 'orphan')).toBe(true);
+  });
+});

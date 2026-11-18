@@ -6,6 +6,14 @@ export interface TreeParentConflict {
   parentIds: string[];
 }
 
+export interface ParentLinkConflict {
+  pageId: string;
+  nodeId: string;
+  kind: 'missing-parent' | 'missing-child-edge' | 'parent-mismatch';
+  declaredParentId: string | null;
+  actualParentIds: string[];
+}
+
 export interface TreeCycle {
   pageId: string;
   nodeIds: string[];
@@ -42,6 +50,7 @@ export interface WebsiteTreeReport {
   unreachableNodeIds: UnreachableTreeNode[];
   duplicateChildren: Array<{ pageId: string; parentId: string; childId: string }>;
   multipleParents: TreeParentConflict[];
+  parentLinkConflicts: ParentLinkConflict[];
   cycles: TreeCycle[];
   duplicateProductSections: ProductSectionConflict[];
   invalidProductParents: InvalidProductParent[];
@@ -55,6 +64,7 @@ const EMPTY_REPORT = (): WebsiteTreeReport => ({
   unreachableNodeIds: [],
   duplicateChildren: [],
   multipleParents: [],
+  parentLinkConflicts: [],
   cycles: [],
   duplicateProductSections: [],
   invalidProductParents: [],
@@ -199,6 +209,42 @@ export function inspectWebsiteTree(input: unknown): WebsiteTreeReport {
       });
     }
 
+    // childrenIds defines render order; parentId is its denormalized reverse link.
+    // Report disagreements without changing the legacy normalization behavior.
+    const declaredParentId = typeof node.parentId === 'string' ? node.parentId : null;
+    const diagnosticPageId = pageIds[0] || '(unreachable)';
+    if (declaredParentId && !components[declaredParentId]) {
+      report.parentLinkConflicts.push({
+        pageId: diagnosticPageId,
+        nodeId,
+        kind: 'missing-parent',
+        declaredParentId,
+        actualParentIds: parents,
+      });
+    } else if (
+      declaredParentId &&
+      (!Array.isArray(components[declaredParentId]?.childrenIds) ||
+        !components[declaredParentId].childrenIds.includes(nodeId))
+    ) {
+      report.parentLinkConflicts.push({
+        pageId: diagnosticPageId,
+        nodeId,
+        kind: 'missing-child-edge',
+        declaredParentId,
+        actualParentIds: parents,
+      });
+    }
+
+    if (parents.length > 0 && (!declaredParentId || !parents.includes(declaredParentId))) {
+      report.parentLinkConflicts.push({
+        pageId: diagnosticPageId,
+        nodeId,
+        kind: 'parent-mismatch',
+        declaredParentId,
+        actualParentIds: parents,
+      });
+    }
+
     const styles = isRecord(node.styles) ? node.styles : {};
     if (
       isRecord(styles.desktop) &&
@@ -232,6 +278,10 @@ export function inspectWebsiteTree(input: unknown): WebsiteTreeReport {
   }
 
   report.unreachableNodeIds.sort((a, b) => a.nodeId.localeCompare(b.nodeId));
+  report.parentLinkConflicts = dedupeRecords(
+    report.parentLinkConflicts,
+    (x) => `${x.pageId}:${x.nodeId}:${x.kind}:${x.declaredParentId || ''}:${x.actualParentIds.join(',')}`
+  );
   report.duplicateChildren = dedupeRecords(
     report.duplicateChildren,
     (x) => `${x.pageId}:${x.parentId}:${x.childId}`
