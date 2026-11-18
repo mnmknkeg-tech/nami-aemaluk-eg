@@ -15,10 +15,22 @@ import {
 } from '../apps/dashboard-web/src/components/website-builder/data/registry';
 import { getInitialBuilderState } from '../apps/dashboard-web/src/components/website-builder/context/builderUtils';
 import { sectionCategoriesList } from '../apps/dashboard-web/src/components/website-builder/data/sections';
+import { GENERIC_CONTENT_FIELDS } from '../apps/dashboard-web/src/components/website-builder/components/inspector/panels/contentFieldRegistry';
 import { auditSectionTemplateComponentContracts, inspectSectionTemplateComponentUsage } from '../apps/dashboard-web/src/components/website-builder/data/registry/componentContractAudit';
 import { COMPONENT_REGISTRY, COMPONENT_TYPE_SET, componentSupportsChildren, getComponentDefinition, getComponentVersion, getPersistedComponentDefinition, isComponentVersionCurrent, isRegisteredComponentCategory, isRegisteredComponentType, resolveComponentType } from '../packages/shared/src/builder/componentRegistry';
 
 describe('canonical website template registry', () => {
+  it('keeps generic inspector controls aligned with the implemented field catalog', () => {
+    expect(GENERIC_CONTENT_FIELDS.map((field) => field.key)).toEqual([
+      'text', 'title', 'subtitle', 'badge', 'icon', 'price',
+    ]);
+    GENERIC_CONTENT_FIELDS.forEach((field) => {
+      expect(field.visibility).toBe('when-present');
+      expect(['input', 'textarea']).toContain(field.control);
+      if (field.control === 'textarea') expect(field.rows).toBeGreaterThan(0);
+    });
+  });
+
   it('keeps the canonical component registry complete and backward compatible', () => {
     expect(Object.keys(COMPONENT_REGISTRY).length).toBe(COMPONENT_TYPE_SET.size);
     expect(isRegisteredComponentType('hero')).toBe(true);

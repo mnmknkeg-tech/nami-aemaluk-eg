@@ -79,3 +79,10 @@ The section component usage inventory also records each persisted prop's observe
 runtime value kinds and occurrence count, without returning prop values. Mixed
 kinds are deliberately preserved as evidence of legacy variation; this report
 must not be treated as a validation schema or used to coerce saved data.
+
+
+The dashboard Inspector now has a small generic content-field catalog for the
+controls already rendered by ContentSection (text, title, subtitle, badge, icon,
+and price). These controls remain presence-gated: a field appears only when the
+saved node already has that prop. This catalog does not define defaults, reject
+unknown props, or replace specialized section editors.

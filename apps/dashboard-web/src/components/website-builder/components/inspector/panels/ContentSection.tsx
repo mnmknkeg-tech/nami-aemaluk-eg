@@ -1,6 +1,7 @@
 import React from 'react';
 import { Type, ChevronDown, ChevronUp, Eye, EyeOff, Sparkles } from 'lucide-react';
 import type { InspectorPanelProps } from './types';
+import { GENERIC_CONTENT_FIELDS } from './contentFieldRegistry';
 
 type ContentSectionProps = Pick<
   InspectorPanelProps,
@@ -290,90 +291,29 @@ export const ContentSection: React.FC<ContentSectionProps> = ({
               </button>
             </div>
 
-            {node.props.text !== undefined && (
-              <div>
+            {GENERIC_CONTENT_FIELDS.filter((field) => node.props[field.key] !== undefined).map((field) => (
+              <div key={field.key}>
                 <label className="text-[10px] font-bold text-slate-500 block mb-1">
-                  النص (Text Content)
+                  {field.label}
                 </label>
-                <textarea
-                  rows={3}
-                  value={node.props.text}
-                  onChange={(e) => handlePropChange(node.id, 'text', e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 outline-hidden focus:border-blue-500 focus:bg-white"
-                />
+                {field.control === 'textarea' ? (
+                  <textarea
+                    rows={field.rows}
+                    value={String(node.props[field.key] ?? '')}
+                    onChange={(event) => handlePropChange(node.id, field.key, event.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 outline-hidden focus:border-blue-500 focus:bg-white"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={String(node.props[field.key] ?? '')}
+                    onChange={(event) => handlePropChange(node.id, field.key, event.target.value)}
+                    placeholder={field.placeholder}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 outline-hidden focus:border-blue-500 focus:bg-white"
+                  />
+                )}
               </div>
-            )}
-
-            {node.props.title !== undefined && (
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 block mb-1">
-                  العنوان الرئيسي (Title)
-                </label>
-                <input
-                  type="text"
-                  value={node.props.title}
-                  onChange={(e) => handlePropChange(node.id, 'title', e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-900 outline-hidden focus:border-blue-500 focus:bg-white"
-                />
-              </div>
-            )}
-
-            {node.props.subtitle !== undefined && (
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 block mb-1">
-                  العنوان الفرعي (Subtitle)
-                </label>
-                <textarea
-                  rows={2}
-                  value={node.props.subtitle}
-                  onChange={(e) => handlePropChange(node.id, 'subtitle', e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700 outline-hidden focus:border-blue-500 focus:bg-white"
-                />
-              </div>
-            )}
-
-            {node.props.badge !== undefined && (
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 block mb-1">
-                  الشارة (Badge)
-                </label>
-                <input
-                  type="text"
-                  value={node.props.badge}
-                  onChange={(e) => handlePropChange(node.id, 'badge', e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-blue-700 font-semibold outline-hidden focus:border-blue-500 focus:bg-white"
-                />
-              </div>
-            )}
-
-            {node.props.icon !== undefined && (
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 block mb-1">
-                  اسم الأيقونة (Icon Name)
-                </label>
-                <input
-                  type="text"
-                  value={node.props.icon}
-                  onChange={(e) => handlePropChange(node.id, 'icon', e.target.value)}
-                  placeholder="Star, ShieldCheck, Sparkles, Truck, Package..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-900 outline-hidden focus:border-blue-500 focus:bg-white"
-                />
-              </div>
-            )}
-
-            {node.props.price !== undefined && (
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 block mb-1">
-                  السعر (Price)
-                </label>
-                <input
-                  type="text"
-                  value={node.props.price}
-                  onChange={(e) => handlePropChange(node.id, 'price', e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-blue-700 font-black outline-hidden focus:border-blue-500 focus:bg-white"
-                />
-              </div>
-            )}
+            ))}
           </div>
         )}
       </div>
