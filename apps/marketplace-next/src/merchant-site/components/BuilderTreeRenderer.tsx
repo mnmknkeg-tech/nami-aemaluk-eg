@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { api, jsonRequest } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { PublishedBadgeNode, PublishedHeadingNode, PublishedImageNode } from './BuilderPrimitiveNodes';
+import { PublishedBadgeNode, PublishedHeadingNode, PublishedImageNode, PublishedParagraphNode } from './BuilderPrimitiveNodes';
 // سلة موقع التاجر المستقلة — مش سلة الماركت (decoupling): الـ add-to-cart في
 // قالب التاجر بيخزن في merchant-site-cart:site:{slug} والـ checkout بيكمل
 // على /site/{slug}/checkout بسلته الخاصة، مالهمش أي دعوة بـ mnmknk_cart.
@@ -295,90 +295,15 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
 
   // ── paragraph ─────────────────────────────────────────────────────────────
   if (node.type === 'paragraph') {
-    const text = node.props.text || '';
-
-    // Editor parity: navigation bars are paragraph nodes carrying explicit
-    // navigationItems (label + destination) — render them as real links.
-    const navItems = Array.isArray(node.props.navigationItems)
-      ? (node.props.navigationItems as Array<Record<string, any>>).filter(
-          (item) => item?.label && !item.hidden
-        )
-      : null;
-    if (navItems && navItems.length > 0) {
-      return (
-        <div id={node.id} style={computed} className="flex flex-wrap items-center gap-2">
-          {navItems.map((item, index) => (
-            <span
-              key={`${item.label}-${index}`}
-              onClick={() => followLink(item, { inferFromLabel: true })}
-              className="cursor-pointer transition-colors hover:opacity-80"
-            >
-              {item.label}
-            </span>
-          ))}
-        </div>
-      );
-    }
-
-    // Editor parity: bullet-separated nav text is split into clickable items
-    // that match navigationItems by label.
-    if (typeof text === 'string' && (text.includes(' • ') || text.includes(' | '))) {
-      const delimiter = text.includes(' • ') ? ' • ' : ' | ';
-      const items = text.split(delimiter).map((item) => item.trim());
-      return (
-        <p id={node.id} style={computed} className="flex flex-wrap items-center gap-2">
-          {items.map((item, index) => {
-            const navigationItem = (node.props.navigationItems || []).find(
-              (candidate: { label?: string }) => candidate.label?.trim() === item
-            );
-            return (
-              <React.Fragment key={index}>
-                <span
-                  onClick={() =>
-                    followLink(
-                      { ...node.props, destination: navigationItem?.destination },
-                      { inferFromLabel: true }
-                    )
-                  }
-                  className="cursor-pointer transition-colors hover:opacity-80"
-                >
-                  {item}
-                </span>
-                {index < items.length - 1 && <span className="opacity-40 select-none">•</span>}
-              </React.Fragment>
-            );
-          })}
-        </p>
-      );
-    }
-
-    // Nav links created by the page operations (url/pageId/destination on a
-    // plain paragraph) were dead text on /shop — make them clickable.
-    const isLinkLike = Boolean(
-      node.destination ||
-      node.props.destination ||
-      node.props.pageId ||
-      node.props.targetPageId ||
-      String(node.props.url || node.props.href || node.props.link || '').trim() ||
-      node.props.allowLegacyLabelNavigation === true
-    );
-    if (isLinkLike && String(text).trim()) {
-      return (
-        <p
-          id={node.id}
-          style={computed}
-          onClick={() => followLink({ ...node.props }, { inferFromLabel: true })}
-          className="cursor-pointer transition-opacity hover:opacity-80"
-        >
-          {text}
-        </p>
-      );
-    }
-
     return (
-      <p id={node.id} style={computed}>
-        {text}
-      </p>
+      <PublishedParagraphNode
+        id={node.id}
+        text={node.props.text || ''}
+        props={node.props}
+        destination={node.destination}
+        style={computed}
+        onFollowLink={followLink}
+      />
     );
   }
 
