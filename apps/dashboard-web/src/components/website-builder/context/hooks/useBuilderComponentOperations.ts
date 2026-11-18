@@ -114,6 +114,33 @@ const replaceNode = (
   return { ...website, components: { ...website.components, [id]: update(target) } };
 };
 
+/** Reorder one parent's existing children without changing tree ownership. */
+export const reorderChildrenReducer =
+  (parentId: string, newChildrenIds: string[]): WebsiteReducer =>
+  (website) => {
+    const parent = website.components[parentId];
+    if (!parent || !Array.isArray(parent.childrenIds)) return website;
+
+    const currentIds = parent.childrenIds;
+    const nextIds = newChildrenIds;
+    if (
+      nextIds.length !== currentIds.length ||
+      new Set(nextIds).size !== nextIds.length ||
+      nextIds.some((id) => !currentIds.includes(id))
+    ) {
+      return website;
+    }
+
+    if (nextIds.every((id, index) => id === currentIds[index])) return website;
+    return {
+      ...website,
+      components: {
+        ...website.components,
+        [parentId]: { ...parent, childrenIds: [...nextIds] },
+      },
+    };
+  };
+
 // ── Products-section placement rules ────────────────────────────────────────
 // The public renderer normalizes every tree with `normalizeWebsiteTree`, which
 // detaches a products section whose parent is not a layout container, and any
@@ -644,8 +671,9 @@ export const useBuilderComponentOperations = ({
     (parentId: string, newChildrenIds: string[]) => {
       const parent = websiteRef.current.components[parentId];
       if (!parent) return;
-      recordHistory(`إعادة ترتيب عناصر (${parent.name})`, (current) =>
-        replaceNode(current, parentId, (node) => ({ ...node, childrenIds: [...newChildrenIds] }))
+      recordHistory(
+        `إعادة ترتيب عناصر (${parent.name})`,
+        reorderChildrenReducer(parentId, newChildrenIds)
       );
     },
     [recordHistory, websiteRef]

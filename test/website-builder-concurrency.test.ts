@@ -1,4 +1,5 @@
 import {
+  reorderChildrenReducer,
   updateNodePropsReducer,
   updateNodeStyleReducer,
 } from '../apps/dashboard-web/src/components/website-builder/context/hooks/useBuilderComponentOperations';
@@ -28,6 +29,43 @@ const baseWebsite = {
 } as unknown as Website;
 
 describe('website builder concurrent mutations', () => {
+  it('reorders an exact set of children without changing parent links', () => {
+    const withChildren = {
+      ...baseWebsite,
+      components: {
+        root: {
+          ...baseWebsite.components.node,
+          id: 'root',
+          childrenIds: ['first', 'second'],
+        },
+        first: { ...baseWebsite.components.node, id: 'first', parentId: 'root' },
+        second: { ...baseWebsite.components.node, id: 'second', parentId: 'root' },
+      },
+    } as Website;
+
+    const reordered = reorderChildrenReducer('root', ['second', 'first'])(withChildren);
+    expect(reordered.components.root.childrenIds).toEqual(['second', 'first']);
+    expect(reordered.components.first.parentId).toBe('root');
+    expect(reordered.components.second.parentId).toBe('root');
+  });
+
+  it.each([
+    ['missing child', ['first']],
+    ['unknown child', ['first', 'unknown']],
+    ['duplicate child', ['first', 'first']],
+  ])('rejects a reorder containing a %s', (_label, nextIds) => {
+    const withChildren = {
+      ...baseWebsite,
+      components: {
+        root: { ...baseWebsite.components.node, id: 'root', childrenIds: ['first', 'second'] },
+        first: { ...baseWebsite.components.node, id: 'first', parentId: 'root' },
+        second: { ...baseWebsite.components.node, id: 'second', parentId: 'root' },
+      },
+    } as Website;
+
+    expect(reorderChildrenReducer('root', nextIds as string[])(withChildren)).toBe(withChildren);
+  });
+
   it('composes a props update followed immediately by a style update without dropping either', () => {
     const withProps = updateNodePropsReducer('node', { title: 'Updated' })(baseWebsite);
     const withStyle = updateNodeStyleReducer(
