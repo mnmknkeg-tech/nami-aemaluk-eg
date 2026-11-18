@@ -1,4 +1,4 @@
-import { getInvalidPageDestinations, inspectWebsiteTree } from '@ray-eg/shared/builder';
+import { COMPONENT_CATEGORY_SET, COMPONENT_TYPE_SET, getInvalidPageDestinations, inspectWebsiteTree } from '@ray-eg/shared/builder';
 import type { ComponentNode, Website } from '../../types/builder';
 import {
   TEMPLATE_CATEGORIES,
@@ -20,72 +20,6 @@ function isTemplateCategory(value: unknown): value is TemplateCategory {
   return typeof value === 'string' && TEMPLATE_CATEGORY_SET.has(value);
 }
 
-const COMPONENT_TYPES = new Set([
-  'product_filter_tabs',
-  'website',
-  'page',
-  'header',
-  'hero',
-  'features',
-  'bento',
-  'bento-grid',
-  'services',
-  'services-grid',
-  'products',
-  'pricing',
-  'testimonials',
-  'gallery',
-  'team',
-  'stats',
-  'faq',
-  'cta',
-  'contact',
-  'contact-section',
-  'footer',
-  'navigation',
-  'form',
-  'container',
-  'grid',
-  'flex',
-  'heading',
-  'paragraph',
-  'button',
-  'image',
-  'badge',
-  'card',
-  'divider',
-  'spacer',
-  'icon',
-  'input',
-  'custom-code',
-  'whatsapp-float',
-  'mobile_footer',
-  'whatsapp_button',
-  'trust-badges',
-  'trust_badges',
-  'before-after',
-  'before_after',
-  'promo-banner',
-  'promo_banner',
-  'announcement-bar',
-  'announcement_bar',
-  'auth',
-  'auth_login',
-  'auth_register',
-]);
-const COMPONENT_CATEGORIES = new Set([
-  'layout',
-  'typography',
-  'media',
-  'action',
-  'section',
-  'commerce',
-  'forms',
-  'form',
-  'navigation',
-  'interactive',
-  'auth',
-]);
 const STYLE_ENUMS: Record<string, readonly string[]> = {
   display: ['block', 'flex', 'grid', 'inline-block', 'none'],
   flexDirection: ['row', 'column', 'row-reverse', 'column-reverse'],
@@ -132,10 +66,10 @@ function validateComponentRecords(
     if (typeof value.name !== 'string' || !value.name.trim()) {
       invalid(`Component "${key}" must have a non-empty name.`);
     }
-    if (typeof value.type !== 'string' || !COMPONENT_TYPES.has(value.type)) {
+    if (typeof value.type !== 'string' || !COMPONENT_TYPE_SET.has(value.type)) {
       invalid(`Component "${key}" has unsupported type "${String(value.type)}".`);
     }
-    if (typeof value.category !== 'string' || !COMPONENT_CATEGORIES.has(value.category)) {
+    if (typeof value.category !== 'string' || !COMPONENT_CATEGORY_SET.has(value.category)) {
       invalid(`Component "${key}" has unsupported category "${String(value.category)}".`);
     }
     if (!(

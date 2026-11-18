@@ -1,4 +1,5 @@
 export * from './types';
+export * from './componentRegistry';
 export * from './linkDestinations';
 export * from './responsiveStyles';
 export * from './publishedParity';
