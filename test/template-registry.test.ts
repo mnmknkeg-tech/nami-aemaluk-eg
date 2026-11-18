@@ -15,8 +15,27 @@ import {
 } from '../apps/dashboard-web/src/components/website-builder/data/registry';
 import { getInitialBuilderState } from '../apps/dashboard-web/src/components/website-builder/context/builderUtils';
 import { sectionCategoriesList } from '../apps/dashboard-web/src/components/website-builder/data/sections';
+import { COMPONENT_REGISTRY, COMPONENT_TYPE_SET, isRegisteredComponentCategory, isRegisteredComponentType, resolveComponentType } from '../packages/shared/src/builder/componentRegistry';
 
 describe('canonical website template registry', () => {
+  it('keeps the canonical component registry complete and backward compatible', () => {
+    expect(Object.keys(COMPONENT_REGISTRY).length).toBe(COMPONENT_TYPE_SET.size);
+    expect(isRegisteredComponentType('hero')).toBe(true);
+    expect(isRegisteredComponentType('unknown-widget')).toBe(false);
+    expect(isRegisteredComponentCategory('commerce')).toBe(true);
+    expect(isRegisteredComponentCategory('form')).toBe(true);
+
+    expect(resolveComponentType('bento-grid')).toBe('bento');
+    expect(resolveComponentType('services-grid')).toBe('services');
+    expect(resolveComponentType('contact-section')).toBe('contact');
+    expect(resolveComponentType('trust_badges')).toBe('trust-badges');
+    expect(resolveComponentType('before_after')).toBe('before-after');
+    expect(resolveComponentType('promo_banner')).toBe('promo-banner');
+    expect(resolveComponentType('announcement_bar')).toBe('announcement-bar');
+    expect(resolveComponentType('hero')).toBe('hero');
+    expect(resolveComponentType('not-a-component')).toBeUndefined();
+  });
+
   it('loads every registered full website template with its stable id and page roots', () => {
     const entries = getFullWebsiteTemplates();
     expect(entries.length).toBeGreaterThan(0);

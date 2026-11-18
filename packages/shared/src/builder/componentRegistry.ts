@@ -65,7 +65,10 @@ export const COMPONENT_REGISTRY = {
 } satisfies Record<ComponentType, ComponentDefinition>;
 
 export const COMPONENT_TYPE_SET: ReadonlySet<string> = new Set(Object.keys(COMPONENT_REGISTRY));
-export const COMPONENT_CATEGORY_SET: ReadonlySet<string> = new Set(['layout','typography','media','action','section','commerce','forms','form','navigation','interactive','auth']);
+export const COMPONENT_CATEGORY_SET: ReadonlySet<string> = new Set([
+  ...Object.values(COMPONENT_REGISTRY).map(({ category }) => category),
+  'form', // Legacy category alias retained for saved documents.
+]);
 
 const COMPONENT_ALIAS_MAP: Readonly<Record<string, ComponentType>> = Object.freeze({
   "bento-grid": "bento",
