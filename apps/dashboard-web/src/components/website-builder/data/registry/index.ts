@@ -1,3 +1,4 @@
+export * from './componentContractAudit';
 import {
   canonicalTemplates,
   legacyFullWebsiteIds,

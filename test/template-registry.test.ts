@@ -15,6 +15,7 @@ import {
 } from '../apps/dashboard-web/src/components/website-builder/data/registry';
 import { getInitialBuilderState } from '../apps/dashboard-web/src/components/website-builder/context/builderUtils';
 import { sectionCategoriesList } from '../apps/dashboard-web/src/components/website-builder/data/sections';
+import { auditSectionTemplateComponentContracts } from '../apps/dashboard-web/src/components/website-builder/data/registry/componentContractAudit';
 import { COMPONENT_REGISTRY, COMPONENT_TYPE_SET, componentSupportsChildren, getComponentDefinition, getComponentVersion, getPersistedComponentDefinition, isComponentVersionCurrent, isRegisteredComponentCategory, isRegisteredComponentType, resolveComponentType } from '../packages/shared/src/builder/componentRegistry';
 
 describe('canonical website template registry', () => {
@@ -78,6 +79,58 @@ describe('canonical website template registry', () => {
 
     expect(metadata.map((entry) => entry.id)).toEqual(entries.map((entry) => entry.id));
     expect(new Set(metadata.map((entry) => entry.id)).size).toBe(metadata.length);
+  });
+
+  it('audits section component contracts without mutating legacy templates', () => {
+    const entries = getSectionTemplateRecords();
+    const before = JSON.stringify(entries);
+    const issues = auditSectionTemplateComponentContracts(entries.map((entry) => entry.template));
+
+    expect(Array.isArray(issues)).toBe(true);
+    expect(JSON.stringify(entries)).toBe(before);
+  });
+
+  it('reports unsupported child ownership in a synthetic section without rewriting it', () => {
+    const template = {
+      ...getSectionTemplateRecords()[0].template,
+      id: 'audit-heading-with-child',
+      rootNodeId: 'heading',
+      nodes: {
+        heading: {
+          ...getSectionTemplateRecords()[0].template.nodes[
+            getSectionTemplateRecords()[0].template.rootNodeId
+          ],
+          id: 'heading',
+          type: 'heading',
+          category: 'typography',
+          parentId: null,
+          childrenIds: ['child'],
+        },
+        child: {
+          ...getSectionTemplateRecords()[0].template.nodes[
+            getSectionTemplateRecords()[0].template.rootNodeId
+          ],
+          id: 'child',
+          type: 'paragraph',
+          category: 'typography',
+          parentId: 'heading',
+          childrenIds: [],
+        },
+      },
+    };
+    const before = JSON.stringify(template);
+    const issues = auditSectionTemplateComponentContracts([template]);
+
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'children-not-supported',
+          templateId: 'audit-heading-with-child',
+          nodeId: 'heading',
+        }),
+      ])
+    );
+    expect(JSON.stringify(template)).toBe(before);
   });
 
   it('loads every section subtree and its root node through the section category', () => {
