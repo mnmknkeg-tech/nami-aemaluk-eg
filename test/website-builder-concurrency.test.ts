@@ -13,7 +13,8 @@ import {
   mergeWebsiteSettings,
   restoreHistorySnapshot,
 } from '../apps/dashboard-web/src/components/website-builder/context/hooks/useBuilderHistory';
-import { Website } from '../apps/dashboard-web/src/components/website-builder/types/builder';
+import { ComponentNode, Website } from '../apps/dashboard-web/src/components/website-builder/types/builder';
+import { mergeAiNodeReplacement } from '../apps/dashboard-web/src/components/website-builder/context/hooks/useBuilderAI';
 
 const baseWebsite = {
   activity: 'retail',
@@ -33,6 +34,32 @@ const baseWebsite = {
 } as unknown as Website;
 
 describe('website builder concurrent mutations', () => {
+  it('keeps AI replacement from changing component type, category, or tree ownership', () => {
+    const target = {
+      ...baseWebsite.components.node,
+      id: 'target',
+      type: 'heading',
+      category: 'typography',
+      parentId: 'root',
+      childrenIds: ['child'],
+    } as unknown as ComponentNode;
+
+    const replaced = mergeAiNodeReplacement(target, {
+      id: 'other',
+      type: 'products',
+      category: 'commerce',
+      parentId: 'other-root',
+      childrenIds: [],
+      props: { title: 'Updated safely' },
+    });
+
+    expect(replaced.id).toBe('target');
+    expect(replaced.type).toBe('heading');
+    expect(replaced.category).toBe('typography');
+    expect(replaced.parentId).toBe('root');
+    expect(replaced.childrenIds).toEqual(['child']);
+    expect(replaced.props).toEqual({ title: 'Updated safely' });
+  });
   it('resolves parent ownership from childrenIds even when parentId is stale', () => {
     const inconsistent = {
       ...baseWebsite,

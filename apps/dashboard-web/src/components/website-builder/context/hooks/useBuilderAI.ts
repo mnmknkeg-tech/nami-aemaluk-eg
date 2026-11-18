@@ -4,6 +4,20 @@ import { ComponentNode, Page, Website } from '../../types/builder';
 import { StructuredAiPatch } from '../../types/ai';
 import { getPageReachableNodeIds } from './useBuilderComponentOperations';
 
+/** Apply AI content replacement without allowing it to mutate persisted tree identity. */
+export const mergeAiNodeReplacement = (
+  target: ComponentNode,
+  replacement: Record<string, unknown>
+): ComponentNode => ({
+  ...target,
+  ...replacement,
+  id: target.id,
+  type: target.type,
+  category: target.category,
+  parentId: target.parentId,
+  childrenIds: target.childrenIds,
+});
+
 export interface UseBuilderAIProps {
   website: Website;
   websiteRef?: { current: Website };
@@ -42,10 +56,12 @@ export const useBuilderAI = ({
       const currentWebsite = websiteRef?.current ?? website;
       const updatedComponents = { ...currentWebsite.components };
       let updatedTheme = { ...currentWebsite.theme };
-      let targetSelectId = patch.targetNodeIds?.[0] || selectedNodeId;
-      // AI edits are scoped to the open page, just like manual editor operations.
+      // AI edits and their initial selection are scoped to the open page.
       // Newly inserted standalone nodes join this set for subsequent operations in the same patch.
       const activePageNodeIds = getPageReachableNodeIds(currentWebsite, activePage.rootNodeId);
+      let targetSelectId =
+        patch.targetNodeIds?.find((id) => activePageNodeIds.has(id)) ||
+        (selectedNodeId && activePageNodeIds.has(selectedNodeId) ? selectedNodeId : null);
 
       patch.operations.forEach((op) => {
         const opType = op.op.toLowerCase();
@@ -165,13 +181,7 @@ export const useBuilderAI = ({
         ) {
           const target = updatedComponents[op.targetId];
           // Content replacement must never rewrite graph identity or parent/child edges.
-          updatedComponents[op.targetId] = {
-            ...target,
-            ...op.value,
-            id: target.id,
-            parentId: target.parentId,
-            childrenIds: target.childrenIds,
-          };
+          updatedComponents[op.targetId] = mergeAiNodeReplacement(target, op.value);
         }
       });
 
