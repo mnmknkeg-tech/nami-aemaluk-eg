@@ -1,5 +1,6 @@
 import {
   collectExclusivelyOwnedSubtreeIds,
+  getPageReachableNodeIds,
   findTreeParentIds,
   reorderChildrenReducer,
   updateNodePropsReducer,
@@ -68,6 +69,19 @@ describe('website builder concurrent mutations', () => {
       },
     } as Website;
     expect(findTreeParentIds(inconsistent, 'child')).toEqual(['first', 'second']);
+  });
+
+  it('keeps editor parent navigation scoped to real child edges', () => {
+    const tree = {
+      ...baseWebsite,
+      components: {
+        root: { ...baseWebsite.components.node, id: 'root', childrenIds: ['child'] },
+        child: { ...baseWebsite.components.node, id: 'child', parentId: 'stale-parent' },
+        stale: { ...baseWebsite.components.node, id: 'stale', childrenIds: [] },
+      },
+    } as Website;
+    expect(findTreeParentIds(tree, 'child')).toEqual(['root']);
+    expect(getPageReachableNodeIds(tree, 'root').has('stale')).toBe(false);
   });
 
   it('reorders an exact set of children without changing parent links', () => {

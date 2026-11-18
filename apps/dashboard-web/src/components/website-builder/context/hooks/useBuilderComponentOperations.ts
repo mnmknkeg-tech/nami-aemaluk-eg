@@ -7,7 +7,7 @@ import {
   ViewportBreakpoint,
   Website,
 } from '../../types/builder';
-import { isAllowedProductsParent } from '@ray-eg/shared/builder';
+import { componentSupportsChildren, isAllowedProductsParent } from '@ray-eg/shared/builder';
 import { loadSectionTemplate } from '../../data/registry';
 import { createTemplateMobileStyles, createUniqueBuilderId } from '../builderUtils';
 
@@ -307,7 +307,8 @@ export const useBuilderComponentOperations = ({
       if (visited.has(curr.id)) break;
       visited.add(curr.id);
       crumbs.unshift(curr);
-      curr = curr.parentId ? website.components[curr.parentId] : undefined;
+      const parentId = findUniqueTreeParentId(website, curr.id);
+      curr = parentId ? website.components[parentId] : undefined;
     }
     return crumbs;
   }, [website.components, resolvedSelectedNodeId]);
@@ -331,11 +332,17 @@ export const useBuilderComponentOperations = ({
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || !selectedNodeId) return;
-      setSelectedNodeId(websiteRef.current.components[selectedNodeId]?.parentId ?? null);
+      const current = websiteRef.current;
+      const parentId = findUniqueTreeParentId(current, selectedNodeId);
+      setSelectedNodeId(
+        parentId && getPageReachableNodeIds(current, activePage.rootNodeId).has(parentId)
+          ? parentId
+          : activePage.rootNodeId
+      );
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [selectedNodeId, websiteRef]);
+  }, [activePage.rootNodeId, selectedNodeId, websiteRef]);
 
   const updateNodeProps = useCallback(
     (id: string, newProps: Record<string, any>) => {
@@ -363,6 +370,14 @@ export const useBuilderComponentOperations = ({
       const current = websiteRef.current;
       if (!current.components[parentId] || current.components[node.id]) return;
       const parent = current.components[parentId];
+      if (!componentSupportsChildren(parent.type)) {
+        setTemplateError('هذا المكون لا يقبل إضافة عناصر بداخله. اختر حاوية أو قسمًا يدعم العناصر الفرعية.');
+        return;
+      }
+      if (node.childrenIds.some((childId) => !current.components[childId]) || node.childrenIds.includes(node.id)) {
+        setTemplateError('تعذر إضافة المكون بسبب وجود علاقات فرعية غير صالحة.');
+        return;
+      }
       if (node.type === 'products' && parent) {
         const placementError = validateProductsPlacement(
           current,
@@ -406,6 +421,9 @@ export const useBuilderComponentOperations = ({
           throw new Error(
             `Cannot insert section "${templateId}": the active page root is missing.`
           );
+        }
+        if (!componentSupportsChildren(current.components[rootId].type)) {
+          throw new Error('الجذر الحالي لا يسمح بإضافة أقسام جديدة بداخله.');
         }
         const idMap: Record<string, string> = {};
         const usedIds = new Set(Object.keys(current.components));
@@ -643,7 +661,10 @@ export const useBuilderComponentOperations = ({
         newParentId = targetParentId;
       }
       const newParent = current.components[newParentId];
-      if (!newParent) return false;
+      if (!newParent || !componentSupportsChildren(newParent.type)) {
+        setTemplateError('المكان المحدد لا يقبل عناصر بداخله. اختر حاوية أو قسمًا مناسبًا.');
+        return false;
+      }
       // Reject moves that would place a products section where the public
       // normalizer would silently detach it (invalid parent or a second
       // products section on the same page).
