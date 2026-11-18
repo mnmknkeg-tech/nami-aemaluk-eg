@@ -4,7 +4,8 @@ export interface ComponentDefinition {
   type: ComponentType;
   label: string;
   category: ComponentCategory;
-  version: 1;
+  /** Increment when the persisted props/structure contract changes. */
+  version: number;
   aliases: readonly ComponentType[];
   supportsChildren: boolean;
 }
@@ -115,4 +116,10 @@ export function getPersistedComponentDefinition(type: string): ComponentDefiniti
 /** Current schema version for a known component key, or undefined if unknown. */
 export function getComponentVersion(type: string): number | undefined {
   return getComponentDefinition(type)?.version;
+}
+
+/** True only when a saved node carries the currently registered component version. */
+export function isComponentVersionCurrent(type: string, version: unknown): boolean {
+  const currentVersion = getComponentVersion(type);
+  return currentVersion !== undefined && Number.isInteger(version) && version === currentVersion;
 }

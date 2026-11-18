@@ -40,3 +40,21 @@ Legacy flat-site fallbacks remain available for stores without a published Build
 ## Verification boundary
 
 Automated style tests verify equivalent shared CSS for desktop, tablet, and mobile, including RTL-oriented typography choices. SSR and published-config tests cover structural rendering and draft/published selection. These checks do not prove pixel-level equivalence; browser screenshots are required for visual regression claims.
+
+
+## Component registry version contract
+
+The shared component registry exposes canonical and exact-persisted-key lookups.
+`getComponentDefinition` resolves legacy aliases to their canonical definition;
+`getPersistedComponentDefinition` preserves the literal stored key for
+diagnostics and compatibility work. `getComponentVersion` and
+`isComponentVersionCurrent` provide version checks without mutating saved
+documents. The current registry version is `1` for all registered keys.
+
+A version mismatch is diagnostic information only at this stage: loading and
+rendering must continue to preserve legacy props. Do not reject or rewrite a
+merchant document solely because a component version is old or newer until an
+explicit, tested migration policy is introduced. Per-component defaults,
+property schemas, renderer slots, and Inspector field metadata remain
+intentionally unpopulated until they can be derived from actual insertion
+factories and both editor/published renderer contracts.

@@ -15,7 +15,7 @@ import {
 } from '../apps/dashboard-web/src/components/website-builder/data/registry';
 import { getInitialBuilderState } from '../apps/dashboard-web/src/components/website-builder/context/builderUtils';
 import { sectionCategoriesList } from '../apps/dashboard-web/src/components/website-builder/data/sections';
-import { COMPONENT_REGISTRY, COMPONENT_TYPE_SET, componentSupportsChildren, getComponentDefinition, getComponentVersion, getPersistedComponentDefinition, isRegisteredComponentCategory, isRegisteredComponentType, resolveComponentType } from '../packages/shared/src/builder/componentRegistry';
+import { COMPONENT_REGISTRY, COMPONENT_TYPE_SET, componentSupportsChildren, getComponentDefinition, getComponentVersion, getPersistedComponentDefinition, isComponentVersionCurrent, isRegisteredComponentCategory, isRegisteredComponentType, resolveComponentType } from '../packages/shared/src/builder/componentRegistry';
 
 describe('canonical website template registry', () => {
   it('keeps the canonical component registry complete and backward compatible', () => {
@@ -47,6 +47,15 @@ describe('canonical website template registry', () => {
     expect(getComponentVersion('services-grid')).toBe(1);
     expect(getComponentDefinition('not-a-component')).toBeUndefined();
     expect(getComponentVersion('not-a-component')).toBeUndefined();
+    expect(isComponentVersionCurrent('hero', 1)).toBe(true);
+    expect(isComponentVersionCurrent('bento-grid', 1)).toBe(true);
+    expect(isComponentVersionCurrent('hero', 2)).toBe(false);
+    expect(isComponentVersionCurrent('hero', '1')).toBe(false);
+    expect(isComponentVersionCurrent('unknown-widget', 1)).toBe(false);
+    Object.values(COMPONENT_REGISTRY).forEach((definition) => {
+      expect(Number.isInteger(definition.version)).toBe(true);
+      expect(definition.version).toBeGreaterThan(0);
+    });
   });
 
   it('loads every registered full website template with its stable id and page roots', () => {
