@@ -18,7 +18,7 @@ import {
   Mail,
   MapPin,
 } from 'lucide-react';
-import { api, jsonRequest } from '@/lib/api';
+import { jsonRequest } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import {
   PublishedBadgeNode,
