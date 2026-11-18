@@ -106,10 +106,39 @@ function normalizeNodeStylesAfterMove(node: ComponentNode): ComponentNode {
 
 /** Resolve ownership from the authoritative childrenIds edges, never from a stale parentId. */
 export const findTreeParentIds = (website: Website, childId: string): string[] =>
-  Object.values(website.components)
-    .filter((candidate) => Array.isArray(candidate.childrenIds) && candidate.childrenIds.includes(childId))
-    .map((candidate) => candidate.id)
+  Object.entries(website.components)
+    .filter(([, candidate]) => Array.isArray(candidate.childrenIds) && candidate.childrenIds.includes(childId))
+    .map(([parentKey]) => parentKey)
     .sort();
+
+/** Ensure every descendant has exactly one matching owner before cloning a subtree. */
+export const hasUnambiguousSubtreeOwnership = (
+  website: Website,
+  rootId: string
+): boolean => {
+  if (!website.components[rootId]) return false;
+  const visited = new Set<string>();
+  const visiting = new Set<string>();
+  const visit = (nodeId: string, expectedParentId: string): boolean => {
+    const node = website.components[nodeId];
+    if (!node || visiting.has(nodeId) || visited.has(nodeId)) return false;
+    const parents = findTreeParentIds(website, nodeId);
+    if (parents.length !== 1 || parents[0] !== expectedParentId) return false;
+    if (!Array.isArray(node.childrenIds) || new Set(node.childrenIds).size !== node.childrenIds.length) {
+      return false;
+    }
+    visiting.add(nodeId);
+    for (const childId of node.childrenIds) {
+      if (!website.components[childId] || !visit(childId, nodeId)) return false;
+    }
+    visiting.delete(nodeId);
+    visited.add(nodeId);
+    return true;
+  };
+  const rootParents = findTreeParentIds(website, rootId);
+  if (rootParents.length !== 1) return false;
+  return visit(rootId, rootParents[0]);
+};
 
 const findUniqueTreeParentId = (website: Website, childId: string): string | null => {
   const parents = findTreeParentIds(website, childId);
@@ -553,6 +582,12 @@ export const useBuilderComponentOperations = ({
         );
         return;
       }
+      if (!hasUnambiguousSubtreeOwnership(current, id)) {
+        setTemplateError(
+          'لا يمكن تكرار هذا العنصر لأن بعض العناصر الداخلية لها علاقات أب غير واضحة أو غير مكتملة. أصلح بنية القسم أولاً.'
+        );
+        return;
+      }
       const idMap: Record<string, string> = {};
       const usedIds = new Set(Object.keys(current.components));
       const visited = new Set<string>();
@@ -560,7 +595,7 @@ export const useBuilderComponentOperations = ({
         if (visited.has(nodeId) || !current.components[nodeId]) return;
         visited.add(nodeId);
         idMap[nodeId] = createUniqueBuilderId('dup', usedIds);
-        current.components[nodeId]?.childrenIds.forEach(collect);
+        current.components[nodeId].childrenIds.forEach(collect);
       };
       collect(id);
       const clones: Record<string, ComponentNode> = {};

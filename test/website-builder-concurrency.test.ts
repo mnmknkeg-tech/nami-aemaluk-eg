@@ -1,6 +1,7 @@
 import {
   collectExclusivelyOwnedSubtreeIds,
   getPageReachableNodeIds,
+  hasUnambiguousSubtreeOwnership,
   findTreeParentIds,
   reorderChildrenReducer,
   updateNodePropsReducer,
@@ -69,6 +70,54 @@ describe('website builder concurrent mutations', () => {
       },
     } as Website;
     expect(findTreeParentIds(inconsistent, 'child')).toEqual(['first', 'second']);
+  });
+
+  it('resolves parent identity from the component map key, not a stale node.id field', () => {
+    const mismatchedKeys = {
+      ...baseWebsite,
+      components: {
+        actual_parent_key: { ...baseWebsite.components.node, id: 'stale-parent-id', childrenIds: ['child'] },
+        child: { ...baseWebsite.components.node, id: 'child', parentId: 'actual_parent_key' },
+      },
+    } as Website;
+    expect(findTreeParentIds(mismatchedKeys, 'child')).toEqual(['actual_parent_key']);
+  });
+
+  it('allows duplication only when every descendant has one consistent owner', () => {
+    const validTree = {
+      ...baseWebsite,
+      components: {
+        root: { ...baseWebsite.components.node, id: 'root', childrenIds: ['child'] },
+        child: { ...baseWebsite.components.node, id: 'child', parentId: 'root', childrenIds: ['leaf'] },
+        leaf: { ...baseWebsite.components.node, id: 'leaf', parentId: 'child' },
+      },
+    } as Website;
+    expect(hasUnambiguousSubtreeOwnership(validTree, 'child')).toBe(true);
+
+    const sharedChild = {
+      ...validTree,
+      components: {
+        ...validTree.components,
+        other: { ...baseWebsite.components.node, id: 'other', childrenIds: ['leaf'] },
+      },
+    } as Website;
+    expect(hasUnambiguousSubtreeOwnership(sharedChild, 'child')).toBe(false);
+  });
+
+  it.each([
+    ['missing descendant', { childrenIds: ['missing'] }],
+    ['duplicate descendant edge', { childrenIds: ['leaf', 'leaf'] }],
+    ['cycle', { childrenIds: ['child'] }],
+  ])('rejects duplication of a subtree with a %s', (_label, mutation) => {
+    const cyclicTree = {
+      ...baseWebsite,
+      components: {
+        root: { ...baseWebsite.components.node, id: 'root', childrenIds: ['child'] },
+        child: { ...baseWebsite.components.node, id: 'child', parentId: 'root', childrenIds: ['leaf'] },
+        leaf: { ...baseWebsite.components.node, id: 'leaf', parentId: 'child', ...mutation },
+      },
+    } as Website;
+    expect(hasUnambiguousSubtreeOwnership(cyclicTree, 'child')).toBe(false);
   });
 
   it('keeps editor parent navigation scoped to real child edges', () => {
