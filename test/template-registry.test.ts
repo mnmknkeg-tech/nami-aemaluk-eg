@@ -119,7 +119,7 @@ describe('canonical website template registry', () => {
       },
     };
     const before = JSON.stringify(template);
-    const issues = auditSectionTemplateComponentContracts([template]);
+    const issues = auditSectionTemplateComponentContracts([template as any]);
 
     expect(issues).toEqual(
       expect.arrayContaining([
