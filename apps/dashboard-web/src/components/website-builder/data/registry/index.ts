@@ -1,5 +1,9 @@
 export * from './componentContractAudit';
 import {
+  auditSectionTemplateComponentContracts,
+  inspectSectionTemplateComponentUsage,
+} from './componentContractAudit';
+import {
   canonicalTemplates,
   legacyFullWebsiteIds,
   templateSourceAudit,
@@ -41,6 +45,14 @@ export const getTemplateRegistryAudit = () => ({
     fullWebsite: templateRegistry.getFullWebsites().length,
     section: templateRegistry.getSectionTemplates().length,
     theme: templateRegistry.getThemePresets().length,
+  },
+  sectionComponentContracts: {
+    issues: auditSectionTemplateComponentContracts(
+      templateRegistry.getSectionTemplates().map((entry) => entry.template)
+    ),
+    usage: inspectSectionTemplateComponentUsage(
+      templateRegistry.getSectionTemplates().map((entry) => entry.template)
+    ),
   },
   idsByCategory: {
     fullWebsite: templateRegistry.getFullWebsites().map((entry) => entry.id),

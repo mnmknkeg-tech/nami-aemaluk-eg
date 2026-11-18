@@ -404,5 +404,8 @@ describe('canonical website template registry', () => {
     expect(audit.registryCounts.theme).toBe(getThemePresetRecords().length);
     expect(audit.overlappingWebsiteIds).toContain('site_al_majd_auto');
     expect(audit.legacyAliases.site_fashion_boutique).toBe('site_opal_fashion');
+    expect(audit.sectionComponentContracts.issues).toEqual(expect.any(Array));
+    expect(audit.sectionComponentContracts.usage.length).toBeGreaterThan(0);
+    expect(audit.sectionComponentContracts.usage[0].observedPropKeys).toEqual(expect.any(Array));
   });
 });
