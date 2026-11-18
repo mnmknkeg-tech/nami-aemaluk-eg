@@ -22,7 +22,12 @@ import {
 } from 'lucide-react';
 import { api, jsonRequest } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { PublishedBadgeNode, PublishedHeadingNode, PublishedImageNode, PublishedParagraphNode } from './BuilderPrimitiveNodes';
+import {
+  PublishedBadgeNode,
+  PublishedHeadingNode,
+  PublishedImageNode,
+  PublishedParagraphNode,
+} from './BuilderPrimitiveNodes';
 import { MobileFooterBar } from './BuilderMobileFooterBar';
 // سلة موقع التاجر المستقلة — مش سلة الماركت (decoupling): الـ add-to-cart في
 // قالب التاجر بيخزن في merchant-site-cart:site:{slug} والـ checkout بيكمل
@@ -45,8 +50,6 @@ import {
   type StyleProperties,
   type WebsiteCartSettings,
   type WebsiteBackgroundSettings,
-  CartIcon,
-  isCartVisible,
   normalizeCatalogProduct,
   buildCatalogCategories,
   followPublishedDestination,
@@ -186,7 +189,15 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
 
   // Fixed mobile bottom bar — rendered by its own component (uses cart hooks).
   if (node.type === 'mobile_footer') {
-    return <MobileFooterBar node={node} cartSettings={website.settings?.cart} totalItems={totalItems} shop={ctxShop} onOpenCart={openCart} />;
+    return (
+      <MobileFooterBar
+        node={node}
+        cartSettings={website.settings?.cart}
+        totalItems={totalItems}
+        shop={ctxShop}
+        onOpenCart={openCart}
+      />
+    );
   }
 
   const theme = website.theme;
