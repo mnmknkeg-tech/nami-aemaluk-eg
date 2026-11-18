@@ -1,4 +1,5 @@
 import {
+  collectExclusivelyOwnedSubtreeIds,
   findTreeParentIds,
   reorderChildrenReducer,
   updateNodePropsReducer,
@@ -39,6 +40,22 @@ describe('website builder concurrent mutations', () => {
       },
     } as Website;
     expect(findTreeParentIds(inconsistent, 'child')).toEqual(['root']);
+  });
+
+  it('preserves a shared legacy child when collecting a node subtree for deletion', () => {
+    const sharedTree = {
+      ...baseWebsite,
+      components: {
+        root: { ...baseWebsite.components.node, id: 'root', childrenIds: ['left', 'right'] },
+        left: { ...baseWebsite.components.node, id: 'left', parentId: 'root', childrenIds: ['shared'] },
+        right: { ...baseWebsite.components.node, id: 'right', parentId: 'root', childrenIds: ['shared'] },
+        shared: { ...baseWebsite.components.node, id: 'shared', parentId: 'left' },
+      },
+    } as Website;
+
+    expect(collectExclusivelyOwnedSubtreeIds(sharedTree, 'left', 'root')).toEqual(
+      new Set(['left'])
+    );
   });
 
   it('does not guess ownership when multiple parents list the same child', () => {

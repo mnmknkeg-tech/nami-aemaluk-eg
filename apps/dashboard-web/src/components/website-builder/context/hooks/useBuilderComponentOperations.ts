@@ -116,6 +116,24 @@ const findUniqueTreeParentId = (website: Website, childId: string): string | nul
   return parents.length === 1 ? parents[0] : null;
 };
 
+/** Collect only nodes exclusively owned by the requested parent edge. Shared legacy nodes survive. */
+export const collectExclusivelyOwnedSubtreeIds = (
+  website: Website,
+  rootId: string,
+  expectedParentId: string
+): Set<string> => {
+  const collected = new Set<string>();
+  const visit = (nodeId: string, parentId: string) => {
+    if (collected.has(nodeId)) return;
+    const parents = findTreeParentIds(website, nodeId);
+    if (parents.length !== 1 || parents[0] !== parentId) return;
+    collected.add(nodeId);
+    website.components[nodeId]?.childrenIds?.forEach((childId) => visit(childId, nodeId));
+  };
+  visit(rootId, expectedParentId);
+  return collected;
+};
+
 const replaceNode = (
   website: Website,
   id: string,
@@ -484,17 +502,12 @@ export const useBuilderComponentOperations = ({
       recordHistory(`حذف (${target.name})`, (current) => {
         const node = current.components[id];
         if (!node) return current;
-        const remove = new Set<string>();
-        const collect = (nodeId: string) => {
-          if (remove.has(nodeId)) return;
-          remove.add(nodeId);
-          current.components[nodeId]?.childrenIds.forEach(collect);
-        };
-        collect(id);
-        const components = { ...current.components };
-        remove.forEach((nodeId) => delete components[nodeId]);
         const actualParentId = findUniqueTreeParentId(current, id);
         if (!actualParentId) return current;
+        const remove = collectExclusivelyOwnedSubtreeIds(current, id, actualParentId);
+        if (!remove.has(id)) return current;
+        const components = { ...current.components };
+        remove.forEach((nodeId) => delete components[nodeId]);
         const parent = current.components[actualParentId];
         if (!parent) return current;
         components[actualParentId] = {
