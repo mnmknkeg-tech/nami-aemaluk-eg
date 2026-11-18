@@ -12,6 +12,8 @@ import {
   Phone,
   Mail,
   MapPin,
+  Sparkles,
+  CheckCircle,
 } from 'lucide-react';
 import { jsonRequest } from '@/lib/api';
 import { useRouter } from 'next/navigation';
@@ -26,7 +28,10 @@ import { PublishedProductsSection } from './PublishedProductsSection';
 import { PublishedFooterSection } from './PublishedFooterSection';
 import { PublishedHeroSection } from './PublishedHeroSection';
 import { PublishedContactForm } from './PublishedContactForm';
-import { PublishedFeaturesSection, PublishedTestimonialsSection } from './PublishedMarketingSections';
+import {
+  PublishedFeaturesSection,
+  PublishedTestimonialsSection,
+} from './PublishedMarketingSections';
 // سلة موقع التاجر المستقلة — مش سلة الماركت (decoupling): الـ add-to-cart في
 // قالب التاجر بيخزن في merchant-site-cart:site:{slug} والـ checkout بيكمل
 // على /site/{slug}/checkout بسلته الخاصة، مالهمش أي دعوة بـ mnmknk_cart.
@@ -266,7 +271,10 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
   if (node.type === 'heading') {
     const storeLogo =
       node.id.toLowerCase().includes('logo') || String(node.props?.name || '').includes('شعار')
-        ? ctxShop?.logoUrl || ctxShop?.logo || resolveBrandLogoUrl(website as any, node) || undefined
+        ? ctxShop?.logoUrl ||
+          ctxShop?.logo ||
+          resolveBrandLogoUrl(website as any, node) ||
+          undefined
         : isBrandHeadingNode(node as any)
           ? resolveBrandLogoUrl(website as any, node) || undefined
           : undefined;
@@ -308,7 +316,10 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
     return (
       <PublishedImageNode
         id={node.id}
-        src={node.props.src || 'https://images.unsplash.com/photo-1617788138017-80ad40651399?w=800&auto=format&fit=crop&q=80'}
+        src={
+          node.props.src ||
+          'https://images.unsplash.com/photo-1617788138017-80ad40651399?w=800&auto=format&fit=crop&q=80'
+        }
         alt={node.props.alt || ''}
         style={computed}
       />

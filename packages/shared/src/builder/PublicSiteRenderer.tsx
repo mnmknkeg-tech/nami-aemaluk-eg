@@ -11,7 +11,12 @@ import type {
   Website,
 } from './types';
 import { resolveTheme, buildWhatsAppLink } from './theme';
-import { NodeView, type SiteFormBookingPayload, type SiteBookingSubmitResult } from './NodeView';
+import {
+  NodeView,
+  type NodeViewContext,
+  type SiteFormBookingPayload,
+  type SiteBookingSubmitResult,
+} from './NodeView';
 import { SiteSubscriptionModal } from './SiteSubscriptionModal';
 import { SiteCartDrawer, type SiteCartItem } from './SiteCartDrawer';
 import { useResponsiveViewport } from './responsiveViewport';

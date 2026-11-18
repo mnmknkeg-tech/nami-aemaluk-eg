@@ -1,7 +1,4 @@
-import {
-  componentSupportsChildren,
-  getPersistedComponentDefinition,
-} from '@ray-eg/shared/builder';
+import { componentSupportsChildren, getPersistedComponentDefinition } from '@ray-eg/shared/builder';
 import type { SectionTemplate } from '../sections/types';
 
 export type ComponentContractIssueCode =
@@ -45,8 +42,11 @@ export function auditSectionTemplateComponentContracts(
       }
       const definition = getPersistedComponentDefinition(node.type);
       if (!definition?.category) return;
-      if (definition && definition.category !== node.category &&
-          !(node.category === 'form' && definition.category === 'forms')) {
+      if (
+        definition &&
+        definition.category !== node.category &&
+        !(node.category === 'form' && definition.category === 'forms')
+      ) {
         issues.push({ code: 'unsupported-category', templateId: template.id, nodeId });
       }
     });
@@ -136,15 +136,8 @@ export function auditSectionTemplateComponentContracts(
   return issues;
 }
 
-
 export type ObservedPropValueKind =
-  | 'string'
-  | 'number'
-  | 'boolean'
-  | 'array'
-  | 'object'
-  | 'null'
-  | 'undefined';
+  'string' | 'number' | 'boolean' | 'array' | 'object' | 'null' | 'undefined';
 
 export interface SectionTemplatePropUsage {
   key: string;
@@ -167,8 +160,10 @@ function getObservedPropValueKind(value: unknown): ObservedPropValueKind {
   if (value === null) return 'null';
   if (Array.isArray(value)) return 'array';
   if (typeof value === 'object') return 'object';
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return typeof value;
+  // Capture typeof once: a second typeof call is not narrowed by the guards above.
+  const kind = typeof value;
+  if (kind === 'string' || kind === 'number' || kind === 'boolean') {
+    return kind;
   }
   return 'undefined';
 }
@@ -181,12 +176,15 @@ function getObservedPropValueKind(value: unknown): ObservedPropValueKind {
 export function inspectSectionTemplateComponentUsage(
   templates: readonly SectionTemplate[]
 ): SectionTemplateComponentUsage[] {
-  const usage = new Map<string, {
-    nodeCount: number;
-    templateIds: Set<string>;
-    categories: Set<string>;
-    props: Map<string, { valueKinds: Set<ObservedPropValueKind>; occurrenceCount: number }>;
-  }>();
+  const usage = new Map<
+    string,
+    {
+      nodeCount: number;
+      templateIds: Set<string>;
+      categories: Set<string>;
+      props: Map<string, { valueKinds: Set<ObservedPropValueKind>; occurrenceCount: number }>;
+    }
+  >();
 
   templates.forEach((template) => {
     Object.values(template.nodes).forEach((node) => {
@@ -194,7 +192,10 @@ export function inspectSectionTemplateComponentUsage(
         nodeCount: 0,
         templateIds: new Set<string>(),
         categories: new Set<string>(),
-        props: new Map<string, { valueKinds: Set<ObservedPropValueKind>; occurrenceCount: number }>(),
+        props: new Map<
+          string,
+          { valueKinds: Set<ObservedPropValueKind>; occurrenceCount: number }
+        >(),
       };
       current.nodeCount += 1;
       current.templateIds.add(template.id);

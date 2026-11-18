@@ -13,7 +13,7 @@ import {
   UserCheck,
 } from 'lucide-react';
 import type { ComponentNode } from './types';
-import type { NodeViewContext } from './NodeView';
+import type { NodeViewContext, SiteAuthenticationResult } from './NodeView';
 
 /** Published-site authentication section presentation. */
 export const AuthSectionView: React.FC<{
@@ -55,26 +55,59 @@ export const AuthSectionView: React.FC<{
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
-    if (!phone || phone.trim().length < 8) { setErrorMessage('يرجى إدخال رقم هاتف صحيح'); return; }
-    if (!password.trim()) { setErrorMessage('يرجى إدخال كلمة المرور'); return; }
-    if (activeTab === 'register' && !name.trim()) { setErrorMessage('يرجى إدخال اسمك الكريم'); return; }
-    if (isOtpSent && !otpCode.trim()) { setErrorMessage('يرجى إدخال رمز التحقق'); return; }
-    if (!ctx.onAuthenticate) { setErrorMessage('تسجيل الدخول غير متاح في هذه المعاينة'); return; }
+    if (!phone || phone.trim().length < 8) {
+      setErrorMessage('يرجى إدخال رقم هاتف صحيح');
+      return;
+    }
+    if (!password.trim()) {
+      setErrorMessage('يرجى إدخال كلمة المرور');
+      return;
+    }
+    if (activeTab === 'register' && !name.trim()) {
+      setErrorMessage('يرجى إدخال اسمك الكريم');
+      return;
+    }
+    if (isOtpSent && !otpCode.trim()) {
+      setErrorMessage('يرجى إدخال رمز التحقق');
+      return;
+    }
+    if (!ctx.onAuthenticate) {
+      setErrorMessage('تسجيل الدخول غير متاح في هذه المعاينة');
+      return;
+    }
     setLoading(true);
     try {
-      const result = await ctx.onAuthenticate(isOtpSent
-        ? { mode: 'login', phone, password, challenge: authChallenge, code: otpCode }
-        : { mode: activeTab, phone, name: activeTab === 'register' ? name.trim() : undefined, password });
+      // onAuthenticate resolves to void (preview) or a result — narrow before use.
+      const result = (await ctx.onAuthenticate(
+        isOtpSent
+          ? { mode: 'login', phone, password, challenge: authChallenge, code: otpCode }
+          : {
+              mode: activeTab,
+              phone,
+              name: activeTab === 'register' ? name.trim() : undefined,
+              password,
+            }
+      )) as SiteAuthenticationResult | undefined;
       if (result?.requires2FA && result.challenge) {
-        setAuthChallenge(result.challenge); setIsOtpSent(true); setOtpCode('');
+        setAuthChallenge(result.challenge);
+        setIsOtpSent(true);
+        setOtpCode('');
         setSuccessMessage('أدخل رمز المصادقة الثنائية لإكمال تسجيل الدخول');
         return;
       }
-      setIsOtpSent(false); setAuthChallenge(''); setOtpCode('');
-      setSuccessMessage(activeTab === 'login' ? 'تم تسجيل الدخول بنجاح! مرحباً بك مجدداً' : 'تم إنشاء حسابك بنجاح! مرحباً بك كعضو جديد');
+      setIsOtpSent(false);
+      setAuthChallenge('');
+      setOtpCode('');
+      setSuccessMessage(
+        activeTab === 'login'
+          ? 'تم تسجيل الدخول بنجاح! مرحباً بك مجدداً'
+          : 'تم إنشاء حسابك بنجاح! مرحباً بك كعضو جديد'
+      );
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'تعذر إكمال العملية، حاول مرة أخرى');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -328,9 +361,7 @@ export const AuthSectionView: React.FC<{
                   ) : activeTab === 'login' ? (
                     <>
                       <UserCheck className="w-4 h-4" />
-                      <span>
-                        {isOtpSent ? 'تأكيد رمز المصادقة' : 'تسجيل الدخول الآن'}
-                      </span>
+                      <span>{isOtpSent ? 'تأكيد رمز المصادقة' : 'تسجيل الدخول الآن'}</span>
                     </>
                   ) : (
                     <>

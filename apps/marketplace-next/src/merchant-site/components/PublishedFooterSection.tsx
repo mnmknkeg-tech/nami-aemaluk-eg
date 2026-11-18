@@ -43,7 +43,7 @@ export function PublishedFooterSection({
   const links = Array.isArray(node.props.links) ? node.props.links : [];
 
   return (
-    <footer id={node.id} style={computed} className="transition-all">
+    <footer id={node.id} style={style} className="transition-all">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 sm:py-12 text-right">
         <div
           className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 pb-8 border-b ${borderDivider}`}

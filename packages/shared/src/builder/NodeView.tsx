@@ -103,6 +103,10 @@ export interface SiteAuthenticationResult {
   challenge?: string;
 }
 
+// The published interaction handler was extracted to ./publishedInteractions;
+// the remaining call sites in this file keep the historic local name.
+const handleInteraction = handlePublishedNodeInteraction;
+
 export interface NodeViewContext {
   website: Website;
   viewport: ViewportBreakpoint;

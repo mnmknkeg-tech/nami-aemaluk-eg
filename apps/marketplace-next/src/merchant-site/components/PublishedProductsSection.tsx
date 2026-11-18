@@ -55,9 +55,7 @@ export function PublishedProductsSection({
   const categoryCards = buildCatalogCategories(rawList, categoryOverrides);
   const categories: string[] = ['all', ...categoryCards.map((category) => category.key)];
   const filtered =
-    activeCategory === 'all'
-      ? rawList
-      : rawList.filter((i: any) => i.category === activeCategory);
+    activeCategory === 'all' ? rawList : rawList.filter((i: any) => i.category === activeCategory);
   // توازٍ مع الكانفس: بطاقات وضع الحجز (buyButtonMode hidden) تعرض زر
   // "احجز الآن" بدل سلة/واتساب — الحجز يثبت في لوحة التاجر لا محادثة.
   const gridOptions = resolveProductCardOptions(node.props);
@@ -66,9 +64,7 @@ export function PublishedProductsSection({
     const pages = (website as any).pages || [];
     const contactPage =
       pages.find((p: any) => p.slug === 'contact' || p.id === 'page_contact') ||
-      pages.find(
-        (p: any) => (p.name || '').includes('تواصل') || (p.name || '').includes('حجز')
-      ) ||
+      pages.find((p: any) => (p.name || '').includes('تواصل') || (p.name || '').includes('حجز')) ||
       pages[0];
     if (contactPage) onNavigatePage?.(contactPage.id);
     if (typeof window !== 'undefined')
@@ -78,7 +74,7 @@ export function PublishedProductsSection({
   return (
     <section
       id={node.id}
-      style={computed}
+      style={style}
       data-section="products"
       data-product-ids={rawList.map((item: any) => String(item.id)).join(',')}
     >
@@ -179,9 +175,7 @@ export function PublishedProductsSection({
                   <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                     <div className="space-y-1">
                       <div className="flex items-baseline justify-between gap-2">
-                        <h3 className="text-base font-bold text-slate-900 line-clamp-1">
-                          {title}
-                        </h3>
+                        <h3 className="text-base font-bold text-slate-900 line-clamp-1">{title}</h3>
                         {price && (
                           <span
                             style={{ color: theme.colors.primary }}

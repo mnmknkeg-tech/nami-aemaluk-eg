@@ -6,11 +6,7 @@ import {
   isCompleteChildBasedHero,
   resolveHeroContent,
 } from '@ray-eg/shared/builder/heroCompatibility';
-import {
-  sectionBadgeStyle,
-  sectionShellClass,
-  sectionSubtitleClass,
-} from '@ray-eg/shared/builder';
+import { sectionBadgeStyle, sectionShellClass, sectionSubtitleClass } from '@ray-eg/shared/builder';
 
 interface PublishedHeroSectionProps {
   node: any;
@@ -76,7 +72,7 @@ export function PublishedHeroSection({
       <section
         id={node.id}
         style={{
-          ...computed,
+          ...style,
           position: 'relative',
           width: '100%',
           height: `${mediaHeight}px`,
@@ -117,7 +113,7 @@ export function PublishedHeroSection({
       <section
         id={node.id}
         style={{
-          ...computed,
+          ...style,
           ...(node.props?.bannerHeight
             ? { minHeight: `${isMobile ? bannerHeight.mobile : bannerHeight.desktop}px` }
             : {}),
@@ -133,7 +129,7 @@ export function PublishedHeroSection({
     <section
       id={node.id}
       style={{
-        ...computed,
+        ...style,
         ...(node.props?.bannerHeight
           ? { minHeight: `${isMobile ? bannerHeight.mobile : bannerHeight.desktop}px` }
           : {}),
