@@ -1,7 +1,8 @@
 import React from 'react';
-import { Type, ChevronDown, ChevronUp, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Type, ChevronDown, ChevronUp, Eye, EyeOff, Sparkles, TriangleAlert } from 'lucide-react';
 import type { InspectorPanelProps } from './types';
 import { GENERIC_CONTENT_FIELDS } from './contentFieldRegistry';
+import { getPropFieldSchema, validatePropsAgainstSchema } from '@ray-eg/shared/builder';
 
 type ContentSectionProps = Pick<
   InspectorPanelProps,
@@ -19,6 +20,14 @@ type ContentSectionProps = Pick<
   | 'toggleAccordion'
   | 'handlePropChange'
 >;
+
+/** Maps a schema field kind to a native input type for the generic controls. */
+const schemaInputType = (kind: string | undefined): string => {
+  if (kind === 'number') return 'number';
+  if (kind === 'color') return 'color';
+  if (kind === 'url') return 'url';
+  return 'text';
+};
 
 export const ContentSection: React.FC<ContentSectionProps> = ({
   node,
@@ -291,29 +300,48 @@ export const ContentSection: React.FC<ContentSectionProps> = ({
               </button>
             </div>
 
-            {GENERIC_CONTENT_FIELDS.filter((field) => node.props[field.key] !== undefined).map((field) => (
-              <div key={field.key}>
-                <label className="text-[10px] font-bold text-slate-500 block mb-1">
-                  {field.label}
-                </label>
-                {field.control === 'textarea' ? (
-                  <textarea
-                    rows={field.rows}
-                    value={String(node.props[field.key] ?? '')}
-                    onChange={(event) => handlePropChange(node.id, field.key, event.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 outline-hidden focus:border-blue-500 focus:bg-white"
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    value={String(node.props[field.key] ?? '')}
-                    onChange={(event) => handlePropChange(node.id, field.key, event.target.value)}
-                    placeholder={field.placeholder}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 outline-hidden focus:border-blue-500 focus:bg-white"
-                  />
-                )}
-              </div>
-            ))}
+            {GENERIC_CONTENT_FIELDS.filter((field) => node.props[field.key] !== undefined).map(
+              (field) => {
+                // Registry schema refines the control kind and validates the value.
+                const schemaField = getPropFieldSchema(node.type)?.find((f) => f.key === field.key);
+                const issue = validatePropsAgainstSchema(node.type, node.props).find(
+                  (item) => item.key === field.key
+                );
+                return (
+                  <div key={field.key}>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">
+                      {field.label}
+                    </label>
+                    {field.control === 'textarea' ? (
+                      <textarea
+                        rows={field.rows}
+                        value={String(node.props[field.key] ?? '')}
+                        onChange={(event) =>
+                          handlePropChange(node.id, field.key, event.target.value)
+                        }
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 outline-hidden focus:border-blue-500 focus:bg-white"
+                      />
+                    ) : (
+                      <input
+                        type={schemaInputType(schemaField?.kind)}
+                        value={String(node.props[field.key] ?? '')}
+                        onChange={(event) =>
+                          handlePropChange(node.id, field.key, event.target.value)
+                        }
+                        placeholder={field.placeholder}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 outline-hidden focus:border-blue-500 focus:bg-white"
+                      />
+                    )}
+                    {issue && (
+                      <p className="mt-1 flex items-center gap-1 text-[10px] font-bold text-red-600">
+                        <TriangleAlert className="w-3 h-3 shrink-0" />
+                        {issue.message}
+                      </p>
+                    )}
+                  </div>
+                );
+              }
+            )}
           </div>
         )}
       </div>

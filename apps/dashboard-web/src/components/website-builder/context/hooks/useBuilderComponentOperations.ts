@@ -7,7 +7,12 @@ import {
   ViewportBreakpoint,
   Website,
 } from '../../types/builder';
-import { componentSupportsChildren, isAllowedProductsParent } from '@ray-eg/shared/builder';
+import {
+  canParentAcceptChild,
+  componentSupportsChildren,
+  isAllowedProductsParent,
+  withDefaultProps,
+} from '@ray-eg/shared/builder';
 import { loadSectionTemplate } from '../../data/registry';
 import { createTemplateMobileStyles, createUniqueBuilderId } from '../builderUtils';
 
@@ -107,15 +112,15 @@ function normalizeNodeStylesAfterMove(node: ComponentNode): ComponentNode {
 /** Resolve ownership from the authoritative childrenIds edges, never from a stale parentId. */
 export const findTreeParentIds = (website: Website, childId: string): string[] =>
   Object.entries(website.components)
-    .filter(([, candidate]) => Array.isArray(candidate.childrenIds) && candidate.childrenIds.includes(childId))
+    .filter(
+      ([, candidate]) =>
+        Array.isArray(candidate.childrenIds) && candidate.childrenIds.includes(childId)
+    )
     .map(([parentKey]) => parentKey)
     .sort();
 
 /** Ensure every descendant has exactly one matching owner before cloning a subtree. */
-export const hasUnambiguousSubtreeOwnership = (
-  website: Website,
-  rootId: string
-): boolean => {
+export const hasUnambiguousSubtreeOwnership = (website: Website, rootId: string): boolean => {
   if (!website.components[rootId]) return false;
   const visited = new Set<string>();
   const visiting = new Set<string>();
@@ -124,7 +129,10 @@ export const hasUnambiguousSubtreeOwnership = (
     if (!node || visiting.has(nodeId) || visited.has(nodeId)) return false;
     const parents = findTreeParentIds(website, nodeId);
     if (parents.length !== 1 || parents[0] !== expectedParentId) return false;
-    if (!Array.isArray(node.childrenIds) || new Set(node.childrenIds).size !== node.childrenIds.length) {
+    if (
+      !Array.isArray(node.childrenIds) ||
+      new Set(node.childrenIds).size !== node.childrenIds.length
+    ) {
       return false;
     }
     visiting.add(nodeId);
@@ -404,13 +412,17 @@ export const useBuilderComponentOperations = ({
       }
       const parent = current.components[parentId];
       if (!componentSupportsChildren(parent.type)) {
-        setTemplateError('هذا المكون لا يقبل إضافة عناصر بداخله. اختر حاوية أو قسمًا يدعم العناصر الفرعية.');
+        setTemplateError(
+          'هذا المكون لا يقبل إضافة عناصر بداخله. اختر حاوية أو قسمًا يدعم العناصر الفرعية.'
+        );
         return;
       }
       // insertNode adds one standalone node; composite subtrees must go through
       // the validated template path so every child receives a fresh ID.
       if (!Array.isArray(node.childrenIds) || node.childrenIds.length > 0) {
-        setTemplateError('إضافة المكونات المركبة تتم من مكتبة القوالب لضمان سلامة روابط العناصر الداخلية.');
+        setTemplateError(
+          'إضافة المكونات المركبة تتم من مكتبة القوالب لضمان سلامة روابط العناصر الداخلية.'
+        );
         return;
       }
       if (node.type === 'products' && parent) {
@@ -425,6 +437,19 @@ export const useBuilderComponentOperations = ({
           return;
         }
       }
+      // Registry parent rules keep primitives out of contexts that cannot
+      // render them; unknown/legacy types stay permissive.
+      if (!canParentAcceptChild(parent.type, node.type)) {
+        setTemplateError(
+          `لا يمكن إضافة "${node.name}" داخل "${parent.name}" حسب قواعد تركيب المكونات.`
+        );
+        return;
+      }
+      // Fill registered defaults under the caller's props (never override).
+      const nodeWithDefaults: ComponentNode = {
+        ...node,
+        props: withDefaultProps(node.type, node.props),
+      };
       recordHistory(`إضافة عنصر (${node.name})`, (latest) => {
         const latestParent = latest.components[parentId];
         if (!latestParent) return latest;
@@ -437,7 +462,7 @@ export const useBuilderComponentOperations = ({
           components: {
             ...latest.components,
             [parentId]: { ...latestParent, childrenIds: children },
-            [node.id]: { ...node, parentId },
+            [node.id]: { ...nodeWithDefaults, parentId },
           },
         };
       });
@@ -583,9 +608,7 @@ export const useBuilderComponentOperations = ({
       // A duplicated products subtree would create a SECOND products section on
       // this page — the public normalizer detaches it silently on next save.
       if (subtreeContainsProducts(current, id)) {
-        setTemplateError(
-          'يسمح بقسم منتجات واحد فقط لكل صفحة، لذلك لا يمكن تكرار قسم المنتجات.'
-        );
+        setTemplateError('يسمح بقسم منتجات واحد فقط لكل صفحة، لذلك لا يمكن تكرار قسم المنتجات.');
         return;
       }
       if (!hasUnambiguousSubtreeOwnership(current, id)) {
@@ -615,10 +638,10 @@ export const useBuilderComponentOperations = ({
           parentId:
             origId === id
               ? actualParentId
-              : (() => {
+              : ((() => {
                   const originalParentId = findUniqueTreeParentId(current, origId);
                   return originalParentId ? idMap[originalParentId] : undefined;
-                })() ?? null,
+                })() ?? null),
           childrenIds: original.childrenIds.map((childId) => idMap[childId]),
         };
       });
@@ -758,9 +781,8 @@ export const useBuilderComponentOperations = ({
         // responsiveStyles.ts).
         const parentChanged = previousParent.id !== destination.id;
         const isFixedNode = node.type === 'header' || node.type === 'footer';
-        const cleanedNode = parentChanged && !isFixedNode
-          ? normalizeNodeStylesAfterMove(node)
-          : node;
+        const cleanedNode =
+          parentChanged && !isFixedNode ? normalizeNodeStylesAfterMove(node) : node;
         components[draggedId] = { ...cleanedNode, parentId: destination.id };
         return { ...latest, components };
       });
