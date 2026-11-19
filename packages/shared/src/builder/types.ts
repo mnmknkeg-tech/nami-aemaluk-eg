@@ -556,6 +556,8 @@ export interface Website {
   globalFooterId?: string;
   publishedVersionId?: string;
   currentDraftVersion: number;
+  /** Document schema cursor for componentMigrations; absent = version 0. */
+  schemaVersion?: number;
 }
 
 // Context about the shop owning the published site, resolved server-side.

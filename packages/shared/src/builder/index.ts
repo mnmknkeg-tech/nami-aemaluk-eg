@@ -1,6 +1,7 @@
 export * from './types';
 export * from './componentRegistry';
 export * from './componentPropsSchema';
+export * from './componentMigrations';
 export * from './linkDestinations';
 export * from './responsiveStyles';
 export * from './publishedParity';

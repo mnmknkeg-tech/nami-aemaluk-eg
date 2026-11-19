@@ -13,6 +13,7 @@ import {
 import {
   adaptTemplateLinkDestinations,
   getInvalidPageDestinations,
+  migrateWebsiteDocument,
   normalizeWebsiteTree,
 } from '@ray-eg/shared/builder';
 // استيراد نسبي مقصود: الملف بيتسحب في برنامج الـ typecheck الجذري كذلك،
@@ -192,8 +193,12 @@ export const BLANK_WEBSITE: Website = {
   },
 };
 
-export const normalizeWebsite = (site: Website): Website => {
-  if (!site || typeof site !== 'object') return BLANK_WEBSITE;
+export const normalizeWebsite = (input: Website): Website => {
+  if (!input || typeof input !== 'object') return BLANK_WEBSITE;
+  // Single migration choke point: every load path (server draft, local
+  // recovery, preview snapshot) funnels through here, so persisted
+  // documents are upgraded exactly once and idempotently.
+  const site = migrateWebsiteDocument(input).website;
   const rawComponents =
     site.components && typeof site.components === 'object'
       ? site.components
