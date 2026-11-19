@@ -1,65 +1,12 @@
-import type { DesignTokens, SiteProduct } from './types';
+import type { SiteProduct } from './types';
 import { normalizeImageUrl } from '../utils/image-url';
 
-// Mirrors the builder's defaultDesignTokens so a published site without a
-// full theme still renders exactly as it looks in the editor.
-export const DEFAULT_DESIGN_TOKENS: DesignTokens = {
-  colors: {
-    primary: '#1d4ed8',
-    primaryHover: '#1e40af',
-    secondary: '#0f172a',
-    accent: '#f59e0b',
-    background: '#ffffff',
-    surface: '#f8fafc',
-    textPrimary: '#0f172a',
-    textSecondary: '#334155',
-    textMuted: '#64748b',
-    border: '#e2e8f0',
-    success: '#10b981',
-    warning: '#f59e0b',
-    error: '#ef4444',
-  },
-  typography: {
-    fontHeading: 'Tajawal, Cairo, sans-serif',
-    fontBody: 'Cairo, Tajawal, sans-serif',
-    scaleRatio: 1.25,
-    baseFontSize: '16px',
-  },
-  radius: {
-    sm: '6px',
-    md: '10px',
-    lg: '16px',
-    xl: '24px',
-    full: '9999px',
-  },
-  shadows: {
-    sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-    md: '0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04)',
-    lg: '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04)',
-    glow: '0 0 24px rgba(29, 78, 216, 0.25)',
-  },
-  spacingUnit: 4,
-};
-
-export function resolveTheme(theme?: Partial<DesignTokens> | null): DesignTokens {
-  if (!theme || typeof theme !== 'object') return DEFAULT_DESIGN_TOKENS;
-  const legacyPrimary = (theme as any).primaryColor;
-  const legacySecondary = (theme as any).secondaryColor;
-  const legacyAccent = (theme as any).accentColor;
-  return {
-    colors: {
-      ...DEFAULT_DESIGN_TOKENS.colors,
-      ...(legacyPrimary ? { primary: legacyPrimary } : {}),
-      ...(legacySecondary ? { secondary: legacySecondary } : {}),
-      ...(legacyAccent ? { accent: legacyAccent } : {}),
-      ...(theme.colors || {}),
-    },
-    typography: { ...DEFAULT_DESIGN_TOKENS.typography, ...(theme.typography || {}) },
-    radius: { ...DEFAULT_DESIGN_TOKENS.radius, ...(theme.radius || {}) },
-    shadows: { ...DEFAULT_DESIGN_TOKENS.shadows, ...(theme.shadows || {}) },
-    spacingUnit: theme.spacingUnit ?? DEFAULT_DESIGN_TOKENS.spacingUnit,
-  };
-}
+// The canonical defaults + normalizer live in designTokens.ts (single source
+// for editor AND published); these aliases keep the historical names stable.
+export {
+  defaultDesignTokens as DEFAULT_DESIGN_TOKENS,
+  normalizeDesignTokens as resolveTheme,
+} from './designTokens';
 
 /** Append an 8-digit alpha suffix to a hex color (canvas pattern: primary + '18'). */
 export function withAlpha(hex: string | undefined, alpha: string): string {

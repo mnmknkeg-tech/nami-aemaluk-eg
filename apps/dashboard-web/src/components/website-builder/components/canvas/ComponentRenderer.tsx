@@ -9,6 +9,7 @@ import {
 } from '@ray-eg/shared/builder';
 import { useBuilder } from '../../context/BuilderContext';
 import { ViewportBreakpoint, WebsiteLinkDestination } from '../../types/builder';
+import { defaultDesignTokens } from '../../data/themes/defaultTokens';
 import { BaseRendererProps } from './renderers/types';
 import { HeaderRenderer } from './renderers/HeaderRenderer';
 import { HeroRenderer } from './renderers/HeroRenderer';
@@ -68,9 +69,11 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
             paddingBottom: '80px',
             paddingLeft: '24px',
             paddingRight: '24px',
-            backgroundColor: website.theme?.colors?.background || '#ffffff',
-            color: website.theme?.colors?.textPrimary || '#0f172a',
-            fontFamily: website.theme?.typography?.fontBody || 'Cairo, sans-serif',
+            backgroundColor:
+              website.theme?.colors?.background || defaultDesignTokens.colors.background,
+            color: website.theme?.colors?.textPrimary || defaultDesignTokens.colors.textPrimary,
+            fontFamily:
+              website.theme?.typography?.fontBody || defaultDesignTokens.typography.fontBody,
             textAlign: 'center',
             minHeight: '60vh',
             display: 'flex',
@@ -84,7 +87,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               fontSize: '28px',
               fontWeight: '700',
               marginBottom: '12px',
-              color: website.theme?.colors?.textPrimary || '#0f172a',
+              color: website.theme?.colors?.textPrimary || defaultDesignTokens.colors.textPrimary,
             }}
           >
             {website.name || 'موقعي الجديد'}
@@ -92,7 +95,8 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
           <p
             style={{
               fontSize: '16px',
-              color: website.theme?.colors?.textSecondary || '#64748b',
+              color:
+                website.theme?.colors?.textSecondary || defaultDesignTokens.colors.textSecondary,
               maxWidth: '600px',
               margin: '0 auto 24px',
             }}
@@ -102,7 +106,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
           <button
             onClick={() => selectNode(null)}
             style={{
-              backgroundColor: website.theme?.colors?.primary || '#1d4ed8',
+              backgroundColor: website.theme?.colors?.primary || defaultDesignTokens.colors.primary,
               color: '#ffffff',
               border: 'none',
               padding: '12px 24px',

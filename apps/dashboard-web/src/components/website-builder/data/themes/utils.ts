@@ -2,6 +2,7 @@ import { DesignTokens } from '../../types/builder';
 import { defaultDesignTokens } from './defaultTokens';
 import { themePresets } from './presets';
 import { PRESET_POLISH } from './polish';
+import { normalizeDesignTokens } from '@ray-eg/shared/builder';
 
 /**
  * Returns fully resolved, non-partial DesignTokens for any preset key with
@@ -47,36 +48,8 @@ export const getThemePreset = (presetKey: string) => {
 /**
  * Normalizes any theme object (partial, legacy with primaryColor, or undefined)
  * into a guaranteed, fully populated DesignTokens object.
+ *
+ * Delegates to the shared canonical normalizer so editor and published output
+ * resolve identical tokens for identical input (theme parity, stage 5).
  */
-export const normalizeThemeTokens = (theme?: any): DesignTokens => {
-  if (!theme || typeof theme !== 'object') return { ...defaultDesignTokens };
-
-  const legacyPrimary = theme.primaryColor;
-  const legacySecondary = theme.secondaryColor;
-  const legacyAccent = theme.accentColor;
-
-  return {
-    ...defaultDesignTokens,
-    ...theme,
-    colors: {
-      ...defaultDesignTokens.colors,
-      ...(legacyPrimary ? { primary: legacyPrimary } : {}),
-      ...(legacySecondary ? { secondary: legacySecondary } : {}),
-      ...(legacyAccent ? { accent: legacyAccent } : {}),
-      ...(theme.colors || {}),
-    },
-    typography: {
-      ...defaultDesignTokens.typography,
-      ...(theme.typography || {}),
-    },
-    radius: {
-      ...defaultDesignTokens.radius,
-      ...(theme.radius || {}),
-    },
-    shadows: {
-      ...defaultDesignTokens.shadows,
-      ...(theme.shadows || {}),
-    },
-    spacingUnit: theme.spacingUnit || defaultDesignTokens.spacingUnit,
-  };
-};
+export const normalizeThemeTokens = (theme?: any): DesignTokens => normalizeDesignTokens(theme);
