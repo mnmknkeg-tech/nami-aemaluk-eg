@@ -5,7 +5,7 @@ import type {
   WebsiteAnnouncementSettings,
   WebsiteLinkDestination,
 } from './types';
-import { resolveWebsiteLinkDestination } from './linkDestinations';
+import { isSafeExternalDestination, resolveWebsiteLinkDestination } from './linkDestinations';
 
 /**
  * Shared helpers that keep the PUBLISHED renderers (PublicSiteRenderer for
@@ -140,25 +140,20 @@ export function resolvePublishedLinkDestination(
       keywords: ['خدمات', 'منتجات', 'services', 'الأسعار', 'المتجر'],
       pageId:
         pages.find((p) => p.slug === 'services' || p.id === 'page_services')?.id ||
-        pages.find(
-          (p) => (p.name || '').includes('خدمات') || (p.name || '').includes('منتجات')
-        )?.id,
+        pages.find((p) => (p.name || '').includes('خدمات') || (p.name || '').includes('منتجات'))
+          ?.id,
     },
     {
       keywords: ['من نحن', 'قصتنا', 'about', 'فريقنا', 'عن الشركة'],
       pageId:
         pages.find((p) => p.slug === 'about' || p.id === 'page_about')?.id ||
-        pages.find(
-          (p) => (p.name || '').includes('نحن') || (p.name || '').includes('قصتنا')
-        )?.id,
+        pages.find((p) => (p.name || '').includes('نحن') || (p.name || '').includes('قصتنا'))?.id,
     },
     {
       keywords: ['تواصل', 'حجز', 'اتصال', 'contact', 'book', 'مواعيد', 'استفسار'],
       pageId:
         pages.find((p) => p.slug === 'contact' || p.id === 'page_contact')?.id ||
-        pages.find(
-          (p) => (p.name || '').includes('تواصل') || (p.name || '').includes('حجز')
-        )?.id,
+        pages.find((p) => (p.name || '').includes('تواصل') || (p.name || '').includes('حجز'))?.id,
     },
   ];
   for (const target of keywordTargets) {
@@ -192,6 +187,8 @@ export function followPublishedDestination(
   if (!destination || destination.type === 'none') return false;
 
   if (destination.type === 'external' || destination.type === 'whatsapp') {
+    // Unsafe schemes must not reach onExternalUrl/window.open in either renderer.
+    if (!isSafeExternalDestination(destination)) return false;
     if (destination.url) {
       if (ctx.onExternalUrl) ctx.onExternalUrl(destination.url);
       else window.open(destination.url, '_blank', 'noopener,noreferrer');

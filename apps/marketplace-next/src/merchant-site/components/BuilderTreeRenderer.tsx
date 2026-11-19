@@ -52,6 +52,7 @@ import {
   type WebsiteCartSettings,
   type WebsiteBackgroundSettings,
   followPublishedDestination,
+  isSafeExternalUrl,
   isBrandHeadingNode,
   resolveAnnouncementBar,
   resolveBrandLogoUrl,
@@ -343,7 +344,7 @@ function NodeRenderer({ nodeId, website }: { nodeId: string; website: BuilderWeb
       }
       if (url.startsWith('#')) {
         scrollTo(url.slice(1));
-      } else if (/^(?:https?:|tel:|mailto:|\/\/)/i.test(url)) {
+      } else if (isSafeExternalUrl(url)) {
         window.open(url, '_blank', 'noopener,noreferrer');
       }
     };

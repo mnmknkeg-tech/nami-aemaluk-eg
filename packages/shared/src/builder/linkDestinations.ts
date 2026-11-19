@@ -16,9 +16,43 @@ const normalizeReference = (value: string): string => {
     .toLocaleLowerCase();
 };
 
-const isExternalUrl = (value: string): boolean => /^(?:https?:|mailto:|tel:|\/\/)/i.test(value);
-
 const isWhatsAppUrl = (value: string): boolean => /(?:wa\.me|whatsapp)/i.test(value);
+
+/** Only allow navigable schemes that cannot execute script in the site origin. */
+export function isSafeExternalUrl(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const url = value.trim();
+  if (!url || /[\u0000-\u001f\u007f]/.test(url)) return false;
+
+  if (/^(?:mailto|tel):/i.test(url)) {
+    return url.slice(url.indexOf(':') + 1).trim().length > 0;
+  }
+  if (!/^(?:https?:\/\/|\/\/)/i.test(url)) return false;
+
+  try {
+    const parsed = new URL(url.startsWith('//') ? 'https:' + url : url);
+    return (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') && Boolean(parsed.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function isSafeExternalDestination(
+  destination: WebsiteLinkDestination | undefined
+): boolean {
+  if (!destination) return false;
+  if (destination.type === 'external') return isSafeExternalUrl(destination.url);
+  if (destination.type === 'whatsapp') {
+    return (
+      /^https?:\/\//i.test(destination.url) &&
+      isSafeExternalUrl(destination.url) &&
+      isWhatsAppUrl(destination.url)
+    );
+  }
+  return true;
+}
 
 const componentSectionsForPage = (website: Website, page: BuilderPage): ComponentNode[] => {
   const found: ComponentNode[] = [];
@@ -195,7 +229,7 @@ const legacyDestination = (
   inferFromLabel = true
 ): WebsiteLinkDestination | undefined => {
   const existing = source.destination as WebsiteLinkDestination | undefined;
-  if (existing?.type) return existing;
+  if (existing?.type) return isSafeExternalDestination(existing) ? existing : undefined;
 
   for (const field of LEGACY_PAGE_FIELDS) {
     const value = source[field];
@@ -209,8 +243,10 @@ const legacyDestination = (
     .find((value) => typeof value === 'string' && value.trim())
     ?.trim();
   if (url) {
-    if (isWhatsAppUrl(url)) return { type: 'whatsapp', url };
-    if (isExternalUrl(url)) return { type: 'external', url };
+    if (isWhatsAppUrl(url) && isSafeExternalDestination({ type: 'whatsapp', url })) {
+      return { type: 'whatsapp', url };
+    }
+    if (isSafeExternalUrl(url)) return { type: 'external', url };
 
     const reference = normalizeReference(url);
     const page = findPage(website.pages, reference);
@@ -251,7 +287,7 @@ const validDestination = (
   if (!destination) return true;
   if (destination.type === 'none') return true;
   if (destination.type === 'external' || destination.type === 'whatsapp') {
-    return Boolean(destination.url.trim());
+    return isSafeExternalDestination(destination);
   }
   if (destination.type === 'order') {
     return (

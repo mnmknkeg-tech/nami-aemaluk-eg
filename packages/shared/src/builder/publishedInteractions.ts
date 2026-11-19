@@ -4,9 +4,13 @@ import type { NodeViewContext } from './NodeView';
 import {
   resolveWebsiteLinkDestination,
   inferWebsiteLinkDestinationFromLabel,
+  isSafeExternalDestination,
 } from './linkDestinations';
 
-function findPage(website: Website, matcher: (page: BuilderPage) => boolean): BuilderPage | undefined {
+function findPage(
+  website: Website,
+  matcher: (page: BuilderPage) => boolean
+): BuilderPage | undefined {
   return website.pages.find(matcher);
 }
 
@@ -38,6 +42,8 @@ export function handlePublishedNodeInteraction(
     e.preventDefault();
     e.stopPropagation();
     if (destination.type === 'external' || destination.type === 'whatsapp') {
+      // A saved destination can carry any scheme; only navigable ones may open.
+      if (!isSafeExternalDestination(destination)) return;
       if (!ctx.previewMode) {
         window.open(destination.url, '_blank', 'noopener,noreferrer');
       }
